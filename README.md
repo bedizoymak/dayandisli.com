@@ -1,21 +1,21 @@
-# DAYAN Disli — Teklif ve Yönetim Sistemi
+# DAYAN Gear — Quotation and Management System
 
-## Kisa Açiklama
-Bu proje, DAYAN Disli için gelistirilmis modern, web tabanli bir teklif ve operasyon yönetim sistemidir. Uygulama; müsteri/sirket bilgileri, teklif üretimi, PDF çiktisi ve yönetim süreçlerini güvenli bir mimariyle tek noktada birlestirir.
+## Short Description
+This project is a modern, web-based quotation and operations management system built for DAYAN Gear. The application unifies customer/company information, quotation workflows, PDF output, and admin processes in a secure architecture.
 
-Üretim ortami: https://dayandisli.com
+Production environment: https://dayandisli.com
 
-## Özellikler
-- Güvenli giris (email/password)
-- Admin yetkilendirme
-- Müsteri/sirket bilgi yönetimi
-- Teklif olusturma ve düzenleme
-- PDF teklif üretimi
-- Son teklifler geçmisi
-- Supabase veritabani entegrasyonu
-- GitHub Actions ile production dagitimi
+## Features
+- Secure login (email/password)
+- Admin authorization
+- Customer/company information management
+- Quotation creation and editing
+- PDF quotation generation
+- Recent quotations history
+- Supabase database integration
+- Production deployment with GitHub Actions
 
-## Teknoloji Yigini
+## Tech Stack
 - React
 - Vite
 - TypeScript
@@ -23,14 +23,14 @@ Bu proje, DAYAN Disli için gelistirilmis modern, web tabanli bir teklif ve opera
 - Tailwind CSS / shadcn-ui
 - GitHub Actions
 
-## Mimari Genel Bakis
-Sistem, istemci tarafinda React + Vite tabanli bir frontend ile çalisir. Frontend, kimlik dogrulama ve veri islemleri için Supabase servisleriyle iletisim kurar. `main` branch’ine yapilan degisiklikler GitHub Actions pipeline’i üzerinden üretim ortamina otomatik olarak dagitilir.
+## Architecture Overview
+The system uses a React + Vite frontend. The frontend communicates with Supabase for authentication and data operations. Changes pushed to the `main` branch are automatically deployed to production through the GitHub Actions pipeline.
 
-Akis özeti:
+Flow summary:
 Frontend (React/Vite) -> Supabase (Auth + DB) -> GitHub Actions -> Production
 
-## Ortam Degiskenleri
-Asagidaki degerleri `.env` dosyanizda placeholder olarak tanimlayin:
+## Environment Variables
+Define the following placeholders in your `.env` file:
 
 ```env
 VITE_SUPABASE_PROJECT_ID=
@@ -39,7 +39,7 @@ VITE_SUPABASE_ANON_KEY=
 VITE_SUPABASE_PUBLISHABLE_KEY=
 ```
 
-## Lokal Gelistirme
+## Local Development
 ```bash
 npm install
 npm run dev
@@ -47,16 +47,16 @@ npm run build
 ```
 
 ## Deployment
-`main` branch’ine push islemi yapildiginda GitHub Actions otomatik olarak deployment sürecini tetikler ve uygulamayi production ortama yayinlar.
+When code is pushed to the `main` branch, GitHub Actions automatically triggers the deployment pipeline and publishes the application to production.
 
-## Güvenlik Notlari
-- Repoya gizli bilgi (secret) commit edilmemelidir.
-- Kimlik dogrulama Supabase Auth üzerinden yönetilir.
-- Admin kontrolü uygulama tarafinda ayri yetkilendirme katmaniyla ele alinir.
-- Supabase tarafinda Row Level Security (RLS) politikalari zorunlu olarak yapilandirilmalidir.
+## Security Notes
+- No secrets should be committed to the repository.
+- Authentication is handled via Supabase Auth.
+- Admin control is handled through a separate authorization layer in the application.
+- Row Level Security (RLS) policies must be configured on the Supabase side.
 
-## Proje Durumu
-Production aktif, gelistirme devam ediyor.
+## Project Status
+Production is active and development is ongoing.
 
 ## Maintainer
 Eclipse Engineering & IT Solutions
