@@ -1,4 +1,6 @@
-﻿create table if not exists public.admin_users (
+create extension if not exists pgcrypto with schema extensions;
+
+create table if not exists public.admin_users (
   id uuid primary key default gen_random_uuid(),
   email text unique not null,
   role text not null default 'admin',
