@@ -1,123 +1,62 @@
-ğŸš€ Overview
+# DAYAN Disli — Teklif ve Yönetim Sistemi
 
-This project is a multilingual one-page website built with modern frontend tools.
-The structure is optimized for both performance and mobile responsiveness.
-All revisions are developed locally in VS Code and synced to GitHub, then deployed to the hosting environment.
+## Kisa Açiklama
+Bu proje, DAYAN Disli için gelistirilmis modern, web tabanli bir teklif ve operasyon yönetim sistemidir. Uygulama; müsteri/sirket bilgileri, teklif üretimi, PDF çiktisi ve yönetim süreçlerini güvenli bir mimariyle tek noktada birlestirir.
 
-ğŸŒ Features
+Üretim ortami: https://dayandisli.com
 
-Multi-language support (TR / DE / EN)
+## Özellikler
+- Güvenli giris (email/password)
+- Admin yetkilendirme
+- Müsteri/sirket bilgi yönetimi
+- Teklif olusturma ve düzenleme
+- PDF teklif üretimi
+- Son teklifler geçmisi
+- Supabase veritabani entegrasyonu
+- GitHub Actions ile production dagitimi
 
-IP-based language redirection (TR â†’ Turkish, EU countries â†’ German, others â†’ English)
+## Teknoloji Yigini
+- React
+- Vite
+- TypeScript
+- Supabase
+- Tailwind CSS / shadcn-ui
+- GitHub Actions
 
-Fully responsive UI
+## Mimari Genel Bakis
+Sistem, istemci tarafinda React + Vite tabanli bir frontend ile çalisir. Frontend, kimlik dogrulama ve veri islemleri için Supabase servisleriyle iletisim kurar. `main` branch’ine yapilan degisiklikler GitHub Actions pipeline’i üzerinden üretim ortamina otomatik olarak dagitilir.
 
-Smooth scroll navigation
+Akis özeti:
+Frontend (React/Vite) -> Supabase (Auth + DB) -> GitHub Actions -> Production
 
-Easy deployment workflow
+## Ortam Degiskenleri
+Asagidaki degerleri `.env` dosyanizda placeholder olarak tanimlayin:
 
-GitHub â†’ Hosting automatic sync (Lovable)
+```env
+VITE_SUPABASE_PROJECT_ID=
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_SUPABASE_PUBLISHABLE_KEY=
+```
 
-ğŸ“ Tech Stack
-
-HTML5 / CSS3 / JavaScript
-
-Lovable.dev (AI code generation & hosting)
-
-GitHub (version control)
-
-VS Code (local development)
-
-FTP Deployment (GoDaddy)
-
-ğŸ§© Project Structure
-/public_html
-â”‚â”€â”€ index.html
-â”‚â”€â”€ styles/
-â”‚     â””â”€â”€ style.css
-â”‚â”€â”€ assets/
-â”‚     â”œâ”€â”€ images/
-â”‚     â””â”€â”€ icons/
-â”‚â”€â”€ scripts/
-â”‚     â””â”€â”€ app.js
-â””â”€â”€ readme.md
-
-ğŸ”„ Development Workflow
-
-Clone the repo to your computer
-
-git clone https://github.com/username/project.git
-
-
-Make revisions in VS Code
-
-Update HTML sections
-
-Adjust CSS
-
-Add new components
-
-Modify language files
-
-Commit & Push
-
-git add .
-git commit -m "UI improvements + new language logic"
-git push origin main
-
-
-Automatic Sync
-
-Lovable immediately reflects the changes
-
-No manual upload needed
-
-Production Deployment
-
-npm install
-npm run build
-
-
-Then send the dist/ folder to GoDaddy via FTP (deploy@dayandisli.com
-).
-
-ğŸŒ IP-Based Language Routing
-
-The site detects visitorsâ€™ country by IP and loads the correct language:
-
-IP Region	Language
-Turkey	ğŸ‡¹ğŸ‡· Turkish
-Germany / Netherlands / Austria / Switzerland	ğŸ‡©ğŸ‡ª German
-Other Countries	ğŸ‡¬ğŸ‡§ English
-
-If VPN is active, language will adapt accordingly.
-
-ğŸ”§ Installation
-
-If you want to customize locally:
-
+## Lokal Gelistirme
+```bash
 npm install
 npm run dev
-
-
-Project starts at:
-http://localhost:3000
-
-ğŸ“¦ Build for Production
 npm run build
+```
 
+## Deployment
+`main` branch’ine push islemi yapildiginda GitHub Actions otomatik olarak deployment sürecini tetikler ve uygulamayi production ortama yayinlar.
 
-Output folder:
+## Güvenlik Notlari
+- Repoya gizli bilgi (secret) commit edilmemelidir.
+- Kimlik dogrulama Supabase Auth üzerinden yönetilir.
+- Admin kontrolü uygulama tarafinda ayri yetkilendirme katmaniyla ele alinir.
+- Supabase tarafinda Row Level Security (RLS) politikalari zorunlu olarak yapilandirilmalidir.
 
-/dist
+## Proje Durumu
+Production aktif, gelistirme devam ediyor.
 
-
-Upload /dist to hosting via FTP.
-
-ğŸ“ Support
-
-<<<<<<< HEAD
-For questions or improvements, feel free to open an Issue or send a Pull Request.
-=======
-For questions or improvements, feel free to open an Issue or send a Pull Request.
->>>>>>> a96e57d (FLAGS)
+## Maintainer
+Eclipse Engineering & IT Solutions
