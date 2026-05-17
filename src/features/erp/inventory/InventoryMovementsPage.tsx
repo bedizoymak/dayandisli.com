@@ -18,7 +18,7 @@ export default function InventoryMovementsPage() {
       setLoading(true);
       const result = await listInventoryMovements();
       if (result.error) {
-        toast({ title: "Hata", description: `Stok hareketleri yüklenemedi: ${result.error}`, variant: "destructive" });
+        toast({ title: "Hata", description: `Stok hareketleri yÃ¼klenemedi: ${result.error}`, variant: "destructive" });
       }
       setRows(result.data);
       setLoading(false);
@@ -31,13 +31,13 @@ export default function InventoryMovementsPage() {
     <ERPLayout title="Stok Hareketleri">
       <PageHeader
         title="Stok Hareketleri"
-        description="Giris, çikis ve düzeltme hareketlerini tarih sirasina göre izleyin."
+        description="Giris, Ã§ikis ve dÃ¼zeltme hareketlerini tarih sÄ±rasÄ±na gÃ¶re izleyin."
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Hareketler yükleniyor...</p>
+        <p className="text-sm text-muted-foreground">Hareketler yÃ¼kleniyor...</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="Stok hareketi yok" description="Henüz hareket kaydi bulunmuyor." />
+        <EmptyState title="Stok hareketi yok" description="HenÃ¼z hareket kaydÄ± bulunmuyor." />
       ) : (
         <DataTable
           columns={[
@@ -50,7 +50,7 @@ export default function InventoryMovementsPage() {
           ]}
           data={rows}
           rowKey={(row) => row.id}
-          emptyMessage="Stok hareketi bulunamadi"
+          emptyMessage="Stok hareketi bulunamadÄ±"
         />
       )}
     </ERPLayout>

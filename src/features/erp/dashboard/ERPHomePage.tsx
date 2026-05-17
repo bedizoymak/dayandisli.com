@@ -39,34 +39,34 @@ export default function ERPHomePage() {
     <ERPLayout title="ERP Dashboard">
       <PageHeader
         title="Ana Panel"
-        description="Atölye operasyonlarinin günlük durumunu tek ekranda izleyin."
+        description="AtÃ¶lye operasyonlarinin gÃ¼nlÃ¼k durumunu tek ekranda izleyin."
       />
 
       {error ? (
         <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-500">
-          Bazi metrikler yüklenemedi: {error}
+          Bazi metrikler yÃ¼klenemedi: {error}
         </div>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Açik Teklifler" value={metrics.openQuotations} icon={<FileText className="h-5 w-5" />} />
-        <MetricCard title="Aktif Siparisler" value={metrics.activeSalesOrders} icon={<ShoppingCart className="h-5 w-5" />} />
-        <MetricCard title="Açik Is Emirleri" value={metrics.openWorkOrders} icon={<HardHat className="h-5 w-5" />} />
+        <MetricCard title="AÃ§Ä±k Teklifler" value={metrics.openQuotations} icon={<FileText className="h-5 w-5" />} />
+        <MetricCard title="Aktif SipariÅŸler" value={metrics.activeSalesOrders} icon={<ShoppingCart className="h-5 w-5" />} />
+        <MetricCard title="AÃ§Ä±k Ä°ÅŸ Emirleri" value={metrics.openWorkOrders} icon={<HardHat className="h-5 w-5" />} />
         <MetricCard title="Fason Bekleyenler" value={metrics.waitingSubcontracting} icon={<Truck className="h-5 w-5" />} />
         <MetricCard title="Kritik Stoklar" value={metrics.lowStockItems} icon={<Package className="h-5 w-5" />} />
         <MetricCard title="Bekleyen Kalite Kontrolleri" value={metrics.pendingQualityChecks} icon={<ClipboardCheck className="h-5 w-5" />} />
-        <MetricCard title="Yaklasan Bakimlar" value={metrics.upcomingMaintenances} icon={<Wrench className="h-5 w-5" />} />
-        <MetricCard title="Bugünkü Sevkiyatlar" value={metrics.todaysShipments} icon={<AlertTriangle className="h-5 w-5" />} />
+        <MetricCard title="Yaklasan BakÄ±mlar" value={metrics.upcomingMaintenances} icon={<Wrench className="h-5 w-5" />} />
+        <MetricCard title="BugÃ¼nkÃ¼ Sevkiyatlar" value={metrics.todaysShipments} icon={<AlertTriangle className="h-5 w-5" />} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <ERPModuleCard title="CRM" description="Müsteri, tedarikçi ve fason paydas yönetimi" href="/erp/crm" icon={<ShoppingCart className="h-5 w-5" />} />
-        <ERPModuleCard title="Üretim" description="Is emri, rota ve operasyon takibi" href="/erp/work-orders" icon={<HardHat className="h-5 w-5" />} />
+        <ERPModuleCard title="CRM" description="MÃ¼ÅŸteri, tedarikÃ§i ve fason paydaÅŸ yÃ¶netimi" href="/erp/crm" icon={<ShoppingCart className="h-5 w-5" />} />
+        <ERPModuleCard title="Ãœretim" description="Ä°ÅŸ emri, rota ve operasyon takibi" href="/erp/work-orders" icon={<HardHat className="h-5 w-5" />} />
         <ERPModuleCard title="Stok" description="Stok kartlari ve kritik stok izlemesi" href="/erp/inventory" icon={<Package className="h-5 w-5" />} />
-        <ERPModuleCard title="Kalite" description="Kalite raporlari ve ölçüm sonuçlari" href="/erp/quality" icon={<ClipboardCheck className="h-5 w-5" />} />
+        <ERPModuleCard title="Kalite" description="Kalite raporlari ve Ã¶lÃ§Ã¼m sonuÃ§lari" href="/erp/quality" icon={<ClipboardCheck className="h-5 w-5" />} />
       </div>
 
-      {loading ? <p className="text-sm text-muted-foreground">Metrikler güncelleniyor...</p> : null}
+      {loading ? <p className="text-sm text-muted-foreground">Metrikler gÃ¼ncelleniyor...</p> : null}
     </ERPLayout>
   );
 }

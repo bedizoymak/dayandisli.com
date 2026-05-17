@@ -18,7 +18,7 @@ export default function RoutesPage() {
       setLoading(true);
       const result = await listProductionRoutes();
       if (result.error) {
-        toast({ title: "Hata", description: `Rotalar y�klenemedi: ${result.error}`, variant: "destructive" });
+        toast({ title: "Hata", description: `Rotalar yüklenemedi: ${result.error}`, variant: "destructive" });
       }
       setRows(result.data);
       setLoading(false);
@@ -28,30 +28,30 @@ export default function RoutesPage() {
   }, [toast]);
 
   return (
-    <ERPLayout title="�retim Rotalari">
+    <ERPLayout title="Üretim Rotaları">
       <PageHeader
-        title="�retim ve Rota Y�netimi"
-        description="Rota sablonlarini ve operasyon siralarini y�netin."
+        title="Üretim ve Rota Yönetimi"
+        description="Rota şablonlarini ve operasyon sıralarını yönetin."
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Rotalar y�kleniyor...</p>
+        <p className="text-sm text-muted-foreground">Rotalar yükleniyor...</p>
       ) : rows.length === 0 ? (
         <EmptyState
-          title="Rota kaydi bulunamadi"
-          description="Ilk s�r�mde rota adimlari i�in metadata yapisi hazirdir. Sonraki fazda rota adim edit�r� eklenecektir."
+          title="Rota kaydı bulunamadı"
+          description="İlk sürümde rota adımları için metadata yapısı hazırdır. Sonraki fazda rota adım editörü eklenecektir."
         />
       ) : (
         <DataTable
           columns={[
-            { key: "name", header: "Rota Adi", render: (row) => row.name },
-            { key: "description", header: "A�iklama", render: (row) => row.description || "-" },
-            { key: "template", header: "Sablon", render: (row) => (row.is_template ? "Evet" : "Hayir") },
-            { key: "created", header: "Olusturulma", render: (row) => formatDateTime(row.created_at) },
+            { key: "name", header: "Rota Adı", render: (row) => row.name },
+            { key: "description", header: "Açıklama", render: (row) => row.description || "-" },
+            { key: "template", header: "Şablon", render: (row) => (row.is_template ? "Evet" : "Hayır") },
+            { key: "created", header: "Oluşturulma", render: (row) => formatDateTime(row.created_at) },
           ]}
           data={rows}
           rowKey={(row) => row.id}
-          emptyMessage="Rota kaydi yok"
+          emptyMessage="Rota kaydı yok"
         />
       )}
     </ERPLayout>

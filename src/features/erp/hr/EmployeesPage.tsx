@@ -35,9 +35,9 @@ export default function EmployeesPage() {
 
   return (
     <ERPLayout title="IK ve Personel">
-      <PageHeader title="IK ve Personel" description="Personel listesi, g�rev rolleri ve aktiflik durumunu y�netin." />
+      <PageHeader title="IK ve Personel" description="Personel listesi, görev rolleri ve aktiflik durumunu yönetin." />
 
-      <FormSection title="Yeni Personel" description="Temel personel karti olusturun.">
+      <FormSection title="Yeni Personel" description="Temel personel kartı oluşturun.">
         <form
           className="grid gap-3 md:grid-cols-3"
           onSubmit={async (e) => {
@@ -49,11 +49,11 @@ export default function EmployeesPage() {
             setSaving(false);
 
             if (result.error) {
-              toast({ title: "Kayit Hatasi", description: result.error, variant: "destructive" });
+              toast({ title: "Kayıt Hatası", description: result.error, variant: "destructive" });
               return;
             }
 
-            toast({ title: "Basarili", description: "Personel eklendi." });
+            toast({ title: "Başarılı", description: "Personel eklendi." });
             setForm({ full_name: "", role: "", department: "" });
             await load();
           }}
@@ -84,9 +84,9 @@ export default function EmployeesPage() {
       </FormSection>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Personel listesi y�kleniyor...</p>
+        <p className="text-sm text-muted-foreground">Personel listesi yükleniyor...</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="Personel kaydi yok" description="Yeni personel ekleyerek baslayabilirsiniz." />
+        <EmptyState title="Personel kaydı yok" description="Yeni personel ekleyerek başlayabilirsiniz." />
       ) : (
         <DataTable
           columns={[
@@ -99,11 +99,11 @@ export default function EmployeesPage() {
               render: (row) =>
                 row.is_active ? <StatusBadge label="Aktif" tone="success" /> : <StatusBadge label="Pasif" tone="muted" />,
             },
-            { key: "created", header: "Olusturulma", render: (row) => formatDate(row.created_at) },
+            { key: "created", header: "Oluşturulma", render: (row) => formatDate(row.created_at) },
           ]}
           data={rows}
           rowKey={(row) => row.id}
-          emptyMessage="Personel kaydi bulunamadi"
+          emptyMessage="Personel kaydı bulunamadı"
         />
       )}
     </ERPLayout>

@@ -34,7 +34,7 @@ export function StakeholderForm({ loading = false, onSubmit }: StakeholderFormPr
   };
 
   return (
-    <FormSection title="Yeni Paydas" description="Müsteri, tedarikçi veya fason firma ekleyin.">
+    <FormSection title="Yeni PaydaÅŸ" description="MÃ¼ÅŸteri, tedarikÃ§i veya fason firma ekleyin.">
       <form className="grid gap-3 md:grid-cols-2" onSubmit={submit}>
         <label className="text-sm">
           Tip
@@ -43,8 +43,8 @@ export function StakeholderForm({ loading = false, onSubmit }: StakeholderFormPr
             value={form.type}
             onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value as StakeholderType }))}
           >
-            <option value="customer">Müsteri</option>
-            <option value="supplier">Tedarikçi</option>
+            <option value="customer">MÃ¼ÅŸteri</option>
+            <option value="supplier">TedarikÃ§i</option>
             <option value="subcontractor">Fason</option>
             <option value="both">Karma</option>
           </select>
@@ -56,7 +56,7 @@ export function StakeholderForm({ loading = false, onSubmit }: StakeholderFormPr
             className="mt-1"
             value={form.company_name}
             onChange={(e) => setForm((prev) => ({ ...prev, company_name: e.target.value }))}
-            placeholder="Örn: ABC Makina"
+            placeholder="Ã–rn: ABC Makina"
             required
           />
         </label>
@@ -93,7 +93,7 @@ export function StakeholderForm({ loading = false, onSubmit }: StakeholderFormPr
 
         <div className="md:col-span-2 flex justify-end">
           <Button type="submit" disabled={loading}>
-            {loading ? "Kaydediliyor..." : "Paydas Ekle"}
+            {loading ? "Kaydediliyor..." : "PaydaÅŸ Ekle"}
           </Button>
         </div>
       </form>

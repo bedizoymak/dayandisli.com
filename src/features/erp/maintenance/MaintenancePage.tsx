@@ -27,7 +27,7 @@ export default function MaintenancePage() {
       setLoading(true);
       const result = await listMaintenanceTasks();
       if (result.error) {
-        toast({ title: "Hata", description: `Bakim kayitlari y�klenemedi: ${result.error}`, variant: "destructive" });
+        toast({ title: "Hata", description: `Bakım kayıtları yüklenemedi: ${result.error}`, variant: "destructive" });
       }
       setRows(result.data);
       setLoading(false);
@@ -37,20 +37,20 @@ export default function MaintenancePage() {
   }, [toast]);
 
   return (
-    <ERPLayout title="Makine Bakim">
+    <ERPLayout title="Makine Bakım">
       <PageHeader
-        title="Makine Bakim"
-        description="Planlanan bakim, ariza ve tamamlanan bakim kayitlarini izleyin."
+        title="Makine Bakım"
+        description="Planlanan bakım, arıza ve tamamlanan bakım kayıtlarıni izleyin."
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Bakim kayitlari y�kleniyor...</p>
+        <p className="text-sm text-muted-foreground">Bakım kayıtları yükleniyor...</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="Bakim kaydi yok" description="Hen�z bakim g�revi olusturulmamis." />
+        <EmptyState title="Bakım kaydı yok" description="Henüz bakım görevi oluşturulmamış." />
       ) : (
         <DataTable
           columns={[
-            { key: "name", header: "G�rev", render: (row) => row.task_name },
+            { key: "name", header: "Görev", render: (row) => row.task_name },
             { key: "type", header: "Tip", render: (row) => row.task_type },
             { key: "date", header: "Planlanan Tarih", render: (row) => formatDate(row.planned_date) },
             {
@@ -58,11 +58,11 @@ export default function MaintenancePage() {
               header: "Durum",
               render: (row) => <StatusBadge label={MAINTENANCE_STATUS_LABELS[row.status] || row.status} tone={tone(row.status)} />,
             },
-            { key: "created", header: "Kayit", render: (row) => formatDate(row.created_at) },
+            { key: "created", header: "Kayıt", render: (row) => formatDate(row.created_at) },
           ]}
           data={rows}
           rowKey={(row) => row.id}
-          emptyMessage="Bakim kaydi bulunamadi"
+          emptyMessage="Bakım kaydı bulunamadı"
         />
       )}
     </ERPLayout>

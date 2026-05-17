@@ -20,7 +20,7 @@ export default function ERPQuotationsPage() {
       setLoading(true);
       const result = await listQuotations();
       if (result.error) {
-        toast({ title: "Hata", description: `Teklifler yüklenemedi: ${result.error}`, variant: "destructive" });
+        toast({ title: "Hata", description: `Teklifler yÃ¼klenemedi: ${result.error}`, variant: "destructive" });
       }
       setRows(result.data);
       setLoading(false);
@@ -30,21 +30,21 @@ export default function ERPQuotationsPage() {
   }, [toast]);
 
   return (
-    <ERPLayout title="Teklif Yönetimi">
+    <ERPLayout title="Teklif YÃ¶netimi">
       <PageHeader
-        title="ERP Teklif Görünümü"
-        description="Mevcut quotations tablosundaki teklifleri ERP ekraninda görüntüleyin."
+        title="ERP Teklif GÃ¶rÃ¼nÃ¼mÃ¼"
+        description="Mevcut quotations tablosundaki teklifleri ERP ekranÄ±nda gÃ¶rÃ¼ntÃ¼leyin."
         actions={
           <Button asChild>
-            <Link to="/teklif-sayfasi">Teklif Olusturucuya Git</Link>
+            <Link to="/teklif-sayfasi">Teklif OluÅŸturucuya Git</Link>
           </Button>
         }
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Teklifler yükleniyor...</p>
+        <p className="text-sm text-muted-foreground">Teklifler yÃ¼kleniyor...</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="Teklif kaydi yok" description="Henüz kayitli teklif bulunmuyor." />
+        <EmptyState title="Teklif kaydÄ± yok" description="HenÃ¼z kayÄ±tlÄ± teklif bulunmuyor." />
       ) : (
         <DataTable
           columns={[
@@ -57,11 +57,11 @@ export default function ERPQuotationsPage() {
               className: "text-right",
               render: (row) => formatCurrency(row.total ?? 0, row.active_currency || "TRY"),
             },
-            { key: "tarih", header: "Olusturulma", render: (row) => formatDateTime(row.created_at) },
+            { key: "tarih", header: "OluÅŸturulma", render: (row) => formatDateTime(row.created_at) },
           ]}
           data={rows}
           rowKey={(row) => row.id}
-          emptyMessage="Teklif bulunamadi"
+          emptyMessage="Teklif bulunamadÄ±"
         />
       )}
     </ERPLayout>

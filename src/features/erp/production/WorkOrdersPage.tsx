@@ -24,11 +24,11 @@ export default function WorkOrdersPage() {
     const [workOrdersResult, stakeholdersResult] = await Promise.all([listWorkOrders(), listStakeholders()]);
 
     if (workOrdersResult.error) {
-      toast({ title: "Hata", description: `Is emirleri y�klenemedi: ${workOrdersResult.error}`, variant: "destructive" });
+      toast({ title: "Hata", description: `İş emirleri yüklenemedi: ${workOrdersResult.error}`, variant: "destructive" });
     }
 
     if (stakeholdersResult.error) {
-      toast({ title: "Hata", description: `Paydaslar y�klenemedi: ${stakeholdersResult.error}`, variant: "destructive" });
+      toast({ title: "Hata", description: `Paydaşlar yüklenemedi: ${stakeholdersResult.error}`, variant: "destructive" });
     }
 
     setRows(workOrdersResult.data);
@@ -59,10 +59,10 @@ export default function WorkOrdersPage() {
   }, [rows, search]);
 
   return (
-    <ERPLayout title="Is Emirleri">
+    <ERPLayout title="İş Emirleri">
       <PageHeader
-        title="Is Emirleri"
-        description="�retim planlama, operasyon ve fason akislarini is emri merkezli y�netin."
+        title="İş Emirleri"
+        description="Üretim planlama, operasyon ve fason akışlarını iş emri merkezli yönetin."
       />
 
       <WorkOrderForm
@@ -80,22 +80,22 @@ export default function WorkOrdersPage() {
           setSaving(false);
 
           if (result.error) {
-            toast({ title: "Kayit Hatasi", description: result.error, variant: "destructive" });
+            toast({ title: "Kayıt Hatası", description: result.error, variant: "destructive" });
             return;
           }
 
-          toast({ title: "Basarili", description: "Is emri olusturuldu." });
+          toast({ title: "Başarılı", description: "İş emri oluşturuldu." });
           await load();
         }}
       />
 
       <div className="space-y-3">
-        <Input placeholder="Is emri no, baslik veya par�a ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input placeholder="İş emri no, başlık veya parça ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Y�kleniyor...</p>
+          <p className="text-sm text-muted-foreground">Yükleniyor...</p>
         ) : filtered.length === 0 ? (
-          <EmptyState title="Is emri bulunamadi" description="Yeni is emri olusturarak baslayabilirsiniz." />
+          <EmptyState title="İş emri bulunamadı" description="Yeni iş emri oluşturarak başlayabilirsiniz." />
         ) : (
           <WorkOrderTable
             data={filtered}

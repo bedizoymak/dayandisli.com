@@ -22,11 +22,11 @@ export default function SalesOrdersPage() {
     const [ordersResult, stakeholdersResult] = await Promise.all([listSalesOrders(), listStakeholders()]);
 
     if (ordersResult.error) {
-      toast({ title: "Hata", description: `Siparisler y�klenemedi: ${ordersResult.error}`, variant: "destructive" });
+      toast({ title: "Hata", description: `Siparişler yüklenemedi: ${ordersResult.error}`, variant: "destructive" });
     }
 
     if (stakeholdersResult.error) {
-      toast({ title: "Hata", description: `Paydaslar y�klenemedi: ${stakeholdersResult.error}`, variant: "destructive" });
+      toast({ title: "Hata", description: `Paydaşlar yüklenemedi: ${stakeholdersResult.error}`, variant: "destructive" });
     }
 
     setRows(ordersResult.data);
@@ -52,10 +52,10 @@ export default function SalesOrdersPage() {
   }, [rows, search]);
 
   return (
-    <ERPLayout title="Siparis Y�netimi">
+    <ERPLayout title="Sipariş Yönetimi">
       <PageHeader
-        title="Siparis Y�netimi"
-        description="ERP satis siparislerini y�netin, durum ve �ncelik takibini tek ekrandan yapin."
+        title="Sipariş Yönetimi"
+        description="ERP satış siparişlerini yönetin, durum ve öncelik takibini tek ekrandan yapın."
       />
 
       <SalesOrderForm
@@ -72,26 +72,26 @@ export default function SalesOrdersPage() {
           setSaving(false);
 
           if (result.error) {
-            toast({ title: "Kayit Hatasi", description: result.error, variant: "destructive" });
+            toast({ title: "Kayıt Hatası", description: result.error, variant: "destructive" });
             return;
           }
 
-          toast({ title: "Basarili", description: "Siparis kaydi olusturuldu." });
+          toast({ title: "Başarılı", description: "Sipariş kaydı oluşturuldu." });
           await load();
         }}
       />
 
       <div className="space-y-3">
         <Input
-          placeholder="Siparis no veya baslik ara..."
+          placeholder="Sipariş no veya başlık ara..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Y�kleniyor...</p>
+          <p className="text-sm text-muted-foreground">Yükleniyor...</p>
         ) : filteredRows.length === 0 ? (
-          <EmptyState title="Siparis bulunamadi" description="Yeni siparis ekleyerek baslayabilirsiniz." />
+          <EmptyState title="Sipariş bulunamadı" description="Yeni sipariş ekleyerek başlayabilirsiniz." />
         ) : (
           <SalesOrderTable data={filteredRows} stakeholderNameById={stakeholderNameById} />
         )}

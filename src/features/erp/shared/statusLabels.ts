@@ -3,7 +3,7 @@ import { InventoryItemType, SalesOrderStatus, StakeholderType, WorkOrderStatus }
 export const SALES_ORDER_STATUS_LABELS: Record<SalesOrderStatus, string> = {
   new: "Yeni",
   confirmed: "Onaylandi",
-  in_production: "Üretimde",
+  in_production: "Ãœretimde",
   waiting_subcontractor: "Fasonda Bekliyor",
   ready_to_ship: "Sevke Hazir",
   shipped: "Sevk Edildi",
@@ -27,14 +27,14 @@ export const INVENTORY_ITEM_TYPE_LABELS: Record<InventoryItemType, string> = {
   raw_material: "Hammadde",
   consumable: "Sarf Malzeme",
   tool: "Takim",
-  measuring_tool: "Ölçüm Aleti",
+  measuring_tool: "Ã–lÃ§Ã¼m Aleti",
   finished_good: "Mamul",
   semi_finished: "Yari Mamul",
 };
 
 export const STAKEHOLDER_TYPE_LABELS: Record<StakeholderType, string> = {
-  customer: "Müsteri",
-  supplier: "Tedarikçi",
+  customer: "MÃ¼ÅŸteri",
+  supplier: "TedarikÃ§i",
   subcontractor: "Fason",
   both: "Karma",
 };
@@ -49,7 +49,7 @@ export const SHIPMENT_STATUS_LABELS: Record<string, string> = {
 
 export const QUALITY_RESULT_LABELS: Record<string, string> = {
   pending: "Beklemede",
-  passed: "Geçti",
+  passed: "GeÃ§ti",
   failed: "Kaldi",
   conditional: "Sartli",
 };

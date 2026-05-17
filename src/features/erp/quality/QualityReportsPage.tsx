@@ -27,7 +27,7 @@ export default function QualityReportsPage() {
       setLoading(true);
       const result = await listQualityReports();
       if (result.error) {
-        toast({ title: "Hata", description: `Kalite raporlari yüklenemedi: ${result.error}`, variant: "destructive" });
+        toast({ title: "Hata", description: `Kalite raporlari yÃ¼klenemedi: ${result.error}`, variant: "destructive" });
       }
       setRows(result.data);
       setLoading(false);
@@ -40,13 +40,13 @@ export default function QualityReportsPage() {
     <ERPLayout title="Kalite Kontrol">
       <PageHeader
         title="Kalite Kontrol"
-        description="Ölçüm raporlarini ve geçti/kaldi/sartli sonuçlarini takip edin."
+        description="Ã–lÃ§Ã¼m raporlarini ve geÃ§ti/kaldi/sartli sonuÃ§larini takip edin."
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Kalite raporlari yükleniyor...</p>
+        <p className="text-sm text-muted-foreground">Kalite raporlari yÃ¼kleniyor...</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="Kalite raporu yok" description="Henüz kalite kontrol raporu bulunmuyor." />
+        <EmptyState title="Kalite raporu yok" description="HenÃ¼z kalite kontrol raporu bulunmuyor." />
       ) : (
         <DataTable
           columns={[
@@ -54,14 +54,14 @@ export default function QualityReportsPage() {
             { key: "date", header: "Kontrol Tarihi", render: (row) => formatDate(row.inspection_date) },
             {
               key: "result",
-              header: "Sonuç",
+              header: "SonuÃ§",
               render: (row) => <StatusBadge label={QUALITY_RESULT_LABELS[row.result] || row.result} tone={tone(row.result)} />,
             },
-            { key: "created", header: "Kayit", render: (row) => formatDate(row.created_at) },
+            { key: "created", header: "KayÄ±t", render: (row) => formatDate(row.created_at) },
           ]}
           data={rows}
           rowKey={(row) => row.id}
-          emptyMessage="Kalite raporu bulunamadi"
+          emptyMessage="Kalite raporu bulunamadÄ±"
         />
       )}
     </ERPLayout>

@@ -23,7 +23,7 @@ export default function InventoryPage() {
     setLoading(true);
     const result = await listInventoryItems();
     if (result.error) {
-      toast({ title: "Hata", description: `Stok verisi y�klenemedi: ${result.error}`, variant: "destructive" });
+      toast({ title: "Hata", description: `Stok verisi yüklenemedi: ${result.error}`, variant: "destructive" });
     }
     setRows(result.data);
     setLoading(false);
@@ -42,10 +42,10 @@ export default function InventoryPage() {
   const criticalCount = filtered.filter((item) => item.current_stock <= item.min_stock).length;
 
   return (
-    <ERPLayout title="Stok ve Ambar Y�netimi">
+    <ERPLayout title="Stok ve Ambar Yönetimi">
       <PageHeader
-        title="Stok ve Ambar Y�netimi"
-        description="Kritik stoklari takip edin ve stok kartlarini merkezi olarak y�netin."
+        title="Stok ve Ambar Yönetimi"
+        description="Kritik stoklari takip edin ve stok kartlarini merkezi olarak yönetin."
       />
 
       <InventoryItemForm
@@ -64,17 +64,17 @@ export default function InventoryPage() {
           setSaving(false);
 
           if (result.error) {
-            toast({ title: "Kayit Hatasi", description: result.error, variant: "destructive" });
+            toast({ title: "Kayıt Hatası", description: result.error, variant: "destructive" });
             return;
           }
 
-          toast({ title: "Basarili", description: "Stok karti eklendi." });
+          toast({ title: "Başarılı", description: "Stok kartı eklendi." });
           await load();
         }}
       />
 
       <div className="space-y-3">
-        <Input placeholder="Kod veya �r�n adina g�re ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input placeholder="Kod veya ürün adina göre ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
         {criticalCount > 0 ? (
           <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">
@@ -83,14 +83,14 @@ export default function InventoryPage() {
         ) : null}
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Stok verisi y�kleniyor...</p>
+          <p className="text-sm text-muted-foreground">Stok verisi yükleniyor...</p>
         ) : filtered.length === 0 ? (
-          <EmptyState title="Stok kaydi bulunamadi" description="Yeni stok karti ekleyerek baslayabilirsiniz." />
+          <EmptyState title="Stok kaydı bulunamadı" description="Yeni stok kartı ekleyerek başlayabilirsiniz." />
         ) : (
           <DataTable
             columns={[
               { key: "code", header: "Kod", render: (row) => row.code || "-" },
-              { key: "name", header: "�r�n/Malzeme", render: (row) => row.name },
+              { key: "name", header: "Ürün/Malzeme", render: (row) => row.name },
               { key: "type", header: "Tip", render: (row) => INVENTORY_ITEM_TYPE_LABELS[row.item_type] },
               { key: "stock", header: "Stok", className: "text-right", render: (row) => formatNumber(row.current_stock, 3) },
               { key: "min", header: "Min Stok", className: "text-right", render: (row) => formatNumber(row.min_stock, 3) },
@@ -109,7 +109,7 @@ export default function InventoryPage() {
             ]}
             data={filtered}
             rowKey={(row) => row.id}
-            emptyMessage="Stok kaydi bulunamadi"
+            emptyMessage="Stok kaydı bulunamadı"
           />
         )}
       </div>

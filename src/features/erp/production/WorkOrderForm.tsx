@@ -35,16 +35,16 @@ export function WorkOrderForm({ stakeholders, loading = false, onSubmit }: WorkO
   };
 
   return (
-    <FormSection title="Yeni Is Emri" description="Siparis veya m�steri bazli is emri olusturun.">
+    <FormSection title="Yeni İş Emri" description="Sipariş veya müşteri bazlı iş emri oluşturun.">
       <form className="grid gap-3 md:grid-cols-2" onSubmit={submit}>
         <label className="text-sm">
-          M�steri / Paydas
+          Müşteri / Paydaş
           <select
             className="mt-1 h-10 w-full rounded-md border bg-background px-3"
             value={form.stakeholder_id}
             onChange={(e) => setForm((prev) => ({ ...prev, stakeholder_id: e.target.value }))}
           >
-            <option value="">Se�iniz</option>
+            <option value="">Seçiniz</option>
             {stakeholders.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.company_name}
@@ -59,18 +59,18 @@ export function WorkOrderForm({ stakeholders, loading = false, onSubmit }: WorkO
             className="mt-1"
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-            placeholder="�rn: Mod�l 2 helis taslama"
+            placeholder="Örn: Modül 2 helis taslama"
             required
           />
         </label>
 
         <label className="text-sm">
-          Par�a
+          Parça
           <Input
             className="mt-1"
             value={form.part_name}
             onChange={(e) => setForm((prev) => ({ ...prev, part_name: e.target.value }))}
-            placeholder="Par�a adi"
+            placeholder="Parça adi"
           />
         </label>
 
@@ -97,7 +97,7 @@ export function WorkOrderForm({ stakeholders, loading = false, onSubmit }: WorkO
 
         <div className="md:col-span-2 flex justify-end">
           <Button type="submit" disabled={loading}>
-            {loading ? "Kaydediliyor..." : "Is Emri Ekle"}
+            {loading ? "Kaydediliyor..." : "İş Emri Ekle"}
           </Button>
         </div>
       </form>

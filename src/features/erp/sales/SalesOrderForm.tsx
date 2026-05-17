@@ -33,16 +33,16 @@ export function SalesOrderForm({ stakeholders, loading = false, onSubmit }: Sale
   };
 
   return (
-    <FormSection title="Yeni Siparis" description="ERP satis siparisi kaydi olusturun.">
+    <FormSection title="Yeni Sipariş" description="ERP satış siparişi kaydı oluşturun.">
       <form className="grid gap-3 md:grid-cols-2" onSubmit={submit}>
         <label className="text-sm">
-          M�steri / Paydas
+          Müşteri / Paydaş
           <select
             className="mt-1 h-10 w-full rounded-md border bg-background px-3"
             value={form.stakeholder_id}
             onChange={(e) => setForm((prev) => ({ ...prev, stakeholder_id: e.target.value }))}
           >
-            <option value="">Se�iniz</option>
+            <option value="">Seçiniz</option>
             {stakeholders.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.company_name}
@@ -57,7 +57,7 @@ export function SalesOrderForm({ stakeholders, loading = false, onSubmit }: Sale
             className="mt-1"
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-            placeholder="�rn: Helis disli imalati"
+            placeholder="Örn: Helis disli imalati"
             required
           />
         </label>
@@ -73,7 +73,7 @@ export function SalesOrderForm({ stakeholders, loading = false, onSubmit }: Sale
         </label>
 
         <label className="text-sm">
-          �ncelik
+          Öncelik
           <select
             className="mt-1 h-10 w-full rounded-md border bg-background px-3"
             value={form.priority}
@@ -81,16 +81,16 @@ export function SalesOrderForm({ stakeholders, loading = false, onSubmit }: Sale
               setForm((prev) => ({ ...prev, priority: e.target.value as SalesOrderFormValues["priority"] }))
             }
           >
-            <option value="low">D�s�k</option>
+            <option value="low">Düsük</option>
             <option value="normal">Normal</option>
-            <option value="high">Y�ksek</option>
+            <option value="high">Yüksek</option>
             <option value="urgent">Acil</option>
           </select>
         </label>
 
         <div className="md:col-span-2 flex justify-end">
           <Button type="submit" disabled={loading}>
-            {loading ? "Kaydediliyor..." : "Siparis Ekle"}
+            {loading ? "Kaydediliyor..." : "Sipariş Ekle"}
           </Button>
         </div>
       </form>

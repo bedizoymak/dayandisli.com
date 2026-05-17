@@ -26,7 +26,7 @@ export default function SubcontractingPage() {
       setLoading(true);
       const result = await listSubcontractingJobs();
       if (result.error) {
-        toast({ title: "Hata", description: `Fason kayitlari y�klenemedi: ${result.error}`, variant: "destructive" });
+        toast({ title: "Hata", description: `Fason kayıtları yüklenemedi: ${result.error}`, variant: "destructive" });
       }
       setRows(result.data);
       setLoading(false);
@@ -39,31 +39,31 @@ export default function SubcontractingPage() {
     <ERPLayout title="Fason Takibi">
       <PageHeader
         title="Fason Takibi"
-        description="Dis islem s�re�lerini (isil islem, kaplama vb.) sevk-d�n�s d�ng�s� ile izleyin."
+        description="Dis islem süreçlerini (isil islem, kaplama vb.) sevk-dönüs döngüsü ile izleyin."
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Fason kayitlari y�kleniyor...</p>
+        <p className="text-sm text-muted-foreground">Fason kayıtları yükleniyor...</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="Fason kaydi yok" description="Ilk kayitlar olusturuldugunda bu ekranda listelenecektir." />
+        <EmptyState title="Fason kaydı yok" description="İlk kayıtlar oluşturulduğunda bu ekranda listelenecektir." />
       ) : (
         <DataTable
           columns={[
             { key: "supplier", header: "Fason Firma", render: (row) => row.supplier?.company_name || "-" },
-            { key: "process", header: "Islem Tipi", render: (row) => row.process_type },
-            { key: "sent", header: "G�nderim Tarihi", render: (row) => formatDate(row.created_at) },
-            { key: "expected", header: "Beklenen D�n�s", render: (row) => formatDate(row.expected_return_date) },
+            { key: "process", header: "İşlem Tipi", render: (row) => row.process_type },
+            { key: "sent", header: "Gönderim Tarihi", render: (row) => formatDate(row.created_at) },
+            { key: "expected", header: "Beklenen Dönüs", render: (row) => formatDate(row.expected_return_date) },
             {
               key: "status",
               header: "Durum",
               render: (row) => <StatusBadge label={row.status} tone={tone(row.status)} />,
             },
             { key: "qty_sent", header: "Miktar", className: "text-right", render: (row) => formatNumber(row.quantity_sent, 3) },
-            { key: "qty_returned", header: "D�nen", className: "text-right", render: (row) => formatNumber(row.quantity_returned, 3) },
+            { key: "qty_returned", header: "Dönen", className: "text-right", render: (row) => formatNumber(row.quantity_returned, 3) },
           ]}
           data={rows}
           rowKey={(row) => row.id}
-          emptyMessage="Fason kaydi bulunamadi"
+          emptyMessage="Fason kaydı bulunamadı"
         />
       )}
     </ERPLayout>

@@ -11,7 +11,7 @@ export function WorkOrderOperations({ workOrder }: WorkOrderOperationsProps) {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Operasyon Takibi</CardTitle>
-          <CardDescription>Bir is emri se�tiginizde operasyon adimlarini burada y�netebilirsiniz.</CardDescription>
+          <CardDescription>Bir iş emri seçtiğinizde operasyon adımlarını burada yönetebilirsiniz.</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -22,11 +22,11 @@ export function WorkOrderOperations({ workOrder }: WorkOrderOperationsProps) {
       <CardHeader>
         <CardTitle className="text-lg">Operasyon Takibi: {workOrder.work_order_no}</CardTitle>
         <CardDescription>
-          Ilk s�r�mde operasyon detay ekrani temel seviyededir. Sonraki asamada adim bazli s�re ve �alisan atamasi eklenecektir.
+          İlk sürümde operasyon detay ekranı temel seviyededir. Sonraki aşamada adım bazlı süre ve çalışan atamasi eklenecektir.
         </CardDescription>
       </CardHeader>
       <CardContent className="text-sm text-muted-foreground">
-        <p>Par�a: {workOrder.part_name || workOrder.title}</p>
+        <p>Parça: {workOrder.part_name || workOrder.title}</p>
         <p className="mt-1">Durum: {workOrder.status}</p>
       </CardContent>
     </Card>

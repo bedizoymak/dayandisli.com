@@ -27,7 +27,7 @@ export default function ShipmentsPage() {
       setLoading(true);
       const result = await listShipments();
       if (result.error) {
-        toast({ title: "Hata", description: `Sevkiyat verisi y�klenemedi: ${result.error}`, variant: "destructive" });
+        toast({ title: "Hata", description: `Sevkiyat verisi yüklenemedi: ${result.error}`, variant: "destructive" });
       }
       setRows(result.data);
       setLoading(false);
@@ -40,13 +40,13 @@ export default function ShipmentsPage() {
     <ERPLayout title="Lojistik ve Sevkiyat">
       <PageHeader
         title="Lojistik ve Sevkiyat"
-        description="Sevkiyat no, takip no, paket sayisi ve durum takibini buradan yapin."
+        description="Sevkiyat no, takip no, paket sayisi ve durum takibini buradan yapın."
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Sevkiyatlar y�kleniyor...</p>
+        <p className="text-sm text-muted-foreground">Sevkiyatlar yükleniyor...</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="Sevkiyat kaydi yok" description="Hen�z sevkiyat kaydi bulunmuyor." />
+        <EmptyState title="Sevkiyat kaydı yok" description="Henüz sevkiyat kaydı bulunmuyor." />
       ) : (
         <DataTable
           columns={[
@@ -63,7 +63,7 @@ export default function ShipmentsPage() {
           ]}
           data={rows}
           rowKey={(row) => row.id}
-          emptyMessage="Sevkiyat kaydi bulunamadi"
+          emptyMessage="Sevkiyat kaydı bulunamadı"
         />
       )}
     </ERPLayout>

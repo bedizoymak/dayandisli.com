@@ -23,13 +23,13 @@ export function WorkOrderTable({ data, stakeholderNameById, onSelectOperations }
   return (
     <DataTable
       columns={[
-        { key: "wo", header: "Is Emri No", render: (row) => row.work_order_no },
+        { key: "wo", header: "İş Emri No", render: (row) => row.work_order_no },
         {
           key: "customer",
-          header: "M�steri",
+          header: "Müşteri",
           render: (row) => (row.stakeholder_id ? stakeholderNameById[row.stakeholder_id] || "-" : "-")
         },
-        { key: "part", header: "Par�a", render: (row) => row.part_name || row.title },
+        { key: "part", header: "Parça", render: (row) => row.part_name || row.title },
         { key: "qty", header: "Miktar", className: "text-right", render: (row) => formatNumber(row.quantity, 3) },
         {
           key: "status",
@@ -40,7 +40,7 @@ export function WorkOrderTable({ data, stakeholderNameById, onSelectOperations }
         { key: "due", header: "Termin", render: (row) => formatDate(row.planned_end_date) },
         {
           key: "actions",
-          header: "Islem",
+          header: "İşlem",
           className: "text-right",
           render: (row) => (
             <div className="flex justify-end gap-2">
@@ -54,7 +54,7 @@ export function WorkOrderTable({ data, stakeholderNameById, onSelectOperations }
                 Tamamla
               </Button>
               <Button variant="outline" size="sm" disabled>
-                Fasona G�nder
+                Fasona Gönder
               </Button>
             </div>
           ),
@@ -62,7 +62,7 @@ export function WorkOrderTable({ data, stakeholderNameById, onSelectOperations }
       ]}
       data={data}
       rowKey={(row) => row.id}
-      emptyMessage="Is emri kaydi bulunamadi."
+      emptyMessage="İş emri kaydı bulunamadı."
     />
   );
 }

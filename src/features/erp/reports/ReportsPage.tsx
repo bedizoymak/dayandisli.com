@@ -42,20 +42,20 @@ export default function ReportsPage() {
     <ERPLayout title="Raporlama">
       <PageHeader
         title="Raporlama"
-        description="Ilk s�r�m raporlari: a�ik siparisler, is emri durum �zeti, kritik stok ve fason bekleyen listesi."
+        description="İlk sürüm raporları: açık siparişler, iş emri durum özeti, kritik stok ve fason bekleyen listesi."
       />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">A�ik Siparisler</CardTitle>
+            <CardTitle className="text-base">Açık Siparişler</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-bold">{summary.openOrders}</CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">A�ik Is Emirleri</CardTitle>
+            <CardTitle className="text-base">Açık İş Emirleri</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-bold">{summary.openWorkOrders}</CardContent>
         </Card>
@@ -76,7 +76,7 @@ export default function ReportsPage() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Nakit akis raporu ve gelismis finans analizleri bir sonraki fazda eklenecektir.
+        Nakit akış raporu ve gelişmiş finans analizleri bir sonraki fazda eklenecektir.
       </p>
     </ERPLayout>
   );

@@ -22,10 +22,10 @@ export function SalesOrderTable({ data, stakeholderNameById }: SalesOrderTablePr
   return (
     <DataTable
       columns={[
-        { key: "order", header: "Siparis No", render: (row) => row.order_no },
+        { key: "order", header: "Sipariş No", render: (row) => row.order_no },
         {
           key: "customer",
-          header: "M�steri",
+          header: "Müşteri",
           render: (row) => (row.stakeholder_id ? stakeholderNameById[row.stakeholder_id] || "-" : "-")
         },
         { key: "title", header: "Baslik", render: (row) => row.title },
@@ -36,9 +36,9 @@ export function SalesOrderTable({ data, stakeholderNameById }: SalesOrderTablePr
         },
         {
           key: "priority",
-          header: "�ncelik",
+          header: "Öncelik",
           render: (row) => {
-            const label = row.priority === "urgent" ? "Acil" : row.priority === "high" ? "Y�ksek" : row.priority === "low" ? "D�s�k" : "Normal";
+            const label = row.priority === "urgent" ? "Acil" : row.priority === "high" ? "Yüksek" : row.priority === "low" ? "Düsük" : "Normal";
             return label;
           },
         },
@@ -46,18 +46,18 @@ export function SalesOrderTable({ data, stakeholderNameById }: SalesOrderTablePr
         { key: "total", header: "Tutar", className: "text-right", render: (row) => formatCurrency(row.grand_total || 0, row.currency) },
         {
           key: "action",
-          header: "Islem",
+          header: "İşlem",
           className: "text-right",
           render: () => (
             <Button variant="outline" size="sm" disabled>
-              Is Emrine D�n�st�r
+              İş Emrine Dönüştür
             </Button>
           ),
         },
       ]}
       data={data}
       rowKey={(row) => row.id}
-      emptyMessage="Siparis kaydi bulunamadi."
+      emptyMessage="Sipariş kaydı bulunamadı."
     />
   );
 }

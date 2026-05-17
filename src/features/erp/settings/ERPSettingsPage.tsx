@@ -7,17 +7,17 @@ export default function ERPSettingsPage() {
     <ERPLayout title="Sistem Ayarlari">
       <PageHeader
         title="Sistem Ayarlari"
-        description="ERP yetkilendirme, modül konfigürasyonu ve numaralandirma yönetimi bu alandan ilerletilecektir."
+        description="ERP yetkilendirme, modÃ¼l konfigÃ¼rasyonu ve numaralandirma yÃ¶netimi bu alandan ilerletilecektir."
       />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Güvenlik Ilkeleri</CardTitle>
+            <CardTitle className="text-lg">GÃ¼venlik Ä°lkeleri</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>- Kimlik dogrulama Supabase Auth email/password ile çalisir.</p>
-            <p>- Yetkilendirme için `admin_users` ve `erp_users` tablolari kullanilir.</p>
+            <p>- Kimlik dogrulama Supabase Auth email/password ile Ã§alisir.</p>
+            <p>- Yetkilendirme iÃ§in `admin_users` ve `erp_users` tablolari kullanilir.</p>
             <p>- ERP tablolarinda RLS aktiftir, delete policy varsayilan olarak tanimli degildir.</p>
           </CardContent>
         </Card>
@@ -27,8 +27,8 @@ export default function ERPSettingsPage() {
             <CardTitle className="text-lg">Numaralandirma</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>- `erp_number_sequences` tablosu siparis/is emri/sevkiyat/kalite no üretimi için ayrilmistir.</p>
-            <p>- `next_erp_number(sequence_key)` fonksiyonu ERP referans no üretiminde kullanilabilir.</p>
+            <p>- `erp_number_sequences` tablosu sipariÅŸ/iÅŸ emri/sevkiyat/kalite no Ã¼retimi iÃ§in ayrÄ±lmÄ±ÅŸtÄ±r.</p>
+            <p>- `next_erp_number(sequence_key)` fonksiyonu ERP referans no Ã¼retiminde kullanilabilir.</p>
           </CardContent>
         </Card>
       </div>

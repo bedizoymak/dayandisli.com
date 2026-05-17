@@ -15,7 +15,7 @@ type DataTableProps<T> = {
   emptyMessage?: string;
 };
 
-export function DataTable<T>({ columns, data, rowKey, emptyMessage = "Kayit bulunamadi." }: DataTableProps<T>) {
+export function DataTable<T>({ columns, data, rowKey, emptyMessage = "Kayıt bulunamadı." }: DataTableProps<T>) {
   return (
     <Table>
       <TableHeader>

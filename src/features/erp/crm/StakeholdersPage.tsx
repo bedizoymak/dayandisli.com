@@ -22,7 +22,7 @@ export default function StakeholdersPage() {
     setLoading(true);
     const result = await listStakeholders(query);
     if (result.error) {
-      toast({ title: "Hata", description: `Paydaslar y�klenemedi: ${result.error}`, variant: "destructive" });
+      toast({ title: "Hata", description: `Paydaşlar yüklenemedi: ${result.error}`, variant: "destructive" });
     }
     setRows(result.data);
     setLoading(false);
@@ -39,10 +39,10 @@ export default function StakeholdersPage() {
   }, [rows, search]);
 
   return (
-    <ERPLayout title="CRM ve Paydas Y�netimi">
+    <ERPLayout title="CRM ve Paydaş Yönetimi">
       <PageHeader
-        title="CRM ve Paydas Y�netimi"
-        description="M�steri, tedarik�i ve fason firmalari tek listeden y�netin."
+        title="CRM ve Paydaş Yönetimi"
+        description="Müşteri, tedarikçi ve fason firmaları tek listeden yönetin."
       />
 
       <StakeholderForm
@@ -53,28 +53,28 @@ export default function StakeholdersPage() {
           setSaving(false);
 
           if (result.error) {
-            toast({ title: "Kayit Hatasi", description: result.error, variant: "destructive" });
+            toast({ title: "Kayıt Hatası", description: result.error, variant: "destructive" });
             return;
           }
 
-          toast({ title: "Basarili", description: "Paydas kaydi eklendi." });
+          toast({ title: "Başarılı", description: "Paydaş kaydı eklendi." });
           await load(search);
         }}
       />
 
       <div className="space-y-3">
         <Input
-          placeholder="Firma adina g�re ara..."
+          placeholder="Firma adina göre ara..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Y�kleniyor...</p>
+          <p className="text-sm text-muted-foreground">Yükleniyor...</p>
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="Paydas bulunamadi"
-            description="Arama filtresini temizleyin veya yeni paydas ekleyin."
+            title="Paydaş bulunamadı"
+            description="Arama filtresini temizleyin veya yeni paydaş ekleyin."
           />
         ) : (
           <StakeholderTable data={filtered} onDeactivate={(stakeholder) => setSelected(stakeholder)} />
@@ -86,8 +86,8 @@ export default function StakeholdersPage() {
         onOpenChange={(open) => {
           if (!open) setSelected(null);
         }}
-        title="Paydas pasiflestirilsin mi?"
-        description="Silme yapilmaz, yalnizca kayit pasif duruma alinir."
+        title="Paydaş pasifleştirilsin mi?"
+        description="Silme yapılmaz, yalnızca kayıt pasif duruma alınır."
         confirmText="Pasiflestir"
         onConfirm={async () => {
           if (!selected) return;
@@ -96,7 +96,7 @@ export default function StakeholdersPage() {
             toast({ title: "Hata", description: result.error, variant: "destructive" });
             return;
           }
-          toast({ title: "G�ncellendi", description: "Paydas pasif duruma alindi." });
+          toast({ title: "Güncellendi", description: "Paydaş pasif duruma alındı." });
           setSelected(null);
           await load(search);
         }}

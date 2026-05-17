@@ -28,26 +28,26 @@ export default function DocumentsPage() {
   const rows = useMemo(() => placeholderDocuments, []);
 
   return (
-    <ERPLayout title="Teknik Resim ve Dok�man">
+    <ERPLayout title="Teknik Resim ve Doküman">
       <PageHeader
-        title="Teknik Resim ve Dok�man Y�netimi"
-        description="Dok�man metadata yapisi hazirdir. Storage bucket hazir oldugunda ger�ek dosya y�kleme aktif edilecektir."
-        actions={<Button variant="outline" disabled>Dosya Y�kle (Hazirlaniyor)</Button>}
+        title="Teknik Resim ve Doküman Yönetimi"
+        description="Doküman metadata yapısı hazırdır. Storage bucket hazır olduğunda gerçek dosya yükleme aktif edilecektir."
+        actions={<Button variant="outline" disabled>Dosya Yükle (Hazirlaniyor)</Button>}
       />
 
       {rows.length === 0 ? (
-        <EmptyState title="Dok�man kaydi yok" description="Ilk d�k�man metadata kayitlari olustugunda burada listelenecektir." />
+        <EmptyState title="Doküman kaydı yok" description="İlk doküman metadata kayıtları oluştuğunda burada listelenecektir." />
       ) : (
         <DataTable
           columns={[
             { key: "entity", header: "Bagli Varlik", render: (row) => `${row.entity_type} / ${row.entity_id}` },
-            { key: "type", header: "Dok�man Tipi", render: (row) => row.document_type },
+            { key: "type", header: "Doküman Tipi", render: (row) => row.document_type },
             { key: "name", header: "Dosya Adi", render: (row) => row.file_name },
             { key: "version", header: "Versiyon", className: "text-right", render: (row) => row.version_no },
           ]}
           data={rows}
           rowKey={(row) => row.id}
-          emptyMessage="Dok�man bulunamadi"
+          emptyMessage="Doküman bulunamadı"
         />
       )}
     </ERPLayout>

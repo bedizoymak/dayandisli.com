@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MetricCard } from "@/components/erp/MetricCard";
 import { PageHeader } from "@/components/erp/PageHeader";
 import { ERPLayout } from "../layout/ERPLayout";

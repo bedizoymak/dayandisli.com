@@ -7,10 +7,10 @@ import { Factory, GitBranch, HardHat } from "lucide-react";
 
 export default function ProductionPage() {
   return (
-    <ERPLayout title="Üretim Yönetimi">
+    <ERPLayout title="Ãœretim YÃ¶netimi">
       <PageHeader
-        title="Üretim Yönetimi"
-        description="Is emri, rota ve operasyon takibini üretim odakli ekranlardan yönetin."
+        title="Ãœretim YÃ¶netimi"
+        description="Ä°ÅŸ emri, rota ve operasyon takibini Ã¼retim odaklÄ± ekranlardan yÃ¶netin."
         actions={
           <Button asChild>
             <Link to="/apps/calculator">DAYAN Calculator</Link>
@@ -19,9 +19,9 @@ export default function ProductionPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <ERPModuleCard title="Is Emirleri" description="Planlama, durum takibi ve operasyon yönetimi" href="/erp/work-orders" icon={<HardHat className="h-5 w-5" />} />
-        <ERPModuleCard title="Rota Yönetimi" description="Operasyon sirasi ve makine plani" href="/erp/routes" icon={<GitBranch className="h-5 w-5" />} />
-        <ERPModuleCard title="Genel Üretim" description="Üretim KPI ve özet görünüm" href="/erp/dashboard" icon={<Factory className="h-5 w-5" />} />
+        <ERPModuleCard title="Ä°ÅŸ Emirleri" description="Planlama, durum takibi ve operasyon yÃ¶netimi" href="/erp/work-orders" icon={<HardHat className="h-5 w-5" />} />
+        <ERPModuleCard title="Rota YÃ¶netimi" description="Operasyon sÄ±rasÄ± ve makine planÄ±" href="/erp/routes" icon={<GitBranch className="h-5 w-5" />} />
+        <ERPModuleCard title="Genel Ãœretim" description="Ãœretim KPI ve Ã¶zet gÃ¶rÃ¼nÃ¼m" href="/erp/dashboard" icon={<Factory className="h-5 w-5" />} />
       </div>
     </ERPLayout>
   );

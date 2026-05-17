@@ -29,7 +29,7 @@ export function StakeholderTable({ data, onDeactivate }: StakeholderTableProps) 
         },
         {
           key: "actions",
-          header: "Islem",
+          header: "İşlem",
           className: "text-right",
           render: (row) =>
             row.is_active ? (
@@ -43,7 +43,7 @@ export function StakeholderTable({ data, onDeactivate }: StakeholderTableProps) 
       ]}
       data={data}
       rowKey={(row) => row.id}
-      emptyMessage="Paydas kaydi bulunamadi."
+      emptyMessage="Paydaş kaydı bulunamadı."
     />
   );
 }

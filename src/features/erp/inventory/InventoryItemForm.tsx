@@ -50,7 +50,7 @@ export function InventoryItemForm({ loading = false, onSubmit }: InventoryItemFo
             <option value="raw_material">Hammadde</option>
             <option value="consumable">Sarf Malzeme</option>
             <option value="tool">Takim</option>
-            <option value="measuring_tool">Ölçüm Aleti</option>
+            <option value="measuring_tool">Ã–lÃ§Ã¼m Aleti</option>
             <option value="finished_good">Mamul</option>
             <option value="semi_finished">Yari Mamul</option>
           </select>
@@ -62,7 +62,7 @@ export function InventoryItemForm({ loading = false, onSubmit }: InventoryItemFo
         </label>
 
         <label className="text-sm">
-          Ürün / Malzeme *
+          ÃœrÃ¼n / Malzeme *
           <Input className="mt-1" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} required />
         </label>
 
