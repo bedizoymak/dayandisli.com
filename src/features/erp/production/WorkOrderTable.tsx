@@ -9,6 +9,9 @@ type WorkOrderTableProps = {
   data: WorkOrder[];
   stakeholderNameById: Record<string, string>;
   onSelectOperations: (workOrder: WorkOrder) => void;
+  onStatusChange: (workOrder: WorkOrder, status: WorkOrder["status"]) => void;
+  onSendSubcontracting: (workOrder: WorkOrder) => void;
+  onSendQuality: (workOrder: WorkOrder) => void;
 };
 
 function tone(status: WorkOrder["status"]) {
@@ -19,7 +22,14 @@ function tone(status: WorkOrder["status"]) {
   return "default" as const;
 }
 
-export function WorkOrderTable({ data, stakeholderNameById, onSelectOperations }: WorkOrderTableProps) {
+export function WorkOrderTable({
+  data,
+  stakeholderNameById,
+  onSelectOperations,
+  onStatusChange,
+  onSendSubcontracting,
+  onSendQuality,
+}: WorkOrderTableProps) {
   return (
     <DataTable
       columns={[
@@ -29,14 +39,16 @@ export function WorkOrderTable({ data, stakeholderNameById, onSelectOperations }
           header: "Müşteri",
           render: (row) => (row.stakeholder_id ? stakeholderNameById[row.stakeholder_id] || "-" : "-")
         },
-        { key: "part", header: "Parça", render: (row) => row.part_name || row.title },
+        { key: "title", header: "Başlık", render: (row) => row.title },
+        { key: "part", header: "Parça", render: (row) => row.part_name || "-" },
         { key: "qty", header: "Miktar", className: "text-right", render: (row) => formatNumber(row.quantity, 3) },
         {
           key: "status",
           header: "Durum",
           render: (row) => <StatusBadge label={WORK_ORDER_STATUS_LABELS[row.status]} tone={tone(row.status)} />,
         },
-        { key: "op", header: "Operasyon", render: () => "Planlanacak" },
+        { key: "priority", header: "Öncelik", render: (row) => row.priority === "urgent" ? "Acil" : row.priority === "high" ? "Yüksek" : row.priority === "low" ? "Düşük" : "Normal" },
+        { key: "start", header: "Plan Başlangıç", render: (row) => formatDate(row.planned_start_date) },
         { key: "due", header: "Termin", render: (row) => formatDate(row.planned_end_date) },
         {
           key: "actions",
@@ -44,16 +56,24 @@ export function WorkOrderTable({ data, stakeholderNameById, onSelectOperations }
           className: "text-right",
           render: (row) => (
             <div className="flex justify-end gap-2">
+              <select
+                className="h-9 rounded-md border bg-background px-2 text-xs"
+                value={row.status}
+                onChange={(event) => onStatusChange(row, event.target.value as WorkOrder["status"])}
+              >
+                {Object.entries(WORK_ORDER_STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
               <Button variant="outline" size="sm" onClick={() => onSelectOperations(row)}>
-                Operasyon Ekle
+                Operasyonlar
               </Button>
-              <Button variant="outline" size="sm" disabled>
-                Baslat
+              <Button variant="outline" size="sm" onClick={() => onSendQuality(row)}>
+                Kalite
               </Button>
-              <Button variant="outline" size="sm" disabled>
-                Tamamla
-              </Button>
-              <Button variant="outline" size="sm" disabled>
+              <Button variant="outline" size="sm" onClick={() => onSendSubcontracting(row)}>
                 Fasona Gönder
               </Button>
             </div>

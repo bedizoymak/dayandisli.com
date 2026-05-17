@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/erp/PageHeader";
 import { ERPLayout } from "../layout/ERPLayout";
-import { getDashboardMetrics, listSalesOrders, listSubcontractingJobs, listWorkOrders } from "../shared/erpApi";
+import { getERPDashboardMetrics } from "../shared/erpApi";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ReportsPage() {
@@ -12,26 +12,25 @@ export default function ReportsPage() {
     openWorkOrders: 0,
     lowStock: 0,
     waitingSubcontracting: 0,
+    pendingQuality: 0,
+    upcomingMaintenance: 0,
   });
 
   useEffect(() => {
     const load = async () => {
-      const [metricsResult, salesOrdersResult, workOrdersResult, subcontractingResult] = await Promise.all([
-        getDashboardMetrics(),
-        listSalesOrders(),
-        listWorkOrders(),
-        listSubcontractingJobs(),
-      ]);
+      const metricsResult = await getERPDashboardMetrics();
 
       if (metricsResult.error) {
         toast({ title: "Bilgi", description: `Rapor metriklerinde kismi eksik veri var: ${metricsResult.error}` });
       }
 
       setSummary({
-        openOrders: salesOrdersResult.data.filter((x) => !["closed", "cancelled"].includes(x.status)).length,
-        openWorkOrders: workOrdersResult.data.filter((x) => !["completed", "cancelled"].includes(x.status)).length,
+        openOrders: metricsResult.data.activeSalesOrders,
+        openWorkOrders: metricsResult.data.openWorkOrders,
         lowStock: metricsResult.data.lowStockItems,
-        waitingSubcontracting: subcontractingResult.data.filter((x) => !["returned", "cancelled"].includes(x.status)).length,
+        waitingSubcontracting: metricsResult.data.waitingSubcontracting,
+        pendingQuality: metricsResult.data.pendingQualityChecks,
+        upcomingMaintenance: metricsResult.data.upcomingMaintenances,
       });
     };
 
@@ -45,7 +44,7 @@ export default function ReportsPage() {
         description="İlk sürüm raporları: açık siparişler, iş emri durum özeti, kritik stok ve fason bekleyen listesi."
       />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Açık Siparişler</CardTitle>
@@ -72,6 +71,20 @@ export default function ReportsPage() {
             <CardTitle className="text-base">Fason Bekleyen</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-bold">{summary.waitingSubcontracting}</CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Kalite Bekleyen</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-bold">{summary.pendingQuality}</CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Yaklaşan Bakımlar</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-bold">{summary.upcomingMaintenance}</CardContent>
         </Card>
       </div>
 

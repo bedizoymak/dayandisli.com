@@ -4,8 +4,17 @@ import { useToast } from "@/hooks/use-toast";
 import { ERPLayout } from "../layout/ERPLayout";
 import { PageHeader } from "@/components/erp/PageHeader";
 import { EmptyState } from "@/components/erp/EmptyState";
-import { createWorkOrder, listStakeholders, listWorkOrders } from "../shared/erpApi";
-import { Stakeholder, WorkOrder } from "../shared/types";
+import { MigrationNotice } from "@/components/erp/MigrationNotice";
+import {
+  createQualityReport,
+  createSubcontractingJob,
+  createWorkOrder,
+  listProductionRoutes,
+  listStakeholders,
+  listWorkOrders,
+  updateWorkOrder,
+} from "../shared/erpApi";
+import { ProductionRoute, Stakeholder, WorkOrder } from "../shared/types";
 import { WorkOrderForm } from "./WorkOrderForm";
 import { WorkOrderTable } from "./WorkOrderTable";
 import { WorkOrderOperations } from "./WorkOrderOperations";
@@ -14,17 +23,26 @@ export default function WorkOrdersPage() {
   const { toast } = useToast();
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
+  const [routes, setRoutes] = useState<ProductionRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const [workOrdersResult, stakeholdersResult] = await Promise.all([listWorkOrders(), listStakeholders()]);
+    const [workOrdersResult, stakeholdersResult, routesResult] = await Promise.all([
+      listWorkOrders(),
+      listStakeholders(),
+      listProductionRoutes(),
+    ]);
 
     if (workOrdersResult.error) {
+      setError(workOrdersResult.error);
       toast({ title: "Hata", description: `İş emirleri yüklenemedi: ${workOrdersResult.error}`, variant: "destructive" });
+    } else {
+      setError(null);
     }
 
     if (stakeholdersResult.error) {
@@ -33,6 +51,7 @@ export default function WorkOrdersPage() {
 
     setRows(workOrdersResult.data);
     setStakeholders(stakeholdersResult.data.filter((item) => item.is_active));
+    setRoutes(routesResult.data.filter((route) => route.is_template));
     setLoading(false);
   };
 
@@ -90,6 +109,8 @@ export default function WorkOrdersPage() {
       />
 
       <div className="space-y-3">
+        {error ? <MigrationNotice message={error} /> : null}
+
         <Input placeholder="İş emri no, başlık veya parça ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
         {loading ? (
@@ -101,11 +122,53 @@ export default function WorkOrdersPage() {
             data={filtered}
             stakeholderNameById={stakeholderNameById}
             onSelectOperations={(wo) => setSelectedWorkOrder(wo)}
+            onStatusChange={async (wo, status) => {
+              const patch: Partial<WorkOrder> = { status };
+              if (status === "in_progress") patch.actual_start_at = wo.actual_start_at ?? new Date().toISOString();
+              if (status === "completed") patch.actual_end_at = new Date().toISOString();
+              const result = await updateWorkOrder(wo.id, patch);
+              if (result.error) {
+                toast({ title: "Hata", description: result.error, variant: "destructive" });
+                return;
+              }
+              toast({ title: "Güncellendi", description: "İş emri durumu güncellendi." });
+              await load();
+            }}
+            onSendSubcontracting={async (wo) => {
+              const result = await createSubcontractingJob({
+                work_order_id: wo.id,
+                supplier_id: null,
+                process_type: "fason işlem",
+                status: "planned",
+                quantity_sent: wo.quantity,
+              });
+              if (result.error) {
+                toast({ title: "Fason Kaydı", description: result.error, variant: "destructive" });
+                return;
+              }
+              await updateWorkOrder(wo.id, { status: "waiting_subcontractor" });
+              toast({ title: "Fason Kaydı Oluşturuldu", description: "İş emri fason takip listesine alındı." });
+              await load();
+            }}
+            onSendQuality={async (wo) => {
+              const result = await createQualityReport({
+                work_order_id: wo.id,
+                sales_order_id: wo.sales_order_id,
+                result: "pending",
+                notes: "İş emri ekranından kalite kontrole gönderildi.",
+              });
+              if (result.error) {
+                toast({ title: "Kalite Kontrol", description: result.error, variant: "destructive" });
+                return;
+              }
+              toast({ title: "Kalite Kontrole Gönderildi", description: "Bekleyen kalite raporu oluşturuldu." });
+              await load();
+            }}
           />
         )}
       </div>
 
-      <WorkOrderOperations workOrder={selectedWorkOrder} />
+      <WorkOrderOperations workOrder={selectedWorkOrder} routes={routes} onChanged={load} />
     </ERPLayout>
   );
 }

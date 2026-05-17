@@ -1,35 +1,62 @@
-import { InventoryItemType, SalesOrderStatus, StakeholderType, WorkOrderStatus } from "./types";
+import {
+  InventoryItemType,
+  InventoryMovementType,
+  MaintenanceStatus,
+  QualityResult,
+  SalesOrderStatus,
+  ShipmentStatus,
+  StakeholderType,
+  SubcontractingStatus,
+  WorkOrderOperationStatus,
+  WorkOrderStatus,
+} from "./types";
 
 export const SALES_ORDER_STATUS_LABELS: Record<SalesOrderStatus, string> = {
   new: "Yeni",
-  confirmed: "Onaylandi",
+  confirmed: "Onaylandı",
   in_production: "Üretimde",
   waiting_subcontractor: "Fasonda Bekliyor",
-  ready_to_ship: "Sevke Hazir",
+  ready_to_ship: "Sevke Hazır",
   shipped: "Sevk Edildi",
-  invoiced: "Faturalandi",
-  closed: "Kapandi",
-  cancelled: "Iptal",
+  invoiced: "Faturalandı",
+  closed: "Kapandı",
+  cancelled: "İptal",
 };
 
 export const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
-  planned: "Planlandi",
-  released: "Yayinlandi",
+  planned: "Planlandı",
+  released: "Yayınlandı",
   in_progress: "Devam Ediyor",
-  paused: "Duraklatildi",
+  paused: "Duraklatıldı",
   waiting_subcontractor: "Fason Bekliyor",
   quality_check: "Kalite Kontrol",
-  completed: "Tamamlandi",
-  cancelled: "Iptal",
+  completed: "Tamamlandı",
+  cancelled: "İptal",
+};
+
+export const WORK_ORDER_OPERATION_STATUS_LABELS: Record<WorkOrderOperationStatus, string> = {
+  pending: "Bekliyor",
+  in_progress: "Devam Ediyor",
+  paused: "Duraklatıldı",
+  completed: "Tamamlandı",
+  cancelled: "İptal",
 };
 
 export const INVENTORY_ITEM_TYPE_LABELS: Record<InventoryItemType, string> = {
   raw_material: "Hammadde",
   consumable: "Sarf Malzeme",
-  tool: "Takim",
+  tool: "Takım",
   measuring_tool: "Ölçüm Aleti",
   finished_good: "Mamul",
-  semi_finished: "Yari Mamul",
+  semi_finished: "Yarı Mamul",
+};
+
+export const INVENTORY_MOVEMENT_TYPE_LABELS: Record<InventoryMovementType, string> = {
+  in: "Giriş",
+  out: "Çıkış",
+  adjustment: "Düzeltme",
+  reservation: "Rezervasyon",
+  return: "İade",
 };
 
 export const STAKEHOLDER_TYPE_LABELS: Record<StakeholderType, string> = {
@@ -39,24 +66,32 @@ export const STAKEHOLDER_TYPE_LABELS: Record<StakeholderType, string> = {
   both: "Karma",
 };
 
-export const SHIPMENT_STATUS_LABELS: Record<string, string> = {
-  planned: "Planlandi",
+export const SUBCONTRACTING_STATUS_LABELS: Record<SubcontractingStatus, string> = {
+  planned: "Planlandı",
+  sent: "Gönderildi",
+  in_process: "İşlemde",
+  returned: "Geri Geldi",
+  cancelled: "İptal",
+};
+
+export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
+  planned: "Planlandı",
   packed: "Paketlendi",
   shipped: "Sevk Edildi",
   delivered: "Teslim Edildi",
-  cancelled: "Iptal",
+  cancelled: "İptal",
 };
 
-export const QUALITY_RESULT_LABELS: Record<string, string> = {
-  pending: "Beklemede",
+export const QUALITY_RESULT_LABELS: Record<QualityResult, string> = {
+  pending: "Bekliyor",
   passed: "Geçti",
-  failed: "Kaldi",
-  conditional: "Sartli",
+  failed: "Kaldı",
+  conditional: "Şartlı Kabul",
 };
 
-export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
-  planned: "Planlandi",
+export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
+  planned: "Planlandı",
   in_progress: "Devam Ediyor",
-  completed: "Tamamlandi",
-  cancelled: "Iptal",
+  completed: "Tamamlandı",
+  cancelled: "İptal",
 };

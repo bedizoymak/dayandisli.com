@@ -52,12 +52,12 @@ export function SalesOrderForm({ stakeholders, loading = false, onSubmit }: Sale
         </label>
 
         <label className="text-sm">
-          Baslik *
+          Başlık *
           <Input
             className="mt-1"
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-            placeholder="Örn: Helis disli imalati"
+            placeholder="Örn: Helis dişli imalatı"
             required
           />
         </label>
@@ -81,7 +81,7 @@ export function SalesOrderForm({ stakeholders, loading = false, onSubmit }: Sale
               setForm((prev) => ({ ...prev, priority: e.target.value as SalesOrderFormValues["priority"] }))
             }
           >
-            <option value="low">Düsük</option>
+            <option value="low">Düşük</option>
             <option value="normal">Normal</option>
             <option value="high">Yüksek</option>
             <option value="urgent">Acil</option>

@@ -8,6 +8,8 @@ import { SalesOrder } from "../shared/types";
 type SalesOrderTableProps = {
   data: SalesOrder[];
   stakeholderNameById: Record<string, string>;
+  onConvertToWorkOrder: (order: SalesOrder) => void;
+  onStatusChange: (order: SalesOrder, status: SalesOrder["status"]) => void;
 };
 
 function statusTone(status: SalesOrder["status"]) {
@@ -18,7 +20,7 @@ function statusTone(status: SalesOrder["status"]) {
   return "default" as const;
 }
 
-export function SalesOrderTable({ data, stakeholderNameById }: SalesOrderTableProps) {
+export function SalesOrderTable({ data, stakeholderNameById, onConvertToWorkOrder, onStatusChange }: SalesOrderTableProps) {
   return (
     <DataTable
       columns={[
@@ -28,7 +30,7 @@ export function SalesOrderTable({ data, stakeholderNameById }: SalesOrderTablePr
           header: "Müşteri",
           render: (row) => (row.stakeholder_id ? stakeholderNameById[row.stakeholder_id] || "-" : "-")
         },
-        { key: "title", header: "Baslik", render: (row) => row.title },
+        { key: "title", header: "Başlık", render: (row) => row.title },
         {
           key: "status",
           header: "Durum",
@@ -38,20 +40,34 @@ export function SalesOrderTable({ data, stakeholderNameById }: SalesOrderTablePr
           key: "priority",
           header: "Öncelik",
           render: (row) => {
-            const label = row.priority === "urgent" ? "Acil" : row.priority === "high" ? "Yüksek" : row.priority === "low" ? "Düsük" : "Normal";
+            const label = row.priority === "urgent" ? "Acil" : row.priority === "high" ? "Yüksek" : row.priority === "low" ? "Düşük" : "Normal";
             return label;
           },
         },
+        { key: "order_date", header: "Sipariş Tarihi", render: (row) => formatDate(row.order_date) },
         { key: "due", header: "Termin", render: (row) => formatDate(row.due_date) },
         { key: "total", header: "Tutar", className: "text-right", render: (row) => formatCurrency(row.grand_total || 0, row.currency) },
         {
           key: "action",
           header: "İşlem",
           className: "text-right",
-          render: () => (
-            <Button variant="outline" size="sm" disabled>
-              İş Emrine Dönüştür
-            </Button>
+          render: (row) => (
+            <div className="flex justify-end gap-2">
+              <select
+                className="h-9 rounded-md border bg-background px-2 text-xs"
+                value={row.status}
+                onChange={(event) => onStatusChange(row, event.target.value as SalesOrder["status"])}
+              >
+                {Object.entries(SALES_ORDER_STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <Button variant="outline" size="sm" onClick={() => onConvertToWorkOrder(row)}>
+                İş Emrine Dönüştür
+              </Button>
+            </div>
           ),
         },
       ]}

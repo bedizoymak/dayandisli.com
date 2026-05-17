@@ -4,7 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ERPLayout } from "../layout/ERPLayout";
 import { PageHeader } from "@/components/erp/PageHeader";
 import { EmptyState } from "@/components/erp/EmptyState";
-import { createSalesOrder, listSalesOrders, listStakeholders } from "../shared/erpApi";
+import { MigrationNotice } from "@/components/erp/MigrationNotice";
+import { createSalesOrder, createWorkOrderFromSalesOrder, listSalesOrders, listStakeholders, updateSalesOrder } from "../shared/erpApi";
 import { SalesOrder, Stakeholder } from "../shared/types";
 import { SalesOrderForm } from "./SalesOrderForm";
 import { SalesOrderTable } from "./SalesOrderTable";
@@ -16,13 +17,17 @@ export default function SalesOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     const [ordersResult, stakeholdersResult] = await Promise.all([listSalesOrders(), listStakeholders()]);
 
     if (ordersResult.error) {
+      setError(ordersResult.error);
       toast({ title: "Hata", description: `Siparişler yüklenemedi: ${ordersResult.error}`, variant: "destructive" });
+    } else {
+      setError(null);
     }
 
     if (stakeholdersResult.error) {
@@ -82,6 +87,8 @@ export default function SalesOrdersPage() {
       />
 
       <div className="space-y-3">
+        {error ? <MigrationNotice message={error} /> : null}
+
         <Input
           placeholder="Sipariş no veya başlık ara..."
           value={search}
@@ -93,7 +100,28 @@ export default function SalesOrdersPage() {
         ) : filteredRows.length === 0 ? (
           <EmptyState title="Sipariş bulunamadı" description="Yeni sipariş ekleyerek başlayabilirsiniz." />
         ) : (
-          <SalesOrderTable data={filteredRows} stakeholderNameById={stakeholderNameById} />
+          <SalesOrderTable
+            data={filteredRows}
+            stakeholderNameById={stakeholderNameById}
+            onStatusChange={async (order, status) => {
+              const result = await updateSalesOrder(order.id, { status });
+              if (result.error) {
+                toast({ title: "Hata", description: result.error, variant: "destructive" });
+                return;
+              }
+              toast({ title: "Güncellendi", description: "Sipariş durumu güncellendi." });
+              await load();
+            }}
+            onConvertToWorkOrder={async (order) => {
+              const result = await createWorkOrderFromSalesOrder(order);
+              if (result.error) {
+                toast({ title: "İş Emri", description: result.error, variant: result.data ? "default" : "destructive" });
+                return;
+              }
+              toast({ title: "İş Emri Oluşturuldu", description: `${order.order_no} üretime aktarıldı.` });
+              await load();
+            }}
+          />
         )}
       </div>
     </ERPLayout>

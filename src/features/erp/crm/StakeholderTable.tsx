@@ -7,10 +7,12 @@ import { Stakeholder } from "../shared/types";
 
 type StakeholderTableProps = {
   data: Stakeholder[];
+  onEdit: (stakeholder: Stakeholder) => void;
   onDeactivate: (stakeholder: Stakeholder) => void;
+  onActivate: (stakeholder: Stakeholder) => void;
 };
 
-export function StakeholderTable({ data, onDeactivate }: StakeholderTableProps) {
+export function StakeholderTable({ data, onEdit, onDeactivate, onActivate }: StakeholderTableProps) {
   return (
     <DataTable
       columns={[
@@ -19,6 +21,7 @@ export function StakeholderTable({ data, onDeactivate }: StakeholderTableProps) 
         { key: "contact", header: "Yetkili", render: (row) => row.contact_name || "-" },
         { key: "phone", header: "Telefon", render: (row) => row.phone || "-" },
         { key: "email", header: "E-posta", render: (row) => row.email || "-" },
+        { key: "city", header: "Şehir", render: (row) => row.city || "-" },
         { key: "balance", header: "Bakiye", className: "text-right", render: (row) => formatCurrency(row.current_balance) },
         { key: "risk", header: "Risk Limiti", className: "text-right", render: (row) => formatCurrency(row.risk_limit) },
         {
@@ -33,11 +36,18 @@ export function StakeholderTable({ data, onDeactivate }: StakeholderTableProps) 
           className: "text-right",
           render: (row) =>
             row.is_active ? (
-              <Button variant="outline" size="sm" onClick={() => onDeactivate(row)}>
-                Pasiflestir
-              </Button>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => onEdit(row)}>
+                  Düzenle
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => onDeactivate(row)}>
+                  Pasifleştir
+                </Button>
+              </div>
             ) : (
-              <span className="text-xs text-muted-foreground">-</span>
+              <Button variant="outline" size="sm" onClick={() => onActivate(row)}>
+                Aktifleştir
+              </Button>
             ),
         },
       ]}

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/erp/DataTable";
 import { EmptyState } from "@/components/erp/EmptyState";
 import { FormSection } from "@/components/erp/FormSection";
+import { MigrationNotice } from "@/components/erp/MigrationNotice";
 import { PageHeader } from "@/components/erp/PageHeader";
 import { ERPLayout } from "../layout/ERPLayout";
 import { createEmployee, listEmployees } from "../shared/erpApi";
@@ -17,13 +18,17 @@ export default function EmployeesPage() {
   const [rows, setRows] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ full_name: "", role: "", department: "" });
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ full_name: "", role: "", department: "", phone: "", email: "", hire_date: "" });
 
   const load = async () => {
     setLoading(true);
     const result = await listEmployees();
     if (result.error) {
-      toast({ title: "Hata", description: `Personel verisi alinamadi: ${result.error}`, variant: "destructive" });
+      setError(result.error);
+      toast({ title: "Hata", description: `Personel verisi alınamadı: ${result.error}`, variant: "destructive" });
+    } else {
+      setError(null);
     }
     setRows(result.data);
     setLoading(false);
@@ -34,8 +39,10 @@ export default function EmployeesPage() {
   }, []);
 
   return (
-    <ERPLayout title="IK ve Personel">
-      <PageHeader title="IK ve Personel" description="Personel listesi, görev rolleri ve aktiflik durumunu yönetin." />
+    <ERPLayout title="İK ve Personel">
+      <PageHeader title="İK ve Personel" description="Personel listesi, görev rolleri ve aktiflik durumunu yönetin." />
+
+      {error ? <MigrationNotice message={error} /> : null}
 
       <FormSection title="Yeni Personel" description="Temel personel kartı oluşturun.">
         <form
@@ -54,7 +61,7 @@ export default function EmployeesPage() {
             }
 
             toast({ title: "Başarılı", description: "Personel eklendi." });
-            setForm({ full_name: "", role: "", department: "" });
+            setForm({ full_name: "", role: "", department: "", phone: "", email: "", hire_date: "" });
             await load();
           }}
         >
@@ -73,6 +80,21 @@ export default function EmployeesPage() {
             placeholder="Departman"
             value={form.department}
             onChange={(e) => setForm((prev) => ({ ...prev, department: e.target.value }))}
+          />
+          <Input
+            placeholder="Telefon"
+            value={form.phone}
+            onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+          />
+          <Input
+            placeholder="E-posta"
+            value={form.email}
+            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+          />
+          <Input
+            type="date"
+            value={form.hire_date}
+            onChange={(e) => setForm((prev) => ({ ...prev, hire_date: e.target.value }))}
           />
 
           <div className="md:col-span-3 flex justify-end">
@@ -93,6 +115,8 @@ export default function EmployeesPage() {
             { key: "name", header: "Personel", render: (row) => row.full_name },
             { key: "role", header: "Rol", render: (row) => row.role || "-" },
             { key: "dept", header: "Departman", render: (row) => row.department || "-" },
+            { key: "phone", header: "Telefon", render: (row) => row.phone || "-" },
+            { key: "email", header: "E-posta", render: (row) => row.email || "-" },
             {
               key: "status",
               header: "Durum",
