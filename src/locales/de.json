@@ -1,0 +1,244 @@
+{
+  "nav": {
+    "home": "Startseite",
+    "services": "Dienstleistungen",
+    "technologies": "Technologien",
+    "products": "Produkte",
+    "sectors": "Sektoren",
+    "contact": "Kontakt"
+  },
+  "hero": {
+    "badge": "ISO 9001:2015 Zertifiziert",
+    "title": "Exzellenz in der Präzisions-",
+    "titleHighlight": "Zahnradherstellung",
+    "description": "Mit Wälzfräsen, CNC-Bearbeitung und fortschrittlichen Fertigungsmethoden bieten wir hochpräzise Zahnradlösungen für Automobil-, Verteidigungs- und Industrieanwendungen.",
+    "getQuote": "Angebot Erhalten",
+    "ourProducts": "Unsere Produkte",
+    "yearsExperience": "Jahre Erfahrung",
+    "completedProjects": "Abgeschlossene Projekte",
+    "qualityRate": "Qualitätsrate"
+  },
+  "services": {
+    "title": "UNSERE DIENSTLEISTUNGEN",
+    "heading": "Umfassende Fertigungslösungen",
+    "description": "Mit unserem modernen Maschinenpark und unserem Expertenteam bieten wir professionelle Dienstleistungen in jeder Phase der Zahnradproduktion",
+    "gearHobbing": {
+      "title": "Wälzfräsen",
+      "description": "Mit unseren hochpräzisen Wälzfräsmaschinen erzielen wir hervorragende Ergebnisse bei der Herstellung von Stirn- und Schrägverzahnungen. Wir verfügen über Produktionskapazitäten in einem breiten Bereich von Modul 0,5 bis 12.",
+      "badges": ["Modul 0,5-12", "Hohe Präzision", "Schnelle Produktion"]
+    },
+    "cncMachining": {
+      "title": "CNC-Bearbeitung",
+      "description": "Mit unseren hochmodernen CNC-Dreh- und Fräsmaschinen führen wir präzise Bearbeitungen von Zahnrädern und mechanischen Teilen mit komplexen Geometrien durch. Wir verfügen über 5-Achsen-Bearbeitungsfähigkeit.",
+      "badges": ["5-Achsen-Bearbeitung", "Mikron-Präzision", "Komplexe Geometrien"]
+    },
+    "gearGrinding": {
+      "title": "Zahnradschleifen",
+      "description": "Mit unseren Präzisions-Zahnradschleifmaschinen bieten wir Oberflächenqualität und Maßgenauigkeit in der Qualitätsklasse DIN 5-6. Wir erzielen hervorragende Ergebnisse auch bei gehärteten Materialien.",
+      "badges": ["DIN 5-6 Qualität", "Gehärtetes Material", "Oberflächenqualität"]
+    },
+    "qualityControl": {
+      "title": "Qualitätskontrolle",
+      "description": "Mit unseren KMG-Messgeräten, Zahnradprüfmaschinen und Oberflächenrauheitsmesssystemen garantieren wir, dass jedes produzierte Teil den Qualitätsstandards entspricht.",
+      "badges": ["KMG-Messung", "Zahnradprüfung", "Vollständige Dokumentation"]
+    },
+    "heatTreatment": {
+      "title": "Wärmebehandlung",
+      "description": "In unseren hauseigenen Wärmebehandlungseinheiten optimieren wir die mechanischen Eigenschaften Ihrer Zahnräder durch Aufkohlen, Härten und Anlassen.",
+      "badges": ["Aufkohlen", "Härten", "Anlassen"]
+    },
+    "customSolutions": {
+      "title": "Maßgeschneiderte Lösungen",
+      "description": "Wir bieten kundenspezifische Design- und Fertigungsdienstleistungen an. Wir begleiten Sie in allen Prozessen vom Prototyp bis zur Serienfertigung.",
+      "badges": ["Kundenspezifisches Design", "Prototypenfertigung", "Technischer Support"]
+    }
+  },
+  "technologies": {
+    "title": "UNSERE TECHNOLOGIEN",
+    "heading": "Modernster Maschinenpark",
+    "description": "Unsere Produktionsanlage ausgestattet mit den fortschrittlichsten Maschinen weltweit anerkannter Marken",
+    "gearHobbingMachines": {
+      "title": "Wälzfräsmaschinen",
+      "specs": ["Liebherr LC 500", "Modul: 0,5-12", "Durchmesser: Ø500mm", "DIN 4 Qualität"]
+    },
+    "fiveAxisCnc": {
+      "title": "5-Achsen-CNC-Bearbeitung",
+      "specs": ["DMG MORI NTX 2000", "5-Achsen simultan", "Präzision: ±0,002mm", "Automatisierungssystem"]
+    },
+    "gearGrinding": {
+      "title": "Zahnradschleifen",
+      "specs": ["Kapp VAS 532", "DIN 5-6 Qualität", "Profilschleifen", "Automatische Messung"]
+    },
+    "cmmMeasurement": {
+      "title": "KMG-Messsystem",
+      "specs": ["Zeiss Contura G2", "3D-Messung", "Präzision: 0,001mm", "Vollständige Berichterstattung"]
+    }
+  },
+  "products": {
+    "title": "UNSERE PRODUKTE",
+    "heading": "Breite Produktpalette",
+    "description": "Hochwertige Zahnradlösungen für alle Arten von Industrieanwendungen",
+    "technicalSpecs": "Technische Spezifikationen",
+    "applications": "Anwendungen",
+    "detailedInfo": "Detaillierte Info",
+    "spurGear": {
+      "title": "Stirnrad",
+      "specs": "Modul 1-10, Durchmesser Ø20-500mm",
+      "applications": "Getriebe, Schaltgetriebe, Industriemaschinen"
+    },
+    "helicalGear": {
+      "title": "Schrägverzahnung",
+      "specs": "Modul 1,5-12, Schrägungswinkel 15-45°",
+      "applications": "Hochdrehmomentanwendungen, Fahrzeuggetriebe"
+    },
+    "bevelGear": {
+      "title": "Kegelrad",
+      "specs": "Modul 2-8, Winkel 90°",
+      "applications": "Differenzialsysteme, rechtwinklige Kraftübertragung"
+    },
+    "wormGear": {
+      "title": "Schneckengetriebe",
+      "specs": "Modul 1-6, Untersetzung 1:10-1:100",
+      "applications": "Hohe Untersetzungsverhältnisse, Fördersysteme"
+    },
+    "internalGear": {
+      "title": "Innenverzahnung",
+      "specs": "Modul 2-10, Innendurchmesser Ø100-600mm",
+      "applications": "Planetengetriebe, kompakte Designs"
+    },
+    "rack": {
+      "title": "Zahnstange",
+      "specs": "Modul 1-12, Länge 500-3000mm",
+      "applications": "Linearbewegungssysteme, CNC-Maschinen"
+    }
+  },
+  "whyUs": {
+    "title": "WARUM WIR?",
+    "heading": "Gründe für Precision Gear",
+    "description": "Unsere besonderen Merkmale und kundenorientierter Ansatz in der Branche",
+    "highQuality": {
+      "title": "Hohe Qualitätsstandards",
+      "description": "Mit unseren ISO 9001:2015 zertifizierten Produktionsprozessen und DIN-konformen Qualitätskontrollsystemen garantieren wir Exzellenz in jedem Produkt."
+    },
+    "fastDelivery": {
+      "title": "Schnelle Lieferung",
+      "description": "Dank unserer optimierten Produktionsprozesse und großen Lagerkapazität liefern wir auch Ihre Eilbestellungen pünktlich."
+    },
+    "expertTeam": {
+      "title": "Expertenteam",
+      "description": "Unsere Maschinenbauingenieure und Techniker mit über 25 Jahren Erfahrung leiten Sie auch bei den komplexesten Projekten."
+    },
+    "competitivePrices": {
+      "title": "Wettbewerbsfähige Preise",
+      "description": "Wir bieten die wettbewerbsfähigsten Preise der Branche, ohne Kompromisse bei hoher Qualität. Sonderrabatte für Großbestellungen verfügbar."
+    },
+    "afterSalesSupport": {
+      "title": "After-Sales-Support",
+      "description": "Wir sind auch nach der Produktauslieferung für Sie da. Wir bieten kontinuierliche Unterstützung mit unserem technischen Support, Wartungs- und Reparaturservice."
+    },
+    "internationalExperience": {
+      "title": "Internationale Erfahrung",
+      "description": "Mit unserer Exporterfahrung nach Europa, Naher Osten und Asien bieten wir Produktions- und Servicequalität auf globalem Niveau."
+    }
+  },
+  "stats": {
+    "title": "IN ZAHLEN",
+    "heading": "Unsere Erfolge in Zahlen",
+    "description": "Ergebnisse jahrelanger Erfahrung und kundenorientierter Arbeit",
+    "yearsExperience": "Jahre Erfahrung",
+    "completedProjects": "Abgeschlossene Projekte",
+    "happyClients": "Zufriedene Kunden",
+    "expertStaff": "Fachpersonal",
+    "qualityRate": "Qualitätsrate",
+    "technicalSupport": "Technischer Support"
+  },
+  "sectors": {
+    "title": "SEKTOREN",
+    "heading": "Branchen, die wir bedienen",
+    "description": "Expertenlösungen zugeschnitten auf die spezifischen Bedürfnisse verschiedener Branchen",
+    "automotive": {
+      "title": "Automobil",
+      "description": "Hochpräzise Fertigung für Getriebe, Differenzialsysteme und Motorkomponenten"
+    },
+    "defense": {
+      "title": "Verteidigungsindustrie",
+      "description": "Kundenspezifisches Design, hohe Haltbarkeit und Zuverlässigkeitsstandards für militärische Fahrzeuge und Systeme"
+    },
+    "construction": {
+      "title": "Baumaschinen",
+      "description": "Schwerlast-Zahnradsysteme für Bagger, Kräne und Arbeitsmaschinen"
+    },
+    "marine": {
+      "title": "Marine",
+      "description": "Korrosionsbeständige Zahnräder für Schiffsantriebssysteme, Kranmechanismen und Schiffsfahrzeuge"
+    },
+    "energy": {
+      "title": "Energie",
+      "description": "Speziallösungen für Windkraftanlagen, Wasserkraftwerke und Energieerzeugungssysteme"
+    },
+    "automation": {
+      "title": "Industrielle Automatisierung",
+      "description": "Präzisions-Zahnradlösungen für Fördersysteme, Roboteranwendungen und Produktionslinien"
+    }
+  },
+  "cta": {
+    "heading": "Holen Sie sich jetzt ein Angebot für Ihr Projekt",
+    "description": "Unser Expertenteam ist bereit, maßgeschneiderte Lösungen für Ihre Zahnradproduktion anzubieten. Teilen Sie die technischen Details mit und wir bereiten das passendste Angebot für Sie vor.",
+    "freeConsultation": "Kostenlose technische Beratung",
+    "quickQuote": "Schnelles Preisangebot",
+    "sampleProduction": "Musterfertigung",
+    "contactNow": "Kontaktieren Sie uns jetzt"
+  },
+  "footer": {
+    "company": "Dayan Dişli",
+    "companyDescription": "Mit über 25 Jahren Erfahrung sind wir eines der führenden Unternehmen in der Türkei für Präzisions-Zahnradherstellung. Wir dienen mit den Prinzipien Qualität, Zuverlässigkeit und Kundenzufriedenheit.",
+    "quickLinks": "Schnellzugriff",
+    "services": "Dienstleistungen",
+    "aboutUs": "Über uns",
+    "career": "Karriere",
+    "contact": "Kontakt",
+    "servicesMenu": "Unsere Dienstleistungen",
+    "gearHobbing": "Wälzfräsen",
+    "cncMachining": "CNC-Bearbeitung",
+    "gearGrinding": "Zahnradschleifen",
+    "qualityControl": "Qualitätskontrolle",
+    "contactInfo": "Kontaktinformation",
+    "address": "İkitelli O.S.B. Çevre Sanayi Sitesi, 8. Blok No: 45/47 Başakşehir / İstanbul, 34490",
+    "phone": "Telefon",
+    "email": "E-Mail",
+    "followUs": "Folgen Sie uns",
+    "allRightsReserved": "Alle Rechte vorbehalten.",
+    "privacyPolicy": "Datenschutzrichtlinie",
+    "termsOfService": "Nutzungsbedingungen"
+  },
+  "contactForm": {
+    "heading": "Kontaktieren Sie uns",
+    "description": "Kontaktieren Sie uns für Ihre Zahnradproduktion. Unser Expertenteam wird sich so schnell wie möglich bei Ihnen melden.",
+    "name": "Vollständiger Name",
+    "namePlaceholder": "Ihr Vor- und Nachname",
+    "email": "E-Mail",
+    "emailPlaceholder": "beispiel@email.com",
+    "phone": "Telefon",
+    "phonePlaceholder": "+90 (5XX) XXX XX XX",
+    "company": "Firmenname",
+    "companyPlaceholder": "Ihr Firmenname (optional)",
+    "message": "Ihre Nachricht",
+    "messagePlaceholder": "Geben Sie detaillierte Informationen zu Ihrem Projekt...",
+    "sending": "Wird gesendet...",
+    "send": "Senden",
+    "successTitle": "Nachricht gesendet!",
+    "successDescription": "Wir werden uns so schnell wie möglich bei Ihnen melden.",
+    "errorTitle": "Fehler",
+    "errorDescription": "Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+    "validation": {
+      "nameMin": "Name muss mindestens 2 Zeichen lang sein",
+      "nameMax": "Name darf höchstens 50 Zeichen lang sein",
+      "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+      "phoneMin": "Telefonnummer muss mindestens 10 Zeichen lang sein",
+      "phoneMax": "Telefonnummer darf höchstens 20 Zeichen lang sein",
+      "companyMax": "Firmenname darf höchstens 100 Zeichen lang sein",
+      "messageMin": "Nachricht muss mindestens 10 Zeichen lang sein",
+      "messageMax": "Nachricht darf höchstens 1000 Zeichen lang sein"
+    }
+  }
+}

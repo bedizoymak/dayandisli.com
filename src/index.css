@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 218 30% 12%;
+    --foreground: 0 0% 100%;
+
+    --card: 220 28% 16%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 220 28% 16%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 220 85% 64%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 28% 20%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 28% 18%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 220 85% 64%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 28% 24%;
+    --input: 220 28% 24%;
+    --ring: 220 85% 64%;
+
+    --radius: 0.5rem;
+
+    --navy: 218 30% 12%;
+    --navy-light: 220 28% 16%;
+    --navy-lighter: 220 28% 20%;
+    --blue-bright: 220 85% 64%;
+    --blue-bright-hover: 220 85% 70%;
+    --whatsapp: 142 70% 49%;
+    --whatsapp-hover: 142 70% 55%;
+    
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 218 30% 12%;
+    --foreground: 0 0% 100%;
+
+    --card: 220 28% 16%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 220 28% 16%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 220 85% 64%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 28% 20%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 28% 18%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 220 85% 64%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 28% 24%;
+    --input: 220 28% 24%;
+    --ring: 220 85% 64%;
+    
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

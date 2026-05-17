@@ -1,0 +1,244 @@
+{
+  "nav": {
+    "home": "Ana Sayfa",
+    "services": "Hizmetler",
+    "technologies": "Teknolojiler",
+    "products": "Ürünler",
+    "sectors": "Sektörler",
+    "contact": "İletişim"
+  },
+  "hero": {
+    "badge": "ISO 9001:2015 Sertifikalı",
+    "title": "Hassas Dişli Üretiminde",
+    "titleHighlight": "Mükemmellik",
+    "description": "Yüksek hassasiyet gerektiren dişli açma ve profil taşlama işlemlerini, entegre üretim yapımızla birleştirerek sektöre güvenilir, kaliteli, sürdürülebilir ve yüksek performanslı çözümler sağlıyoruz.",
+    "getQuote": "Teklif Alın",
+    "ourProducts": "Ürünlerimiz",
+    "yearsExperience": "Yıllık Deneyim",
+    "completedProjects": "Tamamlanan Proje",
+    "qualityRate": "Kalite Oranı"
+  },
+  "services": {
+    "title": "HİZMETLERİMİZ",
+    "heading": "Kapsamlı Üretim Çözümleri",
+    "description": "Modern makine parkurumuz ve uzman ekibimizle, dişli üretiminin her aşamasında profesyonel hizmet sunuyoruz",
+    "gearHobbing": {
+      "title": "Gear Hobbing",
+      "description": "Yüksek hassasiyetli gear hobbing makinelerimizle, düz ve helisel dişlilerin üretiminde mükemmel sonuçlar elde ediyoruz. Modül 0.5'ten 12'ye kadar geniş bir yelpazede üretim kapasitemiz bulunmaktadır.",
+      "badges": ["Modül 0.5-12 arası", "Yüksek hassasiyet", "Hızlı üretim"]
+    },
+    "cncMachining": {
+      "title": "CNC İşleme",
+      "description": "Son teknoloji CNC torna ve freze makinelerimizle, karmaşık geometrilere sahip dişli ve mekanik parçaların hassas işlenmesini gerçekleştiriyoruz. 5 eksen işleme kapasitemiz mevcuttur.",
+      "badges": ["5 eksen işleme", "Mikron hassasiyet", "Karmaşık geometriler"]
+    },
+    "gearGrinding": {
+      "title": "Dişli Taşlama",
+      "description": "Hassas dişli taşlama makinelerimizle, DIN 5-6 kalite sınıfında yüzey kalitesi ve boyutsal hassasiyet sağlıyoruz. Sertleştirilmiş malzemelerde bile mükemmel sonuçlar elde ediyoruz.",
+      "badges": ["DIN 5-6 kalite", "Sertleştirilmiş malzeme", "Yüzey kalitesi"]
+    },
+    "qualityControl": {
+      "title": "Kalite Kontrol",
+      "description": "CMM ölçüm cihazları, dişli test makineleri ve yüzey pürüzlülük ölçüm sistemlerimizle, üretilen her parçanın kalite standartlarına uygunluğunu garanti ediyoruz.",
+      "badges": ["CMM ölçüm", "Dişli testi", "Tam dokümantasyon"]
+    },
+    "heatTreatment": {
+      "title": "Isıl İşlem",
+      "description": "Kendi bünyemizdeki ısıl işlem ünitelerimizde, sementasyon, su verme ve temperleme işlemleriyle dişlilerinizin mekanik özelliklerini optimize ediyoruz.",
+      "badges": ["Sementasyon", "Su verme", "Temperleme"]
+    },
+    "customSolutions": {
+      "title": "Özel Çözümler",
+      "description": "Müşteri ihtiyaçlarına özel tasarım ve üretim hizmetleri sunuyoruz. Prototipten seri üretime kadar tüm süreçlerde yanınızdayız.",
+      "badges": ["Özel tasarım", "Prototip üretim", "Teknik destek"]
+    }
+  },
+  "technologies": {
+    "title": "TEKNOLOJİLERİMİZ",
+    "heading": "Son Teknoloji Makine Parkuru",
+    "description": "Dünya çapında tanınmış markaların en gelişmiş makineleriyle donatılmış üretim tesisimiz",
+    "gearHobbingMachines": {
+      "title": "Gear Hobbing Makineleri",
+      "specs": ["Liebherr LC 500", "Modül: 0.5-12", "Çap: Ø500mm", "DIN 4 kalite"]
+    },
+    "fiveAxisCnc": {
+      "title": "5 Eksen CNC İşleme",
+      "specs": ["DMG MORI NTX 2000", "5 eksen eş zamanlı", "Hassasiyet: ±0.002mm", "Otomasyon sistemi"]
+    },
+    "gearGrinding": {
+      "title": "Dişli Taşlama",
+      "specs": ["Kapp VAS 532", "DIN 5-6 kalite", "Profil taşlama", "Otomatik ölçüm"]
+    },
+    "cmmMeasurement": {
+      "title": "CMM Ölçüm Sistemi",
+      "specs": ["Zeiss Contura G2", "3D ölçüm", "Hassasiyet: 0.001mm", "Tam raporlama"]
+    }
+  },
+  "products": {
+    "title": "ÜRÜNLERİMİZ",
+    "heading": "Geniş Ürün Yelpazesi",
+    "description": "Her türlü endüstriyel uygulamaya uygun, yüksek kaliteli dişli çözümleri",
+    "technicalSpecs": "Teknik Özellikler",
+    "applications": "Uygulama Alanları",
+    "detailedInfo": "Detaylı Bilgi",
+    "spurGear": {
+      "title": "Düz Dişli (Spur Gear)",
+      "specs": "Modül 1-10, Çap Ø20-500mm",
+      "applications": "Redüktörler, şanzımanlar, endüstriyel makineler"
+    },
+    "helicalGear": {
+      "title": "Helisel Dişli (Helical Gear)",
+      "specs": "Modül 1.5-12, Helis açısı 15-45°",
+      "applications": "Yüksek tork uygulamaları, otomotiv şanzımanları"
+    },
+    "bevelGear": {
+      "title": "Konik Dişli (Bevel Gear)",
+      "specs": "Modül 2-8, Açı 90°",
+      "applications": "Diferansiyel sistemler, dik açı güç aktarımı"
+    },
+    "wormGear": {
+      "title": "Sonsuz Vida (Worm Gear)",
+      "specs": "Modül 1-6, Redüksiyon 1:10-1:100",
+      "applications": "Yüksek redüksiyon oranları, konveyör sistemleri"
+    },
+    "internalGear": {
+      "title": "İç Dişli (Internal Gear)",
+      "specs": "Modül 2-10, İç çap Ø100-600mm",
+      "applications": "Planetary dişli sistemleri, kompakt tasarımlar"
+    },
+    "rack": {
+      "title": "Kremayer (Rack)",
+      "specs": "Modül 1-12, Uzunluk 500-3000mm",
+      "applications": "Lineer hareket sistemleri, CNC makineleri"
+    }
+  },
+  "whyUs": {
+    "title": "NEDEN BİZ?",
+    "heading": "Precision Gear'ı Tercih Etme Nedenleri",
+    "description": "Sektörde fark yaratan özelliklerimiz ve müşteri odaklı yaklaşımımız",
+    "highQuality": {
+      "title": "Yüksek Kalite Standartları",
+      "description": "ISO 9001:2015 sertifikalı üretim süreçlerimiz ve DIN standartlarına uygun kalite kontrol sistemlerimizle, her üründe mükemmelliği garanti ediyoruz."
+    },
+    "fastDelivery": {
+      "title": "Hızlı Teslimat",
+      "description": "Optimize edilmiş üretim süreçlerimiz ve geniş stok kapasitemiz sayesinde, acil siparişlerinizi bile zamanında teslim ediyoruz."
+    },
+    "expertTeam": {
+      "title": "Uzman Kadro",
+      "description": "25 yılı aşkın deneyime sahip makine mühendisleri ve teknisyenlerimiz, en karmaşık projelerde bile size rehberlik ediyor."
+    },
+    "competitivePrices": {
+      "title": "Rekabetçi Fiyatlar",
+      "description": "Yüksek kaliteden ödün vermeden, sektörün en rekabetçi fiyatlarını sunuyoruz. Toplu siparişlerde özel indirimler mevcuttur."
+    },
+    "afterSalesSupport": {
+      "title": "Satış Sonrası Destek",
+      "description": "Ürün teslimatından sonra da yanınızdayız. Teknik destek, bakım ve onarım hizmetlerimizle sürekli destek sağlıyoruz."
+    },
+    "internationalExperience": {
+      "title": "Uluslararası Deneyim",
+      "description": "Avrupa, Orta Doğu ve Asya'ya ihracat deneyimimizle, global standartlarda üretim ve hizmet kalitesi sunuyoruz."
+    }
+  },
+  "stats": {
+    "title": "RAKAMLARLA BİZ",
+    "heading": "Başarılarımız Rakamlarla",
+    "description": "Yılların deneyimi ve müşteri memnuniyeti odaklı çalışmamızın sonuçları",
+    "yearsExperience": "Yıllık Deneyim",
+    "completedProjects": "Tamamlanan Proje",
+    "happyClients": "Mutlu Müşteri",
+    "expertStaff": "Uzman Personel",
+    "qualityRate": "Kalite Oranı",
+    "technicalSupport": "Teknik Destek"
+  },
+  "sectors": {
+    "title": "SEKTÖRLER",
+    "heading": "Hizmet Verdiğimiz Sektörler",
+    "description": "Farklı endüstrilerin özel ihtiyaçlarına yönelik uzman çözümler sunuyoruz",
+    "automotive": {
+      "title": "Otomotiv",
+      "description": "Şanzıman dişlileri, diferansiyel sistemleri ve motor komponentleri için yüksek hassasiyetli üretim"
+    },
+    "defense": {
+      "title": "Savunma Sanayi",
+      "description": "Askeri araçlar ve sistemler için özel tasarım, yüksek dayanıklılık ve güvenilirlik standartlarında üretim"
+    },
+    "construction": {
+      "title": "İnşaat Makineleri",
+      "description": "Ekskavatör, vinç ve iş makineleri için ağır hizmet tipi dişli sistemleri"
+    },
+    "marine": {
+      "title": "Denizcilik",
+      "description": "Gemi tahrik sistemleri, vinç mekanizmaları ve deniz araçları için korozyona dayanıklı dişliler"
+    },
+    "energy": {
+      "title": "Enerji",
+      "description": "Rüzgar türbinleri, hidroelektrik santraller ve enerji üretim sistemleri için özel çözümler"
+    },
+    "automation": {
+      "title": "Endüstriyel Otomasyon",
+      "description": "Konveyör sistemleri, robotik uygulamalar ve üretim hatları için hassas dişli çözümleri"
+    }
+  },
+  "cta": {
+    "heading": "Projeniz İçin Hemen Teklif Alın",
+    "description": "Uzman ekibimiz, dişli üretim ihtiyaçlarınız için size özel çözümler sunmaya hazır. Teknik detayları paylaşın, size en uygun teklifi hazırlayalım.",
+    "freeConsultation": "Ücretsiz Teknik Danışmanlık",
+    "quickQuote": "Hızlı Fiyat Teklifi",
+    "sampleProduction": "Numune Üretim",
+    "contactNow": "Hemen İletişime Geçin"
+  },
+  "footer": {
+    "company": "Dayan Dişli",
+    "companyDescription": "25 yılı aşkın deneyimimizle, hassas dişli üretiminde Türkiye'nin önde gelen firmalarından biriyiz. Kalite, güvenilirlik ve müşteri memnuniyeti ilkelerimizle hizmet veriyoruz.",
+    "quickLinks": "Hızlı Bağlantılar",
+    "services": "Hizmetler",
+    "aboutUs": "Hakkımızda",
+    "career": "Kariyer",
+    "contact": "İletişim",
+    "servicesMenu": "Hizmetlerimiz",
+    "gearHobbing": "Gear Hobbing",
+    "cncMachining": "CNC İşleme",
+    "gearGrinding": "Dişli Taşlama",
+    "qualityControl": "Kalite Kontrol",
+    "contactInfo": "İletişim Bilgileri",
+    "address": "İkitelli O.S.B. Çevre Sanayi Sitesi, 8. Blok No: 45/47 Başakşehir / İstanbul, 34490",
+    "phone": "Telefon",
+    "email": "E-posta",
+    "followUs": "Bizi Takip Edin",
+    "allRightsReserved": "Tüm hakları saklıdır.",
+    "privacyPolicy": "Gizlilik Politikası",
+    "termsOfService": "Kullanım Şartları"
+  },
+  "contactForm": {
+    "heading": "Bize Ulaşın",
+    "description": "Dişli üretim ihtiyaçlarınız için bize ulaşın. Uzman ekibimiz en kısa sürede size dönüş yapacaktır.",
+    "name": "Ad Soyad",
+    "namePlaceholder": "Adınız ve soyadınız",
+    "email": "E-posta",
+    "emailPlaceholder": "ornek@email.com",
+    "phone": "Telefon",
+    "phonePlaceholder": "+90 (5XX) XXX XX XX",
+    "company": "Firma Adı",
+    "companyPlaceholder": "Firma adınız (opsiyonel)",
+    "message": "Mesajınız",
+    "messagePlaceholder": "Projeniz hakkında detaylı bilgi verin...",
+    "sending": "Gönderiliyor...",
+    "send": "Gönder",
+    "successTitle": "Mesajınız Gönderildi!",
+    "successDescription": "En kısa sürede size dönüş yapacağız.",
+    "errorTitle": "Hata",
+    "errorDescription": "Mesaj gönderilemedi. Lütfen tekrar deneyin.",
+    "validation": {
+      "nameMin": "Ad soyad en az 2 karakter olmalıdır",
+      "nameMax": "Ad soyad en fazla 50 karakter olmalıdır",
+      "emailInvalid": "Geçerli bir e-posta adresi giriniz",
+      "phoneMin": "Telefon numarası en az 10 karakter olmalıdır",
+      "phoneMax": "Telefon numarası en fazla 20 karakter olmalıdır",
+      "companyMax": "Firma adı en fazla 100 karakter olmalıdır",
+      "messageMin": "Mesajınız en az 10 karakter olmalıdır",
+      "messageMax": "Mesajınız en fazla 1000 karakter olmalıdır"
+    }
+  }
+}

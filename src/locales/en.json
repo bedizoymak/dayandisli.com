@@ -1,0 +1,244 @@
+{
+  "nav": {
+    "home": "Home",
+    "services": "Services",
+    "technologies": "Technologies",
+    "products": "Products",
+    "sectors": "Sectors",
+    "contact": "Contact"
+  },
+  "hero": {
+    "badge": "ISO 9001:2015 Certified",
+    "title": "Excellence in Precision",
+    "titleHighlight": "Gear Manufacturing",
+    "description": "With gear hobbing, CNC machining, and advanced manufacturing methods, we offer high-precision gear solutions for automotive, defense, and industrial applications.",
+    "getQuote": "Get a Quote",
+    "ourProducts": "Our Products",
+    "yearsExperience": "Years Experience",
+    "completedProjects": "Completed Projects",
+    "qualityRate": "Quality Rate"
+  },
+  "services": {
+    "title": "OUR SERVICES",
+    "heading": "Comprehensive Manufacturing Solutions",
+    "description": "With our modern machinery and expert team, we provide professional services at every stage of gear production",
+    "gearHobbing": {
+      "title": "Gear Hobbing",
+      "description": "With our high-precision gear hobbing machines, we achieve excellent results in the production of spur and helical gears. We have production capacity in a wide range from module 0.5 to 12.",
+      "badges": ["Module 0.5-12", "High precision", "Fast production"]
+    },
+    "cncMachining": {
+      "title": "CNC Machining",
+      "description": "With our state-of-the-art CNC lathe and milling machines, we perform precise machining of gears and mechanical parts with complex geometries. We have 5-axis machining capability.",
+      "badges": ["5-axis machining", "Micron precision", "Complex geometries"]
+    },
+    "gearGrinding": {
+      "title": "Gear Grinding",
+      "description": "With our precision gear grinding machines, we provide surface quality and dimensional accuracy in DIN 5-6 quality class. We achieve excellent results even on hardened materials.",
+      "badges": ["DIN 5-6 quality", "Hardened material", "Surface quality"]
+    },
+    "qualityControl": {
+      "title": "Quality Control",
+      "description": "With our CMM measuring devices, gear testing machines, and surface roughness measurement systems, we guarantee that every part produced meets quality standards.",
+      "badges": ["CMM measurement", "Gear testing", "Full documentation"]
+    },
+    "heatTreatment": {
+      "title": "Heat Treatment",
+      "description": "In our in-house heat treatment units, we optimize the mechanical properties of your gears through carburizing, quenching, and tempering processes.",
+      "badges": ["Carburizing", "Quenching", "Tempering"]
+    },
+    "customSolutions": {
+      "title": "Custom Solutions",
+      "description": "We offer custom design and manufacturing services tailored to customer needs. We are with you in all processes from prototype to mass production.",
+      "badges": ["Custom design", "Prototype production", "Technical support"]
+    }
+  },
+  "technologies": {
+    "title": "OUR TECHNOLOGIES",
+    "heading": "State-of-the-Art Machinery",
+    "description": "Our production facility equipped with the most advanced machines from world-renowned brands",
+    "gearHobbingMachines": {
+      "title": "Gear Hobbing Machines",
+      "specs": ["Liebherr LC 500", "Module: 0.5-12", "Diameter: Ø500mm", "DIN 4 quality"]
+    },
+    "fiveAxisCnc": {
+      "title": "5-Axis CNC Machining",
+      "specs": ["DMG MORI NTX 2000", "5-axis simultaneous", "Precision: ±0.002mm", "Automation system"]
+    },
+    "gearGrinding": {
+      "title": "Gear Grinding",
+      "specs": ["Kapp VAS 532", "DIN 5-6 quality", "Profile grinding", "Automatic measurement"]
+    },
+    "cmmMeasurement": {
+      "title": "CMM Measurement System",
+      "specs": ["Zeiss Contura G2", "3D measurement", "Precision: 0.001mm", "Full reporting"]
+    }
+  },
+  "products": {
+    "title": "OUR PRODUCTS",
+    "heading": "Wide Product Range",
+    "description": "High-quality gear solutions suitable for all types of industrial applications",
+    "technicalSpecs": "Technical Specifications",
+    "applications": "Applications",
+    "detailedInfo": "Detailed Info",
+    "spurGear": {
+      "title": "Spur Gear",
+      "specs": "Module 1-10, Diameter Ø20-500mm",
+      "applications": "Gearboxes, transmissions, industrial machines"
+    },
+    "helicalGear": {
+      "title": "Helical Gear",
+      "specs": "Module 1.5-12, Helix angle 15-45°",
+      "applications": "High torque applications, automotive transmissions"
+    },
+    "bevelGear": {
+      "title": "Bevel Gear",
+      "specs": "Module 2-8, Angle 90°",
+      "applications": "Differential systems, right-angle power transmission"
+    },
+    "wormGear": {
+      "title": "Worm Gear",
+      "specs": "Module 1-6, Reduction 1:10-1:100",
+      "applications": "High reduction ratios, conveyor systems"
+    },
+    "internalGear": {
+      "title": "Internal Gear",
+      "specs": "Module 2-10, Internal diameter Ø100-600mm",
+      "applications": "Planetary gear systems, compact designs"
+    },
+    "rack": {
+      "title": "Rack",
+      "specs": "Module 1-12, Length 500-3000mm",
+      "applications": "Linear motion systems, CNC machines"
+    }
+  },
+  "whyUs": {
+    "title": "WHY US?",
+    "heading": "Reasons to Choose Precision Gear",
+    "description": "Our distinctive features and customer-focused approach in the industry",
+    "highQuality": {
+      "title": "High Quality Standards",
+      "description": "With our ISO 9001:2015 certified production processes and quality control systems compliant with DIN standards, we guarantee excellence in every product."
+    },
+    "fastDelivery": {
+      "title": "Fast Delivery",
+      "description": "Thanks to our optimized production processes and large stock capacity, we deliver even your urgent orders on time."
+    },
+    "expertTeam": {
+      "title": "Expert Team",
+      "description": "Our mechanical engineers and technicians with over 25 years of experience guide you even in the most complex projects."
+    },
+    "competitivePrices": {
+      "title": "Competitive Prices",
+      "description": "We offer the most competitive prices in the industry without compromising on high quality. Special discounts are available for bulk orders."
+    },
+    "afterSalesSupport": {
+      "title": "After-Sales Support",
+      "description": "We are with you even after product delivery. We provide continuous support with our technical support, maintenance, and repair services."
+    },
+    "internationalExperience": {
+      "title": "International Experience",
+      "description": "With our export experience to Europe, Middle East, and Asia, we offer production and service quality at global standards."
+    }
+  },
+  "stats": {
+    "title": "BY THE NUMBERS",
+    "heading": "Our Achievements in Numbers",
+    "description": "Results of years of experience and customer satisfaction-focused work",
+    "yearsExperience": "Years Experience",
+    "completedProjects": "Completed Projects",
+    "happyClients": "Happy Clients",
+    "expertStaff": "Expert Staff",
+    "qualityRate": "Quality Rate",
+    "technicalSupport": "Technical Support"
+  },
+  "sectors": {
+    "title": "SECTORS",
+    "heading": "Industries We Serve",
+    "description": "Expert solutions tailored to the specific needs of different industries",
+    "automotive": {
+      "title": "Automotive",
+      "description": "High-precision production for transmission gears, differential systems, and engine components"
+    },
+    "defense": {
+      "title": "Defense Industry",
+      "description": "Custom design, high durability, and reliability standards for military vehicles and systems"
+    },
+    "construction": {
+      "title": "Construction Machinery",
+      "description": "Heavy-duty gear systems for excavators, cranes, and work machines"
+    },
+    "marine": {
+      "title": "Marine",
+      "description": "Corrosion-resistant gears for ship propulsion systems, crane mechanisms, and marine vehicles"
+    },
+    "energy": {
+      "title": "Energy",
+      "description": "Special solutions for wind turbines, hydroelectric power plants, and energy generation systems"
+    },
+    "automation": {
+      "title": "Industrial Automation",
+      "description": "Precision gear solutions for conveyor systems, robotic applications, and production lines"
+    }
+  },
+  "cta": {
+    "heading": "Get a Quote for Your Project Now",
+    "description": "Our expert team is ready to offer customized solutions for your gear production needs. Share the technical details and we'll prepare the most suitable offer for you.",
+    "freeConsultation": "Free Technical Consultation",
+    "quickQuote": "Quick Price Quote",
+    "sampleProduction": "Sample Production",
+    "contactNow": "Contact Us Now"
+  },
+  "footer": {
+    "company": "Dayan Dişli",
+    "companyDescription": "With over 25 years of experience, we are one of Turkey's leading companies in precision gear manufacturing. We serve with the principles of quality, reliability, and customer satisfaction.",
+    "quickLinks": "Quick Links",
+    "services": "Services",
+    "aboutUs": "About Us",
+    "career": "Career",
+    "contact": "Contact",
+    "servicesMenu": "Our Services",
+    "gearHobbing": "Gear Hobbing",
+    "cncMachining": "CNC Machining",
+    "gearGrinding": "Gear Grinding",
+    "qualityControl": "Quality Control",
+    "contactInfo": "Contact Information",
+    "address": "İkitelli O.S.B. Çevre Sanayi Sitesi, 8. Blok No: 45/47 Başakşehir / İstanbul, 34490",
+    "phone": "Phone",
+    "email": "Email",
+    "followUs": "Follow Us",
+    "allRightsReserved": "All rights reserved.",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
+  },
+  "contactForm": {
+    "heading": "Contact Us",
+    "description": "Contact us for your gear production needs. Our expert team will get back to you as soon as possible.",
+    "name": "Full Name",
+    "namePlaceholder": "Your name and surname",
+    "email": "Email",
+    "emailPlaceholder": "example@email.com",
+    "phone": "Phone",
+    "phonePlaceholder": "+90 (5XX) XXX XX XX",
+    "company": "Company Name",
+    "companyPlaceholder": "Your company name (optional)",
+    "message": "Your Message",
+    "messagePlaceholder": "Provide detailed information about your project...",
+    "sending": "Sending...",
+    "send": "Send",
+    "successTitle": "Message Sent!",
+    "successDescription": "We will get back to you as soon as possible.",
+    "errorTitle": "Error",
+    "errorDescription": "Message could not be sent. Please try again.",
+    "validation": {
+      "nameMin": "Name must be at least 2 characters",
+      "nameMax": "Name must be at most 50 characters",
+      "emailInvalid": "Please enter a valid email address",
+      "phoneMin": "Phone number must be at least 10 characters",
+      "phoneMax": "Phone number must be at most 20 characters",
+      "companyMax": "Company name must be at most 100 characters",
+      "messageMin": "Message must be at least 10 characters",
+      "messageMax": "Message must be at most 1000 characters"
+    }
+  }
+}

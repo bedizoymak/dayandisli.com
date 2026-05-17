@@ -1,0 +1,29 @@
+project_id = "avspgczfqsazarwzhpau"
+
+[functions.send-contact-email]
+verify_jwt = false
+
+[functions.send-quotation-email]
+verify_jwt = false
+
+[functions.parasut-sync]
+enabled = true
+verify_jwt = true
+import_map = "./functions/parasut-sync/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/parasut-sync/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/parasut-sync/*.html" ]
+
+[functions.parasut-sync-run]
+enabled = true
+verify_jwt = true
+import_map = "./functions/parasut-sync-run/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/parasut-sync-run/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/parasut-sync-run/*.html" ]
