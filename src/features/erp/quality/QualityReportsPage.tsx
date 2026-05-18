@@ -12,6 +12,7 @@ import { ERPLayout } from "../layout/ERPLayout";
 import {
   createQualityMeasurement,
   createQualityReport,
+  listEmployees,
   listQualityMeasurements,
   listQualityReports,
   listSalesOrders,
@@ -20,8 +21,8 @@ import {
   updateWorkOrder,
 } from "../shared/erpApi";
 import { formatDate } from "../shared/formatters";
-import { QUALITY_RESULT_LABELS } from "../shared/statusLabels";
-import { MeasurementResult, QualityMeasurement, QualityReport, QualityResult, SalesOrder, WorkOrder } from "../shared/types";
+import { MEASUREMENT_RESULT_LABELS, QUALITY_RESULT_LABELS } from "../shared/statusLabels";
+import { Employee, MeasurementResult, QualityMeasurement, QualityReport, QualityResult, SalesOrder, WorkOrder } from "../shared/types";
 import { useToast } from "@/hooks/use-toast";
 
 function tone(result: QualityReport["result"]) {
@@ -31,15 +32,10 @@ function tone(result: QualityReport["result"]) {
   return "default" as const;
 }
 
-const measurementLabels: Record<MeasurementResult, string> = {
-  pending: "Bekliyor",
-  passed: "Geçti",
-  failed: "Kaldı",
-};
-
 export default function QualityReportsPage() {
   const { toast } = useToast();
   const [rows, setRows] = useState<QualityReport[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [selectedReport, setSelectedReport] = useState<QualityReport | null>(null);
@@ -57,10 +53,11 @@ export default function QualityReportsPage() {
 
   const load = async () => {
     setLoading(true);
-    const [qualityResult, workOrderResult, salesOrderResult] = await Promise.all([
+    const [qualityResult, workOrderResult, salesOrderResult, employeeResult] = await Promise.all([
       listQualityReports(),
       listWorkOrders(),
       listSalesOrders(),
+      listEmployees(),
     ]);
     if (qualityResult.error) {
       setError(qualityResult.error);
@@ -71,6 +68,7 @@ export default function QualityReportsPage() {
     setRows(qualityResult.data);
     setWorkOrders(workOrderResult.data);
     setSalesOrders(salesOrderResult.data);
+    setEmployees(employeeResult.data);
     setLoading(false);
   };
 
@@ -148,6 +146,7 @@ export default function QualityReportsPage() {
           columns={[
             { key: "report", header: "Rapor No", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/erp/quality/${row.id}`}>{row.report_no}</Link> },
             { key: "date", header: "Kontrol Tarihi", render: (row) => formatDate(row.inspection_date) },
+            { key: "inspector", header: "Kontrol Eden", render: (row) => row.inspector_employee_id ? employees.find((employee) => employee.id === row.inspector_employee_id)?.full_name || "-" : "-" },
             {
               key: "result",
               header: "Sonuç",
@@ -236,7 +235,7 @@ export default function QualityReportsPage() {
             <Input placeholder="Tolerans" value={measurementForm.tolerance} onChange={(event) => setMeasurementForm((prev) => ({ ...prev, tolerance: event.target.value }))} />
             <Input placeholder="Ölçülen" value={measurementForm.measured_value} onChange={(event) => setMeasurementForm((prev) => ({ ...prev, measured_value: event.target.value }))} />
             <select className="h-10 rounded-md border bg-background px-3 text-sm" value={measurementForm.result} onChange={(event) => setMeasurementForm((prev) => ({ ...prev, result: event.target.value as MeasurementResult }))}>
-              {Object.entries(measurementLabels).map(([value, label]) => (
+              {Object.entries(MEASUREMENT_RESULT_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
@@ -249,7 +248,7 @@ export default function QualityReportsPage() {
               { key: "nominal", header: "Nominal", render: (row) => row.nominal_value || "-" },
               { key: "tolerance", header: "Tolerans", render: (row) => row.tolerance || "-" },
               { key: "measured", header: "Ölçülen", render: (row) => row.measured_value || "-" },
-              { key: "result", header: "Sonuç", render: (row) => measurementLabels[row.result] },
+              { key: "result", header: "Sonuç", render: (row) => MEASUREMENT_RESULT_LABELS[row.result] },
             ]}
             data={measurements}
             rowKey={(row) => row.id}

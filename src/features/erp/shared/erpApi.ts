@@ -12,6 +12,7 @@ import {
   ERPUser,
   ERPQuotation,
   ERPQuotationConversionState,
+  FinancialAccount,
   InventoryItem,
   InventoryMovement,
   InventoryMovementType,
@@ -95,6 +96,10 @@ function success<T>(data: T): ApiResult<T> {
   return { data, error: null };
 }
 
+function validationFailure<T>(error: string, fallback: T): ApiResult<T> {
+  return { data: fallback, error, missingTable: false };
+}
+
 async function safeCount(scope: string, queryPromise: Promise<unknown>) {
   const { count, error } = (await queryPromise) as { count: number | null; error: unknown };
   if (error) {
@@ -172,7 +177,40 @@ export async function getNextERPNumber(sequenceKey: string): Promise<ApiResult<s
 }
 
 export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatus>> {
-  const keyTables = ["stakeholders", "sales_orders", "work_orders", "inventory_items", "machines", "erp_number_sequences", "erp_audit_logs", "purchase_orders"];
+  const keyTables = [
+    "admin_users",
+    "erp_users",
+    "stakeholders",
+    "erp_quotation_links",
+    "quotations",
+    "sales_orders",
+    "sales_order_items",
+    "machines",
+    "production_routes",
+    "production_route_steps",
+    "work_orders",
+    "work_order_operations",
+    "subcontracting_jobs",
+    "documents",
+    "inventory_items",
+    "inventory_movements",
+    "measuring_tools",
+    "financial_accounts",
+    "invoices",
+    "payments",
+    "employees",
+    "employee_time_entries",
+    "employee_assets",
+    "shipments",
+    "shipment_items",
+    "quality_reports",
+    "quality_measurements",
+    "maintenance_tasks",
+    "erp_number_sequences",
+    "erp_audit_logs",
+    "purchase_orders",
+    "purchase_order_items",
+  ];
   const checks = await Promise.all(
     keyTables.map(async (table) => {
       const { error } = (await supabase
@@ -561,7 +599,7 @@ export async function importLegacyCustomersToStakeholders(): Promise<ApiResult<L
 
 export async function findOrCreateStakeholderByCompany(companyName: string) {
   const name = companyName.trim();
-  if (!name) return failure<Stakeholder | null>("findOrCreateStakeholderByCompany", "Firma adı boş.", null);
+  if (!name) return validationFailure<Stakeholder | null>("Firma adı boş.", null);
 
   const { data: existing, error: selectError } = (await supabase
     .from("stakeholders" as never)
@@ -1122,7 +1160,7 @@ export async function updateWorkOrderOperationStatus(id: string, status: WorkOrd
 export async function createOperationsFromRoute(workOrderId: string, routeId: string, allowAppend = false) {
   const existing = await listWorkOrderOperations(workOrderId);
   if (existing.data.length > 0 && !allowAppend) {
-    return failure<WorkOrderOperation[]>("createOperationsFromRoute", "Bu iş emrinde zaten operasyon var.", []);
+    return validationFailure<WorkOrderOperation[]>("Bu iş emrinde zaten operasyon var.", []);
   }
 
   const steps = await listProductionRouteSteps(routeId);
@@ -1324,6 +1362,10 @@ export async function createInventoryMovement(payload: {
 
   const currentStock = numberValue(itemResult.data.current_stock, 0);
   const qty = numberValue(payload.quantity, 0);
+  if (qty <= 0) {
+    return validationFailure<InventoryMovement | null>("Miktar sıfırdan büyük olmalıdır.", null);
+  }
+
   let nextStock = currentStock;
 
   if (payload.movement_type === "in" || payload.movement_type === "return") nextStock += qty;
@@ -1331,7 +1373,7 @@ export async function createInventoryMovement(payload: {
   if (payload.movement_type === "adjustment") nextStock += qty;
 
   if (nextStock < 0) {
-    return failure<InventoryMovement | null>("createInventoryMovement negative stock", "Stok eksiye düşemez.", null);
+    return validationFailure<InventoryMovement | null>("Stok eksiye düşemez.", null);
   }
 
   const { data, error } = (await supabase
@@ -1541,6 +1583,16 @@ export async function createShipmentItem(payload: Partial<ShipmentItem> & { ship
 }
 
 export async function createShipmentFromSalesOrder(order: SalesOrder) {
+  const existing = (await supabase
+    .from("shipments" as never)
+    .select("*")
+    .eq("sales_order_id", order.id)
+    .limit(1)
+    .maybeSingle()) as unknown as DbResult<Shipment>;
+
+  if (existing.error && !isMissingTableError(existing.error)) return failure("createShipmentFromSalesOrder check", existing.error, null);
+  if (existing.data) return { data: existing.data, error: "Bu sipariş için zaten sevkiyat var." };
+
   const shipment = await createShipment({
     sales_order_id: order.id,
     stakeholder_id: order.stakeholder_id,
@@ -1700,6 +1752,16 @@ export async function updateMaintenanceTask(id: string, payload: Partial<Mainten
 
   if (error) return failure("updateMaintenanceTask", error, null);
   return success(data);
+}
+
+export async function listFinancialAccounts(): Promise<ApiResult<FinancialAccount[]>> {
+  const { data, error } = (await supabase
+    .from("financial_accounts" as never)
+    .select("*")
+    .order("name", { ascending: true })) as unknown as DbResult<FinancialAccount[]>;
+
+  if (error) return failure("listFinancialAccounts", error, []);
+  return success(data ?? []);
 }
 
 export async function listInvoices(): Promise<ApiResult<Invoice[]>> {
@@ -1876,7 +1938,16 @@ export async function createPurchaseOrderItem(payload: Partial<PurchaseOrderItem
 }
 
 export async function receivePurchaseOrderItem(item: PurchaseOrderItem, quantity: number) {
-  const receivedQuantity = Math.min(numberValue(item.received_quantity, 0) + quantity, numberValue(item.quantity, 0));
+  const requestedQuantity = numberValue(quantity, 0);
+  if (requestedQuantity <= 0) return validationFailure<PurchaseOrderItem | null>("Teslim alınacak miktar sıfırdan büyük olmalıdır.", null);
+
+  const totalQuantity = numberValue(item.quantity, 0);
+  const alreadyReceived = numberValue(item.received_quantity, 0);
+  const remainingQuantity = Math.max(totalQuantity - alreadyReceived, 0);
+  if (remainingQuantity <= 0) return validationFailure<PurchaseOrderItem | null>("Bu kalem tamamen teslim alınmış.", null);
+  if (requestedQuantity > remainingQuantity) return validationFailure<PurchaseOrderItem | null>("Teslim alınacak miktar kalan miktarı aşamaz.", null);
+
+  const receivedQuantity = alreadyReceived + requestedQuantity;
   const { data, error } = (await supabase
     .from("purchase_order_items" as never)
     .update({ received_quantity: receivedQuantity } as never)
@@ -1886,11 +1957,11 @@ export async function receivePurchaseOrderItem(item: PurchaseOrderItem, quantity
 
   if (error) return failure("receivePurchaseOrderItem", error, null);
 
-  if (item.inventory_item_id && quantity > 0) {
+  if (item.inventory_item_id) {
     await createInventoryMovement({
       inventory_item_id: item.inventory_item_id,
       movement_type: "in",
-      quantity,
+      quantity: requestedQuantity,
       source_type: "purchase_order",
       source_id: item.purchase_order_id,
       notes: `${item.description} satın alma teslim alındı.`,
@@ -1905,7 +1976,7 @@ export async function receivePurchaseOrderItem(item: PurchaseOrderItem, quantity
     entity_type: "purchase_order",
     entity_id: item.purchase_order_id,
     action: "purchase_order_received",
-    description: `${item.description} kaleminden ${quantity} ${item.unit} teslim alındı.`,
+    description: `${item.description} kaleminden ${requestedQuantity} ${item.unit} teslim alındı.`,
     metadata: { purchase_order_item_id: item.id, inventory_item_id: item.inventory_item_id },
   });
 
@@ -2000,6 +2071,9 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
     openQuotations: 0,
     activeSalesOrders: 0,
     openWorkOrders: 0,
+    inventoryItemCount: 0,
+    purchaseOrderCount: 0,
+    auditLogCount: 0,
     activeOperations: 0,
     waitingSubcontracting: 0,
     lowStockItems: 0,
@@ -2016,6 +2090,9 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
       openQuotations,
       activeSalesOrders,
       openWorkOrders,
+      inventoryItemCount,
+      purchaseOrderCount,
+      auditLogCount,
       activeOperations,
       waitingSubcontracting,
       pendingQualityChecks,
@@ -2038,6 +2115,9 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
           .select("id", { count: "exact", head: true })
           .not("status", "in", "(completed,cancelled)") as unknown as Promise<unknown>
       ),
+      safeCount("inventory_items", supabase.from("inventory_items" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
+      safeCount("purchase_orders", supabase.from("purchase_orders" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
+      safeCount("erp_audit_logs", supabase.from("erp_audit_logs" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
       safeCount(
         "work_order_operations",
         supabase
@@ -2083,6 +2163,9 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
         openQuotations,
         activeSalesOrders,
         openWorkOrders,
+        inventoryItemCount,
+        purchaseOrderCount,
+        auditLogCount,
         activeOperations,
         waitingSubcontracting,
         pendingQualityChecks,
@@ -2096,6 +2179,9 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
         openQuotations: openQuotations.count,
         activeSalesOrders: activeSalesOrders.count,
         openWorkOrders: openWorkOrders.count,
+        inventoryItemCount: inventoryItemCount.count,
+        purchaseOrderCount: purchaseOrderCount.count,
+        auditLogCount: auditLogCount.count,
         activeOperations: activeOperations.count,
         waitingSubcontracting: waitingSubcontracting.count,
         lowStockItems,
@@ -2119,6 +2205,9 @@ export async function getERPReportSummary(): Promise<ApiResult<ERPReportSummary>
     overdueSalesOrders: 0,
     openWorkOrders: 0,
     overdueWorkOrders: 0,
+    purchaseOrders: 0,
+    auditLogs: 0,
+    financialAccounts: 0,
     waitingSubcontracting: 0,
     lowStockItems: 0,
     inventoryMovements: 0,
@@ -2133,6 +2222,9 @@ export async function getERPReportSummary(): Promise<ApiResult<ERPReportSummary>
       overdueSalesOrders,
       openWorkOrders,
       overdueWorkOrders,
+      purchaseOrders,
+      auditLogs,
+      financialAccounts,
       waitingSubcontracting,
       inventoryMovements,
       pendingQualityReports,
@@ -2142,6 +2234,9 @@ export async function getERPReportSummary(): Promise<ApiResult<ERPReportSummary>
       safeCount("report overdue sales orders", supabase.from("sales_orders" as never).select("id", { count: "exact", head: true }).not("status", "in", "(closed,cancelled)").lt("due_date", today) as unknown as Promise<unknown>),
       safeCount("report open work orders", supabase.from("work_orders" as never).select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)") as unknown as Promise<unknown>),
       safeCount("report overdue work orders", supabase.from("work_orders" as never).select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)").lt("planned_end_date", today) as unknown as Promise<unknown>),
+      safeCount("report purchase orders", supabase.from("purchase_orders" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
+      safeCount("report audit logs", supabase.from("erp_audit_logs" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
+      safeCount("report financial accounts", supabase.from("financial_accounts" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
       safeCount("report subcontracting", supabase.from("subcontracting_jobs" as never).select("id", { count: "exact", head: true }).not("status", "in", "(returned,cancelled)") as unknown as Promise<unknown>),
       safeCount("report inventory movements", supabase.from("inventory_movements" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
       safeCount("report quality pending", supabase.from("quality_reports" as never).select("id", { count: "exact", head: true }).eq("result", "pending") as unknown as Promise<unknown>),
@@ -2154,6 +2249,9 @@ export async function getERPReportSummary(): Promise<ApiResult<ERPReportSummary>
       overdueSalesOrders: overdueSalesOrders.count,
       openWorkOrders: openWorkOrders.count,
       overdueWorkOrders: overdueWorkOrders.count,
+      purchaseOrders: purchaseOrders.count,
+      auditLogs: auditLogs.count,
+      financialAccounts: financialAccounts.count,
       waitingSubcontracting: waitingSubcontracting.count,
       lowStockItems: stock.data.filter((item) => Number(item.current_stock) <= Number(item.min_stock)).length,
       inventoryMovements: inventoryMovements.count,
@@ -2161,7 +2259,19 @@ export async function getERPReportSummary(): Promise<ApiResult<ERPReportSummary>
       upcomingMaintenances: upcomingMaintenances.count,
     };
 
-    const missingTable = [openSalesOrders, overdueSalesOrders, openWorkOrders, overdueWorkOrders, waitingSubcontracting, inventoryMovements, pendingQualityReports, upcomingMaintenances].some((item) => item.missingTable) || stock.missingTable;
+    const missingTable = [
+      openSalesOrders,
+      overdueSalesOrders,
+      openWorkOrders,
+      overdueWorkOrders,
+      purchaseOrders,
+      auditLogs,
+      financialAccounts,
+      waitingSubcontracting,
+      inventoryMovements,
+      pendingQualityReports,
+      upcomingMaintenances,
+    ].some((item) => item.missingTable) || stock.missingTable;
     return { data: summary, error: missingTable ? ERP_MIGRATION_MESSAGE : stock.error, missingTable };
   } catch (error) {
     return failure("getERPReportSummary", error, empty);

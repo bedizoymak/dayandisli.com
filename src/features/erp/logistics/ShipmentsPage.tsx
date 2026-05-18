@@ -98,12 +98,12 @@ export default function ShipmentsPage() {
               ? await createShipmentFromSalesOrder(selectedOrder)
               : await createShipment({ package_count: Number(form.package_count || 1), carrier: form.carrier || null, tracking_no: form.tracking_no || null, delivery_note_no: form.delivery_note_no || null });
 
-            if (result.error) {
+            if (result.error && !result.data) {
               toast({ title: "Sevkiyat", description: result.error, variant: "destructive" });
               return;
             }
 
-            if (result.data) {
+            if (result.data && !result.error) {
               await updateShipment(result.data.id, {
                 carrier: form.carrier || null,
                 tracking_no: form.tracking_no || null,
@@ -112,7 +112,7 @@ export default function ShipmentsPage() {
               });
             }
 
-            toast({ title: "Kaydedildi", description: "Sevkiyat kaydı oluşturuldu." });
+            toast({ title: "Kaydedildi", description: result.error || "Sevkiyat kaydı oluşturuldu." });
             setForm({ sales_order_id: "", carrier: "", tracking_no: "", delivery_note_no: "", package_count: "1" });
             await load();
           }}

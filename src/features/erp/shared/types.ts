@@ -40,6 +40,9 @@ export type MeasurementResult = "pending" | "passed" | "failed";
 export type MaintenanceStatus = "planned" | "in_progress" | "completed" | "cancelled";
 export type InvoiceStatus = "draft" | "issued" | "paid" | "partial" | "cancelled";
 export type PurchaseOrderStatus = "draft" | "sent" | "partially_received" | "received" | "cancelled";
+export type FinancialAccountType = "cash" | "bank" | "customer" | "supplier";
+export type InvoiceType = "sales" | "purchase";
+export type PaymentType = "collection" | "payment";
 export type ERPRole = "admin" | "planner" | "operator" | "finance" | "viewer";
 
 export interface ERPUser {
@@ -284,9 +287,20 @@ export interface MaintenanceTask {
   created_at: string;
 }
 
+export interface FinancialAccount {
+  id: string;
+  account_type: FinancialAccountType;
+  name: string;
+  currency: string;
+  opening_balance: number;
+  current_balance: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface Invoice {
   id: string;
-  invoice_type: "sales" | "purchase";
+  invoice_type: InvoiceType;
   invoice_no: string | null;
   stakeholder_id: string | null;
   invoice_date: string;
@@ -302,7 +316,7 @@ export interface Invoice {
 
 export interface Payment {
   id: string;
-  payment_type: "collection" | "payment";
+  payment_type: PaymentType;
   stakeholder_id: string | null;
   financial_account_id: string | null;
   amount: number;
@@ -395,6 +409,9 @@ export interface DashboardMetrics {
   openQuotations: number;
   activeSalesOrders: number;
   openWorkOrders: number;
+  inventoryItemCount: number;
+  purchaseOrderCount: number;
+  auditLogCount: number;
   activeOperations: number;
   waitingSubcontracting: number;
   lowStockItems: number;
@@ -485,6 +502,9 @@ export interface ERPReportSummary {
   overdueSalesOrders: number;
   openWorkOrders: number;
   overdueWorkOrders: number;
+  purchaseOrders: number;
+  auditLogs: number;
+  financialAccounts: number;
   waitingSubcontracting: number;
   lowStockItems: number;
   inventoryMovements: number;

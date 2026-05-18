@@ -18,6 +18,9 @@ const defaultMetrics: DashboardMetrics = {
   openQuotations: 0,
   activeSalesOrders: 0,
   openWorkOrders: 0,
+  inventoryItemCount: 0,
+  purchaseOrderCount: 0,
+  auditLogCount: 0,
   activeOperations: 0,
   waitingSubcontracting: 0,
   lowStockItems: 0,
@@ -68,6 +71,9 @@ export default function ERPHomePage() {
         <Link to="/erp/quotations"><MetricCard title="Açık Teklifler" value={metrics.openQuotations} icon={<FileText className="h-5 w-5" />} /></Link>
         <Link to="/erp/sales-orders"><MetricCard title="Aktif Siparişler" value={metrics.activeSalesOrders} icon={<ShoppingCart className="h-5 w-5" />} /></Link>
         <Link to="/erp/work-orders"><MetricCard title="Açık İş Emirleri" value={metrics.openWorkOrders} icon={<HardHat className="h-5 w-5" />} /></Link>
+        <Link to="/erp/inventory"><MetricCard title="Stok Kalemleri" value={metrics.inventoryItemCount} icon={<Package className="h-5 w-5" />} /></Link>
+        <Link to="/erp/purchase-orders"><MetricCard title="Satın Alma" value={metrics.purchaseOrderCount} icon={<ShoppingCart className="h-5 w-5" />} /></Link>
+        <MetricCard title="Audit Kayıtları" value={metrics.auditLogCount} icon={<FileText className="h-5 w-5" />} />
         <MetricCard title="Devam Eden Operasyonlar" value={metrics.activeOperations} icon={<ClipboardCheck className="h-5 w-5" />} />
         <Link to="/erp/subcontracting"><MetricCard title="Fason Bekleyenler" value={metrics.waitingSubcontracting} icon={<Truck className="h-5 w-5" />} /></Link>
         <Link to="/erp/inventory"><MetricCard title="Kritik Stoklar" value={metrics.lowStockItems} icon={<Package className="h-5 w-5" />} /></Link>
@@ -107,7 +113,7 @@ export default function ERPHomePage() {
               <p className="text-sm text-muted-foreground">Kayıt yok.</p>
             ) : (
               activity.recentSalesOrders.map((order) => (
-                <Link key={order.id} to="/erp/sales-orders" className="flex justify-between rounded-md border p-2 text-sm hover:bg-muted/50">
+                <Link key={order.id} to={`/erp/sales-orders/${order.id}`} className="flex justify-between rounded-md border p-2 text-sm hover:bg-muted/50">
                   <span>{order.order_no} - {order.title}</span>
                   <span>{formatCurrency(order.grand_total || 0, order.currency)}</span>
                 </Link>
@@ -125,7 +131,7 @@ export default function ERPHomePage() {
               <p className="text-sm text-muted-foreground">Kayıt yok.</p>
             ) : (
               activity.recentWorkOrders.map((workOrder) => (
-                <Link key={workOrder.id} to="/erp/work-orders" className="flex justify-between rounded-md border p-2 text-sm hover:bg-muted/50">
+                <Link key={workOrder.id} to={`/erp/work-orders/${workOrder.id}`} className="flex justify-between rounded-md border p-2 text-sm hover:bg-muted/50">
                   <span>{workOrder.work_order_no} - {workOrder.part_name || workOrder.title}</span>
                   <span>{formatDate(workOrder.planned_end_date)}</span>
                 </Link>
@@ -143,7 +149,7 @@ export default function ERPHomePage() {
               <p className="text-sm text-muted-foreground">Kritik stok yok.</p>
             ) : (
               activity.lowStockItems.map((item) => (
-                <Link key={item.id} to="/erp/inventory" className="flex justify-between rounded-md border p-2 text-sm hover:bg-muted/50">
+                <Link key={item.id} to={`/erp/inventory/${item.id}`} className="flex justify-between rounded-md border p-2 text-sm hover:bg-muted/50">
                   <span>{item.code ? `${item.code} - ${item.name}` : item.name}</span>
                   <span>{item.current_stock} / {item.min_stock}</span>
                 </Link>
@@ -161,7 +167,7 @@ export default function ERPHomePage() {
               <p className="text-sm text-muted-foreground">Bekleyen kalite kaydı yok.</p>
             ) : (
               activity.pendingQualityReports.map((report) => (
-                <Link key={report.id} to="/erp/quality" className="flex justify-between rounded-md border p-2 text-sm hover:bg-muted/50">
+                <Link key={report.id} to={`/erp/quality/${report.id}`} className="flex justify-between rounded-md border p-2 text-sm hover:bg-muted/50">
                   <span>{report.report_no}</span>
                   <span>{formatDate(report.inspection_date)}</span>
                 </Link>

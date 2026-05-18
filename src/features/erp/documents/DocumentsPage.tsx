@@ -11,6 +11,7 @@ import { createDocumentMetadata, listDocuments } from "../shared/erpApi";
 import { DocumentMetadata } from "../shared/types";
 import { formatDateTime } from "../shared/formatters";
 import { useToast } from "@/hooks/use-toast";
+import { DOCUMENT_ENTITY_LABELS, DOCUMENT_TYPE_LABELS } from "../shared/statusLabels";
 
 export default function DocumentsPage() {
   const { toast } = useToast();
@@ -79,22 +80,11 @@ export default function DocumentsPage() {
           }}
         >
           <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.entity_type} onChange={(event) => setForm((prev) => ({ ...prev, entity_type: event.target.value }))}>
-            <option value="quotation">Teklif</option>
-            <option value="sales_order">Satış Siparişi</option>
-            <option value="work_order">İş Emri</option>
-            <option value="quality_report">Kalite Raporu</option>
-            <option value="machine">Makine</option>
-            <option value="employee">Personel</option>
+            {Object.entries(DOCUMENT_ENTITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
           <Input placeholder="Bağlı kayıt ID" value={form.entity_id} onChange={(event) => setForm((prev) => ({ ...prev, entity_id: event.target.value }))} />
           <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.document_type} onChange={(event) => setForm((prev) => ({ ...prev, document_type: event.target.value }))}>
-            <option value="technical_drawing">Teknik Resim</option>
-            <option value="cad">CAD</option>
-            <option value="cam">CAM</option>
-            <option value="pdf">PDF</option>
-            <option value="photo">Fotoğraf</option>
-            <option value="invoice">Fatura</option>
-            <option value="delivery_note">İrsaliye</option>
+            {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
           <Input placeholder="Dosya adı" value={form.file_name} onChange={(event) => setForm((prev) => ({ ...prev, file_name: event.target.value }))} />
           <Input placeholder="Dosya yolu / storage path" value={form.file_path} onChange={(event) => setForm((prev) => ({ ...prev, file_path: event.target.value }))} />
@@ -111,8 +101,8 @@ export default function DocumentsPage() {
       ) : (
         <DataTable
           columns={[
-            { key: "entity", header: "Bağlı Varlık", render: (row) => `${row.entity_type} / ${row.entity_id || "-"}` },
-            { key: "type", header: "Doküman Tipi", render: (row) => row.document_type },
+            { key: "entity", header: "Bağlı Varlık", render: (row) => `${DOCUMENT_ENTITY_LABELS[row.entity_type] || row.entity_type} / ${row.entity_id ? row.entity_id.slice(0, 8) : "-"}` },
+            { key: "type", header: "Doküman Tipi", render: (row) => DOCUMENT_TYPE_LABELS[row.document_type] || row.document_type },
             { key: "name", header: "Dosya Adı", render: (row) => row.file_name },
             { key: "version", header: "Versiyon", className: "text-right", render: (row) => row.version_no },
             { key: "created", header: "Kayıt", render: (row) => formatDateTime(row.created_at) },

@@ -20,6 +20,7 @@ import {
   getStakeholderById,
   getSubcontractingJobById,
   getWorkOrderById,
+  listEmployees,
   listERPQuotationsFromExistingTable,
   listInventoryMovementsForItem,
   listInvoices,
@@ -39,6 +40,7 @@ import { formatCurrency, formatDate, formatDateTime, formatNumber } from "../sha
 import {
   INVENTORY_ITEM_TYPE_LABELS,
   INVENTORY_MOVEMENT_TYPE_LABELS,
+  MEASUREMENT_RESULT_LABELS,
   QUALITY_RESULT_LABELS,
   SALES_ORDER_STATUS_LABELS,
   SHIPMENT_STATUS_LABELS,
@@ -51,6 +53,7 @@ import {
   InventoryItem,
   InventoryMovement,
   Invoice,
+  Employee,
   Machine,
   QualityMeasurement,
   QualityReport,
@@ -118,7 +121,7 @@ export function SalesOrderDetailPage() {
       </section>
       <div className="flex flex-wrap gap-2">
         <Button onClick={async () => { const result = await createWorkOrderFromSalesOrder(order); if (result.error && !result.data) toast({ title: "İş Emri", description: result.error, variant: "destructive" }); else toast({ title: "İş Emri", description: result.error || "İş emri oluşturuldu." }); await load(); }}>İş Emrine Dönüştür</Button>
-        <Button variant="outline" onClick={async () => { const result = await createShipmentFromSalesOrder(order); if (result.error) toast({ title: "Sevkiyat", description: result.error, variant: "destructive" }); else toast({ title: "Sevkiyat", description: "Sevkiyat oluşturuldu." }); await load(); }}>Sevkiyat Oluştur</Button>
+        <Button variant="outline" onClick={async () => { const result = await createShipmentFromSalesOrder(order); if (result.error && !result.data) toast({ title: "Sevkiyat", description: result.error, variant: "destructive" }); else toast({ title: "Sevkiyat", description: result.error || "Sevkiyat oluşturuldu." }); await load(); }}>Sevkiyat Oluştur</Button>
       </div>
       <DataTable columns={[
         { key: "desc", header: "Kalem", render: (row) => row.description },
@@ -319,25 +322,33 @@ export function QualityDetailPage() {
   const { id } = useParams();
   const [report, setReport] = useState<QualityReport | null>(null);
   const [measurements, setMeasurements] = useState<QualityMeasurement[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   useEffect(() => {
     const load = async () => {
       if (!id) return;
-      const [reportResult, measurementResult] = await Promise.all([getQualityReportById(id), listQualityMeasurements(id)]);
+      const [reportResult, measurementResult, employeeResult] = await Promise.all([getQualityReportById(id), listQualityMeasurements(id), listEmployees()]);
       setReport(reportResult.data);
       setMeasurements(measurementResult.data);
+      setEmployees(employeeResult.data);
     };
     load();
   }, [id]);
   if (!report) return <ERPLayout title="Kalite Detayı"><p className="text-sm text-muted-foreground">Kalite raporu yükleniyor...</p></ERPLayout>;
+  const inspectorName = report.inspector_employee_id ? employees.find((employee) => employee.id === report.inspector_employee_id)?.full_name : null;
   return (
     <ERPLayout title={report.report_no}>
       <PageHeader title={report.report_no} description={QUALITY_RESULT_LABELS[report.result]} actions={<BackButton to="/erp/quality" />} />
+      <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-3">
+        <div><span className="text-muted-foreground">Sonuç</span><p className="font-medium">{QUALITY_RESULT_LABELS[report.result]}</p></div>
+        <div><span className="text-muted-foreground">Kontrol Eden</span><p className="font-medium">{inspectorName || "-"}</p></div>
+        <div><span className="text-muted-foreground">Kontrol Tarihi</span><p className="font-medium">{formatDate(report.inspection_date)}</p></div>
+      </section>
       <DataTable columns={[
         { key: "c", header: "Karakteristik", render: (row) => row.characteristic },
         { key: "n", header: "Nominal", render: (row) => row.nominal_value || "-" },
         { key: "t", header: "Tolerans", render: (row) => row.tolerance || "-" },
         { key: "m", header: "Ölçülen", render: (row) => row.measured_value || "-" },
-        { key: "r", header: "Sonuç", render: (row) => row.result },
+        { key: "r", header: "Sonuç", render: (row) => MEASUREMENT_RESULT_LABELS[row.result] },
       ]} data={measurements} rowKey={(row) => row.id} emptyMessage="Ölçüm satırı yok." />
       <DocumentLinksPanel entityType="quality_report" entityId={report.id} />
       <AuditTimeline entityType="quality_report" entityId={report.id} />

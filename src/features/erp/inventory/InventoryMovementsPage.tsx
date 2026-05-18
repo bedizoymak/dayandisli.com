@@ -10,7 +10,7 @@ import { MigrationNotice } from "@/components/erp/MigrationNotice";
 import { createInventoryMovement, listInventoryItems, listInventoryMovements } from "../shared/erpApi";
 import { formatDateTime, formatNumber } from "../shared/formatters";
 import { useToast } from "@/hooks/use-toast";
-import { INVENTORY_MOVEMENT_TYPE_LABELS } from "../shared/statusLabels";
+import { INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_SOURCE_TYPE_LABELS } from "../shared/statusLabels";
 import { InventoryItem, InventoryMovement, InventoryMovementType } from "../shared/types";
 
 export default function InventoryMovementsPage() {
@@ -59,7 +59,14 @@ export default function InventoryMovementsPage() {
           className="grid gap-3 md:grid-cols-[1fr_180px_160px_160px_1fr_auto]"
           onSubmit={async (event) => {
             event.preventDefault();
-            if (!form.inventory_item_id) return;
+            if (!form.inventory_item_id) {
+              toast({ title: "Eksik Bilgi", description: "Stok kalemi seçiniz.", variant: "destructive" });
+              return;
+            }
+            if (Number(form.quantity || 0) <= 0) {
+              toast({ title: "Hatalı Değer", description: "Miktar sıfırdan büyük olmalıdır.", variant: "destructive" });
+              return;
+            }
             const result = await createInventoryMovement({
               inventory_item_id: form.inventory_item_id,
               movement_type: form.movement_type,
@@ -93,10 +100,7 @@ export default function InventoryMovementsPage() {
           </select>
           <Input type="number" step="0.001" value={form.quantity} onChange={(event) => setForm((prev) => ({ ...prev, quantity: event.target.value }))} />
           <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.source_type} onChange={(event) => setForm((prev) => ({ ...prev, source_type: event.target.value }))}>
-            <option value="manual">Manuel</option>
-            <option value="purchase">Satın Alma</option>
-            <option value="sales_order">Satış Siparişi</option>
-            <option value="work_order">İş Emri</option>
+            {Object.entries(INVENTORY_SOURCE_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
           <Input placeholder="Not" value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
           <Button type="submit">Kaydet</Button>
@@ -113,7 +117,7 @@ export default function InventoryMovementsPage() {
             { key: "item", header: "Kalem", render: (row) => items.find((item) => item.id === row.inventory_item_id)?.name || row.inventory_item_id },
             { key: "type", header: "Hareket Tipi", render: (row) => INVENTORY_MOVEMENT_TYPE_LABELS[row.movement_type] || row.movement_type },
             { key: "qty", header: "Miktar", className: "text-right", render: (row) => formatNumber(row.quantity, 3) },
-            { key: "source", header: "Kaynak", render: (row) => row.source_type || "-" },
+            { key: "source", header: "Kaynak", render: (row) => row.source_type ? `${INVENTORY_SOURCE_TYPE_LABELS[row.source_type] || row.source_type}${row.source_id ? ` (${row.source_id.slice(0, 8)})` : ""}` : "-" },
             { key: "date", header: "Tarih", render: (row) => formatDateTime(row.movement_date) },
             { key: "notes", header: "Not", render: (row) => row.notes || "-" },
           ]}

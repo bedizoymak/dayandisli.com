@@ -6,6 +6,7 @@ import { ERPLayout } from "../layout/ERPLayout";
 import { getCurrentERPUser } from "../shared/erpApi";
 import { canManageERP } from "../shared/permissions";
 import { ERPUser } from "../shared/types";
+import { ERPDatabaseStatusWidget } from "../dashboard/ERPDatabaseStatusWidget";
 
 export default function ERPSettingsPage() {
   const [user, setUser] = useState<ERPUser | null>(null);
@@ -31,6 +32,8 @@ export default function ERPSettingsPage() {
         <p className="font-medium">Aktif ERP Rolü: <StatusBadge label={user?.role || "viewer"} tone={canEdit ? "success" : "muted"} /></p>
         {!canEdit ? <p className="mt-2 text-muted-foreground">Bu kullanıcı ayarları görüntüleyebilir; yönetim aksiyonları admin/planner rolü gerektirir.</p> : null}
       </div>
+
+      <ERPDatabaseStatusWidget />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

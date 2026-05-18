@@ -2,21 +2,25 @@ import { useEffect, useMemo, useState } from "react";
 import { MetricCard } from "@/components/erp/MetricCard";
 import { PageHeader } from "@/components/erp/PageHeader";
 import { ERPLayout } from "../layout/ERPLayout";
-import { listInvoices, listPayments } from "../shared/erpApi";
+import { listFinancialAccounts, listInvoices, listPayments } from "../shared/erpApi";
 import { formatCurrency } from "../shared/formatters";
-import { Invoice, Payment } from "../shared/types";
-import { FileText, Wallet } from "lucide-react";
+import { FinancialAccount, Invoice, Payment } from "../shared/types";
+import { Building2, FileText, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function FinanceDashboardPage() {
   const { toast } = useToast();
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
     const load = async () => {
-      const [invoiceResult, paymentResult] = await Promise.all([listInvoices(), listPayments()]);
+      const [accountResult, invoiceResult, paymentResult] = await Promise.all([listFinancialAccounts(), listInvoices(), listPayments()]);
 
+      if (accountResult.error) {
+        toast({ title: "Hata", description: `Finans hesapları alınamadı: ${accountResult.error}`, variant: "destructive" });
+      }
       if (invoiceResult.error) {
         toast({ title: "Hata", description: `Fatura verisi alınamadı: ${invoiceResult.error}`, variant: "destructive" });
       }
@@ -24,6 +28,7 @@ export default function FinanceDashboardPage() {
         toast({ title: "Hata", description: `Ödeme verisi alınamadı: ${paymentResult.error}`, variant: "destructive" });
       }
 
+      setAccounts(accountResult.data);
       setInvoices(invoiceResult.data);
       setPayments(paymentResult.data);
     };
@@ -34,10 +39,11 @@ export default function FinanceDashboardPage() {
   const totals = useMemo(() => {
     const invoiceTotal = invoices.reduce((sum, row) => sum + Number(row.grand_total || 0), 0);
     const paymentTotal = payments.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const accountBalance = accounts.reduce((sum, row) => sum + Number(row.current_balance || 0), 0);
     const openInvoiceCount = invoices.filter((row) => !["paid", "cancelled"].includes(row.status)).length;
 
-    return { invoiceTotal, paymentTotal, openInvoiceCount };
-  }, [invoices, payments]);
+    return { accountBalance, invoiceTotal, paymentTotal, openInvoiceCount };
+  }, [accounts, invoices, payments]);
 
   return (
     <ERPLayout title="Finans">
@@ -46,7 +52,8 @@ export default function FinanceDashboardPage() {
         description="Cari, fatura ve tahsilat/ödeme hareketlerinin özet görünümü."
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
+        <MetricCard title="Finans Hesapları" value={accounts.length} subtitle={formatCurrency(totals.accountBalance)} icon={<Building2 className="h-5 w-5" />} />
         <MetricCard title="Açık Faturalar" value={totals.openInvoiceCount} icon={<FileText className="h-5 w-5" />} />
         <MetricCard
           title="Toplam Fatura Tutarı"

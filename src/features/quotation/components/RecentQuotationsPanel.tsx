@@ -66,12 +66,14 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
       }
 
       const rows = (data as QuotationRecord[]) || [];
-      console.info("[Supabase] table loaded:", {
-        table: "quotations",
-        rowCount: rows.length,
-        hasAuthSession: Boolean(authData.session),
-        firstRowKeys: rows[0] ? Object.keys(rows[0]) : [],
-      });
+      if (import.meta.env.DEV) {
+        console.info("[Supabase] table loaded:", {
+          table: "quotations",
+          rowCount: rows.length,
+          hasAuthSession: Boolean(authData.session),
+          firstRowKeys: rows[0] ? Object.keys(rows[0]) : [],
+        });
+      }
       setRecentQuotes(rows);
     } catch (error) {
       console.error("Failed to fetch recent quotations:", error);

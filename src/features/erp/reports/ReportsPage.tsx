@@ -6,7 +6,9 @@ import { ERPLayout } from "../layout/ERPLayout";
 import {
   getERPReportSummary,
   listInventoryItems,
+  listPurchaseOrders,
   listQualityReports,
+  listRecentAuditLogs,
   listSalesOrders,
   listShipments,
   listWorkOrders,
@@ -20,6 +22,9 @@ const emptySummary: ERPReportSummary = {
   overdueSalesOrders: 0,
   openWorkOrders: 0,
   overdueWorkOrders: 0,
+  purchaseOrders: 0,
+  auditLogs: 0,
+  financialAccounts: 0,
   waitingSubcontracting: 0,
   lowStockItems: 0,
   inventoryMovements: 0,
@@ -43,8 +48,10 @@ export default function ReportsPage() {
   const exportSalesOrders = async () => exportRowsToCsv("satis-siparisleri.csv", (await listSalesOrders()).data as unknown as Record<string, unknown>[]);
   const exportWorkOrders = async () => exportRowsToCsv("is-emirleri.csv", (await listWorkOrders()).data as unknown as Record<string, unknown>[]);
   const exportInventory = async () => exportRowsToCsv("stok-listesi.csv", (await listInventoryItems()).data as unknown as Record<string, unknown>[]);
+  const exportPurchaseOrders = async () => exportRowsToCsv("satinalma-siparisleri.csv", (await listPurchaseOrders()).data as unknown as Record<string, unknown>[]);
   const exportShipments = async () => exportRowsToCsv("sevkiyatlar.csv", (await listShipments()).data as unknown as Record<string, unknown>[]);
   const exportQuality = async () => exportRowsToCsv("kalite-raporlari.csv", (await listQualityReports()).data as unknown as Record<string, unknown>[]);
+  const exportAuditLogs = async () => exportRowsToCsv("audit-kayitlari.csv", (await listRecentAuditLogs(500)).data as unknown as Record<string, unknown>[]);
 
   return (
     <ERPLayout title="Raporlama">
@@ -58,12 +65,14 @@ export default function ReportsPage() {
         <ReportCard title="Geciken Siparişler" value={summary.overdueSalesOrders} />
         <ReportCard title="Açık İş Emirleri" value={summary.openWorkOrders} />
         <ReportCard title="Geciken İş Emirleri" value={summary.overdueWorkOrders} />
+        <ReportCard title="Satın Alma" value={summary.purchaseOrders} />
+        <ReportCard title="Audit Kayıtları" value={summary.auditLogs} />
+        <ReportCard title="Finans Hesapları" value={summary.financialAccounts} />
         <ReportCard title="Fasonda Bekleyenler" value={summary.waitingSubcontracting} />
         <ReportCard title="Kritik Stoklar" value={summary.lowStockItems} />
         <ReportCard title="Stok Hareketleri" value={summary.inventoryMovements} />
         <ReportCard title="Kalite Bekleyenler" value={summary.pendingQualityReports} />
         <ReportCard title="Yaklaşan Bakımlar" value={summary.upcomingMaintenances} />
-        <ReportCard title="Cari Özet" value={0} subtitle="Placeholder" />
       </div>
 
       <section className="rounded-md border bg-card p-4">
@@ -72,8 +81,10 @@ export default function ReportsPage() {
           <Button variant="outline" onClick={exportSalesOrders}>Satış Siparişleri</Button>
           <Button variant="outline" onClick={exportWorkOrders}>İş Emirleri</Button>
           <Button variant="outline" onClick={exportInventory}>Stok Listesi</Button>
+          <Button variant="outline" onClick={exportPurchaseOrders}>Satın Alma Siparişleri</Button>
           <Button variant="outline" onClick={exportShipments}>Sevkiyatlar</Button>
           <Button variant="outline" onClick={exportQuality}>Kalite Raporları</Button>
+          <Button variant="outline" onClick={exportAuditLogs}>Audit Kayıtları</Button>
         </div>
       </section>
     </ERPLayout>

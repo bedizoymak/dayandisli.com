@@ -34,6 +34,7 @@ export default function PurchaseOrderDetailPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [receivingItemId, setReceivingItemId] = useState<string | null>(null);
   const [form, setForm] = useState({ inventory_item_id: "", description: "", quantity: "1", unit: "adet", unit_price: "0" });
 
   const supplierNameById = useMemo(() => Object.fromEntries(stakeholders.map((item) => [item.id, item.company_name])), [stakeholders]);
@@ -144,11 +145,18 @@ export default function PurchaseOrderDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
+                disabled={receivingItemId === row.id || Number(row.received_quantity) >= Number(row.quantity)}
                 onClick={async () => {
                   const remaining = Math.max(Number(row.quantity) - Number(row.received_quantity), 0);
                   const value = Number(window.prompt("Teslim alınacak miktar:", String(remaining)) || 0);
                   if (value <= 0) return;
+                  if (value > remaining) {
+                    toast({ title: "Teslim Alma Hatası", description: "Teslim alınacak miktar kalan miktarı aşamaz.", variant: "destructive" });
+                    return;
+                  }
+                  setReceivingItemId(row.id);
                   const result = await receivePurchaseOrderItem(row, value);
+                  setReceivingItemId(null);
                   if (result.error) {
                     toast({ title: "Teslim Alma Hatası", description: result.error, variant: "destructive" });
                     return;
@@ -156,7 +164,7 @@ export default function PurchaseOrderDetailPage() {
                   await load();
                 }}
               >
-                Teslim Al
+                {receivingItemId === row.id ? "İşleniyor..." : "Teslim Al"}
               </Button>
             ),
           },

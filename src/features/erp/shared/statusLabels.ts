@@ -1,7 +1,11 @@
 import {
   InventoryItemType,
   InventoryMovementType,
+  InvoiceStatus,
+  InvoiceType,
   MaintenanceStatus,
+  MeasurementResult,
+  PaymentType,
   PurchaseOrderStatus,
   QualityResult,
   SalesOrderStatus,
@@ -10,6 +14,7 @@ import {
   SubcontractingStatus,
   WorkOrderOperationStatus,
   WorkOrderStatus,
+  FinancialAccountType,
 } from "./types";
 
 export const SALES_ORDER_STATUS_LABELS: Record<SalesOrderStatus, string> = {
@@ -90,6 +95,12 @@ export const QUALITY_RESULT_LABELS: Record<QualityResult, string> = {
   conditional: "Şartlı Kabul",
 };
 
+export const MEASUREMENT_RESULT_LABELS: Record<MeasurementResult, string> = {
+  pending: "Bekliyor",
+  passed: "Geçti",
+  failed: "Kaldı",
+};
+
 export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
   planned: "Planlandı",
   in_progress: "Devam Ediyor",
@@ -103,6 +114,63 @@ export const PURCHASE_ORDER_STATUS_LABELS: Record<PurchaseOrderStatus, string> =
   partially_received: "Kısmi Geldi",
   received: "Teslim Alındı",
   cancelled: "İptal",
+};
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  draft: "Taslak",
+  issued: "Kesildi",
+  paid: "Ödendi",
+  partial: "Kısmi Ödendi",
+  cancelled: "İptal",
+};
+
+export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
+  sales: "Satış",
+  purchase: "Alış",
+};
+
+export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
+  collection: "Tahsilat",
+  payment: "Ödeme",
+};
+
+export const FINANCIAL_ACCOUNT_TYPE_LABELS: Record<FinancialAccountType, string> = {
+  cash: "Kasa",
+  bank: "Banka",
+  customer: "Müşteri Cari",
+  supplier: "Tedarikçi Cari",
+};
+
+export const DOCUMENT_ENTITY_LABELS: Record<string, string> = {
+  quotation: "Teklif",
+  sales_order: "Satış Siparişi",
+  work_order: "İş Emri",
+  quality_report: "Kalite Raporu",
+  subcontracting_job: "Fason Kaydı",
+  inventory_item: "Stok Kartı",
+  shipment: "Sevkiyat",
+  purchase_order: "Satın Alma Siparişi",
+  machine: "Makine",
+  employee: "Personel",
+};
+
+export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  technical_drawing: "Teknik Resim",
+  cad: "CAD",
+  cam: "CAM",
+  pdf: "PDF",
+  photo: "Fotoğraf",
+  invoice: "Fatura",
+  delivery_note: "İrsaliye",
+  quality_report: "Kalite Raporu",
+  other: "Diğer",
+};
+
+export const INVENTORY_SOURCE_TYPE_LABELS: Record<string, string> = {
+  manual: "Manuel",
+  purchase_order: "Satın Alma",
+  sales_order: "Satış Siparişi",
+  work_order: "İş Emri",
 };
 
 export const AUDIT_ACTION_LABELS: Record<string, string> = {

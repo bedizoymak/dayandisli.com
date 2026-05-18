@@ -7,23 +7,12 @@ import { createDocumentMetadata, listDocumentsForEntity } from "../shared/erpApi
 import { DocumentMetadata } from "../shared/types";
 import { formatDateTime } from "../shared/formatters";
 import { useToast } from "@/hooks/use-toast";
+import { DOCUMENT_TYPE_LABELS } from "../shared/statusLabels";
 
 type DocumentLinksPanelProps = {
   entityType: string;
   entityId: string;
 };
-
-const documentTypes = [
-  ["technical_drawing", "Teknik Resim"],
-  ["cad", "CAD"],
-  ["cam", "CAM"],
-  ["pdf", "PDF"],
-  ["photo", "Fotoğraf"],
-  ["invoice", "Fatura"],
-  ["delivery_note", "Sevk İrsaliyesi"],
-  ["quality_report", "Kalite Raporu"],
-  ["other", "Diğer"],
-];
 
 export function DocumentLinksPanel({ entityType, entityId }: DocumentLinksPanelProps) {
   const { toast } = useToast();
@@ -67,7 +56,7 @@ export function DocumentLinksPanel({ entityType, entityId }: DocumentLinksPanelP
         }}
       >
         <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.document_type} onChange={(event) => setForm((prev) => ({ ...prev, document_type: event.target.value }))}>
-          {documentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
         <Input placeholder="Dosya adı" value={form.file_name} onChange={(event) => setForm((prev) => ({ ...prev, file_name: event.target.value }))} />
         <Input placeholder="Dosya yolu / storage path" value={form.file_path} onChange={(event) => setForm((prev) => ({ ...prev, file_path: event.target.value }))} />
@@ -77,7 +66,7 @@ export function DocumentLinksPanel({ entityType, entityId }: DocumentLinksPanelP
 
       <DataTable
         columns={[
-          { key: "type", header: "Tip", render: (row) => documentTypes.find(([value]) => value === row.document_type)?.[1] || row.document_type },
+          { key: "type", header: "Tip", render: (row) => DOCUMENT_TYPE_LABELS[row.document_type] || row.document_type },
           { key: "name", header: "Dosya", render: (row) => row.file_name },
           { key: "version", header: "Versiyon", render: (row) => row.version_no },
           { key: "created", header: "Tarih", render: (row) => formatDateTime(row.created_at) },

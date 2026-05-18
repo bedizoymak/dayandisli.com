@@ -46,12 +46,14 @@ const TeklifPage = () => {
         .order('firma', { ascending: true });
       
       if (error) throw error;
-      console.info("[Supabase] table loaded:", {
-        table: "customer_profile",
-        rowCount: data?.length || 0,
-        hasAuthSession: Boolean(authData.session),
-        firstRowKeys: data?.[0] ? Object.keys(data[0]) : [],
-      });
+      if (import.meta.env.DEV) {
+        console.info("[Supabase] table loaded:", {
+          table: "customer_profile",
+          rowCount: data?.length || 0,
+          hasAuthSession: Boolean(authData.session),
+          firstRowKeys: data?.[0] ? Object.keys(data[0]) : [],
+        });
+      }
       setCustomers(data || []);
     } catch (error) {
       console.error('[Supabase] customer_profile select failed:', error);
@@ -131,7 +133,7 @@ const TeklifPage = () => {
 
     // If quotation already exists, skip insert
     if (existing) {
-      console.log(`Quotation ${teklifNo} already exists, skipping insert`);
+      if (import.meta.env.DEV) console.info(`Quotation ${teklifNo} already exists, skipping insert`);
       return teklifNo;
     }
 
@@ -165,7 +167,7 @@ const TeklifPage = () => {
       return null;
     }
 
-    console.log(`Quotation ${teklifNo} saved successfully`);
+    if (import.meta.env.DEV) console.info(`Quotation ${teklifNo} saved successfully`);
     return teklifNo;
   };
 
