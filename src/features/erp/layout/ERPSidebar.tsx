@@ -10,6 +10,7 @@ import {
   Package,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   ShoppingCart,
   Truck,
   Users,
@@ -23,6 +24,8 @@ const navItems = [
   { href: "/erp/crm", label: "CRM", icon: Users },
   { href: "/erp/quotations", label: "Teklifler", icon: FileText },
   { href: "/erp/sales-orders", label: "Siparişler", icon: ShoppingCart },
+  { href: "/erp/purchasing", label: "Satın Alma", icon: ShoppingBag },
+  { href: "/erp/purchase-orders", label: "Satın Alma Siparişleri", icon: ShoppingBag },
   { href: "/erp/production", label: "Üretim", icon: Factory },
   { href: "/erp/work-orders", label: "İş Emirleri", icon: HardHat },
   { href: "/erp/routes", label: "Rotalar", icon: Boxes },
@@ -53,13 +56,13 @@ export function ERPSidebar({ mobileOpen, onCloseMobile }: ERPSidebarProps) {
   return (
     <>
       <aside className="hidden md:flex md:w-64 md:flex-col md:border-r md:bg-card/50">
-        <div className="px-4 py-4 border-b">
+        <div className="border-b px-4 py-4">
           <p className="text-xs text-muted-foreground">Modüler Sistem</p>
           <h2 className="font-semibold">ERP Menü</h2>
         </div>
-        <nav className="p-3 space-y-1 overflow-y-auto">
+        <nav className="space-y-1 overflow-y-auto p-3">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.href;
+            const isActive = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
@@ -79,14 +82,14 @@ export function ERPSidebar({ mobileOpen, onCloseMobile }: ERPSidebarProps) {
 
       {mobileOpen ? (
         <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={onCloseMobile}>
-          <aside className="h-full w-72 bg-background border-r p-3" onClick={(e) => e.stopPropagation()}>
-            <div className="px-2 py-3 border-b mb-2">
+          <aside className="h-full w-72 overflow-y-auto border-r bg-background p-3" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-2 border-b px-2 py-3">
               <p className="text-xs text-muted-foreground">Modüler Sistem</p>
               <h2 className="font-semibold">ERP Menü</h2>
             </div>
             <nav className="space-y-1">
               {navItems.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
                 return (
                   <Link
                     key={item.href}

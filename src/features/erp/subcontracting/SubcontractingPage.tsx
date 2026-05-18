@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ERPLayout } from "../layout/ERPLayout";
@@ -137,7 +138,7 @@ export default function SubcontractingPage() {
         <DataTable
           columns={[
             { key: "supplier", header: "Fason Firma", render: (row) => suppliers.find((supplier) => supplier.id === row.supplier_id)?.company_name || "-" },
-            { key: "process", header: "İşlem Tipi", render: (row) => row.process_type },
+            { key: "process", header: "İşlem Tipi", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/erp/subcontracting/${row.id}`}>{row.process_type}</Link> },
             { key: "sent", header: "Gönderim Tarihi", render: (row) => formatDate(row.sent_date || row.created_at) },
             { key: "expected", header: "Beklenen Dönüş", render: (row) => formatDate(row.expected_return_date) },
             {

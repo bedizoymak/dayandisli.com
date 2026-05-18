@@ -2,6 +2,7 @@ import {
   InventoryItemType,
   InventoryMovementType,
   MaintenanceStatus,
+  PurchaseOrderStatus,
   QualityResult,
   SalesOrderStatus,
   ShipmentStatus,
@@ -94,4 +95,29 @@ export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
   in_progress: "Devam Ediyor",
   completed: "Tamamlandı",
   cancelled: "İptal",
+};
+
+export const PURCHASE_ORDER_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
+  draft: "Taslak",
+  sent: "Gönderildi",
+  partially_received: "Kısmi Geldi",
+  received: "Teslim Alındı",
+  cancelled: "İptal",
+};
+
+export const AUDIT_ACTION_LABELS: Record<string, string> = {
+  created: "Oluşturuldu",
+  updated: "Güncellendi",
+  status_changed: "Durum Değişti",
+  quotation_converted: "Siparişe Dönüştürüldü",
+  sales_order_converted: "İş Emrine Dönüştürüldü",
+  operation_started: "Operasyon Başlatıldı",
+  operation_paused: "Operasyon Duraklatıldı",
+  operation_completed: "Operasyon Tamamlandı",
+  subcontracting_sent: "Fasona Gönderildi",
+  subcontracting_returned: "Fason Geri Geldi",
+  quality_result_updated: "Kalite Sonucu Güncellendi",
+  shipment_status_updated: "Sevkiyat Durumu Güncellendi",
+  inventory_movement_created: "Stok Hareketi Oluşturuldu",
+  purchase_order_received: "Satın Alma Teslim Alındı",
 };

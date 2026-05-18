@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable } from "@/components/erp/DataTable";
@@ -90,7 +91,7 @@ export default function InventoryPage() {
           <DataTable
             columns={[
               { key: "code", header: "Kod", render: (row) => row.code || "-" },
-              { key: "name", header: "Ürün/Malzeme", render: (row) => row.name },
+              { key: "name", header: "Ürün/Malzeme", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/erp/inventory/${row.id}`}>{row.name}</Link> },
               { key: "type", header: "Tip", render: (row) => INVENTORY_ITEM_TYPE_LABELS[row.item_type] },
               { key: "stock", header: "Stok", className: "text-right", render: (row) => formatNumber(row.current_stock, 3) },
               { key: "min", header: "Min Stok", className: "text-right", render: (row) => formatNumber(row.min_stock, 3) },

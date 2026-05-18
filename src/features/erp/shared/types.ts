@@ -39,6 +39,19 @@ export type QualityResult = "pending" | "passed" | "failed" | "conditional";
 export type MeasurementResult = "pending" | "passed" | "failed";
 export type MaintenanceStatus = "planned" | "in_progress" | "completed" | "cancelled";
 export type InvoiceStatus = "draft" | "issued" | "paid" | "partial" | "cancelled";
+export type PurchaseOrderStatus = "draft" | "sent" | "partially_received" | "received" | "cancelled";
+export type ERPRole = "admin" | "planner" | "operator" | "finance" | "viewer";
+
+export interface ERPUser {
+  id: string;
+  auth_user_id: string | null;
+  email: string;
+  full_name: string | null;
+  role: ERPRole;
+  department: string | null;
+  is_active: boolean;
+  created_at: string;
+}
 
 export interface Stakeholder {
   id: string;
@@ -300,6 +313,36 @@ export interface Payment {
   created_at: string;
 }
 
+export interface PurchaseOrder {
+  id: string;
+  purchase_order_no: string;
+  supplier_id: string | null;
+  title: string;
+  status: PurchaseOrderStatus;
+  order_date: string;
+  expected_delivery_date: string | null;
+  currency: string;
+  subtotal: number;
+  tax_total: number;
+  grand_total: number;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchase_order_id: string;
+  inventory_item_id: string | null;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  total: number;
+  received_quantity: number;
+  created_at: string;
+}
+
 export interface DocumentMetadata {
   id: string;
   entity_type: string;
@@ -420,6 +463,33 @@ export interface ERPDashboardActivity {
   recentSubcontractingJobs: SubcontractingJob[];
   lowStockItems: InventoryItem[];
   pendingQualityReports: QualityReport[];
+  recentAuditLogs?: ERPAuditLog[];
+}
+
+export interface ERPAuditLog {
+  id: string;
+  actor_user_id: string | null;
+  actor_email: string | null;
+  entity_type: string;
+  entity_id: string | null;
+  action: string;
+  old_status: string | null;
+  new_status: string | null;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface ERPReportSummary {
+  openSalesOrders: number;
+  overdueSalesOrders: number;
+  openWorkOrders: number;
+  overdueWorkOrders: number;
+  waitingSubcontracting: number;
+  lowStockItems: number;
+  inventoryMovements: number;
+  pendingQualityReports: number;
+  upcomingMaintenances: number;
 }
 
 export interface ApiResult<T> {

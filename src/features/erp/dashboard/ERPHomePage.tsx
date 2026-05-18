@@ -9,7 +9,8 @@ import { MigrationNotice } from "@/components/erp/MigrationNotice";
 import { getERPDashboardActivity, getERPDashboardMetrics } from "../shared/erpApi";
 import { DashboardMetrics, ERPDashboardActivity } from "../shared/types";
 import { ERPModuleCard } from "../layout/ERPModuleCard";
-import { formatCurrency, formatDate } from "../shared/formatters";
+import { formatCurrency, formatDate, formatDateTime } from "../shared/formatters";
+import { AUDIT_ACTION_LABELS } from "../shared/statusLabels";
 import { ERPDatabaseStatusWidget } from "./ERPDatabaseStatusWidget";
 
 const defaultMetrics: DashboardMetrics = {
@@ -31,6 +32,7 @@ const defaultActivity: ERPDashboardActivity = {
   recentSubcontractingJobs: [],
   lowStockItems: [],
   pendingQualityReports: [],
+  recentAuditLogs: [],
 };
 
 export default function ERPHomePage() {
@@ -163,6 +165,25 @@ export default function ERPHomePage() {
                   <span>{report.report_no}</span>
                   <span>{formatDate(report.inspection_date)}</span>
                 </Link>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Son İşlem Geçmişi</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {!activity.recentAuditLogs?.length ? (
+              <p className="text-sm text-muted-foreground">Audit kaydı yok.</p>
+            ) : (
+              activity.recentAuditLogs.map((log) => (
+                <div key={log.id} className="rounded-md border p-2 text-sm">
+                  <p className="font-medium">{AUDIT_ACTION_LABELS[log.action] || log.action}</p>
+                  <p className="text-xs text-muted-foreground">{log.description || log.entity_type}</p>
+                  <p className="text-xs text-muted-foreground">{formatDateTime(log.created_at)}</p>
+                </div>
               ))
             )}
           </CardContent>

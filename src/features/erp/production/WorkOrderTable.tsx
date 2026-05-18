@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { DataTable } from "@/components/erp/DataTable";
 import { StatusBadge } from "@/components/erp/StatusBadge";
 import { formatDate, formatNumber } from "../shared/formatters";
@@ -33,7 +34,7 @@ export function WorkOrderTable({
   return (
     <DataTable
       columns={[
-        { key: "wo", header: "İş Emri No", render: (row) => row.work_order_no },
+        { key: "wo", header: "İş Emri No", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/erp/work-orders/${row.id}`}>{row.work_order_no}</Link> },
         {
           key: "customer",
           header: "Müşteri",

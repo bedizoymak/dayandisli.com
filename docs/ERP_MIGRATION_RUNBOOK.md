@@ -102,3 +102,45 @@ Bu migration seti additive tasarlanmıştır. Production verisi içeren tablolar
 - Kalite ölçüm satırları için gelişmiş form
 - İş emri operasyon süre raporları
 - Stok rezervasyon ve satın alma ihtiyaç takibi
+
+## 11. Phase 5 Ek Tablolar
+Phase 5 migration dosyası:
+- `supabase/migrations/20260518093000_erp_phase5_audit_purchasing.sql`
+
+Eklenen tablolar:
+- `erp_audit_logs`
+- `purchase_orders`
+- `purchase_order_items`
+
+Bu migration additive tasarlanmıştır. Mevcut production tabloları silinmez veya değiştirilmez.
+
+## 12. Phase 5 Doğrulama SQL
+```sql
+select table_name
+from information_schema.tables
+where table_schema = 'public'
+and table_name in (
+  'erp_audit_logs',
+  'purchase_orders',
+  'purchase_order_items'
+)
+order by table_name;
+```
+
+```sql
+select count(*) from public.erp_audit_logs;
+select count(*) from public.purchase_orders;
+select count(*) from public.purchase_order_items;
+```
+
+## 13. Phase 5 Manuel Testler
+- CRM ekranından paydaş oluştur.
+- Satış siparişi oluştur ve iş emrine dönüştür.
+- İş emri durumunu güncelle ve audit timeline kontrol et.
+- Satın alma siparişi oluştur.
+- Satın alma siparişine kalem ekle.
+- Satın alma kalemini teslim al ve stok giriş hareketini kontrol et.
+- Stok hareketi oluştur.
+- Kalite sonucu güncelle.
+- Sevkiyat oluştur ve durumunu güncelle.
+- Raporlar ekranından CSV dışa aktarım dene.

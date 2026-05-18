@@ -5,8 +5,11 @@ import {
   DocumentMetadata,
   Employee,
   EmployeeTimeEntry,
+  ERPAuditLog,
   ERPDashboardActivity,
   ERPDatabaseStatus,
+  ERPReportSummary,
+  ERPUser,
   ERPQuotation,
   ERPQuotationConversionState,
   InventoryItem,
@@ -22,6 +25,8 @@ import {
   Priority,
   ProductionRoute,
   ProductionRouteStep,
+  PurchaseOrder,
+  PurchaseOrderItem,
   QualityMeasurement,
   QualityReport,
   SalesOrder,
@@ -140,6 +145,7 @@ function sequencePrefix(sequenceKey: string) {
     SHIPMENT: "SHP",
     QUALITY_REPORT: "QC",
     SUBCONTRACTING: "FSN",
+    PURCHASE_ORDER: "PO",
   };
 
   return prefixes[sequenceKey] ?? "ERP";
@@ -166,7 +172,7 @@ export async function getNextERPNumber(sequenceKey: string): Promise<ApiResult<s
 }
 
 export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatus>> {
-  const keyTables = ["stakeholders", "sales_orders", "work_orders", "inventory_items", "machines", "erp_number_sequences"];
+  const keyTables = ["stakeholders", "sales_orders", "work_orders", "inventory_items", "machines", "erp_number_sequences", "erp_audit_logs", "purchase_orders"];
   const checks = await Promise.all(
     keyTables.map(async (table) => {
       const { error } = (await supabase
@@ -196,6 +202,110 @@ export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatu
     error: hasMissing ? ERP_MIGRATION_MESSAGE : hasRestricted ? "ERP tabloları var ancak bazı tablolarda erişim veya RLS kontrolü gerekiyor." : null,
     missingTable: hasMissing,
   };
+}
+
+export async function getCurrentERPUser(): Promise<ApiResult<ERPUser | null>> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError || !authData.user?.email) return success(null);
+
+  const { data, error } = (await supabase
+    .from("erp_users" as never)
+    .select("*")
+    .eq("email", authData.user.email)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()) as unknown as DbResult<ERPUser>;
+
+  if (error && !isMissingTableError(error)) return failure("getCurrentERPUser", error, null);
+  if (data) return success(data);
+
+  const adminResult = (await supabase
+    .from("admin_users" as never)
+    .select("id, email, role, is_active, created_at")
+    .eq("email", authData.user.email)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()) as unknown as DbResult<{ id: string; email: string; role?: string; is_active: boolean; created_at: string }>;
+
+  if (adminResult.error && !isMissingTableError(adminResult.error)) return failure("getCurrentERPUser admin_users", adminResult.error, null);
+  if (adminResult.data) {
+    return success({
+      id: adminResult.data.id,
+      auth_user_id: authData.user.id,
+      email: adminResult.data.email,
+      full_name: null,
+      role: "admin",
+      department: null,
+      is_active: adminResult.data.is_active,
+      created_at: adminResult.data.created_at,
+    });
+  }
+
+  return success({
+    id: authData.user.id,
+    auth_user_id: authData.user.id,
+    email: authData.user.email,
+    full_name: authData.user.user_metadata?.full_name ? String(authData.user.user_metadata.full_name) : null,
+    role: "viewer",
+    department: null,
+    is_active: true,
+    created_at: authData.user.created_at ?? new Date().toISOString(),
+  });
+}
+
+export async function createAuditLog(payload: {
+  entity_type: string;
+  entity_id?: string | null;
+  action: string;
+  old_status?: string | null;
+  new_status?: string | null;
+  description?: string | null;
+  metadata?: Record<string, unknown> | null;
+}) {
+  const { data: authData } = await supabase.auth.getUser();
+  const { data, error } = (await supabase
+    .from("erp_audit_logs" as never)
+    .insert({
+      actor_user_id: authData.user?.id ?? null,
+      actor_email: authData.user?.email ?? null,
+      entity_type: payload.entity_type,
+      entity_id: payload.entity_id ?? null,
+      action: payload.action,
+      old_status: payload.old_status ?? null,
+      new_status: payload.new_status ?? null,
+      description: payload.description ?? null,
+      metadata: payload.metadata ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<ERPAuditLog>;
+
+  if (error) return failure("createAuditLog", error, null);
+  return success(data);
+}
+
+export async function listAuditLogsForEntity(entityType: string, entityId?: string | null): Promise<ApiResult<ERPAuditLog[]>> {
+  let query = supabase
+    .from("erp_audit_logs" as never)
+    .select("*")
+    .eq("entity_type", entityType)
+    .order("created_at", { ascending: false });
+
+  if (entityId) query = query.eq("entity_id", entityId);
+
+  const { data, error } = (await query.limit(100)) as unknown as DbResult<ERPAuditLog[]>;
+  if (error) return failure("listAuditLogsForEntity", error, []);
+  return success(data ?? []);
+}
+
+export async function listRecentAuditLogs(limit = 10): Promise<ApiResult<ERPAuditLog[]>> {
+  const { data, error } = (await supabase
+    .from("erp_audit_logs" as never)
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit)) as unknown as DbResult<ERPAuditLog[]>;
+
+  if (error) return failure("listRecentAuditLogs", error, []);
+  return success(data ?? []);
 }
 
 export async function listStakeholders(search = "", type?: StakeholderType | "all"): Promise<ApiResult<Stakeholder[]>> {
@@ -253,6 +363,17 @@ export async function updateStakeholder(id: string, payload: Partial<Stakeholder
     .single()) as unknown as DbResult<Stakeholder>;
 
   if (error) return failure("updateStakeholder", error, null);
+  return success(data);
+}
+
+export async function getStakeholderById(id: string) {
+  const { data, error } = (await supabase
+    .from("stakeholders" as never)
+    .select("*")
+    .eq("id", id)
+    .single()) as unknown as DbResult<Stakeholder>;
+
+  if (error) return failure("getStakeholderById", error, null);
   return success(data);
 }
 
@@ -584,6 +705,8 @@ export async function getSalesOrder(id: string) {
   return success(data);
 }
 
+export const getSalesOrderById = getSalesOrder;
+
 export async function createSalesOrder(payload: Partial<SalesOrder> & { title: string }) {
   const generated = payload.order_no ? success(payload.order_no) : await getNextERPNumber("SALES_ORDER");
   const orderNo = generated.data;
@@ -695,6 +818,13 @@ export async function convertQuotationToSalesOrder(quotation: ERPQuotation) {
   }
 
   await linkQuotationToStakeholder(quotation.id, stakeholderResult.data.id, "converted_to_order");
+  await createAuditLog({
+    entity_type: "quotation",
+    entity_id: quotation.id,
+    action: "quotation_converted",
+    description: `${quotation.teklif_no} numaralı teklif satış siparişine dönüştürüldü.`,
+    metadata: { sales_order_id: orderResult.data.id, order_no: orderResult.data.order_no },
+  });
   return orderResult;
 }
 
@@ -821,6 +951,8 @@ export async function getWorkOrder(id: string) {
   return success(data);
 }
 
+export const getWorkOrderById = getWorkOrder;
+
 export async function createWorkOrder(payload: Partial<WorkOrder> & { title: string }) {
   const generated = payload.work_order_no ? success(payload.work_order_no) : await getNextERPNumber("WORK_ORDER");
 
@@ -848,6 +980,10 @@ export async function createWorkOrder(payload: Partial<WorkOrder> & { title: str
 }
 
 export async function updateWorkOrder(id: string, payload: Partial<WorkOrder>) {
+  const before = payload.status
+    ? ((await supabase.from("work_orders" as never).select("status").eq("id", id).maybeSingle()) as unknown as DbResult<{ status: string }>)
+    : null;
+
   const { data, error } = (await supabase
     .from("work_orders" as never)
     .update(payload as never)
@@ -856,6 +992,16 @@ export async function updateWorkOrder(id: string, payload: Partial<WorkOrder>) {
     .single()) as unknown as DbResult<WorkOrder>;
 
   if (error) return failure("updateWorkOrder", error, null);
+  if (payload.status && data) {
+    await createAuditLog({
+      entity_type: "work_order",
+      entity_id: id,
+      action: "status_changed",
+      old_status: before?.data?.status ?? null,
+      new_status: data.status,
+      description: `${data.work_order_no} iş emri durumu güncellendi.`,
+    });
+  }
   return success(data);
 }
 
@@ -884,6 +1030,13 @@ export async function createWorkOrderFromSalesOrder(order: SalesOrder) {
 
   if (!workOrderResult.error && workOrderResult.data) {
     await updateSalesOrder(order.id, { status: "in_production" });
+    await createAuditLog({
+      entity_type: "sales_order",
+      entity_id: order.id,
+      action: "sales_order_converted",
+      description: `${order.order_no} numaralı sipariş iş emrine dönüştürüldü.`,
+      metadata: { work_order_id: workOrderResult.data.id, work_order_no: workOrderResult.data.work_order_no },
+    });
   }
 
   return workOrderResult;
@@ -951,6 +1104,18 @@ export async function updateWorkOrderOperationStatus(id: string, status: WorkOrd
     await updateWorkOrder(data.work_order_id, { status: "in_progress", actual_start_at: data.started_at ?? new Date().toISOString() });
   }
 
+  if (data) {
+    await createAuditLog({
+      entity_type: "work_order_operation",
+      entity_id: data.id,
+      action: status === "in_progress" ? "operation_started" : status === "paused" ? "operation_paused" : status === "completed" ? "operation_completed" : "status_changed",
+      old_status: current.data?.status ?? null,
+      new_status: status,
+      description: `${data.operation_name} operasyonu güncellendi.`,
+      metadata: { work_order_id: data.work_order_id },
+    });
+  }
+
   return success(data);
 }
 
@@ -989,6 +1154,17 @@ export async function listSubcontractingJobs(): Promise<ApiResult<Subcontracting
   return success(data ?? []);
 }
 
+export async function getSubcontractingJobById(id: string) {
+  const { data, error } = (await supabase
+    .from("subcontracting_jobs" as never)
+    .select("*")
+    .eq("id", id)
+    .single()) as unknown as DbResult<SubcontractingJob>;
+
+  if (error) return failure("getSubcontractingJobById", error, null);
+  return success(data);
+}
+
 export async function createSubcontractingJob(payload: Partial<SubcontractingJob> & { process_type: string }) {
   const { data, error } = (await supabase
     .from("subcontracting_jobs" as never)
@@ -1018,6 +1194,10 @@ export async function createSubcontractingJob(payload: Partial<SubcontractingJob
 }
 
 export async function updateSubcontractingJob(id: string, payload: Partial<SubcontractingJob>) {
+  const before = payload.status
+    ? ((await supabase.from("subcontracting_jobs" as never).select("status").eq("id", id).maybeSingle()) as unknown as DbResult<{ status: string }>)
+    : null;
+
   const { data, error } = (await supabase
     .from("subcontracting_jobs" as never)
     .update(payload as never)
@@ -1028,6 +1208,17 @@ export async function updateSubcontractingJob(id: string, payload: Partial<Subco
   if (error) return failure("updateSubcontractingJob", error, null);
   if (data?.work_order_id && (data.status === "sent" || data.status === "in_process")) {
     await updateWorkOrder(data.work_order_id, { status: "waiting_subcontractor" });
+  }
+  if (payload.status && data) {
+    await createAuditLog({
+      entity_type: "subcontracting_job",
+      entity_id: data.id,
+      action: data.status === "sent" ? "subcontracting_sent" : data.status === "returned" ? "subcontracting_returned" : "status_changed",
+      old_status: before?.data?.status ?? null,
+      new_status: data.status,
+      description: `${data.process_type} fason durumu güncellendi.`,
+      metadata: { work_order_id: data.work_order_id },
+    });
   }
   return success(data);
 }
@@ -1044,6 +1235,17 @@ export async function listInventoryItems(search = ""): Promise<ApiResult<Invento
   const { data, error } = (await query) as unknown as DbResult<InventoryItem[]>;
   if (error) return failure("listInventoryItems", error, []);
   return success(data ?? []);
+}
+
+export async function getInventoryItemById(id: string) {
+  const { data, error } = (await supabase
+    .from("inventory_items" as never)
+    .select("*")
+    .eq("id", id)
+    .single()) as unknown as DbResult<InventoryItem>;
+
+  if (error) return failure("getInventoryItemById", error, null);
+  return success(data);
 }
 
 export async function createInventoryItem(payload: Partial<InventoryItem> & { item_type: InventoryItem["item_type"]; name: string }) {
@@ -1092,6 +1294,18 @@ export async function listInventoryMovements(): Promise<ApiResult<InventoryMovem
   return success(data ?? []);
 }
 
+export async function listInventoryMovementsForItem(inventoryItemId: string): Promise<ApiResult<InventoryMovement[]>> {
+  const { data, error } = (await supabase
+    .from("inventory_movements" as never)
+    .select("*")
+    .eq("inventory_item_id", inventoryItemId)
+    .order("movement_date", { ascending: false })
+    .limit(200)) as unknown as DbResult<InventoryMovement[]>;
+
+  if (error) return failure("listInventoryMovementsForItem", error, []);
+  return success(data ?? []);
+}
+
 export async function createInventoryMovement(payload: {
   inventory_item_id: string;
   movement_type: InventoryMovementType;
@@ -1137,6 +1351,18 @@ export async function createInventoryMovement(payload: {
 
   if (payload.movement_type !== "reservation") {
     await updateInventoryItem(payload.inventory_item_id, { current_stock: nextStock });
+  }
+
+  if (data) {
+    await createAuditLog({
+      entity_type: "inventory_item",
+      entity_id: payload.inventory_item_id,
+      action: "inventory_movement_created",
+      old_status: String(currentStock),
+      new_status: String(nextStock),
+      description: `${payload.movement_type} stok hareketi oluşturuldu.`,
+      metadata: { movement_id: data.id, quantity: qty, source_type: payload.source_type ?? "manual" },
+    });
   }
 
   return success(data);
@@ -1222,6 +1448,17 @@ export async function listShipments(): Promise<ApiResult<Shipment[]>> {
   return success(data ?? []);
 }
 
+export async function getShipmentById(id: string) {
+  const { data, error } = (await supabase
+    .from("shipments" as never)
+    .select("*")
+    .eq("id", id)
+    .single()) as unknown as DbResult<Shipment>;
+
+  if (error) return failure("getShipmentById", error, null);
+  return success(data);
+}
+
 export async function createShipment(payload: Partial<Shipment>) {
   const generated = payload.shipment_no ? success(payload.shipment_no) : await getNextERPNumber("SHIPMENT");
 
@@ -1248,6 +1485,10 @@ export async function createShipment(payload: Partial<Shipment>) {
 }
 
 export async function updateShipment(id: string, payload: Partial<Shipment>) {
+  const before = payload.status
+    ? ((await supabase.from("shipments" as never).select("status").eq("id", id).maybeSingle()) as unknown as DbResult<{ status: string }>)
+    : null;
+
   const { data, error } = (await supabase
     .from("shipments" as never)
     .update(payload as never)
@@ -1257,6 +1498,17 @@ export async function updateShipment(id: string, payload: Partial<Shipment>) {
 
   if (error) return failure("updateShipment", error, null);
   if (data?.sales_order_id && data.status === "shipped") await updateSalesOrder(data.sales_order_id, { status: "shipped" });
+  if (payload.status && data) {
+    await createAuditLog({
+      entity_type: "shipment",
+      entity_id: data.id,
+      action: data.status === "shipped" ? "shipment_status_updated" : "status_changed",
+      old_status: before?.data?.status ?? null,
+      new_status: data.status,
+      description: `${data.shipment_no} sevkiyat durumu güncellendi.`,
+      metadata: { sales_order_id: data.sales_order_id },
+    });
+  }
   return success(data);
 }
 
@@ -1319,6 +1571,17 @@ export async function listQualityReports(): Promise<ApiResult<QualityReport[]>> 
   return success(data ?? []);
 }
 
+export async function getQualityReportById(id: string) {
+  const { data, error } = (await supabase
+    .from("quality_reports" as never)
+    .select("*")
+    .eq("id", id)
+    .single()) as unknown as DbResult<QualityReport>;
+
+  if (error) return failure("getQualityReportById", error, null);
+  return success(data);
+}
+
 export async function createQualityReport(payload: Partial<QualityReport>) {
   const generated = payload.report_no ? success(payload.report_no) : await getNextERPNumber("QUALITY_REPORT");
 
@@ -1342,6 +1605,10 @@ export async function createQualityReport(payload: Partial<QualityReport>) {
 }
 
 export async function updateQualityReport(id: string, payload: Partial<QualityReport>) {
+  const before = payload.result
+    ? ((await supabase.from("quality_reports" as never).select("result").eq("id", id).maybeSingle()) as unknown as DbResult<{ result: string }>)
+    : null;
+
   const { data, error } = (await supabase
     .from("quality_reports" as never)
     .update(payload as never)
@@ -1350,6 +1617,17 @@ export async function updateQualityReport(id: string, payload: Partial<QualityRe
     .single()) as unknown as DbResult<QualityReport>;
 
   if (error) return failure("updateQualityReport", error, null);
+  if (payload.result && data) {
+    await createAuditLog({
+      entity_type: "quality_report",
+      entity_id: data.id,
+      action: "quality_result_updated",
+      old_status: before?.data?.result ?? null,
+      new_status: data.result,
+      description: `${data.report_no} kalite sonucu güncellendi.`,
+      metadata: { work_order_id: data.work_order_id, sales_order_id: data.sales_order_id },
+    });
+  }
   return success(data);
 }
 
@@ -1487,6 +1765,153 @@ export async function createPayment(payload: Partial<Payment> & { payment_type: 
   return success(data);
 }
 
+export async function listPurchaseOrders(search = ""): Promise<ApiResult<PurchaseOrder[]>> {
+  let query = supabase
+    .from("purchase_orders" as never)
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  const q = normalizeSearch(search);
+  if (q) query = query.or(`purchase_order_no.ilike.%${q}%,title.ilike.%${q}%`);
+
+  const { data, error } = (await query) as unknown as DbResult<PurchaseOrder[]>;
+  if (error) return failure("listPurchaseOrders", error, []);
+  return success(data ?? []);
+}
+
+export async function getPurchaseOrderById(id: string) {
+  const { data, error } = (await supabase
+    .from("purchase_orders" as never)
+    .select("*")
+    .eq("id", id)
+    .single()) as unknown as DbResult<PurchaseOrder>;
+
+  if (error) return failure("getPurchaseOrderById", error, null);
+  return success(data);
+}
+
+export async function createPurchaseOrder(payload: Partial<PurchaseOrder> & { title: string }) {
+  const generated = payload.purchase_order_no ? success(payload.purchase_order_no) : await getNextERPNumber("PURCHASE_ORDER");
+  const { data, error } = (await supabase
+    .from("purchase_orders" as never)
+    .insert({
+      purchase_order_no: generated.data,
+      supplier_id: payload.supplier_id ?? null,
+      title: payload.title,
+      status: payload.status ?? "draft",
+      order_date: payload.order_date ?? new Date().toISOString().slice(0, 10),
+      expected_delivery_date: payload.expected_delivery_date ?? null,
+      currency: payload.currency ?? "TRY",
+      subtotal: payload.subtotal ?? 0,
+      tax_total: payload.tax_total ?? 0,
+      grand_total: payload.grand_total ?? 0,
+      notes: payload.notes ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<PurchaseOrder>;
+
+  if (error) return failure("createPurchaseOrder", error, null);
+  if (data) await createAuditLog({ entity_type: "purchase_order", entity_id: data.id, action: "created", description: `${data.purchase_order_no} satın alma siparişi oluşturuldu.` });
+  return { data, error: null, missingTable: generated.missingTable };
+}
+
+export async function updatePurchaseOrder(id: string, payload: Partial<PurchaseOrder>) {
+  const before = payload.status
+    ? ((await supabase.from("purchase_orders" as never).select("status").eq("id", id).maybeSingle()) as unknown as DbResult<{ status: string }>)
+    : null;
+
+  const { data, error } = (await supabase
+    .from("purchase_orders" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<PurchaseOrder>;
+
+  if (error) return failure("updatePurchaseOrder", error, null);
+  if (payload.status && data) {
+    await createAuditLog({
+      entity_type: "purchase_order",
+      entity_id: id,
+      action: "status_changed",
+      old_status: before?.data?.status ?? null,
+      new_status: data.status,
+      description: `${data.purchase_order_no} satın alma durumu güncellendi.`,
+    });
+  }
+  return success(data);
+}
+
+export async function listPurchaseOrderItems(purchaseOrderId: string): Promise<ApiResult<PurchaseOrderItem[]>> {
+  const { data, error } = (await supabase
+    .from("purchase_order_items" as never)
+    .select("*")
+    .eq("purchase_order_id", purchaseOrderId)
+    .order("created_at", { ascending: true })) as unknown as DbResult<PurchaseOrderItem[]>;
+
+  if (error) return failure("listPurchaseOrderItems", error, []);
+  return success(data ?? []);
+}
+
+export async function createPurchaseOrderItem(payload: Partial<PurchaseOrderItem> & { purchase_order_id: string; description: string }) {
+  const quantity = numberValue(payload.quantity, 1);
+  const unitPrice = numberValue(payload.unit_price, 0);
+  const total = payload.total ?? quantity * unitPrice;
+  const { data, error } = (await supabase
+    .from("purchase_order_items" as never)
+    .insert({
+      purchase_order_id: payload.purchase_order_id,
+      inventory_item_id: payload.inventory_item_id ?? null,
+      description: payload.description,
+      quantity,
+      unit: payload.unit ?? "adet",
+      unit_price: unitPrice,
+      total,
+      received_quantity: payload.received_quantity ?? 0,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<PurchaseOrderItem>;
+
+  if (error) return failure("createPurchaseOrderItem", error, null);
+  return success(data);
+}
+
+export async function receivePurchaseOrderItem(item: PurchaseOrderItem, quantity: number) {
+  const receivedQuantity = Math.min(numberValue(item.received_quantity, 0) + quantity, numberValue(item.quantity, 0));
+  const { data, error } = (await supabase
+    .from("purchase_order_items" as never)
+    .update({ received_quantity: receivedQuantity } as never)
+    .eq("id", item.id)
+    .select("*")
+    .single()) as unknown as DbResult<PurchaseOrderItem>;
+
+  if (error) return failure("receivePurchaseOrderItem", error, null);
+
+  if (item.inventory_item_id && quantity > 0) {
+    await createInventoryMovement({
+      inventory_item_id: item.inventory_item_id,
+      movement_type: "in",
+      quantity,
+      source_type: "purchase_order",
+      source_id: item.purchase_order_id,
+      notes: `${item.description} satın alma teslim alındı.`,
+    });
+  }
+
+  const allItems = await listPurchaseOrderItems(item.purchase_order_id);
+  const allReceived = allItems.data.every((row) => Number(row.received_quantity) >= Number(row.quantity));
+  const partiallyReceived = allItems.data.some((row) => Number(row.received_quantity) > 0);
+  await updatePurchaseOrder(item.purchase_order_id, { status: allReceived ? "received" : partiallyReceived ? "partially_received" : "sent" });
+  await createAuditLog({
+    entity_type: "purchase_order",
+    entity_id: item.purchase_order_id,
+    action: "purchase_order_received",
+    description: `${item.description} kaleminden ${quantity} ${item.unit} teslim alındı.`,
+    metadata: { purchase_order_item_id: item.id, inventory_item_id: item.inventory_item_id },
+  });
+
+  return success(data);
+}
+
 export async function listDocuments(): Promise<ApiResult<DocumentMetadata[]>> {
   const { data, error } = (await supabase
     .from("documents" as never)
@@ -1494,6 +1919,18 @@ export async function listDocuments(): Promise<ApiResult<DocumentMetadata[]>> {
     .order("created_at", { ascending: false })) as unknown as DbResult<DocumentMetadata[]>;
 
   if (error) return failure("listDocuments", error, []);
+  return success(data ?? []);
+}
+
+export async function listDocumentsForEntity(entityType: string, entityId: string): Promise<ApiResult<DocumentMetadata[]>> {
+  const { data, error } = (await supabase
+    .from("documents" as never)
+    .select("*")
+    .eq("entity_type", entityType)
+    .eq("entity_id", entityId)
+    .order("created_at", { ascending: false })) as unknown as DbResult<DocumentMetadata[]>;
+
+  if (error) return failure("listDocumentsForEntity", error, []);
   return success(data ?? []);
 }
 
@@ -1523,19 +1960,22 @@ export async function getERPDashboardActivity(): Promise<ApiResult<ERPDashboardA
     recentSubcontractingJobs: [],
     lowStockItems: [],
     pendingQualityReports: [],
+    recentAuditLogs: [],
   };
 
   try {
-    const [salesOrders, workOrders, subcontracting, inventory, quality] = await Promise.all([
+    const [salesOrders, workOrders, subcontracting, inventory, quality, auditLogs] = await Promise.all([
       listSalesOrders(),
       listWorkOrders(),
       listSubcontractingJobs(),
       listInventoryItems(),
       listQualityReports(),
+      listRecentAuditLogs(8),
     ]);
 
-    const missingTable = [salesOrders, workOrders, subcontracting, inventory, quality].some((result) => result.missingTable);
-    const firstError = [salesOrders, workOrders, subcontracting, inventory, quality].find((result) => result.error)?.error ?? null;
+    const results = [salesOrders, workOrders, subcontracting, inventory, quality, auditLogs];
+    const missingTable = results.some((result) => result.missingTable);
+    const firstError = results.find((result) => result.error)?.error ?? null;
 
     return {
       data: {
@@ -1544,6 +1984,7 @@ export async function getERPDashboardActivity(): Promise<ApiResult<ERPDashboardA
         recentSubcontractingJobs: subcontracting.data.slice(0, 5),
         lowStockItems: inventory.data.filter((item) => Number(item.current_stock) <= Number(item.min_stock)).slice(0, 5),
         pendingQualityReports: quality.data.filter((report) => report.result === "pending").slice(0, 5),
+        recentAuditLogs: auditLogs.data,
       },
       error: missingTable ? ERP_MIGRATION_MESSAGE : firstError,
       missingTable,
@@ -1671,3 +2112,58 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
 }
 
 export const getDashboardMetrics = getERPDashboardMetrics;
+
+export async function getERPReportSummary(): Promise<ApiResult<ERPReportSummary>> {
+  const empty: ERPReportSummary = {
+    openSalesOrders: 0,
+    overdueSalesOrders: 0,
+    openWorkOrders: 0,
+    overdueWorkOrders: 0,
+    waitingSubcontracting: 0,
+    lowStockItems: 0,
+    inventoryMovements: 0,
+    pendingQualityReports: 0,
+    upcomingMaintenances: 0,
+  };
+
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const [
+      openSalesOrders,
+      overdueSalesOrders,
+      openWorkOrders,
+      overdueWorkOrders,
+      waitingSubcontracting,
+      inventoryMovements,
+      pendingQualityReports,
+      upcomingMaintenances,
+    ] = await Promise.all([
+      safeCount("report open sales orders", supabase.from("sales_orders" as never).select("id", { count: "exact", head: true }).not("status", "in", "(closed,cancelled)") as unknown as Promise<unknown>),
+      safeCount("report overdue sales orders", supabase.from("sales_orders" as never).select("id", { count: "exact", head: true }).not("status", "in", "(closed,cancelled)").lt("due_date", today) as unknown as Promise<unknown>),
+      safeCount("report open work orders", supabase.from("work_orders" as never).select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)") as unknown as Promise<unknown>),
+      safeCount("report overdue work orders", supabase.from("work_orders" as never).select("id", { count: "exact", head: true }).not("status", "in", "(completed,cancelled)").lt("planned_end_date", today) as unknown as Promise<unknown>),
+      safeCount("report subcontracting", supabase.from("subcontracting_jobs" as never).select("id", { count: "exact", head: true }).not("status", "in", "(returned,cancelled)") as unknown as Promise<unknown>),
+      safeCount("report inventory movements", supabase.from("inventory_movements" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
+      safeCount("report quality pending", supabase.from("quality_reports" as never).select("id", { count: "exact", head: true }).eq("result", "pending") as unknown as Promise<unknown>),
+      safeCount("report maintenance", supabase.from("maintenance_tasks" as never).select("id", { count: "exact", head: true }).in("status", ["planned", "in_progress"]) as unknown as Promise<unknown>),
+    ]);
+
+    const stock = await listInventoryItems();
+    const summary: ERPReportSummary = {
+      openSalesOrders: openSalesOrders.count,
+      overdueSalesOrders: overdueSalesOrders.count,
+      openWorkOrders: openWorkOrders.count,
+      overdueWorkOrders: overdueWorkOrders.count,
+      waitingSubcontracting: waitingSubcontracting.count,
+      lowStockItems: stock.data.filter((item) => Number(item.current_stock) <= Number(item.min_stock)).length,
+      inventoryMovements: inventoryMovements.count,
+      pendingQualityReports: pendingQualityReports.count,
+      upcomingMaintenances: upcomingMaintenances.count,
+    };
+
+    const missingTable = [openSalesOrders, overdueSalesOrders, openWorkOrders, overdueWorkOrders, waitingSubcontracting, inventoryMovements, pendingQualityReports, upcomingMaintenances].some((item) => item.missingTable) || stock.missingTable;
+    return { data: summary, error: missingTable ? ERP_MIGRATION_MESSAGE : stock.error, missingTable };
+  } catch (error) {
+    return failure("getERPReportSummary", error, empty);
+  }
+}
