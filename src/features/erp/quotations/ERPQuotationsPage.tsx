@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/erp/ConfirmDialog";
 import { DataTable } from "@/components/erp/DataTable";
 import { EmptyState } from "@/components/erp/EmptyState";
 import { MigrationNotice } from "@/components/erp/MigrationNotice";
@@ -18,6 +19,7 @@ export default function ERPQuotationsPage() {
   const [rows, setRows] = useState<ERPQuotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [selectedQuotation, setSelectedQuotation] = useState<ERPQuotation | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -44,11 +46,32 @@ export default function ERPQuotationsPage() {
     return rows.filter((row) => row.teklif_no.toLowerCase().includes(q) || row.firma.toLowerCase().includes(q));
   }, [rows, search]);
 
+  const convertSelectedQuotation = async () => {
+    const row = selectedQuotation;
+    if (!row) return;
+
+    setConvertingId(row.id);
+    const result = await convertQuotationToSalesOrder(row);
+    setConvertingId(null);
+    setSelectedQuotation(null);
+
+    if (result.error && !result.data) {
+      toast({ title: "Dönüştürme Hatası", description: result.error || "Sipariş oluşturulamadı.", variant: "destructive" });
+      return;
+    }
+
+    toast({
+      title: result.error ? "Teklif Daha Önce Dönüştürülmüş" : "Sipariş Oluşturuldu",
+      description: result.error || `${row.teklif_no} ERP siparişine dönüştürüldü.`,
+    });
+    navigate("/erp/sales-orders");
+  };
+
   return (
     <ERPLayout title="Teklif Yönetimi">
       <PageHeader
         title="ERP Teklif Görünümü"
-        description="Mevcut quotations tablosundaki teklifleri ERP ekranında görüntüleyin."
+        description="Mevcut quotations tablosundaki teklifleri ERP ekranında görüntüleyin ve güvenli şekilde siparişe dönüştürün."
         actions={
           <Button asChild>
             <Link to="/teklif-sayfasi">Teklif Oluşturucuya Git</Link>
@@ -85,24 +108,7 @@ export default function ERPQuotationsPage() {
                 header: "İşlem",
                 className: "text-right",
                 render: (row) => (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={convertingId === row.id}
-                    onClick={async () => {
-                      setConvertingId(row.id);
-                      const result = await convertQuotationToSalesOrder(row);
-                      setConvertingId(null);
-
-                      if (result.error || !result.data) {
-                        toast({ title: "Dönüştürme Hatası", description: result.error || "Sipariş oluşturulamadı.", variant: "destructive" });
-                        return;
-                      }
-
-                      toast({ title: "Sipariş Oluşturuldu", description: `${row.teklif_no} ERP siparişine dönüştürüldü.` });
-                      navigate("/erp/sales-orders");
-                    }}
-                  >
+                  <Button variant="outline" size="sm" disabled={convertingId === row.id} onClick={() => setSelectedQuotation(row)}>
                     {convertingId === row.id ? "Dönüştürülüyor..." : "Siparişe Dönüştür"}
                   </Button>
                 ),
@@ -114,6 +120,21 @@ export default function ERPQuotationsPage() {
           />
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(selectedQuotation)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedQuotation(null);
+        }}
+        title="Teklif siparişe dönüştürülsün mü?"
+        description={
+          selectedQuotation
+            ? `Teklif No: ${selectedQuotation.teklif_no} | Firma: ${selectedQuotation.firma} | Toplam: ${formatCurrency(selectedQuotation.total ?? 0, selectedQuotation.active_currency || "TRY")}`
+            : ""
+        }
+        confirmText="Siparişe Dönüştür"
+        onConfirm={convertSelectedQuotation}
+      />
     </ERPLayout>
   );
 }

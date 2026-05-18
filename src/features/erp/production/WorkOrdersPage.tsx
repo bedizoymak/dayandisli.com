@@ -9,12 +9,13 @@ import {
   createQualityReport,
   createSubcontractingJob,
   createWorkOrder,
+  listMachines,
   listProductionRoutes,
   listStakeholders,
   listWorkOrders,
   updateWorkOrder,
 } from "../shared/erpApi";
-import { ProductionRoute, Stakeholder, WorkOrder } from "../shared/types";
+import { Machine, ProductionRoute, Stakeholder, WorkOrder } from "../shared/types";
 import { WorkOrderForm } from "./WorkOrderForm";
 import { WorkOrderTable } from "./WorkOrderTable";
 import { WorkOrderOperations } from "./WorkOrderOperations";
@@ -24,6 +25,7 @@ export default function WorkOrdersPage() {
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
   const [routes, setRoutes] = useState<ProductionRoute[]>([]);
+  const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
@@ -32,10 +34,11 @@ export default function WorkOrdersPage() {
 
   const load = async () => {
     setLoading(true);
-    const [workOrdersResult, stakeholdersResult, routesResult] = await Promise.all([
+    const [workOrdersResult, stakeholdersResult, routesResult, machinesResult] = await Promise.all([
       listWorkOrders(),
       listStakeholders(),
       listProductionRoutes(),
+      listMachines(),
     ]);
 
     if (workOrdersResult.error) {
@@ -52,6 +55,7 @@ export default function WorkOrdersPage() {
     setRows(workOrdersResult.data);
     setStakeholders(stakeholdersResult.data.filter((item) => item.is_active));
     setRoutes(routesResult.data.filter((route) => route.is_template));
+    setMachines(machinesResult.data);
     setLoading(false);
   };
 
@@ -76,6 +80,21 @@ export default function WorkOrdersPage() {
         (row.part_name || "").toLowerCase().includes(q)
     );
   }, [rows, search]);
+
+  const sendToQuality = async (wo: WorkOrder) => {
+    const result = await createQualityReport({
+      work_order_id: wo.id,
+      sales_order_id: wo.sales_order_id,
+      result: "pending",
+      notes: "İş emri ekranından kalite kontrole gönderildi.",
+    });
+    if (result.error) {
+      toast({ title: "Kalite Kontrol", description: result.error, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Kalite Kontrole Gönderildi", description: "Bekleyen kalite raporu oluşturuldu." });
+    await load();
+  };
 
   return (
     <ERPLayout title="İş Emirleri">
@@ -150,25 +169,19 @@ export default function WorkOrdersPage() {
               toast({ title: "Fason Kaydı Oluşturuldu", description: "İş emri fason takip listesine alındı." });
               await load();
             }}
-            onSendQuality={async (wo) => {
-              const result = await createQualityReport({
-                work_order_id: wo.id,
-                sales_order_id: wo.sales_order_id,
-                result: "pending",
-                notes: "İş emri ekranından kalite kontrole gönderildi.",
-              });
-              if (result.error) {
-                toast({ title: "Kalite Kontrol", description: result.error, variant: "destructive" });
-                return;
-              }
-              toast({ title: "Kalite Kontrole Gönderildi", description: "Bekleyen kalite raporu oluşturuldu." });
-              await load();
-            }}
+            onSendQuality={sendToQuality}
           />
         )}
       </div>
 
-      <WorkOrderOperations workOrder={selectedWorkOrder} routes={routes} onChanged={load} />
+      <WorkOrderOperations
+        workOrder={selectedWorkOrder}
+        routes={routes}
+        machines={machines}
+        stakeholderName={selectedWorkOrder?.stakeholder_id ? stakeholderNameById[selectedWorkOrder.stakeholder_id] : undefined}
+        onSendQuality={sendToQuality}
+        onChanged={load}
+      />
     </ERPLayout>
   );
 }

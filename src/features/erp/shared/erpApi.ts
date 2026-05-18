@@ -5,11 +5,17 @@ import {
   DocumentMetadata,
   Employee,
   EmployeeTimeEntry,
+  ERPDashboardActivity,
+  ERPDatabaseStatus,
   ERPQuotation,
+  ERPQuotationConversionState,
   InventoryItem,
   InventoryMovement,
   InventoryMovementType,
   Invoice,
+  LegacyCustomerCandidate,
+  LegacyCustomerImportPreview,
+  LegacyCustomerImportResult,
   Machine,
   MaintenanceTask,
   Payment,
@@ -102,6 +108,31 @@ function numberValue(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function textValue(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+  }
+  return null;
+}
+
+function normalizeKey(value?: string | null) {
+  return (value ?? "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uniqueBy<T>(items: T[], keyGetter: (item: T) => string) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = keyGetter(item);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function sequencePrefix(sequenceKey: string) {
   const prefixes: Record<string, string> = {
     SALES_ORDER: "SO",
@@ -132,6 +163,39 @@ export async function getNextERPNumber(sequenceKey: string): Promise<ApiResult<s
     logError("getNextERPNumber", error);
     return { data: `${prefix}-TEMP-${Date.now()}`, error: toErrorMessage(error), missingTable: isMissingTableError(error) };
   }
+}
+
+export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatus>> {
+  const keyTables = ["stakeholders", "sales_orders", "work_orders", "inventory_items", "machines", "erp_number_sequences"];
+  const checks = await Promise.all(
+    keyTables.map(async (table) => {
+      const { error } = (await supabase
+        .from(table as never)
+        .select("id", { count: "exact", head: true })) as unknown as { error: unknown };
+
+      if (!error) return { table, status: "ready" as const, message: null };
+      logError(`database status ${table}`, error);
+      return {
+        table,
+        status: isMissingTableError(error) ? ("missing" as const) : ("restricted" as const),
+        message: toErrorMessage(error),
+      };
+    })
+  );
+
+  const hasMissing = checks.some((check) => check.status === "missing");
+  const hasRestricted = checks.some((check) => check.status === "restricted");
+  const data: ERPDatabaseStatus = {
+    overall: hasMissing ? "missing_migration" : hasRestricted ? "rls_check_required" : "ready",
+    label: hasMissing ? "Eksik Migration" : hasRestricted ? "Erişim/RLS Kontrolü Gerekli" : "Hazır",
+    tables: checks,
+  };
+
+  return {
+    data,
+    error: hasMissing ? ERP_MIGRATION_MESSAGE : hasRestricted ? "ERP tabloları var ancak bazı tablolarda erişim veya RLS kontrolü gerekiyor." : null,
+    missingTable: hasMissing,
+  };
 }
 
 export async function listStakeholders(search = "", type?: StakeholderType | "all"): Promise<ApiResult<Stakeholder[]>> {
@@ -192,6 +256,188 @@ export async function updateStakeholder(id: string, payload: Partial<Stakeholder
   return success(data);
 }
 
+function mapLegacyCustomer(source_table: LegacyCustomerCandidate["source_table"], index: number, record: Record<string, unknown>): LegacyCustomerCandidate | null {
+  const companyName = textValue(record, [
+    "company_name",
+    "firma",
+    "firma_adi",
+    "firma_adı",
+    "unvan",
+    "title",
+    "customer_name",
+    "name",
+  ]);
+
+  if (!companyName) {
+    return {
+      source_table,
+      source_key: String(record.id ?? `${source_table}-${index}`),
+      company_name: "",
+      contact_name: null,
+      phone: null,
+      email: null,
+      tax_office: null,
+      tax_number: null,
+      address: null,
+      city: null,
+      notes: "Firma adı tespit edilemedi.",
+      duplicate: false,
+      duplicate_reason: null,
+    };
+  }
+
+  return {
+    source_table,
+    source_key: String(record.id ?? `${source_table}-${index}`),
+    company_name: companyName,
+    contact_name: textValue(record, ["contact_name", "ilgili_kisi", "ilgili_kişi", "yetkili", "authorized_person", "person"]),
+    phone: textValue(record, ["phone", "telefon", "tel", "gsm", "mobile"]),
+    email: textValue(record, ["email", "e_posta", "mail"]),
+    tax_office: textValue(record, ["tax_office", "vergi_dairesi"]),
+    tax_number: textValue(record, ["tax_number", "vergi_no", "vkn", "tckn"]),
+    address: textValue(record, ["address", "adres", "full_address"]),
+    city: textValue(record, ["city", "sehir", "şehir", "il"]),
+    notes: textValue(record, ["notes", "notlar", "description"]),
+    duplicate: false,
+    duplicate_reason: null,
+  };
+}
+
+async function readLegacyCustomerTable(table: LegacyCustomerCandidate["source_table"]) {
+  const { data, error } = (await supabase.from(table as never).select("*").limit(1000)) as unknown as DbResult<Record<string, unknown>[]>;
+  if (error) {
+    logError(`read legacy customer table ${table}`, error);
+    return { rows: [], error: isMissingTableError(error) ? `${table} tablosu bulunamadı.` : `${table}: ${toErrorMessage(error)}` };
+  }
+  return { rows: data ?? [], error: null };
+}
+
+async function buildLegacyCustomerPreview(): Promise<LegacyCustomerImportPreview> {
+  const [profileResult, fullResult, stakeholderResult] = await Promise.all([
+    readLegacyCustomerTable("customer_profile"),
+    readLegacyCustomerTable("customers_full"),
+    listStakeholders(),
+  ]);
+
+  const existing = stakeholderResult.data;
+  const existingCompanyKeys = new Set(existing.map((item) => normalizeKey(item.company_name)).filter(Boolean));
+  const existingEmails = new Set(existing.map((item) => normalizeKey(item.email)).filter(Boolean));
+  const existingPhones = new Set(existing.map((item) => normalizeKey(item.phone)).filter(Boolean));
+  const tableErrors = [profileResult.error, fullResult.error, stakeholderResult.error].filter(Boolean) as string[];
+
+  const rawCandidates = [
+    ...profileResult.rows.map((row, index) => mapLegacyCustomer("customer_profile", index, row)),
+    ...fullResult.rows.map((row, index) => mapLegacyCustomer("customers_full", index, row)),
+  ].filter(Boolean) as LegacyCustomerCandidate[];
+
+  const uniqueCandidates = uniqueBy(rawCandidates, (candidate) => {
+    const company = normalizeKey(candidate.company_name);
+    const email = normalizeKey(candidate.email);
+    const phone = normalizeKey(candidate.phone);
+    return `${company}|${email}|${phone}`;
+  });
+
+  const candidates = uniqueCandidates.map((candidate) => {
+    if (!candidate.company_name.trim()) return candidate;
+
+    const companyKey = normalizeKey(candidate.company_name);
+    const emailKey = normalizeKey(candidate.email);
+    const phoneKey = normalizeKey(candidate.phone);
+    const duplicate =
+      existingCompanyKeys.has(companyKey) ||
+      Boolean(emailKey && existingEmails.has(emailKey)) ||
+      Boolean(phoneKey && existingPhones.has(phoneKey));
+
+    return {
+      ...candidate,
+      duplicate,
+      duplicate_reason: duplicate ? "Aynı firma, e-posta veya telefon ERP paydaşlarında mevcut." : null,
+    };
+  });
+
+  const missingCompany = candidates.filter((candidate) => !candidate.company_name.trim()).length;
+  const skippedDuplicates = candidates.filter((candidate) => candidate.duplicate).length;
+  const importable = candidates.filter((candidate) => candidate.company_name.trim() && !candidate.duplicate).length;
+
+  return {
+    scanned: rawCandidates.length,
+    importable,
+    skippedDuplicates,
+    missingCompany,
+    tableErrors,
+    sample: candidates.slice(0, 8),
+    candidates,
+  };
+}
+
+export async function previewLegacyCustomerImport(): Promise<ApiResult<LegacyCustomerImportPreview>> {
+  const emptyPreview: LegacyCustomerImportPreview = {
+    scanned: 0,
+    importable: 0,
+    skippedDuplicates: 0,
+    missingCompany: 0,
+    tableErrors: [],
+    sample: [],
+    candidates: [],
+  };
+
+  try {
+    const preview = await buildLegacyCustomerPreview();
+    const missingTable = preview.tableErrors.some((message) => message.includes("bulunamadı"));
+    return {
+      data: preview,
+      error: preview.tableErrors.length ? preview.tableErrors.join(" ") : null,
+      missingTable,
+    };
+  } catch (error) {
+    return failure("previewLegacyCustomerImport", error, emptyPreview);
+  }
+}
+
+export async function importLegacyCustomersToStakeholders(): Promise<ApiResult<LegacyCustomerImportResult>> {
+  const defaultResult: LegacyCustomerImportResult = { imported: 0, skippedDuplicates: 0, failed: 0, errors: [] };
+
+  try {
+    const preview = await buildLegacyCustomerPreview();
+    const result: LegacyCustomerImportResult = {
+      imported: 0,
+      skippedDuplicates: preview.skippedDuplicates + preview.missingCompany,
+      failed: 0,
+      errors: [...preview.tableErrors],
+    };
+
+    const importable = preview.candidates.filter((candidate) => candidate.company_name.trim() && !candidate.duplicate);
+
+    for (const candidate of importable) {
+      const created = await createStakeholder({
+        type: "customer",
+        company_name: candidate.company_name,
+        contact_name: candidate.contact_name,
+        phone: candidate.phone,
+        email: candidate.email,
+        tax_office: candidate.tax_office,
+        tax_number: candidate.tax_number,
+        address: candidate.address,
+        city: candidate.city,
+        country: "Türkiye",
+        notes: candidate.notes ? `${candidate.notes}\nEski tablo: ${candidate.source_table}` : `Eski tablo: ${candidate.source_table}`,
+        is_active: true,
+      });
+
+      if (created.error) {
+        result.failed += 1;
+        result.errors.push(`${candidate.company_name}: ${created.error}`);
+      } else {
+        result.imported += 1;
+      }
+    }
+
+    return success(result);
+  } catch (error) {
+    return failure("importLegacyCustomersToStakeholders", error, defaultResult);
+  }
+}
+
 export async function findOrCreateStakeholderByCompany(companyName: string) {
   const name = companyName.trim();
   if (!name) return failure<Stakeholder | null>("findOrCreateStakeholderByCompany", "Firma adı boş.", null);
@@ -228,6 +474,51 @@ export async function listERPQuotationsFromExistingTable(limit = 100): Promise<A
 }
 
 export const listQuotations = listERPQuotationsFromExistingTable;
+
+export async function getQuotationConversionState(quotationId: string): Promise<ApiResult<ERPQuotationConversionState>> {
+  const defaultState: ERPQuotationConversionState = { converted: false, salesOrder: null, warning: null };
+
+  const orderResult = (await supabase
+    .from("sales_orders" as never)
+    .select("*")
+    .eq("source_quotation_id", quotationId)
+    .limit(1)
+    .maybeSingle()) as unknown as DbResult<SalesOrder>;
+
+  if (orderResult.error && !isMissingTableError(orderResult.error)) {
+    return failure("getQuotationConversionState sales_orders", orderResult.error, defaultState);
+  }
+
+  if (orderResult.data) {
+    return success({
+      converted: true,
+      salesOrder: orderResult.data,
+      warning: "Bu teklif daha önce siparişe dönüştürülmüş olabilir.",
+    });
+  }
+
+  const linkResult = (await supabase
+    .from("erp_quotation_links" as never)
+    .select("id, status")
+    .eq("quotation_id", quotationId)
+    .eq("status", "converted_to_order")
+    .limit(1)
+    .maybeSingle()) as unknown as DbResult<{ id: string; status: string }>;
+
+  if (linkResult.error && !isMissingTableError(linkResult.error)) {
+    return failure("getQuotationConversionState erp_quotation_links", linkResult.error, defaultState);
+  }
+
+  if (linkResult.data) {
+    return success({
+      converted: true,
+      salesOrder: null,
+      warning: "Bu teklif daha önce siparişe dönüştürülmüş olabilir.",
+    });
+  }
+
+  return success(defaultState);
+}
 
 export async function linkQuotationToStakeholder(quotationId: string, stakeholderId: string, status = "converted_to_order") {
   const { data, error } = (await supabase
@@ -370,6 +661,15 @@ export async function listSalesOrderItems(salesOrderId: string): Promise<ApiResu
 }
 
 export async function convertQuotationToSalesOrder(quotation: ERPQuotation) {
+  const conversionState = await getQuotationConversionState(quotation.id);
+  if (conversionState.data.converted) {
+    return {
+      data: conversionState.data.salesOrder,
+      error: conversionState.data.warning,
+      missingTable: conversionState.missingTable,
+    };
+  }
+
   const stakeholderResult = await findOrCreateStakeholderByCompany(quotation.firma);
   if (stakeholderResult.error || !stakeholderResult.data) return failure<SalesOrder | null>("convertQuotationToSalesOrder stakeholder", stakeholderResult.error, null);
 
@@ -472,6 +772,28 @@ export async function createProductionRouteStep(payload: Partial<ProductionRoute
 
   if (error) return failure("createProductionRouteStep", error, null);
   return success(data);
+}
+
+export async function updateProductionRouteStep(id: string, payload: Partial<ProductionRouteStep>) {
+  const { data, error } = (await supabase
+    .from("production_route_steps" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ProductionRouteStep>;
+
+  if (error) return failure("updateProductionRouteStep", error, null);
+  return success(data);
+}
+
+export async function deleteProductionRouteStep(id: string) {
+  const { error } = (await supabase
+    .from("production_route_steps" as never)
+    .delete()
+    .eq("id", id)) as unknown as { error: unknown };
+
+  if (error) return failure("deleteProductionRouteStep", error, false);
+  return success(true);
 }
 
 export async function listWorkOrders(search = ""): Promise<ApiResult<WorkOrder[]>> {
@@ -601,8 +923,16 @@ export async function createWorkOrderOperation(payload: Partial<WorkOrderOperati
 }
 
 export async function updateWorkOrderOperationStatus(id: string, status: WorkOrderOperationStatus, actualMinutes?: number) {
+  const current = (await supabase
+    .from("work_order_operations" as never)
+    .select("*")
+    .eq("id", id)
+    .single()) as unknown as DbResult<WorkOrderOperation>;
+
+  if (current.error) return failure("updateWorkOrderOperationStatus current", current.error, null);
+
   const patch: Partial<WorkOrderOperation> = { status };
-  if (status === "in_progress") patch.started_at = new Date().toISOString();
+  if (status === "in_progress") patch.started_at = current.data?.started_at ?? new Date().toISOString();
   if (status === "completed") {
     patch.completed_at = new Date().toISOString();
     if (typeof actualMinutes === "number") patch.actual_minutes = actualMinutes;
@@ -624,9 +954,9 @@ export async function updateWorkOrderOperationStatus(id: string, status: WorkOrd
   return success(data);
 }
 
-export async function createOperationsFromRoute(workOrderId: string, routeId: string) {
+export async function createOperationsFromRoute(workOrderId: string, routeId: string, allowAppend = false) {
   const existing = await listWorkOrderOperations(workOrderId);
-  if (existing.data.length > 0) {
+  if (existing.data.length > 0 && !allowAppend) {
     return failure<WorkOrderOperation[]>("createOperationsFromRoute", "Bu iş emrinde zaten operasyon var.", []);
   }
 
@@ -667,7 +997,7 @@ export async function createSubcontractingJob(payload: Partial<SubcontractingJob
       supplier_id: payload.supplier_id ?? null,
       process_type: payload.process_type,
       dispatch_no: payload.dispatch_no ?? null,
-      sent_date: payload.sent_date ?? null,
+      sent_date: payload.sent_date ?? (payload.status === "sent" ? new Date().toISOString().slice(0, 10) : null),
       expected_return_date: payload.expected_return_date ?? null,
       returned_date: payload.returned_date ?? null,
       status: payload.status ?? "planned",
@@ -696,6 +1026,9 @@ export async function updateSubcontractingJob(id: string, payload: Partial<Subco
     .single()) as unknown as DbResult<SubcontractingJob>;
 
   if (error) return failure("updateSubcontractingJob", error, null);
+  if (data?.work_order_id && (data.status === "sent" || data.status === "in_process")) {
+    await updateWorkOrder(data.work_order_id, { status: "waiting_subcontractor" });
+  }
   return success(data);
 }
 
@@ -1017,7 +1350,6 @@ export async function updateQualityReport(id: string, payload: Partial<QualityRe
     .single()) as unknown as DbResult<QualityReport>;
 
   if (error) return failure("updateQualityReport", error, null);
-  if (data?.work_order_id && data.result === "passed") await updateWorkOrder(data.work_order_id, { status: "completed" });
   return success(data);
 }
 
@@ -1182,6 +1514,43 @@ export async function createDocumentMetadata(payload: Partial<DocumentMetadata> 
 
   if (error) return failure("createDocumentMetadata", error, null);
   return success(data);
+}
+
+export async function getERPDashboardActivity(): Promise<ApiResult<ERPDashboardActivity>> {
+  const empty: ERPDashboardActivity = {
+    recentSalesOrders: [],
+    recentWorkOrders: [],
+    recentSubcontractingJobs: [],
+    lowStockItems: [],
+    pendingQualityReports: [],
+  };
+
+  try {
+    const [salesOrders, workOrders, subcontracting, inventory, quality] = await Promise.all([
+      listSalesOrders(),
+      listWorkOrders(),
+      listSubcontractingJobs(),
+      listInventoryItems(),
+      listQualityReports(),
+    ]);
+
+    const missingTable = [salesOrders, workOrders, subcontracting, inventory, quality].some((result) => result.missingTable);
+    const firstError = [salesOrders, workOrders, subcontracting, inventory, quality].find((result) => result.error)?.error ?? null;
+
+    return {
+      data: {
+        recentSalesOrders: salesOrders.data.slice(0, 5),
+        recentWorkOrders: workOrders.data.slice(0, 5),
+        recentSubcontractingJobs: subcontracting.data.slice(0, 5),
+        lowStockItems: inventory.data.filter((item) => Number(item.current_stock) <= Number(item.min_stock)).slice(0, 5),
+        pendingQualityReports: quality.data.filter((report) => report.result === "pending").slice(0, 5),
+      },
+      error: missingTable ? ERP_MIGRATION_MESSAGE : firstError,
+      missingTable,
+    };
+  } catch (error) {
+    return failure("getERPDashboardActivity", error, empty);
+  }
 }
 
 export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetrics>> {

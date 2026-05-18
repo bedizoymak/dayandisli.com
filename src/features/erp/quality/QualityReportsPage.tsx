@@ -8,10 +8,19 @@ import { MigrationNotice } from "@/components/erp/MigrationNotice";
 import { PageHeader } from "@/components/erp/PageHeader";
 import { StatusBadge } from "@/components/erp/StatusBadge";
 import { ERPLayout } from "../layout/ERPLayout";
-import { createQualityReport, listSalesOrders, listWorkOrders, listQualityReports, updateQualityReport } from "../shared/erpApi";
+import {
+  createQualityMeasurement,
+  createQualityReport,
+  listQualityMeasurements,
+  listQualityReports,
+  listSalesOrders,
+  listWorkOrders,
+  updateQualityReport,
+  updateWorkOrder,
+} from "../shared/erpApi";
 import { formatDate } from "../shared/formatters";
 import { QUALITY_RESULT_LABELS } from "../shared/statusLabels";
-import { QualityReport, QualityResult, SalesOrder, WorkOrder } from "../shared/types";
+import { MeasurementResult, QualityMeasurement, QualityReport, QualityResult, SalesOrder, WorkOrder } from "../shared/types";
 import { useToast } from "@/hooks/use-toast";
 
 function tone(result: QualityReport["result"]) {
@@ -21,14 +30,29 @@ function tone(result: QualityReport["result"]) {
   return "default" as const;
 }
 
+const measurementLabels: Record<MeasurementResult, string> = {
+  pending: "Bekliyor",
+  passed: "Geçti",
+  failed: "Kaldı",
+};
+
 export default function QualityReportsPage() {
   const { toast } = useToast();
   const [rows, setRows] = useState<QualityReport[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [selectedReport, setSelectedReport] = useState<QualityReport | null>(null);
+  const [measurements, setMeasurements] = useState<QualityMeasurement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ work_order_id: "", sales_order_id: "", notes: "" });
+  const [measurementForm, setMeasurementForm] = useState({
+    characteristic: "",
+    nominal_value: "",
+    tolerance: "",
+    measured_value: "",
+    result: "pending" as MeasurementResult,
+  });
 
   const load = async () => {
     setLoading(true);
@@ -49,6 +73,16 @@ export default function QualityReportsPage() {
     setLoading(false);
   };
 
+  const loadMeasurements = async (report: QualityReport) => {
+    setSelectedReport(report);
+    const result = await listQualityMeasurements(report.id);
+    if (result.error) {
+      toast({ title: "Ölçüm Satırları", description: result.error, variant: "destructive" });
+      return;
+    }
+    setMeasurements(result.data);
+  };
+
   useEffect(() => {
     load();
   }, [toast]);
@@ -57,7 +91,7 @@ export default function QualityReportsPage() {
     <ERPLayout title="Kalite Kontrol">
       <PageHeader
         title="Kalite Kontrol"
-        description="Ölçüm raporlarını ve geçti/kaldı/şartlı sonuçlarını takip edin."
+        description="Ölçüm raporlarını, geçti/kaldı/şartlı sonuçlarını ve ölçüm satırlarını takip edin."
       />
 
       {error ? <MigrationNotice message={error} /> : null}
@@ -67,9 +101,10 @@ export default function QualityReportsPage() {
           className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]"
           onSubmit={async (event) => {
             event.preventDefault();
+            const selectedWorkOrder = workOrders.find((wo) => wo.id === form.work_order_id);
             const result = await createQualityReport({
               work_order_id: form.work_order_id || null,
-              sales_order_id: form.sales_order_id || null,
+              sales_order_id: form.sales_order_id || selectedWorkOrder?.sales_order_id || null,
               result: "pending",
               notes: form.notes || null,
             });
@@ -120,28 +155,49 @@ export default function QualityReportsPage() {
             { key: "created", header: "Kayıt", render: (row) => formatDate(row.created_at) },
             {
               key: "actions",
-              header: "Sonuç",
+              header: "İşlem",
               className: "text-right",
               render: (row) => (
-                <select
-                  className="h-9 rounded-md border bg-background px-2 text-xs"
-                  value={row.result}
-                  onChange={async (event) => {
-                    const result = await updateQualityReport(row.id, { result: event.target.value as QualityResult });
-                    if (result.error) {
-                      toast({ title: "Hata", description: result.error, variant: "destructive" });
-                      return;
-                    }
-                    toast({ title: "Güncellendi", description: "Kalite sonucu güncellendi." });
-                    await load();
-                  }}
-                >
-                  {Object.entries(QUALITY_RESULT_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => loadMeasurements(row)}>
+                    Ölçümler
+                  </Button>
+                  {row.result === "passed" && row.work_order_id ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const result = await updateWorkOrder(row.work_order_id!, { status: "completed" });
+                        if (result.error) {
+                          toast({ title: "İş Emri", description: result.error, variant: "destructive" });
+                          return;
+                        }
+                        toast({ title: "İş Emri Tamamlandı", description: "Kalite sonucu geçtiği için iş emri tamamlandı yapıldı." });
+                      }}
+                    >
+                      İş Emrini Tamamlandı Yap
+                    </Button>
+                  ) : null}
+                  <select
+                    className="h-9 rounded-md border bg-background px-2 text-xs"
+                    value={row.result}
+                    onChange={async (event) => {
+                      const result = await updateQualityReport(row.id, { result: event.target.value as QualityResult });
+                      if (result.error) {
+                        toast({ title: "Hata", description: result.error, variant: "destructive" });
+                        return;
+                      }
+                      toast({ title: "Güncellendi", description: "Kalite sonucu güncellendi." });
+                      await load();
+                    }}
+                  >
+                    {Object.entries(QUALITY_RESULT_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               ),
             },
           ]}
@@ -150,6 +206,56 @@ export default function QualityReportsPage() {
           emptyMessage="Kalite raporu bulunamadı"
         />
       )}
+
+      {selectedReport ? (
+        <FormSection title={`Ölçüm Satırları - ${selectedReport.report_no}`} description="Ölçülen karakteristikleri rapora bağlayın.">
+          <form
+            className="grid gap-3 md:grid-cols-[1fr_160px_160px_160px_140px_auto]"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!measurementForm.characteristic.trim()) return;
+              const result = await createQualityMeasurement({
+                quality_report_id: selectedReport.id,
+                characteristic: measurementForm.characteristic,
+                nominal_value: measurementForm.nominal_value || null,
+                tolerance: measurementForm.tolerance || null,
+                measured_value: measurementForm.measured_value || null,
+                result: measurementForm.result,
+              });
+              if (result.error) {
+                toast({ title: "Ölçüm Eklenemedi", description: result.error, variant: "destructive" });
+                return;
+              }
+              setMeasurementForm({ characteristic: "", nominal_value: "", tolerance: "", measured_value: "", result: "pending" });
+              await loadMeasurements(selectedReport);
+            }}
+          >
+            <Input placeholder="Karakteristik" value={measurementForm.characteristic} onChange={(event) => setMeasurementForm((prev) => ({ ...prev, characteristic: event.target.value }))} />
+            <Input placeholder="Nominal" value={measurementForm.nominal_value} onChange={(event) => setMeasurementForm((prev) => ({ ...prev, nominal_value: event.target.value }))} />
+            <Input placeholder="Tolerans" value={measurementForm.tolerance} onChange={(event) => setMeasurementForm((prev) => ({ ...prev, tolerance: event.target.value }))} />
+            <Input placeholder="Ölçülen" value={measurementForm.measured_value} onChange={(event) => setMeasurementForm((prev) => ({ ...prev, measured_value: event.target.value }))} />
+            <select className="h-10 rounded-md border bg-background px-3 text-sm" value={measurementForm.result} onChange={(event) => setMeasurementForm((prev) => ({ ...prev, result: event.target.value as MeasurementResult }))}>
+              {Object.entries(measurementLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <Button type="submit">Ekle</Button>
+          </form>
+
+          <DataTable
+            columns={[
+              { key: "characteristic", header: "Karakteristik", render: (row) => row.characteristic },
+              { key: "nominal", header: "Nominal", render: (row) => row.nominal_value || "-" },
+              { key: "tolerance", header: "Tolerans", render: (row) => row.tolerance || "-" },
+              { key: "measured", header: "Ölçülen", render: (row) => row.measured_value || "-" },
+              { key: "result", header: "Sonuç", render: (row) => measurementLabels[row.result] },
+            ]}
+            data={measurements}
+            rowKey={(row) => row.id}
+            emptyMessage="Ölçüm satırı bulunamadı"
+          />
+        </FormSection>
+      ) : null}
     </ERPLayout>
   );
 }

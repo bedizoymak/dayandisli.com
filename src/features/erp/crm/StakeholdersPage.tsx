@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/erp/ConfirmDialog";
 import { MigrationNotice } from "@/components/erp/MigrationNotice";
 import { createStakeholder, listStakeholders, updateStakeholder } from "../shared/erpApi";
 import { Stakeholder, StakeholderType } from "../shared/types";
+import { LegacyCustomerImportPanel } from "./LegacyCustomerImportPanel";
 import { StakeholderForm } from "./StakeholderForm";
 import { StakeholderTable } from "./StakeholderTable";
 
@@ -81,9 +82,7 @@ export default function StakeholdersPage() {
       <div className="space-y-3">
         {error ? <MigrationNotice message={error} /> : null}
 
-        <div className="rounded-md border bg-card p-3 text-sm text-muted-foreground">
-          Eski müşteri tabloları korunuyor. İçe aktarım aracı sonraki fazda eklenecek; bu ekranda otomatik veri kopyalama yapılmaz.
-        </div>
+        <LegacyCustomerImportPanel onImported={() => load(search, typeFilter)} />
 
         <div className="grid gap-3 md:grid-cols-[1fr_220px]">
           <Input

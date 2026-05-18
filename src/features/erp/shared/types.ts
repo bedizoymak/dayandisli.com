@@ -360,6 +360,68 @@ export interface DashboardMetrics {
   todaysShipments: number;
 }
 
+export type ERPDatabaseTableStatus = "ready" | "missing" | "restricted";
+export type ERPDatabaseOverallStatus = "ready" | "missing_migration" | "rls_check_required";
+
+export interface ERPDatabaseTableCheck {
+  table: string;
+  status: ERPDatabaseTableStatus;
+  message: string | null;
+}
+
+export interface ERPDatabaseStatus {
+  overall: ERPDatabaseOverallStatus;
+  label: string;
+  tables: ERPDatabaseTableCheck[];
+}
+
+export interface LegacyCustomerCandidate {
+  source_table: "customer_profile" | "customers_full";
+  source_key: string;
+  company_name: string;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  tax_office: string | null;
+  tax_number: string | null;
+  address: string | null;
+  city: string | null;
+  notes: string | null;
+  duplicate: boolean;
+  duplicate_reason: string | null;
+}
+
+export interface LegacyCustomerImportPreview {
+  scanned: number;
+  importable: number;
+  skippedDuplicates: number;
+  missingCompany: number;
+  tableErrors: string[];
+  sample: LegacyCustomerCandidate[];
+  candidates: LegacyCustomerCandidate[];
+}
+
+export interface LegacyCustomerImportResult {
+  imported: number;
+  skippedDuplicates: number;
+  failed: number;
+  errors: string[];
+}
+
+export interface ERPQuotationConversionState {
+  converted: boolean;
+  salesOrder: SalesOrder | null;
+  warning: string | null;
+}
+
+export interface ERPDashboardActivity {
+  recentSalesOrders: SalesOrder[];
+  recentWorkOrders: WorkOrder[];
+  recentSubcontractingJobs: SubcontractingJob[];
+  lowStockItems: InventoryItem[];
+  pendingQualityReports: QualityReport[];
+}
+
 export interface ApiResult<T> {
   data: T;
   error: string | null;

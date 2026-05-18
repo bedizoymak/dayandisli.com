@@ -7,7 +7,15 @@ import { DataTable } from "@/components/erp/DataTable";
 import { EmptyState } from "@/components/erp/EmptyState";
 import { FormSection } from "@/components/erp/FormSection";
 import { MigrationNotice } from "@/components/erp/MigrationNotice";
-import { createProductionRoute, createProductionRouteStep, listMachines, listProductionRoutes, listProductionRouteSteps } from "../shared/erpApi";
+import {
+  createProductionRoute,
+  createProductionRouteStep,
+  deleteProductionRouteStep,
+  listMachines,
+  listProductionRoutes,
+  listProductionRouteSteps,
+  updateProductionRouteStep,
+} from "../shared/erpApi";
 import { Machine, ProductionRoute, ProductionRouteStep } from "../shared/types";
 import { formatDateTime } from "../shared/formatters";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +27,7 @@ export default function RoutesPage() {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRouteId, setSelectedRouteId] = useState("");
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [routeForm, setRouteForm] = useState({ name: "", description: "", is_template: true });
   const [stepForm, setStepForm] = useState({ step_no: "10", operation_name: "", machine_id: "", estimated_minutes: "0" });
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +52,7 @@ export default function RoutesPage() {
 
   const loadSteps = async (routeId: string) => {
     setSelectedRouteId(routeId);
+    setEditingStepId(null);
     if (!routeId) {
       setSteps([]);
       return;
@@ -132,17 +142,21 @@ export default function RoutesPage() {
             onSubmit={async (event) => {
               event.preventDefault();
               if (!stepForm.operation_name.trim()) return;
-              const result = await createProductionRouteStep({
+              const payload = {
                 route_id: selectedRouteId,
                 step_no: Number(stepForm.step_no || 10),
                 operation_name: stepForm.operation_name,
                 machine_id: stepForm.machine_id || null,
                 estimated_minutes: Number(stepForm.estimated_minutes || 0),
-              });
+              };
+              const result = editingStepId
+                ? await updateProductionRouteStep(editingStepId, payload)
+                : await createProductionRouteStep(payload);
               if (result.error) {
                 toast({ title: "Adım Eklenemedi", description: result.error, variant: "destructive" });
                 return;
               }
+              setEditingStepId(null);
               setStepForm((prev) => ({ ...prev, step_no: String(Number(prev.step_no || 0) + 10), operation_name: "", machine_id: "", estimated_minutes: "0" }));
               await loadSteps(selectedRouteId);
             }}
@@ -158,7 +172,7 @@ export default function RoutesPage() {
               ))}
             </select>
             <Input type="number" placeholder="Tahmini dk" value={stepForm.estimated_minutes} onChange={(event) => setStepForm((prev) => ({ ...prev, estimated_minutes: event.target.value }))} />
-            <Button type="submit">Adım Ekle</Button>
+            <Button type="submit">{editingStepId ? "Adımı Güncelle" : "Adım Ekle"}</Button>
           </form>
 
           <DataTable
@@ -167,6 +181,45 @@ export default function RoutesPage() {
               { key: "operation", header: "Operasyon", render: (row) => row.operation_name },
               { key: "machine", header: "Makine", render: (row) => machines.find((machine) => machine.id === row.machine_id)?.name || "-" },
               { key: "minutes", header: "Tahmini Dk", className: "text-right", render: (row) => row.estimated_minutes },
+              {
+                key: "actions",
+                header: "İşlem",
+                className: "text-right",
+                render: (row) => (
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingStepId(row.id);
+                        setStepForm({
+                          step_no: String(row.step_no),
+                          operation_name: row.operation_name,
+                          machine_id: row.machine_id || "",
+                          estimated_minutes: String(row.estimated_minutes || 0),
+                        });
+                      }}
+                    >
+                      Düzenle
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        if (!window.confirm("Bu rota adımı silinsin mi?")) return;
+                        const result = await deleteProductionRouteStep(row.id);
+                        if (result.error) {
+                          toast({ title: "Adım Silinemedi", description: result.error, variant: "destructive" });
+                          return;
+                        }
+                        await loadSteps(selectedRouteId);
+                      }}
+                    >
+                      Sil
+                    </Button>
+                  </div>
+                ),
+              },
             ]}
             data={steps}
             rowKey={(row) => row.id}

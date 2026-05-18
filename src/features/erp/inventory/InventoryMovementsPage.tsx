@@ -23,6 +23,7 @@ export default function InventoryMovementsPage() {
     inventory_item_id: "",
     movement_type: "in" as InventoryMovementType,
     quantity: "1",
+    source_type: "manual",
     notes: "",
   });
 
@@ -55,7 +56,7 @@ export default function InventoryMovementsPage() {
 
       <FormSection title="Yeni Stok Hareketi" description="Giriş, çıkış, iade veya düzeltme hareketi kaydedin.">
         <form
-          className="grid gap-3 md:grid-cols-[1fr_180px_160px_1fr_auto]"
+          className="grid gap-3 md:grid-cols-[1fr_180px_160px_160px_1fr_auto]"
           onSubmit={async (event) => {
             event.preventDefault();
             if (!form.inventory_item_id) return;
@@ -63,6 +64,7 @@ export default function InventoryMovementsPage() {
               inventory_item_id: form.inventory_item_id,
               movement_type: form.movement_type,
               quantity: Number(form.quantity || 0),
+              source_type: form.source_type || "manual",
               notes: form.notes || null,
             });
             if (result.error) {
@@ -70,7 +72,7 @@ export default function InventoryMovementsPage() {
               return;
             }
             toast({ title: "Kaydedildi", description: "Stok hareketi işlendi." });
-            setForm({ inventory_item_id: "", movement_type: "in", quantity: "1", notes: "" });
+            setForm({ inventory_item_id: "", movement_type: "in", quantity: "1", source_type: "manual", notes: "" });
             await load();
           }}
         >
@@ -90,6 +92,12 @@ export default function InventoryMovementsPage() {
             ))}
           </select>
           <Input type="number" step="0.001" value={form.quantity} onChange={(event) => setForm((prev) => ({ ...prev, quantity: event.target.value }))} />
+          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.source_type} onChange={(event) => setForm((prev) => ({ ...prev, source_type: event.target.value }))}>
+            <option value="manual">Manuel</option>
+            <option value="purchase">Satın Alma</option>
+            <option value="sales_order">Satış Siparişi</option>
+            <option value="work_order">İş Emri</option>
+          </select>
           <Input placeholder="Not" value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
           <Button type="submit">Kaydet</Button>
         </form>

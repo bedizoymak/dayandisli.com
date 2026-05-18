@@ -32,9 +32,13 @@ export default function SubcontractingPage() {
     work_order_id: "",
     supplier_id: "",
     process_type: "",
+    dispatch_no: "",
     sent_date: "",
     expected_return_date: "",
     quantity_sent: "1",
+    unit_cost: "0",
+    total_cost: "0",
+    notes: "",
   });
 
   const load = async () => {
@@ -79,9 +83,13 @@ export default function SubcontractingPage() {
               work_order_id: form.work_order_id || null,
               supplier_id: form.supplier_id || null,
               process_type: form.process_type,
+              dispatch_no: form.dispatch_no || null,
               sent_date: form.sent_date || null,
               expected_return_date: form.expected_return_date || null,
               quantity_sent: Number(form.quantity_sent || 0),
+              unit_cost: Number(form.unit_cost || 0),
+              total_cost: Number(form.total_cost || 0),
+              notes: form.notes || null,
               status: form.sent_date ? "sent" : "planned",
             });
             if (result.error) {
@@ -89,7 +97,7 @@ export default function SubcontractingPage() {
               return;
             }
             toast({ title: "Kaydedildi", description: "Fason takip kaydı oluşturuldu." });
-            setForm({ work_order_id: "", supplier_id: "", process_type: "", sent_date: "", expected_return_date: "", quantity_sent: "1" });
+            setForm({ work_order_id: "", supplier_id: "", process_type: "", dispatch_no: "", sent_date: "", expected_return_date: "", quantity_sent: "1", unit_cost: "0", total_cost: "0", notes: "" });
             await load();
           }}
         >
@@ -110,12 +118,14 @@ export default function SubcontractingPage() {
             ))}
           </select>
           <Input placeholder="İşlem tipi" value={form.process_type} onChange={(event) => setForm((prev) => ({ ...prev, process_type: event.target.value }))} />
+          <Input placeholder="İrsaliye / sevk no" value={form.dispatch_no} onChange={(event) => setForm((prev) => ({ ...prev, dispatch_no: event.target.value }))} />
           <Input type="date" value={form.sent_date} onChange={(event) => setForm((prev) => ({ ...prev, sent_date: event.target.value }))} />
           <Input type="date" value={form.expected_return_date} onChange={(event) => setForm((prev) => ({ ...prev, expected_return_date: event.target.value }))} />
-          <div className="flex gap-2">
-            <Input type="number" step="0.001" value={form.quantity_sent} onChange={(event) => setForm((prev) => ({ ...prev, quantity_sent: event.target.value }))} />
-            <Button type="submit">Kaydet</Button>
-          </div>
+          <Input type="number" step="0.001" placeholder="Miktar" value={form.quantity_sent} onChange={(event) => setForm((prev) => ({ ...prev, quantity_sent: event.target.value }))} />
+          <Input type="number" step="0.01" placeholder="Birim maliyet" value={form.unit_cost} onChange={(event) => setForm((prev) => ({ ...prev, unit_cost: event.target.value }))} />
+          <Input type="number" step="0.01" placeholder="Toplam maliyet" value={form.total_cost} onChange={(event) => setForm((prev) => ({ ...prev, total_cost: event.target.value }))} />
+          <Input placeholder="Not" value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
+          <Button type="submit">Kaydet</Button>
         </form>
       </FormSection>
 
@@ -155,7 +165,10 @@ export default function SubcontractingPage() {
                       toast({ title: "Hata", description: result.error, variant: "destructive" });
                       return;
                     }
-                    if (row.work_order_id && status === "returned") await updateWorkOrder(row.work_order_id, { status: "in_progress" });
+                    if (row.work_order_id && status === "returned") {
+                      const qualityNext = window.confirm("Fason dönüşünden sonra iş emri kalite kontrole alınsın mı?");
+                      await updateWorkOrder(row.work_order_id, { status: qualityNext ? "quality_check" : "in_progress" });
+                    }
                     toast({ title: "Güncellendi", description: "Fason durumu güncellendi." });
                     await load();
                   }}
