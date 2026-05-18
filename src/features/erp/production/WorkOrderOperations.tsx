@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { DataTable } from "@/components/erp/DataTable";
 import { EmptyState } from "@/components/erp/EmptyState";
 import { StatusBadge } from "@/components/erp/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
+import { ClipboardCheck, Truck } from "lucide-react";
 import {
   createOperationsFromRoute,
   createWorkOrderOperation,
@@ -22,7 +23,8 @@ type WorkOrderOperationsProps = {
   routes: ProductionRoute[];
   machines: Machine[];
   stakeholderName?: string;
-  onSendQuality: (workOrder: WorkOrder) => Promise<void>;
+  onSendQuality: (workOrder: WorkOrder, operation?: WorkOrderOperation) => Promise<void>;
+  onSendSubcontracting: (workOrder: WorkOrder, operation: WorkOrderOperation) => Promise<void>;
   onChanged: () => Promise<void>;
 };
 
@@ -34,7 +36,7 @@ function tone(status: WorkOrderOperation["status"]) {
   return "default" as const;
 }
 
-export function WorkOrderOperations({ workOrder, routes, machines, stakeholderName, onSendQuality, onChanged }: WorkOrderOperationsProps) {
+export function WorkOrderOperations({ workOrder, routes, machines, stakeholderName, onSendQuality, onSendSubcontracting, onChanged }: WorkOrderOperationsProps) {
   const { toast } = useToast();
   const [rows, setRows] = useState<WorkOrderOperation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,20 +59,20 @@ export function WorkOrderOperations({ workOrder, routes, machines, stakeholderNa
     [machines]
   );
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!workOrder) return;
     setLoading(true);
     const result = await listWorkOrderOperations(workOrder.id);
     if (result.error) toast({ title: "Hata", description: result.error, variant: "destructive" });
     setRows(result.data);
     setLoading(false);
-  };
+  }, [toast, workOrder]);
 
   useEffect(() => {
     setRows([]);
     setRouteId("");
     load();
-  }, [workOrder?.id]);
+  }, [load]);
 
   const updateOperation = async (operation: WorkOrderOperation, status: WorkOrderOperation["status"]) => {
     const actualMinutes =
@@ -248,6 +250,14 @@ export function WorkOrderOperations({ workOrder, routes, machines, stakeholderNa
                       <Button variant="outline" size="sm" onClick={() => updateOperation(row, "in_progress")}>Başlat</Button>
                       <Button variant="outline" size="sm" onClick={() => updateOperation(row, "paused")}>Duraklat</Button>
                       <Button variant="outline" size="sm" onClick={() => updateOperation(row, "completed")}>Tamamla</Button>
+                      <Button variant="outline" size="sm" onClick={() => onSendQuality(workOrder, row)}>
+                        <ClipboardCheck className="mr-1 h-3 w-3" />
+                        Kalite
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => onSendSubcontracting(workOrder, row)}>
+                        <Truck className="mr-1 h-3 w-3" />
+                        Fason
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => updateOperation(row, "cancelled")}>İptal</Button>
                     </div>
                   ),

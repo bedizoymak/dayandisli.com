@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ERPLayout } from "../layout/ERPLayout";
 import { PageHeader } from "@/components/erp/PageHeader";
 import { MetricCard } from "@/components/erp/MetricCard";
-import { AlertTriangle, ClipboardCheck, FileText, HardHat, Package, ShoppingCart, Truck, Users, Wrench } from "lucide-react";
+import { AlertTriangle, Bell, ClipboardCheck, FileText, HardHat, Package, ShoppingCart, Truck, Users, Wrench } from "lucide-react";
 import { MigrationNotice } from "@/components/erp/MigrationNotice";
 import { getERPDashboardActivity, getERPDashboardMetrics } from "../shared/erpApi";
 import { DashboardMetrics, ERPDashboardActivity } from "../shared/types";
@@ -21,6 +21,7 @@ const defaultMetrics: DashboardMetrics = {
   inventoryItemCount: 0,
   purchaseOrderCount: 0,
   auditLogCount: 0,
+  unreadNotificationCount: 0,
   activeOperations: 0,
   waitingSubcontracting: 0,
   lowStockItems: 0,
@@ -36,6 +37,7 @@ const defaultActivity: ERPDashboardActivity = {
   lowStockItems: [],
   pendingQualityReports: [],
   recentAuditLogs: [],
+  recentNotifications: [],
 };
 
 export default function ERPHomePage() {
@@ -74,6 +76,7 @@ export default function ERPHomePage() {
         <Link to="/erp/inventory"><MetricCard title="Stok Kalemleri" value={metrics.inventoryItemCount} icon={<Package className="h-5 w-5" />} /></Link>
         <Link to="/erp/purchase-orders"><MetricCard title="Satın Alma" value={metrics.purchaseOrderCount} icon={<ShoppingCart className="h-5 w-5" />} /></Link>
         <MetricCard title="Audit Kayıtları" value={metrics.auditLogCount} icon={<FileText className="h-5 w-5" />} />
+        <Link to="/erp/notifications"><MetricCard title="Okunmamış Bildirimler" value={metrics.unreadNotificationCount} icon={<Bell className="h-5 w-5" />} /></Link>
         <MetricCard title="Devam Eden Operasyonlar" value={metrics.activeOperations} icon={<ClipboardCheck className="h-5 w-5" />} />
         <Link to="/erp/subcontracting"><MetricCard title="Fason Bekleyenler" value={metrics.waitingSubcontracting} icon={<Truck className="h-5 w-5" />} /></Link>
         <Link to="/erp/inventory"><MetricCard title="Kritik Stoklar" value={metrics.lowStockItems} icon={<Package className="h-5 w-5" />} /></Link>
@@ -190,6 +193,28 @@ export default function ERPHomePage() {
                   <p className="text-xs text-muted-foreground">{log.description || log.entity_type}</p>
                   <p className="text-xs text-muted-foreground">{formatDateTime(log.created_at)}</p>
                 </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Son Bildirimler</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {!activity.recentNotifications?.length ? (
+              <p className="text-sm text-muted-foreground">Bildirim yok.</p>
+            ) : (
+              activity.recentNotifications.map((notification) => (
+                <Link
+                  key={notification.id}
+                  to={notification.action_url || "/erp/notifications"}
+                  className="block rounded-md border p-2 text-sm hover:bg-muted/50"
+                >
+                  <p className={notification.is_read ? "font-medium text-muted-foreground" : "font-semibold"}>{notification.title}</p>
+                  <p className="text-xs text-muted-foreground">{notification.body || formatDateTime(notification.created_at)}</p>
+                </Link>
               ))
             )}
           </CardContent>

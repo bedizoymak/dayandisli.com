@@ -8,6 +8,8 @@ Bu doküman DAYAN Dişli ERP tablolarının Supabase üzerinde güvenli şekilde
 - `supabase/migrations/20260517110000_admin_users_auth.sql`
 - `supabase/migrations/20260517153000_erp_core_schema.sql`
 - `supabase/migrations/20260517230000_erp_phase2_phase3_readiness.sql`
+- `supabase/migrations/20260518093000_erp_phase5_audit_purchasing.sql`
+- `supabase/migrations/20260518143000_erp_phase6_workflow_notifications.sql`
 
 ## 3. Oluşturulan ERP Tabloları
 ERP migration seti şu ana veri alanlarını ekler: `erp_users`, `stakeholders`, `erp_quotation_links`, `sales_orders`, `sales_order_items`, `machines`, `production_routes`, `production_route_steps`, `work_orders`, `work_order_operations`, `subcontracting_jobs`, `documents`, `inventory_items`, `inventory_movements`, `measuring_tools`, `financial_accounts`, `invoices`, `payments`, `employees`, `employee_time_entries`, `employee_assets`, `shipments`, `shipment_items`, `quality_reports`, `quality_measurements`, `maintenance_tasks`, `erp_number_sequences`.
@@ -82,6 +84,7 @@ Migration sonrası şu route'lar açılmalı ve beyaz ekrana düşmemelidir:
 - `/erp/quality`
 - `/erp/maintenance`
 - `/erp/documents`
+- `/erp/notifications`
 - `/erp/reports`
 
 ## 8. Rollback Uyarısı
@@ -144,3 +147,21 @@ select count(*) from public.purchase_order_items;
 - Kalite sonucu güncelle.
 - Sevkiyat oluştur ve durumunu güncelle.
 - Raporlar ekranından CSV dışa aktarım dene.
+ 
+## 14. Phase 6 Akış ve Bildirim Testleri
+Phase 6 migration dosyası:
+- `supabase/migrations/20260518143000_erp_phase6_workflow_notifications.sql`
+
+Eklenen/bağlanan alanlar:
+- `erp_notifications`
+- `quality_reports.work_order_operation_id`
+- `subcontracting_jobs.work_order_operation_id`
+
+Manuel testler:
+- Tekliften sipariş oluştur.
+- Siparişten iş emri oluştur.
+- İş emrine rota uygula ve bir operasyonu tamamla.
+- Operasyon satırından kalite raporu oluştur.
+- Operasyon satırından fason kaydı oluştur.
+- Sevkiyat durumunu `delivered` yap ve ilgili siparişin `closed` olduğunu kontrol et.
+- `/erp/notifications` ekranında yeni bildirimleri ve okundu işaretleme akışını kontrol et.

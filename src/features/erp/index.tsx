@@ -18,6 +18,7 @@ import ShipmentsPage from "./logistics/ShipmentsPage";
 import QualityReportsPage from "./quality/QualityReportsPage";
 import MaintenancePage from "./maintenance/MaintenancePage";
 import DocumentsPage from "./documents/DocumentsPage";
+import NotificationsPage from "./notifications/NotificationsPage";
 import ReportsPage from "./reports/ReportsPage";
 import ERPSettingsPage from "./settings/ERPSettingsPage";
 import PurchasingPage from "./purchasing/PurchasingPage";
@@ -66,6 +67,7 @@ export function ERPRoutes() {
       <Route path="quality/:id" element={<QualityDetailPage />} />
       <Route path="maintenance" element={<MaintenancePage />} />
       <Route path="documents" element={<DocumentsPage />} />
+      <Route path="notifications" element={<NotificationsPage />} />
       <Route path="reports" element={<ReportsPage />} />
       <Route path="settings" element={<ERPSettingsPage />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />

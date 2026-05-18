@@ -15,6 +15,8 @@ import {
   WorkOrderOperationStatus,
   WorkOrderStatus,
   FinancialAccountType,
+  ERPNotificationCategory,
+  ERPNotificationSeverity,
 } from "./types";
 
 export const SALES_ORDER_STATUS_LABELS: Record<SalesOrderStatus, string> = {
@@ -141,6 +143,23 @@ export const FINANCIAL_ACCOUNT_TYPE_LABELS: Record<FinancialAccountType, string>
   supplier: "Tedarikçi Cari",
 };
 
+export const NOTIFICATION_SEVERITY_LABELS: Record<ERPNotificationSeverity, string> = {
+  info: "Bilgi",
+  success: "Tamamlandı",
+  warning: "Dikkat",
+  danger: "Kritik",
+};
+
+export const NOTIFICATION_CATEGORY_LABELS: Record<ERPNotificationCategory, string> = {
+  workflow: "Akış",
+  quality: "Kalite",
+  subcontracting: "Fason",
+  shipment: "Sevkiyat",
+  inventory: "Stok",
+  maintenance: "Bakım",
+  system: "Sistem",
+};
+
 export const DOCUMENT_ENTITY_LABELS: Record<string, string> = {
   quotation: "Teklif",
   sales_order: "Satış Siparişi",
@@ -182,10 +201,13 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   operation_started: "Operasyon Başlatıldı",
   operation_paused: "Operasyon Duraklatıldı",
   operation_completed: "Operasyon Tamamlandı",
+  work_order_completed: "İş Emri Tamamlandı",
   subcontracting_sent: "Fasona Gönderildi",
   subcontracting_returned: "Fason Geri Geldi",
+  quality_report_created: "Kalite Raporu Oluştu",
   quality_result_updated: "Kalite Sonucu Güncellendi",
   shipment_status_updated: "Sevkiyat Durumu Güncellendi",
+  delivery_completed: "Teslim Tamamlandı",
   inventory_movement_created: "Stok Hareketi Oluşturuldu",
   purchase_order_received: "Satın Alma Teslim Alındı",
 };

@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
+  Bell,
   Boxes,
   ChartPie,
   ClipboardCheck,
@@ -41,6 +42,7 @@ const navItems = [
   { href: "/erp/quality", label: "Kalite", icon: ClipboardCheck },
   { href: "/erp/maintenance", label: "Bakım", icon: Wrench },
   { href: "/erp/documents", label: "Doküman", icon: FileText },
+  { href: "/erp/notifications", label: "Bildirimler", icon: Bell },
   { href: "/erp/reports", label: "Raporlar", icon: ChartPie },
   { href: "/erp/settings", label: "Ayarlar", icon: Settings },
 ];

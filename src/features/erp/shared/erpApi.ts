@@ -8,6 +8,7 @@ import {
   ERPAuditLog,
   ERPDashboardActivity,
   ERPDatabaseStatus,
+  ERPNotification,
   ERPReportSummary,
   ERPUser,
   ERPQuotation,
@@ -208,6 +209,7 @@ export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatu
     "maintenance_tasks",
     "erp_number_sequences",
     "erp_audit_logs",
+    "erp_notifications",
     "purchase_orders",
     "purchase_order_items",
   ];
@@ -344,6 +346,79 @@ export async function listRecentAuditLogs(limit = 10): Promise<ApiResult<ERPAudi
 
   if (error) return failure("listRecentAuditLogs", error, []);
   return success(data ?? []);
+}
+
+export async function listNotifications(limit = 100, includeRead = true): Promise<ApiResult<ERPNotification[]>> {
+  let query = supabase
+    .from("erp_notifications" as never)
+    .select("*");
+
+  if (!includeRead) query = query.eq("is_read", false);
+
+  const { data, error } = (await query.order("created_at", { ascending: false }).limit(limit)) as unknown as DbResult<ERPNotification[]>;
+  if (error) return failure("listNotifications", error, []);
+  return success(data ?? []);
+}
+
+export async function listUnreadNotifications(limit = 20): Promise<ApiResult<ERPNotification[]>> {
+  return listNotifications(limit, false);
+}
+
+export async function getUnreadNotificationCount(): Promise<ApiResult<number>> {
+  const result = await safeCount(
+    "erp_notifications unread",
+    supabase
+      .from("erp_notifications" as never)
+      .select("id", { count: "exact", head: true })
+      .eq("is_read", false) as unknown as Promise<unknown>
+  );
+
+  if (result.error) return { data: 0, error: result.error, missingTable: result.missingTable };
+  return success(result.count);
+}
+
+export async function createNotification(payload: Partial<ERPNotification> & { title: string }) {
+  const { data, error } = (await supabase
+    .from("erp_notifications" as never)
+    .insert({
+      recipient_user_id: payload.recipient_user_id ?? null,
+      recipient_email: payload.recipient_email ?? null,
+      severity: payload.severity ?? "info",
+      category: payload.category ?? "workflow",
+      title: payload.title,
+      body: payload.body ?? null,
+      entity_type: payload.entity_type ?? null,
+      entity_id: payload.entity_id ?? null,
+      action_url: payload.action_url ?? null,
+      is_read: payload.is_read ?? false,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<ERPNotification>;
+
+  if (error) return failure("createNotification", error, null);
+  return success(data);
+}
+
+export async function markNotificationRead(id: string) {
+  const { data, error } = (await supabase
+    .from("erp_notifications" as never)
+    .update({ is_read: true, read_at: new Date().toISOString() } as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ERPNotification>;
+
+  if (error) return failure("markNotificationRead", error, null);
+  return success(data);
+}
+
+export async function markAllNotificationsRead() {
+  const { error } = (await supabase
+    .from("erp_notifications" as never)
+    .update({ is_read: true, read_at: new Date().toISOString() } as never)
+    .eq("is_read", false)) as unknown as { error: unknown };
+
+  if (error) return failure("markAllNotificationsRead", error, false);
+  return success(true);
 }
 
 export async function listStakeholders(search = "", type?: StakeholderType | "all"): Promise<ApiResult<Stakeholder[]>> {
@@ -1204,23 +1279,29 @@ export async function getSubcontractingJobById(id: string) {
 }
 
 export async function createSubcontractingJob(payload: Partial<SubcontractingJob> & { process_type: string }) {
+  const insertPayload: Record<string, unknown> = {
+    work_order_id: payload.work_order_id ?? null,
+    supplier_id: payload.supplier_id ?? null,
+    process_type: payload.process_type,
+    dispatch_no: payload.dispatch_no ?? null,
+    sent_date: payload.sent_date ?? (payload.status === "sent" ? new Date().toISOString().slice(0, 10) : null),
+    expected_return_date: payload.expected_return_date ?? null,
+    returned_date: payload.returned_date ?? null,
+    status: payload.status ?? "planned",
+    quantity_sent: payload.quantity_sent ?? 0,
+    quantity_returned: payload.quantity_returned ?? 0,
+    unit_cost: payload.unit_cost ?? 0,
+    total_cost: payload.total_cost ?? 0,
+    notes: payload.notes ?? null,
+  };
+
+  if (payload.work_order_operation_id) {
+    insertPayload.work_order_operation_id = payload.work_order_operation_id;
+  }
+
   const { data, error } = (await supabase
     .from("subcontracting_jobs" as never)
-    .insert({
-      work_order_id: payload.work_order_id ?? null,
-      supplier_id: payload.supplier_id ?? null,
-      process_type: payload.process_type,
-      dispatch_no: payload.dispatch_no ?? null,
-      sent_date: payload.sent_date ?? (payload.status === "sent" ? new Date().toISOString().slice(0, 10) : null),
-      expected_return_date: payload.expected_return_date ?? null,
-      returned_date: payload.returned_date ?? null,
-      status: payload.status ?? "planned",
-      quantity_sent: payload.quantity_sent ?? 0,
-      quantity_returned: payload.quantity_returned ?? 0,
-      unit_cost: payload.unit_cost ?? 0,
-      total_cost: payload.total_cost ?? 0,
-      notes: payload.notes ?? null,
-    } as never)
+    .insert(insertPayload as never)
     .select("*")
     .single()) as unknown as DbResult<SubcontractingJob>;
 
@@ -1523,6 +1604,7 @@ export async function createShipment(payload: Partial<Shipment>) {
 
   if (error) return failure("createShipment", error, null);
   if (data?.sales_order_id && data.status === "shipped") await updateSalesOrder(data.sales_order_id, { status: "shipped" });
+  if (data?.sales_order_id && data.status === "delivered") await updateSalesOrder(data.sales_order_id, { status: "closed" });
   return { data, error: null, missingTable: generated.missingTable };
 }
 
@@ -1540,6 +1622,7 @@ export async function updateShipment(id: string, payload: Partial<Shipment>) {
 
   if (error) return failure("updateShipment", error, null);
   if (data?.sales_order_id && data.status === "shipped") await updateSalesOrder(data.sales_order_id, { status: "shipped" });
+  if (data?.sales_order_id && data.status === "delivered") await updateSalesOrder(data.sales_order_id, { status: "closed" });
   if (payload.status && data) {
     await createAuditLog({
       entity_type: "shipment",
@@ -1636,18 +1719,23 @@ export async function getQualityReportById(id: string) {
 
 export async function createQualityReport(payload: Partial<QualityReport>) {
   const generated = payload.report_no ? success(payload.report_no) : await getNextERPNumber("QUALITY_REPORT");
+  const insertPayload: Record<string, unknown> = {
+    report_no: generated.data,
+    work_order_id: payload.work_order_id ?? null,
+    sales_order_id: payload.sales_order_id ?? null,
+    inspector_employee_id: payload.inspector_employee_id ?? null,
+    inspection_date: payload.inspection_date ?? new Date().toISOString().slice(0, 10),
+    result: payload.result ?? "pending",
+    notes: payload.notes ?? null,
+  };
+
+  if (payload.work_order_operation_id) {
+    insertPayload.work_order_operation_id = payload.work_order_operation_id;
+  }
 
   const { data, error } = (await supabase
     .from("quality_reports" as never)
-    .insert({
-      report_no: generated.data,
-      work_order_id: payload.work_order_id ?? null,
-      sales_order_id: payload.sales_order_id ?? null,
-      inspector_employee_id: payload.inspector_employee_id ?? null,
-      inspection_date: payload.inspection_date ?? new Date().toISOString().slice(0, 10),
-      result: payload.result ?? "pending",
-      notes: payload.notes ?? null,
-    } as never)
+    .insert(insertPayload as never)
     .select("*")
     .single()) as unknown as DbResult<QualityReport>;
 
@@ -2032,19 +2120,21 @@ export async function getERPDashboardActivity(): Promise<ApiResult<ERPDashboardA
     lowStockItems: [],
     pendingQualityReports: [],
     recentAuditLogs: [],
+    recentNotifications: [],
   };
 
   try {
-    const [salesOrders, workOrders, subcontracting, inventory, quality, auditLogs] = await Promise.all([
+    const [salesOrders, workOrders, subcontracting, inventory, quality, auditLogs, notifications] = await Promise.all([
       listSalesOrders(),
       listWorkOrders(),
       listSubcontractingJobs(),
       listInventoryItems(),
       listQualityReports(),
       listRecentAuditLogs(8),
+      listNotifications(8),
     ]);
 
-    const results = [salesOrders, workOrders, subcontracting, inventory, quality, auditLogs];
+    const results = [salesOrders, workOrders, subcontracting, inventory, quality, auditLogs, notifications];
     const missingTable = results.some((result) => result.missingTable);
     const firstError = results.find((result) => result.error)?.error ?? null;
 
@@ -2056,6 +2146,7 @@ export async function getERPDashboardActivity(): Promise<ApiResult<ERPDashboardA
         lowStockItems: inventory.data.filter((item) => Number(item.current_stock) <= Number(item.min_stock)).slice(0, 5),
         pendingQualityReports: quality.data.filter((report) => report.result === "pending").slice(0, 5),
         recentAuditLogs: auditLogs.data,
+        recentNotifications: notifications.data,
       },
       error: missingTable ? ERP_MIGRATION_MESSAGE : firstError,
       missingTable,
@@ -2074,6 +2165,7 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
     inventoryItemCount: 0,
     purchaseOrderCount: 0,
     auditLogCount: 0,
+    unreadNotificationCount: 0,
     activeOperations: 0,
     waitingSubcontracting: 0,
     lowStockItems: 0,
@@ -2093,6 +2185,7 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
       inventoryItemCount,
       purchaseOrderCount,
       auditLogCount,
+      unreadNotificationCount,
       activeOperations,
       waitingSubcontracting,
       pendingQualityChecks,
@@ -2118,6 +2211,7 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
       safeCount("inventory_items", supabase.from("inventory_items" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
       safeCount("purchase_orders", supabase.from("purchase_orders" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
       safeCount("erp_audit_logs", supabase.from("erp_audit_logs" as never).select("id", { count: "exact", head: true }) as unknown as Promise<unknown>),
+      safeCount("erp_notifications unread", supabase.from("erp_notifications" as never).select("id", { count: "exact", head: true }).eq("is_read", false) as unknown as Promise<unknown>),
       safeCount(
         "work_order_operations",
         supabase
@@ -2166,6 +2260,7 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
         inventoryItemCount,
         purchaseOrderCount,
         auditLogCount,
+        unreadNotificationCount,
         activeOperations,
         waitingSubcontracting,
         pendingQualityChecks,
@@ -2182,6 +2277,7 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
         inventoryItemCount: inventoryItemCount.count,
         purchaseOrderCount: purchaseOrderCount.count,
         auditLogCount: auditLogCount.count,
+        unreadNotificationCount: unreadNotificationCount.count,
         activeOperations: activeOperations.count,
         waitingSubcontracting: waitingSubcontracting.count,
         lowStockItems,

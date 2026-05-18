@@ -44,6 +44,8 @@ export type FinancialAccountType = "cash" | "bank" | "customer" | "supplier";
 export type InvoiceType = "sales" | "purchase";
 export type PaymentType = "collection" | "payment";
 export type ERPRole = "admin" | "planner" | "operator" | "finance" | "viewer";
+export type ERPNotificationSeverity = "info" | "success" | "warning" | "danger";
+export type ERPNotificationCategory = "workflow" | "quality" | "subcontracting" | "shipment" | "inventory" | "maintenance" | "system";
 
 export interface ERPUser {
   id: string;
@@ -255,6 +257,7 @@ export interface QualityReport {
   id: string;
   report_no: string;
   work_order_id: string | null;
+  work_order_operation_id?: string | null;
   sales_order_id: string | null;
   inspector_employee_id: string | null;
   inspection_date: string;
@@ -388,6 +391,7 @@ export interface ERPQuotation {
 export interface SubcontractingJob {
   id: string;
   work_order_id: string | null;
+  work_order_operation_id?: string | null;
   supplier_id: string | null;
   process_type: string;
   dispatch_no: string | null;
@@ -412,6 +416,7 @@ export interface DashboardMetrics {
   inventoryItemCount: number;
   purchaseOrderCount: number;
   auditLogCount: number;
+  unreadNotificationCount: number;
   activeOperations: number;
   waitingSubcontracting: number;
   lowStockItems: number;
@@ -481,6 +486,7 @@ export interface ERPDashboardActivity {
   lowStockItems: InventoryItem[];
   pendingQualityReports: QualityReport[];
   recentAuditLogs?: ERPAuditLog[];
+  recentNotifications?: ERPNotification[];
 }
 
 export interface ERPAuditLog {
@@ -494,6 +500,22 @@ export interface ERPAuditLog {
   new_status: string | null;
   description: string | null;
   metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface ERPNotification {
+  id: string;
+  recipient_user_id: string | null;
+  recipient_email: string | null;
+  severity: ERPNotificationSeverity;
+  category: ERPNotificationCategory;
+  title: string;
+  body: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  action_url: string | null;
+  is_read: boolean;
+  read_at: string | null;
   created_at: string;
 }
 
