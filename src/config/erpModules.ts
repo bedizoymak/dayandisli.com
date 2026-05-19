@@ -4,12 +4,14 @@ import {
   ClipboardList,
   Factory,
   FileText,
+  Handshake,
   LayoutDashboard,
   Package,
   Settings,
   ShoppingCart,
   StickyNote,
   Truck,
+  Users,
   Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -37,12 +39,29 @@ export const erpModules: ErpModuleConfig[] = [
     status: "active",
   },
   {
+    id: "customers",
+    title: "Müşteriler",
+    description: "Müşteri cari kartları, finans bakiyesi ve ilişki takibi",
+    path: "/erp/musteriler",
+    icon: Users,
+    status: "active",
+  },
+  {
+    id: "suppliers",
+    title: "Tedarikçiler",
+    description: "Tedarikçi kartları, satın alma ve ödeme takibi",
+    path: "/erp/tedarikciler",
+    icon: Handshake,
+    status: "active",
+  },
+  {
     id: "erp",
     title: "ERP",
     description: "Üretim, stok, kalite ve sevkiyat yönetimi",
     path: "/erp",
     icon: Factory,
     status: "active",
+    visible: false,
   },
   {
     id: "quotations",
@@ -61,6 +80,14 @@ export const erpModules: ErpModuleConfig[] = [
     status: "active",
   },
   {
+    id: "finance",
+    title: "Finans",
+    description: "Cari hesap, ödeme ve resmi/operasyonel takip",
+    path: "/erp/finans",
+    icon: Wallet,
+    status: "active",
+  },
+  {
     id: "cargo",
     title: "Kargo",
     description: "Müşteri bazlı kargo etiketi ve PDF çıktısı",
@@ -75,14 +102,6 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/erp/calculator",
     icon: Calculator,
     status: "active",
-  },
-  {
-    id: "finance",
-    title: "Finans",
-    description: "Ön muhasebe, fatura ve ödeme takibi",
-    path: "/erp/finans",
-    icon: Wallet,
-    status: "beta",
   },
   {
     id: "notifications",
@@ -129,6 +148,6 @@ export const erpModules: ErpModuleConfig[] = [
 
 export const visibleErpModules = erpModules.filter((module) => module.visible !== false);
 
-export const dashboardModuleIds = ["quotations", "calculator", "orders", "cargo", "finance", "notifications"];
+export const dashboardModuleIds = ["customers", "suppliers", "quotations", "calculator", "orders", "cargo", "finance", "notifications"];
 
 export const dashboardModules = visibleErpModules.filter((module) => dashboardModuleIds.includes(module.id));

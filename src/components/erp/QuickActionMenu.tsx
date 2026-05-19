@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Calculator, FilePlus2, Package, Plus, ShoppingCart } from "lucide-react";
+import { Calculator, FilePlus2, Package, Plus, ReceiptText, ShoppingCart, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,6 +12,8 @@ import {
 
 const actions = [
   { label: "Yeni Teklif", path: "/erp/teklifler/yeni", icon: FilePlus2 },
+  { label: "Yeni Müşteri", path: "/erp/musteriler/yeni", icon: Users },
+  { label: "Finans Hareketi", path: "/erp/finans/hareketler/yeni", icon: ReceiptText },
   { label: "Calculator", path: "/erp/calculator", icon: Calculator },
   { label: "Siparişler", path: "/erp/siparisler", icon: ShoppingCart },
   { label: "Kargo", path: "/erp/kargo", icon: Package },
