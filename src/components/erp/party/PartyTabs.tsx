@@ -12,9 +12,10 @@ type PartyTabsProps = {
   transactions: FinancialTransaction[];
   payments: PaymentDocument[];
   notes: PartyNote[];
+  financeDisabledMessage?: string | null;
 };
 
-export function PartyTabs({ party, mode, transactions, payments, notes }: PartyTabsProps) {
+export function PartyTabs({ party, mode, transactions, payments, notes, financeDisabledMessage }: PartyTabsProps) {
   return (
     <Tabs defaultValue="general" className="space-y-4">
       <TabsList className="flex h-auto flex-wrap justify-start">
@@ -67,7 +68,9 @@ export function PartyTabs({ party, mode, transactions, payments, notes }: PartyT
       ) : null}
 
       <TabsContent value="transactions">
-        {transactions.length ? (
+        {financeDisabledMessage ? (
+          <EmptyState title="Finans hareketleri kullanılamıyor" description={financeDisabledMessage} />
+        ) : transactions.length ? (
           <FinanceTransactionTable transactions={transactions} />
         ) : (
           <EmptyState
@@ -79,7 +82,9 @@ export function PartyTabs({ party, mode, transactions, payments, notes }: PartyT
       </TabsContent>
 
       <TabsContent value="payments">
-        {payments.length ? (
+        {financeDisabledMessage ? (
+          <EmptyState title="Ödemeler kullanılamıyor" description={financeDisabledMessage} />
+        ) : payments.length ? (
           <PaymentDocumentTable documents={payments} />
         ) : (
           <EmptyState title="Ödeme dokümanı yok" description="Bu cari kart için çek, senet veya ödeme dokümanı bulunmuyor." />

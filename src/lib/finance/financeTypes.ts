@@ -33,6 +33,10 @@ export type Party = {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  external_source?: string | null;
+  external_id?: string | null;
+  source_label?: "ERP" | "customer_full" | "customers_full";
+  is_legacy_readonly?: boolean;
 };
 
 export type FinancialTransaction = {

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/erp/EmptyState";
 import { MigrationNotice } from "@/components/erp/MigrationNotice";
 import { PageHeader } from "@/components/erp/PageHeader";
 import { FinanceTransactionForm } from "@/components/erp/finance/FinanceTransactionForm";
@@ -88,6 +89,16 @@ export default function FinanceTransactionFormPage() {
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">Cari listesi yükleniyor...</CardContent>
         </Card>
+      ) : parties.length === 0 ? (
+        <EmptyState
+          title="Cari kart bulunamadı"
+          description="Finans hareketi eklemek için önce Müşteriler modülünden customer_full kayıtlarını getirin veya yeni cari kart oluşturun."
+          action={
+            <Button asChild>
+              <Link to="/erp/musteriler">Müşteriler Modülüne Git</Link>
+            </Button>
+          }
+        />
       ) : (
         <FinanceTransactionForm parties={parties} initialPartyId={initialPartyId} loading={saving} onSubmit={handleSubmit} />
       )}

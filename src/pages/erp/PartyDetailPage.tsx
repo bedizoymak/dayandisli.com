@@ -12,6 +12,7 @@ import { ERPLayout } from "@/features/erp/layout/ERPLayout";
 import { calculatePartyFinancialSummary } from "@/lib/finance/calculateBalance";
 import type { FinancialTransaction, Party, PartyFinancialSummary, PartyNote, PaymentDocument } from "@/lib/finance/financeTypes";
 import { getPaymentDocuments } from "@/services/financeService";
+import { getCustomerForErpById } from "@/services/customerFullService";
 import { getPartyById, getPartyNotes, getPartyTransactions } from "@/services/partiesService";
 
 type PartyDetailPageProps = {
@@ -38,6 +39,7 @@ export default function PartyDetailPage({ mode }: PartyDetailPageProps) {
   const [summary, setSummary] = useState<PartyFinancialSummary>(emptySummary);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const basePath = mode === "customer" ? "/erp/musteriler" : "/erp/tedarikciler";
   const title = mode === "customer" ? "Müşteri Kartı" : "Tedarikçi Kartı";
@@ -46,14 +48,30 @@ export default function PartyDetailPage({ mode }: PartyDetailPageProps) {
     if (!id) return;
     const load = async () => {
       setLoading(true);
-      const [partyResult, transactionResult, paymentResult, noteResult] = await Promise.all([
-        getPartyById(id),
-        getPartyTransactions(id),
-        getPaymentDocuments({ partyId: id }),
-        getPartyNotes(id),
-      ]);
+      const partyResult = mode === "customer" ? await getCustomerForErpById(id) : await getPartyById(id);
 
       setParty(partyResult.data);
+      setError(partyResult.error);
+      setWarning(null);
+
+      if (!partyResult.data || partyResult.data.is_legacy_readonly) {
+        setTransactions([]);
+        setPayments([]);
+        setNotes([]);
+        setSummary(emptySummary);
+        if (partyResult.data?.is_legacy_readonly) {
+          setWarning("Kaynak: customer_full. Finans hareketleri için ERP cari tabloları uygulanmalı ve müşteri parties tablosuna aktarılmalıdır.");
+        }
+        setLoading(false);
+        return;
+      }
+
+      const [transactionResult, paymentResult, noteResult] = await Promise.all([
+        getPartyTransactions(partyResult.data.id),
+        getPaymentDocuments({ partyId: partyResult.data.id }),
+        getPartyNotes(partyResult.data.id),
+      ]);
+
       setTransactions(transactionResult.data);
       setPayments(paymentResult.data);
       setNotes(noteResult.data);
@@ -63,7 +81,7 @@ export default function PartyDetailPage({ mode }: PartyDetailPageProps) {
     };
 
     load();
-  }, [id]);
+  }, [id, mode]);
 
   return (
     <ERPLayout title={title}>
@@ -78,7 +96,7 @@ export default function PartyDetailPage({ mode }: PartyDetailPageProps) {
                 Liste
               </Link>
             </Button>
-            {party ? (
+            {party && !party.is_legacy_readonly ? (
               <>
                 <Button asChild variant="outline" className="gap-2">
                   <Link to={`${basePath}/${party.id}/duzenle`}>
@@ -99,6 +117,7 @@ export default function PartyDetailPage({ mode }: PartyDetailPageProps) {
       />
 
       {error ? <MigrationNotice message={error} /> : null}
+      {warning ? <MigrationNotice message={warning} /> : null}
 
       {loading ? (
         <Card>
@@ -109,7 +128,14 @@ export default function PartyDetailPage({ mode }: PartyDetailPageProps) {
       ) : (
         <>
           <PartySummaryCards summary={summary} mode={mode} />
-          <PartyTabs party={party} mode={mode} transactions={transactions} payments={payments} notes={notes} />
+          <PartyTabs
+            party={party}
+            mode={mode}
+            transactions={transactions}
+            payments={payments}
+            notes={notes}
+            financeDisabledMessage={party.is_legacy_readonly ? "Finans hareketleri için ERP cari tabloları uygulanmalıdır." : null}
+          />
         </>
       )}
     </ERPLayout>

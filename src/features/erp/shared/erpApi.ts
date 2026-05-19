@@ -46,7 +46,7 @@ import {
 } from "./types";
 
 export const ERP_MIGRATION_MESSAGE =
-  "ERP veritabanı tabloları henüz uygulanmamış. Migration çalıştırıldıktan sonra bu modül aktif olacaktır.";
+  "ERP veritabanı tabloları henüz oluşturulmamış. Supabase SQL migration dosyasını çalıştırın.";
 
 type DbResult<T> = { data: T | null; error: unknown; count?: number | null };
 
@@ -75,7 +75,7 @@ function isMissingTableError(error: unknown) {
     err.code === "PGRST205" ||
     message.includes("does not exist") ||
     message.includes("could not find the table") ||
-    message.includes("relation")
+    message.includes("schema cache")
   );
 }
 

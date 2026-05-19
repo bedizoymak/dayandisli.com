@@ -7,21 +7,18 @@ import type {
   PaymentDocument,
   PaymentMethod,
 } from "@/lib/finance/financeTypes";
-import { isMissingTableError, type ServiceResult } from "./partiesService";
-
-const FINANCE_MIGRATION_MESSAGE = "Finans hareket tabloları henüz uygulanmamış. Supabase SQL dosyasını çalıştırdıktan sonra bu ekran aktif olur.";
-
-function toErrorMessage(error: unknown) {
-  if (!error) return "Bilinmeyen hata";
-  if (error instanceof Error) return error.message;
-  if (typeof error === "object" && error && "message" in error) return String((error as { message: unknown }).message);
-  return String(error);
-}
+import { type ServiceResult } from "./partiesService";
+import { classifySupabaseError, getFriendlySupabaseError } from "./supabaseError";
 
 function fail<T>(scope: string, error: unknown, fallback: T): ServiceResult<T> {
   if (import.meta.env.DEV) console.error(`[Finance] ${scope}:`, error);
-  const missingTable = isMissingTableError(error);
-  return { data: fallback, error: missingTable ? FINANCE_MIGRATION_MESSAGE : toErrorMessage(error), missingTable };
+  const errorKind = classifySupabaseError(error);
+  return {
+    data: fallback,
+    error: getFriendlySupabaseError(error),
+    missingTable: errorKind === "missing_table",
+    errorKind,
+  };
 }
 
 function ok<T>(data: T): ServiceResult<T> {
@@ -42,7 +39,6 @@ export async function getFinancialTransactions(filters: FinanceFilters = {}): Pr
   let query = supabase
     .from("financial_transactions" as never)
     .select("*, party:parties(title, party_type)")
-    .is("deleted_at", null)
     .order("transaction_date", { ascending: false });
 
   if (filters.partyId) query = query.eq("party_id", filters.partyId);
@@ -54,12 +50,15 @@ export async function getFinancialTransactions(filters: FinanceFilters = {}): Pr
   return ok(data ?? []);
 }
 
+export async function getFinancialTransactionsByParty(partyId: string): Promise<ServiceResult<FinancialTransaction[]>> {
+  return getFinancialTransactions({ partyId });
+}
+
 export async function getFinancialTransactionById(id: string): Promise<ServiceResult<FinancialTransaction | null>> {
   const { data, error } = (await supabase
     .from("financial_transactions" as never)
     .select("*, party:parties(title, party_type)")
     .eq("id", id)
-    .is("deleted_at", null)
     .maybeSingle()) as unknown as { data: FinancialTransaction | null; error: unknown };
 
   if (error) return fail("getFinancialTransactionById", error, null);
@@ -95,9 +94,24 @@ export async function createFinancialTransaction(payload: FinancialTransactionPa
   return ok(data);
 }
 
+export async function updateFinancialTransaction(id: string, payload: Partial<FinancialTransactionPayload>): Promise<ServiceResult<FinancialTransaction | null>> {
+  const { data, error } = (await supabase
+    .from("financial_transactions" as never)
+    .update({
+      ...payload,
+      amount: payload.amount !== undefined ? Number(payload.amount) : undefined,
+    } as never)
+    .eq("id", id)
+    .select("*, party:parties(title, party_type)")
+    .single()) as unknown as { data: FinancialTransaction | null; error: unknown };
+
+  if (error) return fail("updateFinancialTransaction", error, null);
+  return ok(data);
+}
+
 export async function getFinanceDashboardSummary(): Promise<ServiceResult<FinanceDashboardSummary>> {
   const transactions = await getFinancialTransactions();
-  if (transactions.error) return { data: calculateFinanceDashboardSummary([]), error: transactions.error, missingTable: transactions.missingTable };
+  if (transactions.error) return { data: calculateFinanceDashboardSummary([]), error: transactions.error, missingTable: transactions.missingTable, errorKind: transactions.errorKind };
   return ok(calculateFinanceDashboardSummary(transactions.data));
 }
 
@@ -105,14 +119,12 @@ export async function getPaymentDocuments(filters: { partyId?: string; status?: 
   let query = supabase
     .from("payment_documents" as never)
     .select("*, party:parties(title, party_type)")
-    .is("deleted_at", null)
     .order("due_date", { ascending: true });
 
   if (filters.partyId) query = query.eq("party_id", filters.partyId);
   if (filters.status && filters.status !== "all") query = query.eq("status", filters.status);
 
   const { data, error } = (await query) as unknown as { data: PaymentDocument[] | null; error: unknown };
-
   if (error) return fail("getPaymentDocuments", error, []);
   return ok(data ?? []);
 }

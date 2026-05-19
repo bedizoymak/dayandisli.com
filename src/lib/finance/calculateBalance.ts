@@ -2,30 +2,37 @@ import type {
   AccountType,
   FinanceDashboardSummary,
   FinancialTransaction,
+  FinancialDirection,
   FinancialTransactionType,
   PartyFinancialSummary,
   PartyType,
 } from "./financeTypes";
 
-function transactionSign(partyType: PartyType, transactionType: FinancialTransactionType) {
+function adjustmentSign(direction: FinancialDirection) {
+  return direction === "out" ? -1 : 1;
+}
+
+function transactionSign(partyType: PartyType, transactionType: FinancialTransactionType, direction: FinancialDirection) {
+  if (transactionType === "adjustment") return adjustmentSign(direction);
+
   if (partyType === "customer") {
-    if (transactionType === "debit" || transactionType === "payment_out") return 1;
-    if (transactionType === "credit" || transactionType === "payment_in" || transactionType === "refund") return -1;
+    if (transactionType === "debit" || transactionType === "payment_out" || transactionType === "refund") return 1;
+    if (transactionType === "credit" || transactionType === "payment_in") return -1;
     return 1;
   }
 
   if (partyType === "supplier") {
-    if (transactionType === "debit" || transactionType === "payment_out") return -1;
-    if (transactionType === "credit" || transactionType === "payment_in" || transactionType === "refund") return 1;
-    return -1;
+    if (transactionType === "debit" || transactionType === "payment_in") return 1;
+    if (transactionType === "credit" || transactionType === "payment_out" || transactionType === "refund") return -1;
+    return 1;
   }
 
   return transactionType === "payment_in" || transactionType === "credit" ? -1 : 1;
 }
 
-export function getSignedAmount(transaction: Pick<FinancialTransaction, "party_type" | "transaction_type" | "amount" | "status">) {
+export function getSignedAmount(transaction: Pick<FinancialTransaction, "party_type" | "transaction_type" | "amount" | "status" | "direction">) {
   if (transaction.status === "cancelled") return 0;
-  return Number(transaction.amount || 0) * transactionSign(transaction.party_type, transaction.transaction_type);
+  return Number(transaction.amount || 0) * transactionSign(transaction.party_type, transaction.transaction_type, transaction.direction);
 }
 
 export function calculatePartyFinancialSummary(transactions: FinancialTransaction[]): PartyFinancialSummary {

@@ -107,7 +107,17 @@ export default function FinancePage() {
               ))}
             </select>
             <AccountTypeSelector value={accountType} onChange={setAccountType} />
-            {selectedParty ? (
+            {parties.length === 0 && !loading ? (
+              <EmptyState
+                title="Cari kart bulunamadı"
+                description="Finans işlemleri için önce Müşteriler modülünden customer_full kayıtlarını getirin veya yeni müşteri/tedarikçi oluşturun."
+                action={
+                  <Button asChild>
+                    <Link to="/erp/musteriler">Müşterileri Getir</Link>
+                  </Button>
+                }
+              />
+            ) : selectedParty ? (
               <div className="rounded-lg border bg-background p-4 text-sm">
                 <p className="font-semibold">{selectedParty.title}</p>
                 <p className="mt-1 text-muted-foreground">{selectedParty.contact_name || "İlgili kişi girilmemiş"}</p>

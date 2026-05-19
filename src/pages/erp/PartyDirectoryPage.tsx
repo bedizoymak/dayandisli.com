@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { Building2, DownloadCloud, Plus, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,9 @@ import { ViewToggle, type ViewMode } from "@/components/erp/ViewToggle";
 import { PartyCard } from "@/components/erp/party/PartyCard";
 import { PartyTable } from "@/components/erp/party/PartyTable";
 import { ERPLayout } from "@/features/erp/layout/ERPLayout";
-import type { AccountType, Party, PartyFinancialSummary } from "@/lib/finance/financeTypes";
+import { useToast } from "@/hooks/use-toast";
+import type { AccountType, Party, PartyFilters, PartyFinancialSummary } from "@/lib/finance/financeTypes";
+import { getCustomersForErp, syncCustomerFullToParties, type CustomerErpMode } from "@/services/customerFullService";
 import { getParties, getPartyFinancialSummary } from "@/services/partiesService";
 
 type PartyDirectoryPageProps = {
@@ -33,6 +35,7 @@ const emptySummary: PartyFinancialSummary = {
 };
 
 export default function PartyDirectoryPage({ mode }: PartyDirectoryPageProps) {
+  const { toast } = useToast();
   const [parties, setParties] = useState<Party[]>([]);
   const [summaries, setSummaries] = useState<Record<string, PartyFinancialSummary>>({});
   const [viewMode, setViewMode] = useState<ViewMode>("table");
@@ -40,8 +43,12 @@ export default function PartyDirectoryPage({ mode }: PartyDirectoryPageProps) {
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "passive">("all");
   const [accountFilter, setAccountFilter] = useState<AccountType | "all">("all");
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
+  const [customerMode, setCustomerMode] = useState<CustomerErpMode>("parties");
+  const [legacyAvailable, setLegacyAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const title = mode === "customer" ? "Müşteriler" : "Tedarikçiler";
   const description =
@@ -50,36 +57,78 @@ export default function PartyDirectoryPage({ mode }: PartyDirectoryPageProps) {
       : "Tedarikçi kartları, satın alma ilişkileri ve ödeme takibi.";
   const newPath = mode === "customer" ? "/erp/musteriler/yeni" : "/erp/tedarikciler/yeni";
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const result = await getParties({
-        type: mode,
-        search,
-        active: activeFilter,
-        accountType: accountFilter,
-      });
-
-      setParties(result.data);
-      setError(result.error);
-
-      if (result.data.length) {
-        const summaryRows = await Promise.all(
-          result.data.map(async (party) => {
-            const summary = await getPartyFinancialSummary(party.id);
-            return [party.id, summary.data] as const;
-          }),
-        );
-        setSummaries(Object.fromEntries(summaryRows));
-      } else {
-        setSummaries({});
-      }
-
-      setLoading(false);
+  const loadParties = useCallback(async () => {
+    setLoading(true);
+    const filters: PartyFilters = {
+      type: mode,
+      search,
+      active: activeFilter,
+      accountType: accountFilter,
     };
 
-    load();
+    const result =
+      mode === "customer"
+        ? await getCustomersForErp(filters)
+        : {
+            ...(await getParties(filters)),
+            mode: "parties" as CustomerErpMode,
+            warning: null,
+            legacyAvailable: false,
+          };
+
+    setParties(result.data);
+    setError(result.error);
+    setWarning(result.warning ?? null);
+    setCustomerMode(result.mode);
+    setLegacyAvailable(result.legacyAvailable);
+
+    if (result.data.length) {
+      const summaryRows = await Promise.all(
+        result.data.map(async (party) => {
+          if (party.is_legacy_readonly) return [party.id, emptySummary] as const;
+          const summary = await getPartyFinancialSummary(party.id);
+          return [party.id, summary.data] as const;
+        }),
+      );
+      setSummaries(Object.fromEntries(summaryRows));
+    } else {
+      setSummaries({});
+    }
+
+    setLoading(false);
   }, [accountFilter, activeFilter, mode, search]);
+
+  useEffect(() => {
+    loadParties();
+  }, [loadParties]);
+
+  const handleFetchCustomers = async () => {
+    setSyncing(true);
+    const result = await syncCustomerFullToParties();
+    setSyncing(false);
+
+    if (result.error) {
+      toast({ title: "Müşterileri Getir", description: result.error, variant: "destructive" });
+      return;
+    }
+
+    const sync = result.data;
+    toast({
+      title: "Müşterileri Getir",
+      description: `${sync.fetched} müşteri getirildi. ${sync.imported} yeni kayıt, ${sync.updated} güncelleme, ${sync.skipped} atlandı.`,
+    });
+
+    if (sync.warning) setWarning(sync.warning);
+    if (sync.legacyOnly) {
+      setParties(sync.customers);
+      setCustomerMode("legacy_readonly");
+      setLegacyAvailable(sync.customers.length > 0);
+      setSummaries(Object.fromEntries(sync.customers.map((party) => [party.id, emptySummary])));
+      return;
+    }
+
+    await loadParties();
+  };
 
   const filteredParties = useMemo(() => {
     return parties.filter((party) => {
@@ -97,16 +146,47 @@ export default function PartyDirectoryPage({ mode }: PartyDirectoryPageProps) {
         title={title}
         description={description}
         actions={
-          <Button asChild className="gap-2">
-            <Link to={newPath}>
-              <Plus className="h-4 w-4" />
-              Yeni {mode === "customer" ? "Müşteri" : "Tedarikçi"}
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {mode === "customer" ? (
+              <Button variant="outline" className="gap-2" onClick={handleFetchCustomers} disabled={syncing}>
+                <DownloadCloud className="h-4 w-4" />
+                {syncing ? "Getiriliyor..." : "Müşterileri Getir"}
+              </Button>
+            ) : null}
+            <Button asChild className="gap-2">
+              <Link to={newPath}>
+                <Plus className="h-4 w-4" />
+                Yeni {mode === "customer" ? "Müşteri" : "Tedarikçi"}
+              </Link>
+            </Button>
+          </div>
         }
       />
 
-      {error ? <MigrationNotice message={error} /> : null}
+      {error ? (
+        <MigrationNotice
+          message={error}
+          action={
+            <Button variant="outline" size="sm" className="gap-2" onClick={loadParties}>
+              <RefreshCw className="h-4 w-4" />
+              Tekrar Dene
+            </Button>
+          }
+        />
+      ) : null}
+      {warning ? (
+        <MigrationNotice
+          message={warning}
+          action={
+            mode === "customer" ? (
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleFetchCustomers} disabled={syncing}>
+                <DownloadCloud className="h-4 w-4" />
+                Müşterileri Getir
+              </Button>
+            ) : null
+          }
+        />
+      ) : null}
 
       <Card>
         <CardContent className="grid gap-3 pt-6 lg:grid-cols-[minmax(240px,1fr)_160px_190px_190px_auto_auto]">
@@ -158,14 +238,26 @@ export default function PartyDirectoryPage({ mode }: PartyDirectoryPageProps) {
         <EmptyState
           icon={<Building2 className="h-5 w-5" />}
           title={mode === "customer" ? "Müşteri kaydı bulunamadı" : "Tedarikçi kaydı bulunamadı"}
-          description="Filtreleri temizleyebilir veya yeni bir cari kart oluşturabilirsiniz."
+          description={
+            mode === "customer" && customerMode === "parties_empty" && legacyAvailable
+              ? "ERP müşteri listesi boş. customer_full tablosundan kayıtları getirebilirsiniz."
+              : "Filtreleri temizleyebilir veya yeni bir cari kart oluşturabilirsiniz."
+          }
           action={
-            <Button asChild className="gap-2">
-              <Link to={newPath}>
-                <Plus className="h-4 w-4" />
-                Yeni {mode === "customer" ? "Müşteri" : "Tedarikçi"}
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {mode === "customer" && legacyAvailable ? (
+                <Button className="gap-2" onClick={handleFetchCustomers} disabled={syncing}>
+                  <DownloadCloud className="h-4 w-4" />
+                  customer_full tablosundan müşterileri getir
+                </Button>
+              ) : null}
+              <Button asChild variant={mode === "customer" && legacyAvailable ? "outline" : "default"} className="gap-2">
+                <Link to={newPath}>
+                  <Plus className="h-4 w-4" />
+                  Yeni {mode === "customer" ? "Müşteri" : "Tedarikçi"}
+                </Link>
+              </Button>
+            </div>
           }
         />
       )}

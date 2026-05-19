@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Eye, FileText, Pencil, PlusCircle, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/erp/StatusBadge";
@@ -40,6 +41,7 @@ export function PartyTable({ parties, summaries, mode }: PartyTableProps) {
             <TableHead>Şehir/İlçe</TableHead>
             <TableHead>Bakiye</TableHead>
             <TableHead>Son İşlem</TableHead>
+            <TableHead>Kaynak</TableHead>
             <TableHead>Durum</TableHead>
             <TableHead className="text-right">Aksiyonlar</TableHead>
           </TableRow>
@@ -58,6 +60,9 @@ export function PartyTable({ parties, summaries, mode }: PartyTableProps) {
                 <TableCell>{formatMoney(summary?.currentBalance || 0, party.currency)}</TableCell>
                 <TableCell>{lastTransaction(summary)}</TableCell>
                 <TableCell>
+                  <Badge variant="outline">{party.source_label === "ERP" || !party.source_label ? "ERP" : party.source_label}</Badge>
+                </TableCell>
+                <TableCell>
                   <StatusBadge label={party.is_active ? "Aktif" : "Pasif"} tone={party.is_active ? "success" : "muted"} />
                 </TableCell>
                 <TableCell>
@@ -68,14 +73,26 @@ export function PartyTable({ parties, summaries, mode }: PartyTableProps) {
                       </Link>
                     </Button>
                     <Button asChild variant="ghost" size="icon" title="Düzenle">
-                      <Link to={`${routeBase(mode)}/${party.id}/duzenle`}>
-                        <Pencil className="h-4 w-4" />
-                      </Link>
+                      {party.is_legacy_readonly ? (
+                        <span>
+                          <Pencil className="h-4 w-4 opacity-40" />
+                        </span>
+                      ) : (
+                        <Link to={`${routeBase(mode)}/${party.id}/duzenle`}>
+                          <Pencil className="h-4 w-4" />
+                        </Link>
+                      )}
                     </Button>
-                    <Button asChild variant="ghost" size="icon" title="Yeni Finans Hareketi">
-                      <Link to={`/erp/finans/hareketler/yeni?partyId=${party.id}`}>
-                        <PlusCircle className="h-4 w-4" />
-                      </Link>
+                    <Button asChild={!party.is_legacy_readonly} variant="ghost" size="icon" title={party.is_legacy_readonly ? "Finans için ERP cari tabloları gerekir" : "Yeni Finans Hareketi"}>
+                      {party.is_legacy_readonly ? (
+                        <span>
+                          <PlusCircle className="h-4 w-4 opacity-40" />
+                        </span>
+                      ) : (
+                        <Link to={`/erp/finans/hareketler/yeni?partyId=${party.id}`}>
+                          <PlusCircle className="h-4 w-4" />
+                        </Link>
+                      )}
                     </Button>
                     <Button asChild variant="ghost" size="icon" title={mode === "customer" ? "Siparişleri Gör" : "Satın Alma Kayıtları"}>
                       <Link to={mode === "customer" ? "/erp/siparisler" : "/erp/purchase-orders"}>

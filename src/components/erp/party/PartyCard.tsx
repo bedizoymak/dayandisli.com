@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Eye, FileText, Pencil, PlusCircle, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/erp/StatusBadge";
 import { ACCOUNT_TYPE_LABELS, formatMoney } from "@/lib/finance/financeLabels";
@@ -27,6 +28,9 @@ export function PartyCard({ party, summary, mode }: PartyCardProps) {
           </div>
           <StatusBadge label={party.is_active ? "Aktif" : "Pasif"} tone={party.is_active ? "success" : "muted"} />
         </div>
+        <Badge variant="outline" className="w-fit">
+          Kaynak: {party.source_label === "ERP" || !party.source_label ? "ERP" : party.source_label}
+        </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-3 text-sm">
@@ -54,18 +58,32 @@ export function PartyCard({ party, summary, mode }: PartyCardProps) {
               Görüntüle
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link to={`${routeBase(mode)}/${party.id}/duzenle`}>
+          {party.is_legacy_readonly ? (
+            <Button variant="outline" size="sm" className="gap-2" disabled>
               <Pencil className="h-4 w-4" />
               Düzenle
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link to={`/erp/finans/hareketler/yeni?partyId=${party.id}`}>
+            </Button>
+          ) : (
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <Link to={`${routeBase(mode)}/${party.id}/duzenle`}>
+                <Pencil className="h-4 w-4" />
+                Düzenle
+              </Link>
+            </Button>
+          )}
+          {party.is_legacy_readonly ? (
+            <Button variant="outline" size="sm" className="gap-2" disabled>
               <PlusCircle className="h-4 w-4" />
               Finans
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <Link to={`/erp/finans/hareketler/yeni?partyId=${party.id}`}>
+                <PlusCircle className="h-4 w-4" />
+                Finans
+              </Link>
+            </Button>
+          )}
           <Button asChild variant="outline" size="sm" className="gap-2">
             <Link to={mode === "customer" ? "/erp/siparisler" : "/erp/purchase-orders"}>
               <ShoppingBag className="h-4 w-4" />
