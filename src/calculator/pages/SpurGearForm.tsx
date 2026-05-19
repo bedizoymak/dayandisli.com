@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { ResultCard } from "../components/ResultCard";
@@ -73,7 +73,7 @@ export default function SpurGearForm() {
     return (
       <CalculatorLayout>
         <div className="text-center py-12">
-          <p className="text-slate-400">Makine bulunamadÄ±.</p>
+          <p className="text-slate-400">Makine bulunamadı.</p>
         </div>
       </CalculatorLayout>
     );
@@ -92,7 +92,7 @@ export default function SpurGearForm() {
         </Link>
 
         <h1 className="text-2xl font-bold text-white mb-2">
-          DÃ¼z DiÅŸli Hesaplama
+          Düz Dişli Hesaplama
         </h1>
         <p className="text-slate-400 mb-8">
           Spur gear parametrelerini girin
@@ -107,7 +107,7 @@ export default function SpurGearForm() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="mn" className="text-slate-300">
-                  ModÃ¼l (mn)
+                  Modül (mn)
                 </Label>
                 <Input
                   id="mn"
@@ -124,7 +124,7 @@ export default function SpurGearForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="z" className="text-slate-300">
-                  DiÅŸ SayÄ±sÄ± (Z)
+                  Diş Sayısı (Z)
                 </Label>
                 <Input
                   id="z"
@@ -140,7 +140,7 @@ export default function SpurGearForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="alpha" className="text-slate-300">
-                  Kavrama AÃ§Ä±sÄ± (Î±) Â°
+                  Kavrama Açısı (α) °
                 </Label>
                 <Input
                   id="alpha"
@@ -155,7 +155,7 @@ export default function SpurGearForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="diameter" className="text-slate-300">
-                  Ã‡ap (Ã¸) mm
+                  Çap (ø) mm
                   {!diameterOverride && (
                     <span className="text-xs text-blue-400 ml-2">
                       (otomatik hesaplanan)
@@ -176,7 +176,7 @@ export default function SpurGearForm() {
                     onClick={() => setDiameterOverride(false)}
                     className="text-xs text-blue-400 hover:text-blue-300"
                   >
-                    Otomatik hesaplamaya dÃ¶n
+                    Otomatik hesaplamaya dön
                   </button>
                 )}
               </div>
@@ -199,23 +199,23 @@ export default function SpurGearForm() {
           <div className="space-y-6">
             <Card className="bg-slate-800/50 border-slate-700">
               <CardHeader>
-                <CardTitle className="text-white">SonuÃ§lar</CardTitle>
+                <CardTitle className="text-white">Sonuçlar</CardTitle>
               </CardHeader>
               <CardContent>
                 {result ? (
                   <div className="grid grid-cols-2 gap-4">
-                    <ResultCard label="ModÃ¼l (mn)" value={result.mn} />
-                    <ResultCard label="DiÅŸ SayÄ±sÄ± (Z)" value={result.z} />
-                    <ResultCard label="Kavrama AÃ§Ä±sÄ± (Î±)" value={result.alphaDeg} unit="Â°" />
-                    <ResultCard label="Ã‡ap (Ã¸)" value={result.diameter} unit="mm" />
+                    <ResultCard label="Modül (mn)" value={result.mn} />
+                    <ResultCard label="Diş Sayısı (Z)" value={result.z} />
+                    <ResultCard label="Kavrama Açısı (α)" value={result.alphaDeg} unit="°" />
+                    <ResultCard label="Çap (ø)" value={result.diameter} unit="mm" />
                     <ResultCard label={`Wk (k=${result.kFloor})`} value={result.wkFloor} unit="mm" />
                     <ResultCard label={`Wk (k=${result.kCeil})`} value={result.wkCeil} unit="mm" />
-                    <ResultCard label="Taksimat OranÄ±" value={result.taksimatRatio} />
-                    <ResultCard label="k deÄŸeri" value={result.k} />
+                    <ResultCard label="Taksimat Oranı" value={result.taksimatRatio} />
+                    <ResultCard label="k değeri" value={result.k} />
                   </div>
                 ) : (
                   <p className="text-slate-400 text-center py-8">
-                    GeÃ§erli parametreler girin
+                    Geçerli parametreler girin
                   </p>
                 )}
               </CardContent>
@@ -226,7 +226,7 @@ export default function SpurGearForm() {
                 onClick={handleViewReceipt}
                 className="w-full bg-blue-600 hover:bg-blue-700 h-12"
               >
-                ReÃ§eteyi GÃ¶rÃ¼ntÃ¼le (PDF)
+                Reçeteyi Görüntüle (PDF)
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             )}
