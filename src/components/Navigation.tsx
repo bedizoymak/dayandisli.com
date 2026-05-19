@@ -6,11 +6,34 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { Link } from "react-router-dom";
 import { useCart } from "@/features/shop/CartContext";
+import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
+
+function CartLink({ compact = false }: { compact?: boolean }) {
+  const { itemCount } = useCart();
+
+  return (
+    <Link to="/cart" className="relative">
+      <Button variant="ghost" size="icon">
+        <ShoppingCart className="h-5 w-5" />
+        {itemCount > 0 && (
+          <span
+            className={
+              compact
+                ? "absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs w-4 h-4 rounded-full flex items-center justify-center text-[10px]"
+                : "absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center"
+            }
+          >
+            {itemCount > 99 ? "99+" : itemCount}
+          </span>
+        )}
+      </Button>
+    </Link>
+  );
+}
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useLanguage();
-  const { itemCount } = useCart();
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -74,27 +97,20 @@ export const Navigation = () => {
               {t.nav.sectors}
             </button>
 
-            {/* Shop Link */}
-            <Link
-              to="/shop"
-              className="text-foreground hover:text-primary transition-colors"
-            >
-              Mağaza
-            </Link>
+            {SHOP_FEATURE_ENABLED && (
+              <>
+                <Link
+                  to="/shop"
+                  className="text-foreground hover:text-primary transition-colors"
+                >
+                  Mağaza
+                </Link>
+
+                <CartLink />
+              </>
+            )}
 
             <LanguageSelector />
-
-            {/* Cart Icon */}
-            <Link to="/cart" className="relative">
-              <Button variant="ghost" size="icon">
-                <ShoppingCart className="h-5 w-5" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                    {itemCount > 99 ? '99+' : itemCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
 
             <Button
               onClick={() => scrollToSection("contact")}
@@ -106,17 +122,7 @@ export const Navigation = () => {
 
           {/* MOBILE: Hamburger + Cart + Dil Seçici */}
           <div className="md:hidden flex items-center gap-2">
-            {/* Cart Icon Mobile */}
-            <Link to="/cart" className="relative">
-              <Button variant="ghost" size="icon">
-                <ShoppingCart className="h-5 w-5" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs w-4 h-4 rounded-full flex items-center justify-center text-[10px]">
-                    {itemCount > 99 ? '99+' : itemCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
+            {SHOP_FEATURE_ENABLED && <CartLink compact />}
 
             {/* Hamburger */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -169,13 +175,15 @@ export const Navigation = () => {
                     {t.nav.sectors}
                   </button>
 
-                  <Link
-                    to="/shop"
-                    onClick={() => setIsOpen(false)}
-                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                  >
-                    Mağaza
-                  </Link>
+                  {SHOP_FEATURE_ENABLED && (
+                    <Link
+                      to="/shop"
+                      onClick={() => setIsOpen(false)}
+                      className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                    >
+                      Mağaza
+                    </Link>
+                  )}
 
                   <Button
                     onClick={() => scrollToSection("contact-form")}

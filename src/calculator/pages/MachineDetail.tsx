@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+﻿import { Link, useParams } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { getMachineById } from "../data/machines";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,11 +13,11 @@ export default function MachineDetail() {
     return (
       <CalculatorLayout>
         <div className="text-center py-12">
-          <p className="text-slate-400">Makine bulunamadı.</p>
-          <Link to="/apps/calculator/machines">
+          <p className="text-slate-400">Makine bulunamadÄ±.</p>
+          <Link to="/erp/calculator/machines">
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Makine Listesine Dön
+              Makine Listesine DÃ¶n
             </Button>
           </Link>
         </div>
@@ -30,7 +30,7 @@ export default function MachineDetail() {
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <Link
-          to="/apps/calculator/machines"
+          to="/erp/calculator/machines"
           className="inline-flex items-center text-slate-400 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -52,10 +52,10 @@ export default function MachineDetail() {
 
         {/* Operation Selection */}
         <h2 className="text-xl font-semibold text-white mb-4">
-          İşlem Seçimi
+          Ä°ÅŸlem SeÃ§imi
         </h2>
         <p className="text-slate-400 mb-6">
-          Hesaplamak istediğiniz dişli tipini seçin
+          Hesaplamak istediÄŸiniz diÅŸli tipini seÃ§in
         </p>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -65,15 +65,15 @@ export default function MachineDetail() {
               <div className="w-12 h-12 rounded-lg bg-blue-600/20 flex items-center justify-center mb-2 group-hover:bg-blue-600/30 transition-colors">
                 <Cog className="w-6 h-6 text-blue-400" />
               </div>
-              <CardTitle className="text-white">Düz Dişli Hesaplama</CardTitle>
+              <CardTitle className="text-white">DÃ¼z DiÅŸli Hesaplama</CardTitle>
               <CardDescription className="text-slate-400">
-                Spur gear - Düz dişli parametreleri ve Wk değerleri hesaplama
+                Spur gear - DÃ¼z diÅŸli parametreleri ve Wk deÄŸerleri hesaplama
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to={`/apps/calculator/machines/${machineId}/spur`}>
+              <Link to={`/erp/calculator/machines/${machineId}/spur`}>
                 <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                  Hesaplamaya Başla
+                  Hesaplamaya BaÅŸla
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
@@ -86,18 +86,18 @@ export default function MachineDetail() {
               <div className="w-12 h-12 rounded-lg bg-purple-600/20 flex items-center justify-center mb-2 group-hover:bg-purple-600/30 transition-colors">
                 <RotateCcw className="w-6 h-6 text-purple-400" />
               </div>
-              <CardTitle className="text-white">Helis Dişli Hesaplama</CardTitle>
+              <CardTitle className="text-white">Helis DiÅŸli Hesaplama</CardTitle>
               <CardDescription className="text-slate-400">
-                Helical gear - Helisel dişli parametreleri ve kombinasyon hesaplama
+                Helical gear - Helisel diÅŸli parametreleri ve kombinasyon hesaplama
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to={`/apps/calculator/machines/${machineId}/helical`}>
+              <Link to={`/erp/calculator/machines/${machineId}/helical`}>
                 <Button 
                   variant="outline"
                   className="w-full border-purple-600/50 text-purple-400 hover:bg-purple-600/20"
                 >
-                  Hesaplamaya Başla
+                  Hesaplamaya BaÅŸla
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
@@ -108,8 +108,8 @@ export default function MachineDetail() {
         {/* Future Placeholders */}
         <div className="mt-8 grid md:grid-cols-2 gap-4 opacity-50">
           {[
-            { title: "Profil Taşlama", desc: "Yakında" },
-            { title: "İç Dişli", desc: "Yakında" },
+            { title: "Profil TaÅŸlama", desc: "YakÄ±nda" },
+            { title: "Ä°Ã§ DiÅŸli", desc: "YakÄ±nda" },
           ].map((item) => (
             <div
               key={item.title}

@@ -56,7 +56,7 @@ export default function ProductionPage() {
         description="İş emri, rota ve operasyon takibini üretim odaklı ekranlardan yönetin."
         actions={
           <Button asChild>
-            <Link to="/apps/calculator">DAYAN Calculator</Link>
+            <Link to="/erp/calculator">DAYAN Calculator</Link>
           </Button>
         }
       />
@@ -64,7 +64,7 @@ export default function ProductionPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <ERPModuleCard title="İş Emirleri" description="Planlama, durum takibi ve operasyon yönetimi" href="/erp/work-orders" icon={<HardHat className="h-5 w-5" />} />
         <ERPModuleCard title="Rota Yönetimi" description="Operasyon sırası ve makine planı" href="/erp/routes" icon={<GitBranch className="h-5 w-5" />} />
-        <ERPModuleCard title="Genel Üretim" description="Üretim KPI ve özet görünüm" href="/erp/dashboard" icon={<Factory className="h-5 w-5" />} />
+        <ERPModuleCard title="Genel Üretim" description="Üretim KPI ve özet görünüm" href="/dashboard" icon={<Factory className="h-5 w-5" />} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">

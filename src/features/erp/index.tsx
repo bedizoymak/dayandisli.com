@@ -2,6 +2,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ERPHomePage from "./dashboard/ERPHomePage";
 import StakeholdersPage from "./crm/StakeholdersPage";
 import ERPQuotationsPage from "./quotations/ERPQuotationsPage";
+import TeklifSayfasi from "../quotation";
+import { CalculatorRoutes } from "@/calculator";
+import Kargo from "@/pages/Kargo";
 import SalesOrdersPage from "./sales/SalesOrdersPage";
 import ProductionPage from "./production/ProductionPage";
 import WorkOrdersPage from "./production/WorkOrdersPage";
@@ -24,6 +27,10 @@ import ERPSettingsPage from "./settings/ERPSettingsPage";
 import PurchasingPage from "./purchasing/PurchasingPage";
 import PurchaseOrdersPage from "./purchasing/PurchaseOrdersPage";
 import PurchaseOrderDetailPage from "./purchasing/PurchaseOrderDetailPage";
+import TasksPage from "@/pages/erp/TasksPage";
+import NotesPage from "@/pages/erp/NotesPage";
+import ErpNotFoundPage from "@/pages/erp/ErpNotFoundPage";
+import { ERPLayout } from "./layout/ERPLayout";
 import {
   InventoryDetailPage,
   QualityDetailPage,
@@ -39,6 +46,17 @@ export function ERPRoutes() {
     <Routes>
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<ERPHomePage />} />
+      <Route path="teklifler" element={<ERPQuotationsPage />} />
+      <Route path="teklifler/yeni" element={<ERPLayout title="Yeni Teklif"><TeklifSayfasi embedded /></ERPLayout>} />
+      <Route path="calculator/*" element={<ERPLayout title="DAYAN Calculator"><CalculatorRoutes /></ERPLayout>} />
+      <Route path="kargo" element={<ERPLayout title="Kargo Yönetimi"><Kargo embedded /></ERPLayout>} />
+      <Route path="siparisler" element={<SalesOrdersPage />} />
+      <Route path="siparisler/:id" element={<SalesOrderDetailPage />} />
+      <Route path="finans" element={<FinanceDashboardPage />} />
+      <Route path="bildirimler" element={<NotificationsPage />} />
+      <Route path="gorevler" element={<TasksPage />} />
+      <Route path="notlar" element={<NotesPage />} />
+      <Route path="ayarlar" element={<ERPSettingsPage />} />
       <Route path="crm" element={<StakeholdersPage />} />
       <Route path="stakeholders/:id" element={<StakeholderDetailPage />} />
       <Route path="quotations" element={<ERPQuotationsPage />} />
@@ -70,7 +88,7 @@ export function ERPRoutes() {
       <Route path="notifications" element={<NotificationsPage />} />
       <Route path="reports" element={<ReportsPage />} />
       <Route path="settings" element={<ERPSettingsPage />} />
-      <Route path="*" element={<Navigate to="dashboard" replace />} />
+      <Route path="*" element={<ErpNotFoundPage />} />
     </Routes>
   );
 }

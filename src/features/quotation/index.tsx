@@ -18,7 +18,11 @@ import { RecentQuotationsPanel, QuotationRecord } from "./components/RecentQuota
 
 
 
-const TeklifPage = () => {
+type TeklifPageProps = {
+  embedded?: boolean;
+};
+
+const TeklifPage = ({ embedded = false }: TeklifPageProps) => {
   const { toast } = useToast();
   
   // Form state management
@@ -465,13 +469,13 @@ const TeklifPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className={embedded ? "rounded-xl bg-slate-950 text-white" : "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"}>
       {/* Header */}
-      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+      {!embedded && <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link 
-              to="/apps" 
+              to="/dashboard" 
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
@@ -486,7 +490,7 @@ const TeklifPage = () => {
             </Link>
 
             <div className="flex items-center gap-2">
-              <Link to="/apps">
+              <Link to="/dashboard">
                 <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-slate-700/50">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Geri
@@ -495,9 +499,9 @@ const TeklifPage = () => {
             </div>
           </div>
         </div>
-      </header>
+      </header>}
 
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
+      <main className={embedded ? "px-4 py-6 md:px-6" : "container mx-auto px-4 py-8 max-w-6xl"}>
         {/* Teklif No Display */}
         {form.currentTeklifNo && (
           <div className="mb-6 flex items-center gap-3 bg-blue-600/20 border border-blue-500/30 rounded-lg px-4 py-3">
@@ -575,7 +579,7 @@ const TeklifPage = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-700/50 bg-slate-900/50 mt-12">
+      {!embedded && <footer className="border-t border-slate-700/50 bg-slate-900/50 mt-12">
         <div className="container mx-auto px-4 py-6 text-center">
           <p className="text-sm text-slate-500">
             © {new Date().getFullYear()} DAYAN DİŞLİ SANAYİ | İkitelli O.S.B. Çevre Sanayi Sitesi, 8. Blok No: 45/47 Başakşehir / İstanbul
@@ -584,7 +588,7 @@ const TeklifPage = () => {
             Tel: +90 536 583 74 20 | E-mail: info@dayandisli.com | Web: dayandisli.com
           </p>
         </div>
-      </footer>
+      </footer>}
 
       {/* Email Preview Modal */}
       <EmailPreviewModal

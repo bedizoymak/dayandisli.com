@@ -1,8 +1,19 @@
-import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Factory, LogOut, Menu, Search, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Bell, Factory, LayoutDashboard, PanelLeft } from "lucide-react";
-import { getUnreadNotificationCount } from "../shared/erpApi";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { NotificationCenter } from "@/components/erp/NotificationCenter";
+import { QuickActionMenu } from "@/components/erp/QuickActionMenu";
+import { supabase } from "@/integrations/supabase/client";
 
 type ERPTopBarProps = {
   title: string;
@@ -10,53 +21,92 @@ type ERPTopBarProps = {
 };
 
 export function ERPTopBar({ title, onMenuToggle }: ERPTopBarProps) {
-  const [unreadCount, setUnreadCount] = useState(0);
+  const navigate = useNavigate();
+  const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    getUnreadNotificationCount().then((result) => {
-      if (mounted && !result.error) setUnreadCount(result.data);
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setEmail(data.session?.user.email ?? null);
     });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user.email ?? null);
+    });
+
     return () => {
       mounted = false;
+      listener.subscription.unsubscribe();
     };
   }, []);
 
+  const initials = useMemo(() => {
+    if (!email) return "DD";
+    return email
+      .split("@")[0]
+      .split(/[._-]/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+  }, [email]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("auth_redirect_path");
+    navigate("/login", { replace: true });
+  };
+
   return (
-    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuToggle}>
-            <PanelLeft className="h-5 w-5" />
+    <header className="sticky top-0 z-30 border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuToggle}>
+            <Menu className="h-5 w-5" />
           </Button>
-          <Factory className="h-5 w-5 text-primary" />
-          <div>
-            <p className="text-xs text-muted-foreground">DAYAN Disli ERP</p>
-            <h1 className="text-sm md:text-base font-semibold">{title}</h1>
+          <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Factory className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dayan Dişli ERP</p>
+              <h1 className="truncate text-sm font-semibold text-foreground md:text-base">{title}</h1>
+            </div>
+          </Link>
+        </div>
+
+        <div className="hidden min-w-[240px] max-w-md flex-1 md:block">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="h-10 bg-muted/40 pl-9" placeholder="Modül, müşteri veya teklif ara..." />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/erp/notifications" className="relative">
-              <Bell className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">Bildirimler</span>
-              {unreadCount > 0 ? (
-                <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-                  {unreadCount}
-                </span>
-              ) : null}
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/erp/dashboard">
-              <LayoutDashboard className="h-4 w-4 mr-2" />
-              Panel
-            </Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link to="/apps">Uygulamalar</Link>
-          </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <NotificationCenter />
+          <QuickActionMenu />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="rounded-full">
+                {email ? <span className="text-xs font-semibold">{initials}</span> : <UserCircle className="h-5 w-5" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>
+                <span className="block text-sm">Kullanıcı</span>
+                <span className="block truncate text-xs font-normal text-muted-foreground">{email || "Oturum bilgisi alınıyor"}</span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/erp/ayarlar">Ayarlar</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                Çıkış Yap
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

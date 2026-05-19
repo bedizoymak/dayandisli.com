@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { ResultCard } from "../components/ResultCard";
@@ -31,7 +31,7 @@ export default function HelicalGearForm() {
   const [z, setZ] = useState<string>("20");
   const [alphaDeg, setAlphaDeg] = useState<string>("20.0");
   const [betaDeg, setBetaDeg] = useState<string>("15.0");
-  const [helixDirection, setHelixDirection] = useState<HelixDirection>("Sağ");
+  const [helixDirection, setHelixDirection] = useState<HelixDirection>("SaÄŸ");
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState<HelicalGearResult | null>(null);
 
@@ -66,7 +66,7 @@ export default function HelicalGearForm() {
 
   const handleViewReceipt = () => {
     if (result) {
-      navigate(`/apps/calculator/machines/${machineId}/helical/receipt`, {
+      navigate(`/erp/calculator/machines/${machineId}/helical/receipt`, {
         state: { result },
       });
     }
@@ -76,7 +76,7 @@ export default function HelicalGearForm() {
     return (
       <CalculatorLayout>
         <div className="text-center py-12">
-          <p className="text-slate-400">Makine bulunamadı.</p>
+          <p className="text-slate-400">Makine bulunamadÄ±.</p>
         </div>
       </CalculatorLayout>
     );
@@ -87,7 +87,7 @@ export default function HelicalGearForm() {
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <Link
-          to={`/apps/calculator/machines/${machineId}`}
+          to={`/erp/calculator/machines/${machineId}`}
           className="inline-flex items-center text-slate-400 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -95,7 +95,7 @@ export default function HelicalGearForm() {
         </Link>
 
         <h1 className="text-2xl font-bold text-white mb-2">
-          Helis Dişli Hesaplama
+          Helis DiÅŸli Hesaplama
         </h1>
         <p className="text-slate-400 mb-8">
           Helical gear parametrelerini girin
@@ -110,7 +110,7 @@ export default function HelicalGearForm() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="mn" className="text-slate-300">
-                  Modül (mn)
+                  ModÃ¼l (mn)
                 </Label>
                 <Input
                   id="mn"
@@ -127,7 +127,7 @@ export default function HelicalGearForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="z" className="text-slate-300">
-                  Diş Sayısı (Z)
+                  DiÅŸ SayÄ±sÄ± (Z)
                 </Label>
                 <Input
                   id="z"
@@ -137,13 +137,13 @@ export default function HelicalGearForm() {
                   value={z}
                   onChange={(e) => setZ(e.target.value)}
                   className="bg-slate-900 border-slate-600 text-white"
-                  placeholder="≥ 6"
+                  placeholder="â‰¥ 6"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="alpha" className="text-slate-300">
-                  Kavrama Açısı (α) °
+                  Kavrama AÃ§Ä±sÄ± (Î±) Â°
                 </Label>
                 <Input
                   id="alpha"
@@ -158,7 +158,7 @@ export default function HelicalGearForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="beta" className="text-slate-300">
-                  Helis Açısı (β) °
+                  Helis AÃ§Ä±sÄ± (Î²) Â°
                 </Label>
                 <Input
                   id="beta"
@@ -175,7 +175,7 @@ export default function HelicalGearForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="direction" className="text-slate-300">
-                  Helis Yönü
+                  Helis YÃ¶nÃ¼
                 </Label>
                 <Select
                   value={helixDirection}
@@ -185,7 +185,7 @@ export default function HelicalGearForm() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Sağ">Sağ</SelectItem>
+                    <SelectItem value="SaÄŸ">SaÄŸ</SelectItem>
                     <SelectItem value="Sol">Sol</SelectItem>
                   </SelectContent>
                 </Select>
@@ -195,7 +195,7 @@ export default function HelicalGearForm() {
               {result && (
                 <div className="rounded-lg bg-slate-900/50 p-4 border border-slate-600">
                   <p className="text-xs text-slate-400 mb-1">
-                    Hesaplanan Çap (ø)
+                    Hesaplanan Ã‡ap (Ã¸)
                   </p>
                   <p className="text-white font-mono text-lg">
                     {result.diameter.toFixed(2)} mm
@@ -224,25 +224,25 @@ export default function HelicalGearForm() {
           <div className="space-y-6">
             <Card className="bg-slate-800/50 border-slate-700">
               <CardHeader>
-                <CardTitle className="text-white">Sonuçlar</CardTitle>
+                <CardTitle className="text-white">SonuÃ§lar</CardTitle>
               </CardHeader>
               <CardContent>
                 {result ? (
                   <div className="grid grid-cols-2 gap-4">
-                    <ResultCard label="Modül (mn)" value={result.mn} />
-                    <ResultCard label="Diş Sayısı (Z)" value={result.z} />
+                    <ResultCard label="ModÃ¼l (mn)" value={result.mn} />
+                    <ResultCard label="DiÅŸ SayÄ±sÄ± (Z)" value={result.z} />
                     <ResultCard
-                      label="Kavrama Açısı (α)"
+                      label="Kavrama AÃ§Ä±sÄ± (Î±)"
                       value={result.alphaDeg}
-                      unit="°"
+                      unit="Â°"
                     />
                     <ResultCard
-                      label="Helis Açısı (β)"
+                      label="Helis AÃ§Ä±sÄ± (Î²)"
                       value={result.betaDeg}
-                      unit="°"
+                      unit="Â°"
                     />
-                    <ResultCard label="Helis Yönü" value={result.helixDirection} />
-                    <ResultCard label="Çap (ø)" value={result.diameter} unit="mm" />
+                    <ResultCard label="Helis YÃ¶nÃ¼" value={result.helixDirection} />
+                    <ResultCard label="Ã‡ap (Ã¸)" value={result.diameter} unit="mm" />
                     <ResultCard
                       label={`Wk (k=${result.kFloor})`}
                       value={result.wkFloor}
@@ -254,17 +254,17 @@ export default function HelicalGearForm() {
                       unit="mm"
                     />
                     <ResultCard
-                      label="Taksimat Oranı"
+                      label="Taksimat OranÄ±"
                       value={result.taksimatRatio}
                     />
                     <ResultCard
-                      label="Helis Çark Oranı"
+                      label="Helis Ã‡ark OranÄ±"
                       value={result.helicalGearRatio}
                     />
                   </div>
                 ) : (
                   <p className="text-slate-400 text-center py-8">
-                    Geçerli parametreler girin
+                    GeÃ§erli parametreler girin
                   </p>
                 )}
               </CardContent>
@@ -275,7 +275,7 @@ export default function HelicalGearForm() {
                 onClick={handleViewReceipt}
                 className="w-full bg-purple-600 hover:bg-purple-700 h-12"
               >
-                Reçeteyi Görüntüle (PDF)
+                ReÃ§eteyi GÃ¶rÃ¼ntÃ¼le (PDF)
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             )}

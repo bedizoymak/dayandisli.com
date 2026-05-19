@@ -18,7 +18,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     const checkAccess = async () => {
-      localStorage.setItem("auth_redirect_path", location.pathname);
+      localStorage.setItem("auth_redirect_path", `${location.pathname}${location.search}`);
 
       const { data: settingsData, error: settingsError } = (await supabase
         .from("settings" as never)
@@ -27,7 +27,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         .maybeSingle()) as { data: SettingsRow | null; error: unknown };
 
       if (settingsError) {
-        console.error("Settings error:", settingsError);
+        if (import.meta.env.DEV) console.error("Settings error:", settingsError);
       }
 
       if (settingsData && settingsData.auth_enabled === false) {
@@ -54,7 +54,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         .maybeSingle();
 
       if (adminError) {
-        console.error("Admin yetki kontrol hatasi:", adminError);
+        if (import.meta.env.DEV) console.error("Admin yetki kontrol hatası:", adminError);
         await supabase.auth.signOut();
         setLoading(false);
         return;
@@ -71,9 +71,18 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     };
 
     checkAccess();
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="w-full max-w-sm rounded-xl border border-white/10 bg-white/5 p-6 text-center shadow-xl">
+          <img src="/logo-header.png" alt="Dayan Dişli" className="mx-auto mb-4 h-12 w-auto object-contain" />
+          <p className="text-sm text-slate-300">ERP yetki kontrolü yapılıyor...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated || !isAllowed) {
     return <Navigate to="/login" replace />;

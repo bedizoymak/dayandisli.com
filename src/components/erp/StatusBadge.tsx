@@ -13,6 +13,16 @@ const toneClassMap: Record<NonNullable<StatusBadgeProps["tone"]>, string> = {
   muted: "bg-muted text-muted-foreground border-border",
 };
 
-export function StatusBadge({ label, tone = "default" }: StatusBadgeProps) {
-  return <Badge className={toneClassMap[tone]}>{label}</Badge>;
+const labelToneMap: Record<string, NonNullable<StatusBadgeProps["tone"]>> = {
+  aktif: "success",
+  bekliyor: "warning",
+  tamamlandı: "success",
+  iptal: "danger",
+  teklif: "default",
+  "sipariş hazırlanıyor": "warning",
+};
+
+export function StatusBadge({ label, tone }: StatusBadgeProps) {
+  const resolvedTone = tone || labelToneMap[label.toLocaleLowerCase("tr-TR")] || "default";
+  return <Badge className={toneClassMap[resolvedTone]}>{label}</Badge>;
 }

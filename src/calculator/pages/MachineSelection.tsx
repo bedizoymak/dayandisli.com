@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { MACHINES } from "../data/machines";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,9 @@ export default function MachineSelection() {
     <CalculatorLayout>
       <div className="max-w-5xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Makine Seçimi</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Makine SeÃ§imi</h1>
           <p className="text-slate-400">
-            Hesaplama yapmak istediğiniz makineyi seçin
+            Hesaplama yapmak istediÄŸiniz makineyi seÃ§in
           </p>
         </div>
 
@@ -36,12 +36,12 @@ export default function MachineSelection() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Link to={`/apps/calculator/machines/${machine.id}`}>
+                <Link to={`/erp/calculator/machines/${machine.id}`}>
                   <Button
                     variant="ghost"
                     className="w-full justify-between text-slate-300 hover:text-white hover:bg-slate-700/50"
                   >
-                    Seç
+                    SeÃ§
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </Link>

@@ -64,7 +64,7 @@ export default function ERPQuotationsPage() {
       title: result.error ? "Teklif Daha Önce Dönüştürülmüş" : "Sipariş Oluşturuldu",
       description: result.error || `${row.teklif_no} ERP siparişine dönüştürüldü.`,
     });
-    navigate("/erp/sales-orders");
+    navigate("/erp/siparisler");
   };
 
   return (
@@ -74,7 +74,7 @@ export default function ERPQuotationsPage() {
         description="Mevcut quotations tablosundaki teklifleri ERP ekranında görüntüleyin ve güvenli şekilde siparişe dönüştürün."
         actions={
           <Button asChild>
-            <Link to="/teklif-sayfasi">Teklif Oluşturucuya Git</Link>
+            <Link to="/erp/teklifler/yeni">Yeni Teklif Oluştur</Link>
           </Button>
         }
       />

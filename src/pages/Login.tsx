@@ -1,16 +1,26 @@
-﻿import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { getPublicLoginRedirectUrl } from "@/lib/domains";
 
 export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [domainRedirecting, setDomainRedirecting] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    const redirectUrl = getPublicLoginRedirectUrl();
+    if (!redirectUrl) return;
+
+    setDomainRedirecting(true);
+    window.location.replace(redirectUrl);
+  }, []);
 
   const handleEmailLogin = async () => {
     setLoading(true);
@@ -23,7 +33,7 @@ export default function Login() {
 
       if (error) {
         toast({
-          title: "Giris Hatasi",
+          title: "Giriş Hatası",
           description: error.message,
           variant: "destructive",
         });
@@ -33,8 +43,8 @@ export default function Login() {
       const userEmail = data.user?.email;
       if (!userEmail) {
         toast({
-          title: "Giris Basarisiz",
-          description: "Kullanici bilgisi alinamadi.",
+          title: "Giriş Başarısız",
+          description: "Kullanıcı bilgisi alınamadı.",
           variant: "destructive",
         });
         return;
@@ -50,20 +60,24 @@ export default function Login() {
       if (adminError || !adminUser) {
         await supabase.auth.signOut();
         toast({
-          title: "Yetkisiz Giris",
-          description: "Bu email sistemde yetkili degil.",
+          title: "Yetkisiz Giriş",
+          description: "Bu e-posta sistemde yetkili değil.",
           variant: "destructive",
         });
         return;
       }
 
-      const redirectPath = localStorage.getItem("auth_redirect_path") || "/apps";
+      const storedRedirectPath = localStorage.getItem("auth_redirect_path");
+      const redirectPath =
+        storedRedirectPath && !["/login", "/apps", "/"].includes(storedRedirectPath)
+          ? storedRedirectPath
+          : "/dashboard";
       localStorage.removeItem("auth_redirect_path");
       navigate(redirectPath, { replace: true });
     } catch {
       toast({
         title: "Hata",
-        description: "Bir hata olustu. Lutfen tekrar deneyin.",
+        description: "Bir hata oluştu. Lütfen tekrar deneyin.",
         variant: "destructive",
       });
     } finally {
@@ -71,37 +85,39 @@ export default function Login() {
     }
   };
 
+  if (domainRedirecting) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="rounded-xl border border-white/10 bg-white/5 px-6 py-5 text-center shadow-xl">
+          <p className="text-sm text-slate-300">ERP giriş alanına yönlendiriliyorsunuz...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl">
-        <div className="flex justify-center mb-8">
-          <img src="/logo-header.png" alt="Dayan Disli Logo" className="h-16 object-contain" />
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white p-8 shadow-2xl">
+        <div className="mb-8 flex justify-center">
+          <img src="/logo-header.png" alt="Dayan Dişli Logo" className="h-16 object-contain" />
         </div>
 
-        <h1 className="text-2xl font-bold text-center text-slate-800 mb-8">Giris Yap</h1>
+        <div className="mb-8 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Dayan Dişli ERP</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">Giriş Yap</h1>
+          <p className="mt-2 text-sm text-slate-500">Operasyon yönetim paneline erişim</p>
+        </div>
 
         <div className="space-y-4">
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Input
-            type="password"
-            placeholder="Sifre"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <Input type="email" placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input type="password" placeholder="Şifre" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
 
-        <Button onClick={handleEmailLogin} disabled={loading} className="w-full h-12 mt-4">
-          {loading ? "Giris yapiliyor..." : "Giris Yap"}
+        <Button onClick={handleEmailLogin} disabled={loading} className="mt-4 h-12 w-full">
+          {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
         </Button>
 
-        <p className="mt-8 text-center text-sm text-slate-500">
-          Sadece yetkili kullanicilar giris yapabilir.
-        </p>
+        <p className="mt-8 text-center text-sm text-slate-500">Sadece yetkili kullanıcılar giriş yapabilir.</p>
       </div>
     </div>
   );

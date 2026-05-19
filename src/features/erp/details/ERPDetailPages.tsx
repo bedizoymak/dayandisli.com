@@ -112,7 +112,7 @@ export function SalesOrderDetailPage() {
 
   return (
     <ERPLayout title={order.order_no}>
-      <PageHeader title={order.order_no} description={order.title} actions={<BackButton to="/erp/sales-orders" />} />
+      <PageHeader title={order.order_no} description={order.title} actions={<BackButton to="/erp/siparisler" />} />
       <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-4">
         <div><span className="text-muted-foreground">Müşteri</span><p className="font-medium">{stakeholderName || "-"}</p></div>
         <div><span className="text-muted-foreground">Durum</span><p><StatusBadge label={SALES_ORDER_STATUS_LABELS[order.status]} /></p></div>

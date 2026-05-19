@@ -48,7 +48,11 @@ function slugifyForPdf(text: string) {
     .replace(/^-|-$/g, "");
 }
 
-export default function Kargo() {
+type KargoProps = {
+  embedded?: boolean;
+};
+
+export default function Kargo({ embedded = false }: KargoProps) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -135,9 +139,9 @@ if (/Android/i.test(navigator.userAgent)) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className={embedded ? "flex flex-col rounded-xl bg-slate-950 text-white" : "flex flex-col min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"}>
       {/* Header */}
-      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+      {!embedded && <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
@@ -155,10 +159,10 @@ if (/Android/i.test(navigator.userAgent)) {
             </div>
           </div>
         </div>
-      </header>
+      </header>}
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className={embedded ? "px-4 py-6 md:px-6" : "container mx-auto px-4 py-8"}>
         <div className="max-w-2xl mx-auto">
           {/* Page Title Card */}
           <div className="text-center mb-8">
@@ -233,7 +237,7 @@ if (/Android/i.test(navigator.userAgent)) {
   const slug = slugifyForPdf(c.short_name);
   setSelectedCustomerSlug(slug);
 
-+ setSelectedShortName(c.short_name);  // Üstte gösterilecek
+  setSelectedShortName(c.short_name);
   setSelectedCustomerId(c.id);
   setOpen(false);
 
@@ -303,13 +307,13 @@ if (/Android/i.test(navigator.userAgent)) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-700/50 bg-slate-900/50 mt-auto">
+      {!embedded && <footer className="border-t border-slate-700/50 bg-slate-900/50 mt-auto">
         <div className="container mx-auto px-4 py-4">
           <p className="text-center text-sm text-slate-500">
             © {new Date().getFullYear()} DAYAN DİŞLİ SANAYİ | İkitelli O.S.B. Çevre Sanayi Sitesi, 8. Blok No: 45/47 Başakşehir / İstanbul <br /> Tel: +90 536 583 74 20 | E-mail: info@dayandisli.com | Web: dayandisli.com
           </p>
         </div>
-      </footer>
+      </footer>}
     </div>
   );
 }
