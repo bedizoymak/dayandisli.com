@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +74,7 @@ export default function PurchaseOrderDetailPage() {
       <PageHeader
         title={order.purchase_order_no}
         description={order.title}
-        actions={<Button asChild variant="outline"><Link to="/erp/purchase-orders">Listeye Dön</Link></Button>}
+        actions={<Button asChild variant="outline"><Link to="/purchase-orders">Listeye Dön</Link></Button>}
       />
 
       <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-4">

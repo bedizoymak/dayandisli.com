@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { Calculator, FilePlus2, Package, Plus, ReceiptText, ShoppingCart, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,12 +11,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const actions = [
-  { label: "Yeni Teklif", path: "/erp/teklifler/yeni", icon: FilePlus2 },
-  { label: "Yeni Müşteri", path: "/erp/musteriler/yeni", icon: Users },
-  { label: "Finans Hareketi", path: "/erp/finans/hareketler/yeni", icon: ReceiptText },
-  { label: "Calculator", path: "/erp/calculator", icon: Calculator },
-  { label: "Siparişler", path: "/erp/siparisler", icon: ShoppingCart },
-  { label: "Kargo", path: "/erp/kargo", icon: Package },
+  { label: "Yeni Teklif", path: "/teklifler/yeni", icon: FilePlus2 },
+  { label: "Yeni Müşteri", path: "/musteriler/yeni", icon: Users },
+  { label: "Finans Hareketi", path: "/finans/hareketler/yeni", icon: ReceiptText },
+  { label: "Calculator", path: "/calculator", icon: Calculator },
+  { label: "Siparişler", path: "/siparisler", icon: ShoppingCart },
+  { label: "Kargo", path: "/kargo", icon: Package },
 ];
 
 export function QuickActionMenu() {

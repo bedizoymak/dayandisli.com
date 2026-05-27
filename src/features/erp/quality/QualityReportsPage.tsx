@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,7 +144,7 @@ export default function QualityReportsPage() {
       ) : (
         <DataTable
           columns={[
-            { key: "report", header: "Rapor No", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/erp/quality/${row.id}`}>{row.report_no}</Link> },
+            { key: "report", header: "Rapor No", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/quality/${row.id}`}>{row.report_no}</Link> },
             { key: "date", header: "Kontrol Tarihi", render: (row) => formatDate(row.inspection_date) },
             { key: "inspector", header: "Kontrol Eden", render: (row) => row.inspector_employee_id ? employees.find((employee) => employee.id === row.inspector_employee_id)?.full_name || "-" : "-" },
             {

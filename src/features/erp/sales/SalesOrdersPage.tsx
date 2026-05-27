@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -77,7 +77,7 @@ export default function SalesOrdersPage() {
       description: result.error || `${order.order_no} üretime aktarıldı.`,
     });
     await load();
-    navigate("/erp/work-orders");
+    navigate("/work-orders");
   };
 
   return (

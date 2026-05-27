@@ -1,4 +1,4 @@
-import { useLocation, useParams, Link, useNavigate } from "react-router-dom";
+﻿import { useLocation, useParams, Link, useNavigate } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { GearCombinationsTable } from "../components/GearCombinationsTable";
 import { getMachineById } from "../data/machines";
@@ -23,7 +23,7 @@ export default function SpurGearReceipt() {
           <p className="text-slate-400 mb-4">
             Hesaplama sonucu bulunamadı.
           </p>
-          <Link to={`/erp/calculator/machines/${machineId}/spur`}>
+          <Link to={`/calculator/machines/${machineId}/spur`}>
             <Button variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Hesaplamaya Dön

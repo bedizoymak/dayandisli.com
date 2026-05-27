@@ -1,4 +1,4 @@
-# DAYAN Gear — Quotation and Management System
+# DAYAN Gear â€” Quotation and Management System
 
 ## Short Description
 This project is a modern, web-based quotation and operations management system built for DAYAN Gear. The application unifies customer/company information, quotation workflows, PDF output, and admin processes in a secure architecture.
@@ -33,10 +33,11 @@ Frontend (React/Vite) -> Supabase (Auth + DB) -> GitHub Actions -> Production
 Define the following placeholders in your `.env` file:
 
 ```env
-VITE_SUPABASE_PROJECT_ID=
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
+VITE_SUPABASE_URL=https://meauutjsnnggzcigyvfp.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=
+VITE_PUBLIC_BASE_URL=https://dayandisli.com
+VITE_ERP_BASE_URL=https://erp.dayandisli.com
+VITE_APP_TARGET=erp
 ```
 
 ## Local Development

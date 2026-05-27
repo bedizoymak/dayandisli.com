@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -19,6 +19,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     const checkAccess = async () => {
       localStorage.setItem("auth_redirect_path", `${location.pathname}${location.search}`);
+
+      if (!isSupabaseConfigured) {
+        setLoading(false);
+        return;
+      }
 
       const { data: settingsData, error: settingsError } = (await supabase
         .from("settings" as never)
@@ -77,7 +82,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="w-full max-w-sm rounded-xl border border-white/10 bg-white/5 p-6 text-center shadow-xl">
-          <img src="/logo-header.png" alt="Dayan Dişli" className="mx-auto mb-4 h-12 w-auto object-contain" />
+          <img src={`${import.meta.env.BASE_URL}logo-header.png`} alt="Dayan Dişli" className="mx-auto mb-4 h-12 w-auto object-contain" />
           <p className="text-sm text-slate-300">ERP yetki kontrolü yapılıyor...</p>
         </div>
       </div>

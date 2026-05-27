@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ export default function FinanceTransactionDetailPage() {
         description="Cari hesap hareketi detayları."
         actions={
           <Button asChild variant="outline" className="gap-2">
-            <Link to="/erp/finans/hareketler">
+            <Link to="/finans/hareketler">
               <ArrowLeft className="h-4 w-4" />
               Hareketler
             </Link>

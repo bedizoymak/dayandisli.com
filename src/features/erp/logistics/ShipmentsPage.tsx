@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,7 +140,7 @@ export default function ShipmentsPage() {
       ) : (
         <DataTable
           columns={[
-            { key: "no", header: "Sevkiyat No", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/erp/shipments/${row.id}`}>{row.shipment_no}</Link> },
+            { key: "no", header: "Sevkiyat No", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/shipments/${row.id}`}>{row.shipment_no}</Link> },
             { key: "customer", header: "Müşteri", render: (row) => (row.stakeholder_id ? stakeholderNameById[row.stakeholder_id] || "-" : "-") },
             { key: "carrier", header: "Taşıyıcı", render: (row) => row.carrier || "-" },
             { key: "tracking", header: "Kargo Takip No", render: (row) => row.tracking_no || "-" },

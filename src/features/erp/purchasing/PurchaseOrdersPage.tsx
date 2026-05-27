@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,7 +127,7 @@ export default function PurchaseOrdersPage() {
       ) : (
         <DataTable
           columns={[
-            { key: "no", header: "Sipariş No", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/erp/purchase-orders/${row.id}`}>{row.purchase_order_no}</Link> },
+            { key: "no", header: "Sipariş No", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/purchase-orders/${row.id}`}>{row.purchase_order_no}</Link> },
             { key: "supplier", header: "Tedarikçi", render: (row) => (row.supplier_id ? supplierNameById[row.supplier_id] || "-" : "-") },
             { key: "title", header: "Başlık", render: (row) => row.title },
             { key: "status", header: "Durum", render: (row) => <StatusBadge label={PURCHASE_ORDER_STATUS_LABELS[row.status]} tone={tone(row.status)} /> },

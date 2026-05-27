@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Building2, DownloadCloud, Plus, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,7 @@ export default function PartyDirectoryPage({ mode }: PartyDirectoryPageProps) {
     mode === "customer"
       ? "Müşteri cari kartları, iletişim bilgileri ve finans bakiyeleri."
       : "Tedarikçi kartları, satın alma ilişkileri ve ödeme takibi.";
-  const newPath = mode === "customer" ? "/erp/musteriler/yeni" : "/erp/tedarikciler/yeni";
+  const newPath = mode === "customer" ? "/musteriler/yeni" : "/tedarikciler/yeni";
 
   const loadParties = useCallback(async () => {
     setLoading(true);

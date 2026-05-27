@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -57,7 +57,7 @@ export function FinanceTransactionTable({ transactions, compact = false }: Finan
               <TableCell className="max-w-[260px] truncate">{transaction.description || "-"}</TableCell>
               <TableCell className="text-right">
                 <Button asChild variant="ghost" size="icon" title="Görüntüle">
-                  <Link to={`/erp/finans/hareketler/${transaction.id}`}>
+                  <Link to={`/finans/hareketler/${transaction.id}`}>
                     <Eye className="h-4 w-4" />
                   </Link>
                 </Button>

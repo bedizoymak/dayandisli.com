@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export default function FinancePaymentsPage() {
         description="Tahsilat ve ödeme hareketleri."
         actions={
           <Button asChild className="gap-2">
-            <Link to="/erp/finans/hareketler/yeni">
+            <Link to="/finans/hareketler/yeni">
               <Plus className="h-4 w-4" />
               Yeni Ödeme
             </Link>

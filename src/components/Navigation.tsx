@@ -50,7 +50,7 @@ export const Navigation = () => {
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center cursor-pointer gap-3">
-            <img src="/logo-header.png" alt="Dayan Disli" className="h-14 w-auto object-contain" />
+            <img src={`${import.meta.env.BASE_URL}logo-header.png`} alt="Dayan Disli" className="h-14 w-auto object-contain" />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">

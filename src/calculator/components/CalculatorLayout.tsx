@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+﻿import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Settings, Scale, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,19 +9,19 @@ interface CalculatorLayoutProps {
 
 export function CalculatorLayout({ children }: CalculatorLayoutProps) {
   const location = useLocation();
-  const embeddedInErp = location.pathname.startsWith("/erp/calculator");
+  const embeddedInErp = location.pathname.startsWith("/calculator");
 
   const navItems = [
-    { href: "/erp/calculator", label: "Ana Sayfa", icon: Home },
-    { href: "/erp/calculator/machines", label: "Makineler", icon: Settings },
-    { href: "/erp/calculator/weight", label: "Ağırlık Hesaplama", icon: Scale },
+    { href: "/calculator", label: "Ana Sayfa", icon: Home },
+    { href: "/calculator/machines", label: "Makineler", icon: Settings },
+    { href: "/calculator/weight", label: "Ağırlık Hesaplama", icon: Scale },
   ];
 
   const header = (
     <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm">
       <div className={embeddedInErp ? "px-4" : "container mx-auto px-4"}>
         <div className="flex min-h-16 flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
-          <Link to="/erp/calculator" className="flex items-center gap-3 transition-opacity hover:opacity-80">
+          <Link to="/calculator" className="flex items-center gap-3 transition-opacity hover:opacity-80">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
               <Settings className="h-6 w-6 text-white" />
             </div>

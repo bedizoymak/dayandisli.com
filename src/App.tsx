@@ -33,12 +33,22 @@ import {
 } from "./features/shop";
 
 const queryClient = new QueryClient();
+const isErpBuild = (import.meta.env.VITE_APP_TARGET || "erp") === "erp";
 
 function LegacyCalculatorRedirect() {
   const location = useLocation();
-  const suffix = location.pathname.replace(/^\/apps\/calculator/, "");
-  return <Navigate to={`/erp/calculator${suffix}${location.search}`} replace />;
+  const suffix = location.pathname.replace(/^\/(?:erp\/)?apps\/calculator/, "");
+  const targetBase = isErpBuild ? "/calculator" : "/erp/calculator";
+  return <Navigate to={`${targetBase}${suffix}${location.search}`} replace />;
 }
+
+function LegacyErpRedirect() {
+  const location = useLocation();
+  const suffix = location.pathname.replace(/^\/erp/, "") || "/";
+  return <Navigate to={`${suffix}${location.search}`} replace />;
+}
+
+const protectedElement = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
 
 const AppContent = () => (
   <TooltipProvider>
@@ -46,14 +56,19 @@ const AppContent = () => (
     <Sonner />
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/hizmetler" element={<Hizmetler />} />
-        <Route path="/teknolojiler" element={<Teknolojiler />} />
-        <Route path="/urunler" element={<SiteUrunler />} />
-        <Route path="/sektorler" element={<Sektorler />} />
-        <Route path="/iletisim" element={<SiteIletisim />} />
-        <Route path="/hakkimizda" element={<Hakkimizda />} />
-        <Route path="/referanslar" element={<Referanslar />} />
+        {!isErpBuild && (
+          <>
+            <Route path="/" element={<Index />} />
+            <Route path="/hizmetler" element={<Hizmetler />} />
+            <Route path="/teknolojiler" element={<Teknolojiler />} />
+            <Route path="/urunler" element={<SiteUrunler />} />
+            <Route path="/sektorler" element={<Sektorler />} />
+            <Route path="/iletisim" element={<SiteIletisim />} />
+            <Route path="/hakkimizda" element={<Hakkimizda />} />
+            <Route path="/referanslar" element={<Referanslar />} />
+          </>
+        )}
+
         <Route path="/login" element={<Login />} />
 
         {SHOP_FEATURE_ENABLED ? (
@@ -72,23 +87,35 @@ const AppContent = () => (
           </>
         )}
 
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <Routes>
-                <Route path="apps" element={<Apps />} />
-                <Route path="dashboard" element={<ERPHomePage />} />
-                <Route path="apps/calculator/*" element={<LegacyCalculatorRedirect />} />
-                {SHOP_FEATURE_ENABLED && <Route path="apps/shop-orders" element={<ShopOrdersPage />} />}
-                <Route path="kargo" element={<Navigate to="/erp/kargo" replace />} />
-                <Route path="teklif-sayfasi" element={<Navigate to="/erp/teklifler/yeni" replace />} />
-                <Route path="erp/*" element={<ERPRoutes />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </ProtectedRoute>
-          }
-        />
+        {isErpBuild ? (
+          <>
+            <Route path="/apps" element={protectedElement(<Apps />)} />
+            <Route path="/dashboard" element={protectedElement(<ERPHomePage />)} />
+            <Route path="/apps/calculator/*" element={protectedElement(<LegacyCalculatorRedirect />)} />
+            {SHOP_FEATURE_ENABLED && <Route path="/apps/shop-orders" element={protectedElement(<ShopOrdersPage />)} />}
+            <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/teklifler/yeni" replace />)} />
+            <Route path="/erp/*" element={protectedElement(<LegacyErpRedirect />)} />
+            <Route path="/*" element={protectedElement(<ERPRoutes />)} />
+          </>
+        ) : (
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <Routes>
+                  <Route path="apps" element={<Apps />} />
+                  <Route path="dashboard" element={<ERPHomePage />} />
+                  <Route path="apps/calculator/*" element={<LegacyCalculatorRedirect />} />
+                  {SHOP_FEATURE_ENABLED && <Route path="apps/shop-orders" element={<ShopOrdersPage />} />}
+                  <Route path="kargo" element={<Navigate to="/erp/kargo" replace />} />
+                  <Route path="teklif-sayfasi" element={<Navigate to="/erp/teklifler/yeni" replace />} />
+                  <Route path="erp/*" element={<ERPRoutes />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ProtectedRoute>
+            }
+          />
+        )}
       </Routes>
     </BrowserRouter>
   </TooltipProvider>

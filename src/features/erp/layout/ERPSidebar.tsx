@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+﻿import { Link, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { visibleErpModules } from "@/config/erpModules";
@@ -23,12 +23,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           const isActive =
             location.pathname === item.path ||
             (item.id !== "erp" && location.pathname.startsWith(`${item.path}/`)) ||
-            (item.id === "dashboard" && location.pathname === "/erp/dashboard") ||
-            (item.id === "quotations" && location.pathname.startsWith("/erp/quotations")) ||
-            (item.id === "orders" && location.pathname.startsWith("/erp/sales-orders")) ||
-            (item.id === "finance" && location.pathname.startsWith("/erp/finance")) ||
-            (item.id === "notifications" && location.pathname.startsWith("/erp/notifications")) ||
-            (item.id === "settings" && location.pathname.startsWith("/erp/settings"));
+            (item.id === "dashboard" && location.pathname === "/dashboard") ||
+            (item.id === "quotations" && location.pathname.startsWith("/quotations")) ||
+            (item.id === "orders" && location.pathname.startsWith("/sales-orders")) ||
+            (item.id === "finance" && location.pathname.startsWith("/finance")) ||
+            (item.id === "notifications" && location.pathname.startsWith("/notifications")) ||
+            (item.id === "settings" && location.pathname.startsWith("/settings"));
 
           return (
             <Link

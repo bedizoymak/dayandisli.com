@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { MACHINES } from "../data/machines";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,7 +36,7 @@ export default function MachineSelection() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Link to={`/erp/calculator/machines/${machine.id}`}>
+                <Link to={`/calculator/machines/${machine.id}`}>
                   <Button
                     variant="ghost"
                     className="w-full justify-between text-slate-300 hover:text-white hover:bg-slate-700/50"

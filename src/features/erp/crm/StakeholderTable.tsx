@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/erp/DataTable";
 import { StatusBadge } from "@/components/erp/StatusBadge";
@@ -17,7 +17,7 @@ export function StakeholderTable({ data, onEdit, onDeactivate, onActivate }: Sta
   return (
     <DataTable
       columns={[
-        { key: "company", header: "Firma", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/erp/stakeholders/${row.id}`}>{row.company_name}</Link> },
+        { key: "company", header: "Firma", render: (row) => <Link className="text-primary underline-offset-4 hover:underline" to={`/stakeholders/${row.id}`}>{row.company_name}</Link> },
         { key: "type", header: "Tip", render: (row) => STAKEHOLDER_TYPE_LABELS[row.type] },
         { key: "contact", header: "Yetkili", render: (row) => row.contact_name || "-" },
         { key: "phone", header: "Telefon", render: (row) => row.phone || "-" },

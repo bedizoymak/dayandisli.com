@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Factory, LogOut, Menu, Search, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -99,7 +99,7 @@ export function ERPTopBar({ title, onMenuToggle }: ERPTopBarProps) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link to="/erp/ayarlar">Ayarlar</Link>
+                <Link to="/ayarlar">Ayarlar</Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
                 <LogOut className="mr-2 h-4 w-4" />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,7 @@ export default function FinanceTransactionFormPage() {
 
     setSaving(false);
     toast({ title: "Kaydedildi", description: "Finans hareketi oluşturuldu." });
-    navigate(`/erp/finans/hareketler/${result.data.id}`);
+    navigate(`/finans/hareketler/${result.data.id}`);
   };
 
   return (
@@ -77,7 +77,7 @@ export default function FinanceTransactionFormPage() {
         description="Cari hesap hareketi, ödeme yöntemi ve hesap tipi bilgilerini kaydedin."
         actions={
           <Button asChild variant="outline" className="gap-2">
-            <Link to="/erp/finans/hareketler">
+            <Link to="/finans/hareketler">
               <ArrowLeft className="h-4 w-4" />
               Hareketler
             </Link>
@@ -95,7 +95,7 @@ export default function FinanceTransactionFormPage() {
           description="Finans hareketi eklemek için önce Müşteriler modülünden customer_full kayıtlarını getirin veya yeni cari kart oluşturun."
           action={
             <Button asChild>
-              <Link to="/erp/musteriler">Müşteriler Modülüne Git</Link>
+              <Link to="/musteriler">Müşteriler Modülüne Git</Link>
             </Button>
           }
         />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ export function NotificationCenter() {
         <DropdownMenuSeparator className="m-0" />
         <div className="p-3">
           <Button asChild variant="outline" size="sm" className="w-full">
-            <Link to="/erp/bildirimler">Tüm Bildirimleri Aç</Link>
+            <Link to="/bildirimler">Tüm Bildirimleri Aç</Link>
           </Button>
         </div>
       </DropdownMenuContent>

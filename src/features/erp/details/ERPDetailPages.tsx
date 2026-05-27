@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AuditTimeline } from "@/components/erp/AuditTimeline";
@@ -112,7 +112,7 @@ export function SalesOrderDetailPage() {
 
   return (
     <ERPLayout title={order.order_no}>
-      <PageHeader title={order.order_no} description={order.title} actions={<BackButton to="/erp/siparisler" />} />
+      <PageHeader title={order.order_no} description={order.title} actions={<BackButton to="/siparisler" />} />
       <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-4">
         <div><span className="text-muted-foreground">Müşteri</span><p className="font-medium">{stakeholderName || "-"}</p></div>
         <div><span className="text-muted-foreground">Durum</span><p><StatusBadge label={SALES_ORDER_STATUS_LABELS[order.status]} /></p></div>
@@ -176,7 +176,7 @@ export function WorkOrderDetailPage() {
 
   return (
     <ERPLayout title={workOrder.work_order_no}>
-      <PageHeader title={workOrder.work_order_no} description={workOrder.title} actions={<BackButton to="/erp/work-orders" />} />
+      <PageHeader title={workOrder.work_order_no} description={workOrder.title} actions={<BackButton to="/work-orders" />} />
       <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-4">
         <div><span className="text-muted-foreground">Müşteri</span><p className="font-medium">{stakeholderName || "-"}</p></div>
         <div><span className="text-muted-foreground">Parça</span><p className="font-medium">{workOrder.part_name || "-"}</p></div>
@@ -223,7 +223,7 @@ export function StakeholderDetailPage() {
 
   return (
     <ERPLayout title={stakeholder.company_name}>
-      <PageHeader title={stakeholder.company_name} description={STAKEHOLDER_TYPE_LABELS[stakeholder.type]} actions={<BackButton to="/erp/crm" />} />
+      <PageHeader title={stakeholder.company_name} description={STAKEHOLDER_TYPE_LABELS[stakeholder.type]} actions={<BackButton to="/crm" />} />
       <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-3">
         <div><span className="text-muted-foreground">Yetkili</span><p className="font-medium">{stakeholder.contact_name || "-"}</p></div>
         <div><span className="text-muted-foreground">Telefon</span><p className="font-medium">{stakeholder.phone || "-"}</p></div>
@@ -260,7 +260,7 @@ export function InventoryDetailPage() {
   if (!item) return <ERPLayout title="Stok Detayı"><EmptyState title="Stok kartı bulunamadı" description="Kayıt görüntülenemedi." /></ERPLayout>;
   return (
     <ERPLayout title={item.name}>
-      <PageHeader title={item.name} description={item.code || INVENTORY_ITEM_TYPE_LABELS[item.item_type]} actions={<BackButton to="/erp/inventory" />} />
+      <PageHeader title={item.name} description={item.code || INVENTORY_ITEM_TYPE_LABELS[item.item_type]} actions={<BackButton to="/inventory" />} />
       <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-4">
         <div><span className="text-muted-foreground">Tip</span><p className="font-medium">{INVENTORY_ITEM_TYPE_LABELS[item.item_type]}</p></div>
         <div><span className="text-muted-foreground">Stok</span><p className="font-medium">{formatNumber(item.current_stock, 3)} {item.unit}</p></div>
@@ -299,7 +299,7 @@ export function ShipmentDetailPage() {
   const stakeholderName = shipment.stakeholder_id ? stakeholders.find((item) => item.id === shipment.stakeholder_id)?.company_name : "-";
   return (
     <ERPLayout title={shipment.shipment_no}>
-      <PageHeader title={shipment.shipment_no} description="Sevkiyat detayı" actions={<BackButton to="/erp/logistics" />} />
+      <PageHeader title={shipment.shipment_no} description="Sevkiyat detayı" actions={<BackButton to="/logistics" />} />
       <PrintPage title="Sevk İrsaliyesi Önizleme" subtitle="Yazdırılabilir sevkiyat çıktısı.">
         <div className="grid gap-3 text-sm md:grid-cols-3">
           <div><span className="text-muted-foreground">Müşteri</span><p className="font-medium">{stakeholderName || "-"}</p></div>
@@ -337,7 +337,7 @@ export function QualityDetailPage() {
   const inspectorName = report.inspector_employee_id ? employees.find((employee) => employee.id === report.inspector_employee_id)?.full_name : null;
   return (
     <ERPLayout title={report.report_no}>
-      <PageHeader title={report.report_no} description={QUALITY_RESULT_LABELS[report.result]} actions={<BackButton to="/erp/quality" />} />
+      <PageHeader title={report.report_no} description={QUALITY_RESULT_LABELS[report.result]} actions={<BackButton to="/quality" />} />
       <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-3">
         <div><span className="text-muted-foreground">Sonuç</span><p className="font-medium">{QUALITY_RESULT_LABELS[report.result]}</p></div>
         <div><span className="text-muted-foreground">Kontrol Eden</span><p className="font-medium">{inspectorName || "-"}</p></div>
@@ -373,7 +373,7 @@ export function SubcontractingDetailPage() {
   const supplierName = job.supplier_id ? stakeholders.find((item) => item.id === job.supplier_id)?.company_name : "-";
   return (
     <ERPLayout title={job.process_type}>
-      <PageHeader title={job.process_type} description={SUBCONTRACTING_STATUS_LABELS[job.status]} actions={<BackButton to="/erp/subcontracting" />} />
+      <PageHeader title={job.process_type} description={SUBCONTRACTING_STATUS_LABELS[job.status]} actions={<BackButton to="/subcontracting" />} />
       <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-4">
         <div><span className="text-muted-foreground">Fason Firma</span><p className="font-medium">{supplierName || "-"}</p></div>
         <div><span className="text-muted-foreground">Gönderim</span><p className="font-medium">{formatDate(job.sent_date)}</p></div>

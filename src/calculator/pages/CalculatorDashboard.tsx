@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export default function CalculatorDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to="/erp/calculator/machines">
+              <Link to="/calculator/machines">
                 <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white group-hover:shadow-lg group-hover:shadow-blue-600/25 transition-all">
                   Makine Seçimi
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -60,7 +60,7 @@ export default function CalculatorDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to="/erp/calculator/weight">
+              <Link to="/calculator/weight">
                 <Button 
                   variant="outline" 
                   className="w-full border-emerald-600/50 text-emerald-400 hover:bg-emerald-600/20 hover:text-emerald-300 group-hover:shadow-lg group-hover:shadow-emerald-600/25 transition-all"

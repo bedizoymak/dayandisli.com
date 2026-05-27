@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { getPublicLoginRedirectUrl } from "@/lib/domains";
+
+const SUPABASE_SETUP_MESSAGE =
+  "ERP giriş sistemi yapılandırılmamış. Lütfen VITE_SUPABASE_URL ve VITE_SUPABASE_PUBLISHABLE_KEY değerleriyle yeniden build alın.";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -23,6 +26,15 @@ export default function Login() {
   }, []);
 
   const handleEmailLogin = async () => {
+    if (!isSupabaseConfigured) {
+      toast({
+        title: "ERP yapılandırması eksik",
+        description: SUPABASE_SETUP_MESSAGE,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -99,7 +111,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white p-8 shadow-2xl">
         <div className="mb-8 flex justify-center">
-          <img src="/logo-header.png" alt="Dayan Dişli Logo" className="h-16 object-contain" />
+          <img src={`${import.meta.env.BASE_URL}logo-header.png`} alt="Dayan Dişli Logo" className="h-16 object-contain" />
         </div>
 
         <div className="mb-8 text-center">
@@ -108,12 +120,30 @@ export default function Login() {
           <p className="mt-2 text-sm text-slate-500">Operasyon yönetim paneline erişim</p>
         </div>
 
+        {!isSupabaseConfigured && (
+          <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {SUPABASE_SETUP_MESSAGE}
+          </div>
+        )}
+
         <div className="space-y-4">
-          <Input type="email" placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input type="password" placeholder="Şifre" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input
+            type="email"
+            placeholder="E-posta"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={!isSupabaseConfigured}
+          />
+          <Input
+            type="password"
+            placeholder="Şifre"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={!isSupabaseConfigured}
+          />
         </div>
 
-        <Button onClick={handleEmailLogin} disabled={loading} className="mt-4 h-12 w-full">
+        <Button onClick={handleEmailLogin} disabled={loading || !isSupabaseConfigured} className="mt-4 h-12 w-full">
           {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
         </Button>
 

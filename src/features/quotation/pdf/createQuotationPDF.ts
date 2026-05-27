@@ -42,7 +42,7 @@ export const createQuotationPDF = (
 
     // Logo
     const logoImg = new Image();
-    logoImg.src = "/logo-header.png";
+    logoImg.src = `${import.meta.env.BASE_URL}logo-header.png`;
     doc.addImage(logoImg, "PNG", marginX, 6, 40, 17);
 
     // Başlık

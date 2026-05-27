@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { ResultCard } from "../components/ResultCard";
@@ -63,7 +63,7 @@ export default function SpurGearForm() {
 
   const handleViewReceipt = () => {
     if (result) {
-      navigate(`/erp/calculator/machines/${machineId}/spur/receipt`, {
+      navigate(`/calculator/machines/${machineId}/spur/receipt`, {
         state: { result },
       });
     }
@@ -84,7 +84,7 @@ export default function SpurGearForm() {
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <Link
-          to={`/erp/calculator/machines/${machineId}`}
+          to={`/calculator/machines/${machineId}`}
           className="inline-flex items-center text-slate-400 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />

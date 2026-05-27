@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ERPLayout } from "../layout/ERPLayout";
@@ -10,7 +10,7 @@ export default function PurchasingPage() {
       <PageHeader
         title="Satın Alma ve Tedarik"
         description="Hammadde, takım, sarf malzeme ve fason tedarik siparişlerini yönetin."
-        actions={<Button asChild><Link to="/erp/purchase-orders">Satın Alma Siparişleri</Link></Button>}
+        actions={<Button asChild><Link to="/purchase-orders">Satın Alma Siparişleri</Link></Button>}
       />
 
       <div className="grid gap-4 md:grid-cols-3">

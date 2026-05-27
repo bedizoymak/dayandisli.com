@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+﻿import { Link, useParams } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { getMachineById } from "../data/machines";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ export default function MachineDetail() {
       <CalculatorLayout>
         <div className="text-center py-12">
           <p className="text-slate-400">Makine bulunamadı.</p>
-          <Link to="/erp/calculator/machines">
+          <Link to="/calculator/machines">
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Makine Listesine Dön
@@ -30,7 +30,7 @@ export default function MachineDetail() {
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <Link
-          to="/erp/calculator/machines"
+          to="/calculator/machines"
           className="inline-flex items-center text-slate-400 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -71,7 +71,7 @@ export default function MachineDetail() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to={`/erp/calculator/machines/${machineId}/spur`}>
+              <Link to={`/calculator/machines/${machineId}/spur`}>
                 <Button className="w-full bg-blue-600 hover:bg-blue-700">
                   Hesaplamaya Başla
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -92,7 +92,7 @@ export default function MachineDetail() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to={`/erp/calculator/machines/${machineId}/helical`}>
+              <Link to={`/calculator/machines/${machineId}/helical`}>
                 <Button 
                   variant="outline"
                   className="w-full border-purple-600/50 text-purple-400 hover:bg-purple-600/20"

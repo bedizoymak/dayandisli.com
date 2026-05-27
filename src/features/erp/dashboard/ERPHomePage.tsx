@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, CalendarClock, FileText, ListTodo, Package, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -124,13 +124,13 @@ export default function ERPHomePage() {
           />
           <div className="flex flex-wrap gap-2">
             <Button asChild>
-              <Link to="/erp/teklifler/yeni">
+              <Link to="/teklifler/yeni">
                 <Plus className="mr-2 h-4 w-4" />
                 Yeni Teklif
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to="/erp/calculator">Calculator Aç</Link>
+              <Link to="/calculator">Calculator Aç</Link>
             </Button>
           </div>
         </div>
@@ -206,16 +206,16 @@ export default function ERPHomePage() {
             </CardHeader>
             <CardContent className="grid gap-2">
               <Button asChild variant="outline" className="justify-start">
-                <Link to="/erp/teklifler/yeni">Yeni Teklif</Link>
+                <Link to="/teklifler/yeni">Yeni Teklif</Link>
               </Button>
               <Button asChild variant="outline" className="justify-start">
-                <Link to="/erp/siparisler">Yeni Sipariş</Link>
+                <Link to="/siparisler">Yeni Sipariş</Link>
               </Button>
               <Button asChild variant="outline" className="justify-start">
-                <Link to="/erp/kargo">Kargo Etiketi</Link>
+                <Link to="/kargo">Kargo Etiketi</Link>
               </Button>
               <Button asChild variant="outline" className="justify-start">
-                <Link to="/erp/calculator">Calculator Aç</Link>
+                <Link to="/calculator">Calculator Aç</Link>
               </Button>
             </CardContent>
           </Card>

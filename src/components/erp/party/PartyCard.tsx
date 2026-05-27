@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { Eye, FileText, Pencil, PlusCircle, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ type PartyCardProps = {
 };
 
 function routeBase(mode: "customer" | "supplier") {
-  return mode === "customer" ? "/erp/musteriler" : "/erp/tedarikciler";
+  return mode === "customer" ? "/musteriler" : "/tedarikciler";
 }
 
 export function PartyCard({ party, summary, mode }: PartyCardProps) {
@@ -78,21 +78,21 @@ export function PartyCard({ party, summary, mode }: PartyCardProps) {
             </Button>
           ) : (
             <Button asChild variant="outline" size="sm" className="gap-2">
-              <Link to={`/erp/finans/hareketler/yeni?partyId=${party.id}`}>
+              <Link to={`/finans/hareketler/yeni?partyId=${party.id}`}>
                 <PlusCircle className="h-4 w-4" />
                 Finans
               </Link>
             </Button>
           )}
           <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link to={mode === "customer" ? "/erp/siparisler" : "/erp/purchase-orders"}>
+            <Link to={mode === "customer" ? "/siparisler" : "/purchase-orders"}>
               <ShoppingBag className="h-4 w-4" />
               {mode === "customer" ? "Siparişler" : "Satın Alma"}
             </Link>
           </Button>
           {mode === "customer" ? (
             <Button asChild variant="outline" size="sm" className="gap-2">
-              <Link to="/erp/teklifler">
+              <Link to="/teklifler">
                 <FileText className="h-4 w-4" />
                 Teklifler
               </Link>

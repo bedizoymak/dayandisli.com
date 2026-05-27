@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { FileBarChart, Plus, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -73,13 +73,13 @@ export default function FinancePage() {
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild className="gap-2">
-              <Link to="/erp/finans/hareketler/yeni">
+              <Link to="/finans/hareketler/yeni">
                 <Plus className="h-4 w-4" />
                 Finans Hareketi Ekle
               </Link>
             </Button>
             <Button asChild variant="outline" className="gap-2">
-              <Link to="/erp/finans/raporlar">
+              <Link to="/finans/raporlar">
                 <FileBarChart className="h-4 w-4" />
                 Raporlar
               </Link>
@@ -113,7 +113,7 @@ export default function FinancePage() {
                 description="Finans işlemleri için önce Müşteriler modülünden customer_full kayıtlarını getirin veya yeni müşteri/tedarikçi oluşturun."
                 action={
                   <Button asChild>
-                    <Link to="/erp/musteriler">Müşterileri Getir</Link>
+                    <Link to="/musteriler">Müşterileri Getir</Link>
                   </Button>
                 }
               />
@@ -132,7 +132,7 @@ export default function FinancePage() {
                   </div>
                 </div>
                 <Button asChild className="mt-4 w-full gap-2">
-                  <Link to={`/erp/finans/hareketler/yeni?partyId=${selectedParty.id}`}>
+                  <Link to={`/finans/hareketler/yeni?partyId=${selectedParty.id}`}>
                     <Plus className="h-4 w-4" />
                     Bu Cari İçin Hareket Ekle
                   </Link>
@@ -149,7 +149,7 @@ export default function FinancePage() {
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle>Son Finans Hareketleri</CardTitle>
               <Button asChild variant="outline" size="sm">
-                <Link to="/erp/finans/hareketler">Tümünü Gör</Link>
+                <Link to="/finans/hareketler">Tümünü Gör</Link>
               </Button>
             </CardHeader>
             <CardContent>
@@ -167,7 +167,7 @@ export default function FinancePage() {
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle>Çek/Senet Listesi</CardTitle>
               <Button asChild variant="outline" size="sm">
-                <Link to="/erp/finans/cekler">Tümünü Gör</Link>
+                <Link to="/finans/cekler">Tümünü Gör</Link>
               </Button>
             </CardHeader>
             <CardContent>

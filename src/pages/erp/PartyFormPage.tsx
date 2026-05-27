@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export default function PartyFormPage({ mode }: PartyFormPageProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const basePath = mode === "customer" ? "/erp/musteriler" : "/erp/tedarikciler";
+  const basePath = mode === "customer" ? "/musteriler" : "/tedarikciler";
   const pageTitle = id
     ? mode === "customer"
       ? "Müşteri Düzenle"

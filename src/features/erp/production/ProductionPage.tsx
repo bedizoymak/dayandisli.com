@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,14 +56,14 @@ export default function ProductionPage() {
         description="İş emri, rota ve operasyon takibini üretim odaklı ekranlardan yönetin."
         actions={
           <Button asChild>
-            <Link to="/erp/calculator">DAYAN Calculator</Link>
+            <Link to="/calculator">DAYAN Calculator</Link>
           </Button>
         }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <ERPModuleCard title="İş Emirleri" description="Planlama, durum takibi ve operasyon yönetimi" href="/erp/work-orders" icon={<HardHat className="h-5 w-5" />} />
-        <ERPModuleCard title="Rota Yönetimi" description="Operasyon sırası ve makine planı" href="/erp/routes" icon={<GitBranch className="h-5 w-5" />} />
+        <ERPModuleCard title="İş Emirleri" description="Planlama, durum takibi ve operasyon yönetimi" href="/work-orders" icon={<HardHat className="h-5 w-5" />} />
+        <ERPModuleCard title="Rota Yönetimi" description="Operasyon sırası ve makine planı" href="/routes" icon={<GitBranch className="h-5 w-5" />} />
         <ERPModuleCard title="Genel Üretim" description="Üretim KPI ve özet görünüm" href="/dashboard" icon={<Factory className="h-5 w-5" />} />
       </div>
 

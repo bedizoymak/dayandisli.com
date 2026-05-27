@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Pencil, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,7 @@ export default function PartyDetailPage({ mode }: PartyDetailPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
 
-  const basePath = mode === "customer" ? "/erp/musteriler" : "/erp/tedarikciler";
+  const basePath = mode === "customer" ? "/musteriler" : "/tedarikciler";
   const title = mode === "customer" ? "Müşteri Kartı" : "Tedarikçi Kartı";
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function PartyDetailPage({ mode }: PartyDetailPageProps) {
                   </Link>
                 </Button>
                 <Button asChild className="gap-2">
-                  <Link to={`/erp/finans/hareketler/yeni?partyId=${party.id}`}>
+                  <Link to={`/finans/hareketler/yeni?partyId=${party.id}`}>
                     <PlusCircle className="h-4 w-4" />
                     Yeni Finans Hareketi
                   </Link>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +64,7 @@ export default function ERPQuotationsPage() {
       title: result.error ? "Teklif Daha Önce Dönüştürülmüş" : "Sipariş Oluşturuldu",
       description: result.error || `${row.teklif_no} ERP siparişine dönüştürüldü.`,
     });
-    navigate("/erp/siparisler");
+    navigate("/siparisler");
   };
 
   return (
@@ -74,7 +74,7 @@ export default function ERPQuotationsPage() {
         description="Mevcut quotations tablosundaki teklifleri ERP ekranında görüntüleyin ve güvenli şekilde siparişe dönüştürün."
         actions={
           <Button asChild>
-            <Link to="/erp/teklifler/yeni">Yeni Teklif Oluştur</Link>
+            <Link to="/teklifler/yeni">Yeni Teklif Oluştur</Link>
           </Button>
         }
       />

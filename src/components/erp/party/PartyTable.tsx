@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { Eye, FileText, Pencil, PlusCircle, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,7 @@ function lastTransaction(summary?: PartyFinancialSummary) {
 }
 
 function routeBase(mode: "customer" | "supplier") {
-  return mode === "customer" ? "/erp/musteriler" : "/erp/tedarikciler";
+  return mode === "customer" ? "/musteriler" : "/tedarikciler";
 }
 
 export function PartyTable({ parties, summaries, mode }: PartyTableProps) {
@@ -89,19 +89,19 @@ export function PartyTable({ parties, summaries, mode }: PartyTableProps) {
                           <PlusCircle className="h-4 w-4 opacity-40" />
                         </span>
                       ) : (
-                        <Link to={`/erp/finans/hareketler/yeni?partyId=${party.id}`}>
+                        <Link to={`/finans/hareketler/yeni?partyId=${party.id}`}>
                           <PlusCircle className="h-4 w-4" />
                         </Link>
                       )}
                     </Button>
                     <Button asChild variant="ghost" size="icon" title={mode === "customer" ? "Siparişleri Gör" : "Satın Alma Kayıtları"}>
-                      <Link to={mode === "customer" ? "/erp/siparisler" : "/erp/purchase-orders"}>
+                      <Link to={mode === "customer" ? "/siparisler" : "/purchase-orders"}>
                         <ShoppingBag className="h-4 w-4" />
                       </Link>
                     </Button>
                     {mode === "customer" ? (
                       <Button asChild variant="ghost" size="icon" title="Teklifleri Gör">
-                        <Link to="/erp/teklifler">
+                        <Link to="/teklifler">
                           <FileText className="h-4 w-4" />
                         </Link>
                       </Button>

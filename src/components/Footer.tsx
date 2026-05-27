@@ -15,7 +15,7 @@ export const Footer = () => {
             {/* Logo and Title */}
             <div className="flex items-center gap-3">
   <img
-    src="/logo-header.png"   // Header’da hangi dosyayı kullanıyorsan onu yaz
+    src={`${import.meta.env.BASE_URL}logo-header.png`}
     alt="Dayan Dişli Logo"
     className="h-16 w-auto"
   />
