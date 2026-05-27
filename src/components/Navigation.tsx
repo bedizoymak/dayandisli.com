@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { Link } from "react-router-dom";
+import { NavLink } from "@/components/NavLink";
 import { useCart } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
 
@@ -33,77 +34,45 @@ function CartLink({ compact = false }: { compact?: boolean }) {
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const referencesLabel = {
+    tr: "Referanslar",
+    en: "References",
+    de: "Referenzen",
+  }[language];
 
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-    setIsOpen(false);
-  };
+  const pageLinks: Array<{ to: string; label: string; end?: boolean }> = [
+    { to: "/", label: t.nav.home, end: true },
+    { to: "/hakkimizda", label: t.footer.aboutUs },
+    { to: "/urunler", label: t.nav.products },
+    { to: "/referanslar", label: referencesLabel },
+  ];
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-navy/95 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
+          <Link to="/" className="flex items-center cursor-pointer gap-3">
+            <img src="/logo-header.png" alt="Dayan Disli" className="h-14 w-auto object-contain" />
+          </Link>
 
-          {/* LOGO */}
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="flex items-center cursor-pointer gap-3"
-          >
-            <img
-              src="/logo-header.png"
-              alt="Dayan Dişli"
-              className="h-14 w-auto object-contain"
-            />
-          </button>
-
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            <button
-              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="text-foreground hover:text-primary transition-colors"
-            >
-              {t.nav.home}
-            </button>
-
-            <button
-              onClick={() => scrollToSection("services")}
-              className="text-foreground hover:text-primary transition-colors"
-            >
-              {t.nav.services}
-            </button>
-
-            <button
-              onClick={() => scrollToSection("technologies")}
-              className="text-foreground hover:text-primary transition-colors"
-            >
-              {t.nav.technologies}
-            </button>
-
-            <button
-              onClick={() => scrollToSection("products")}
-              className="text-foreground hover:text-primary transition-colors"
-            >
-              {t.nav.products}
-            </button>
-
-            <button
-              onClick={() => scrollToSection("sectors")}
-              className="text-foreground hover:text-primary transition-colors"
-            >
-              {t.nav.sectors}
-            </button>
+            {pageLinks.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                className="text-foreground hover:text-primary transition-colors"
+                activeClassName="text-primary"
+              >
+                {link.label}
+              </NavLink>
+            ))}
 
             {SHOP_FEATURE_ENABLED && (
               <>
-                <Link
-                  to="/shop"
-                  className="text-foreground hover:text-primary transition-colors"
-                >
-                  Mağaza
+                <Link to="/shop" className="text-foreground hover:text-primary transition-colors">
+                  {"Ma\u011faza"}
                 </Link>
 
                 <CartLink />
@@ -112,19 +81,14 @@ export const Navigation = () => {
 
             <LanguageSelector />
 
-            <Button
-              onClick={() => scrollToSection("contact")}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              {t.nav.contact}
+            <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Link to="/iletisim">{t.nav.contact}</Link>
             </Button>
           </div>
 
-          {/* MOBILE: Hamburger + Cart + Dil Seçici */}
           <div className="md:hidden flex items-center gap-2">
             {SHOP_FEATURE_ENABLED && <CartLink compact />}
 
-            {/* Hamburger */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-foreground">
@@ -132,48 +96,20 @@ export const Navigation = () => {
                 </Button>
               </SheetTrigger>
 
-              <SheetContent
-                side="right"
-                className="w-[70%] bg-navy border-border"
-              >
+              <SheetContent side="right" className="w-[70%] bg-navy border-border">
                 <nav className="flex flex-col gap-6 mt-8">
-                  <button
-                    onClick={() => {
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                      setIsOpen(false);
-                    }}
-                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                  >
-                    {t.nav.home}
-                  </button>
-
-                  <button
-                    onClick={() => scrollToSection("services")}
-                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                  >
-                    {t.nav.services}
-                  </button>
-
-                  <button
-                    onClick={() => scrollToSection("technologies")}
-                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                  >
-                    {t.nav.technologies}
-                  </button>
-
-                  <button
-                    onClick={() => scrollToSection("products")}
-                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                  >
-                    {t.nav.products}
-                  </button>
-
-                  <button
-                    onClick={() => scrollToSection("sectors")}
-                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                  >
-                    {t.nav.sectors}
-                  </button>
+                  {pageLinks.map((link) => (
+                    <NavLink
+                      key={link.to}
+                      to={link.to}
+                      end={link.end}
+                      onClick={() => setIsOpen(false)}
+                      className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                      activeClassName="text-primary"
+                    >
+                      {link.label}
+                    </NavLink>
+                  ))}
 
                   {SHOP_FEATURE_ENABLED && (
                     <Link
@@ -181,25 +117,22 @@ export const Navigation = () => {
                       onClick={() => setIsOpen(false)}
                       className="text-lg text-foreground hover:text-primary transition-colors text-left"
                     >
-                      Mağaza
+                      {"Ma\u011faza"}
                     </Link>
                   )}
 
-                  <Button
-                    onClick={() => scrollToSection("contact-form")}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
-                  >
-                    {t.nav.contact}
+                  <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground w-full">
+                    <Link to="/iletisim" onClick={() => setIsOpen(false)}>
+                      {t.nav.contact}
+                    </Link>
                   </Button>
                 </nav>
               </SheetContent>
             </Sheet>
 
-            {/* Küçültülmüş Dil Seçici */}
             <div className="scale-[0.7] flex items-center">
               <LanguageSelector />
             </div>
-
           </div>
         </div>
       </div>

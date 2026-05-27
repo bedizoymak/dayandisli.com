@@ -8,6 +8,10 @@ import { CartProvider } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
 
 import Index from "./pages/Index";
+import Hakkimizda from "./pages/Hakkimizda";
+import Urunler from "./pages/Urunler";
+import Referanslar from "./pages/Referanslar";
+import Iletisim from "./pages/Iletisim";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -40,6 +44,10 @@ const AppContent = () => (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/hakkimizda" element={<Hakkimizda />} />
+        <Route path="/urunler" element={<Urunler />} />
+        <Route path="/referanslar" element={<Referanslar />} />
+        <Route path="/iletisim" element={<Iletisim />} />
         <Route path="/login" element={<Login />} />
 
         {SHOP_FEATURE_ENABLED ? (
