@@ -7,13 +7,9 @@ export function createClient(request: Request) {
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
     process.env.VITE_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Missing Supabase environment variables: VITE_SUPABASE_URL and Supabase publishable/anon key are required.")
-  }
-
   const supabase = createServerClient(
-    supabaseUrl,
-    supabaseKey,
+    supabaseUrl || "https://missing-supabase-env.supabase.co",
+    supabaseKey || "missing-supabase-env",
     {
       cookies: {
         getAll() {

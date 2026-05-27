@@ -7,14 +7,15 @@ const SUPABASE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
   import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  throw new Error("Missing Supabase environment variables: VITE_SUPABASE_URL and Supabase publishable/anon key are required.");
-}
+export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
+
+const supabaseUrl = SUPABASE_URL || "https://missing-supabase-env.supabase.co";
+const supabaseKey = SUPABASE_KEY || "missing-supabase-env";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     storage: localStorage,
     persistSession: true,

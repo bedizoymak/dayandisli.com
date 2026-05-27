@@ -40,10 +40,10 @@ export const Footer = () => {
         {t.footer.phone}
       </h3>
       <a
-        href="tel:+90212XXXXXXX"
+        href="tel:+902125764140"
         className="text-muted-foreground text-sm hover:text-primary transition-colors"
       >
-        +90 212 *** ** **
+        +90 212 576 41 40
       </a>
     </div>
   </div>

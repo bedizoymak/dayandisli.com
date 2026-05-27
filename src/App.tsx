@@ -8,10 +8,13 @@ import { CartProvider } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
 
 import Index from "./pages/Index";
+import Hizmetler from "./pages/site/Hizmetler";
+import Teknolojiler from "./pages/site/Teknolojiler";
+import SiteUrunler from "./pages/site/Urunler";
+import Sektorler from "./pages/site/Sektorler";
+import SiteIletisim from "./pages/site/Iletisim";
 import Hakkimizda from "./pages/Hakkimizda";
-import Urunler from "./pages/Urunler";
 import Referanslar from "./pages/Referanslar";
-import Iletisim from "./pages/Iletisim";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -44,10 +47,13 @@ const AppContent = () => (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/hizmetler" element={<Hizmetler />} />
+        <Route path="/teknolojiler" element={<Teknolojiler />} />
+        <Route path="/urunler" element={<SiteUrunler />} />
+        <Route path="/sektorler" element={<Sektorler />} />
+        <Route path="/iletisim" element={<SiteIletisim />} />
         <Route path="/hakkimizda" element={<Hakkimizda />} />
-        <Route path="/urunler" element={<Urunler />} />
         <Route path="/referanslar" element={<Referanslar />} />
-        <Route path="/iletisim" element={<Iletisim />} />
         <Route path="/login" element={<Login />} />
 
         {SHOP_FEATURE_ENABLED ? (

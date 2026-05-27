@@ -173,28 +173,12 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
 
   const handleRecreatePDF = async (quote: QuotationRecord) => {
     try {
-      const fileName = `${quote.teklif_no}.pdf`;
-  
       const products = normalizeProducts(quote.products);
   
-      const pdfBytes = await onDownload?.({
+      await onDownload?.({
         ...quote,
         products,
       });
-  
-      if (!pdfBytes) return;
-  
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
-      const blobUrl = URL.createObjectURL(blob);
-  
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-  
-      URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error("PDF download failed:", err);
       toast({

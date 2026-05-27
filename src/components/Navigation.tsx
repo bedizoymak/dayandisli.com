@@ -34,18 +34,15 @@ function CartLink({ compact = false }: { compact?: boolean }) {
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { t, language } = useLanguage();
-  const referencesLabel = {
-    tr: "Referanslar",
-    en: "References",
-    de: "Referenzen",
-  }[language];
+  const { t } = useLanguage();
 
   const pageLinks: Array<{ to: string; label: string; end?: boolean }> = [
     { to: "/", label: t.nav.home, end: true },
-    { to: "/hakkimizda", label: t.footer.aboutUs },
+    { to: "/hizmetler", label: t.nav.services },
+    { to: "/teknolojiler", label: t.nav.technologies },
     { to: "/urunler", label: t.nav.products },
-    { to: "/referanslar", label: referencesLabel },
+    { to: "/sektorler", label: t.nav.sectors },
+    { to: "/iletisim", label: t.nav.contact },
   ];
 
   return (
@@ -80,10 +77,6 @@ export const Navigation = () => {
             )}
 
             <LanguageSelector />
-
-            <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Link to="/iletisim">{t.nav.contact}</Link>
-            </Button>
           </div>
 
           <div className="md:hidden flex items-center gap-2">
@@ -120,12 +113,6 @@ export const Navigation = () => {
                       {"Ma\u011faza"}
                     </Link>
                   )}
-
-                  <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground w-full">
-                    <Link to="/iletisim" onClick={() => setIsOpen(false)}>
-                      {t.nav.contact}
-                    </Link>
-                  </Button>
                 </nav>
               </SheetContent>
             </Sheet>

@@ -21,10 +21,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
   import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  throw new Error("Missing Supabase environment variables: VITE_SUPABASE_URL and Supabase publishable/anon key are required.");
-}
+const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
 
 export const ContactForm = () => {
   const { t } = useLanguage();
@@ -38,6 +35,8 @@ export const ContactForm = () => {
 
   // 🔥 EXPLICIT RENDER + widgetId yakalama
   useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
     const interval = setInterval(() => {
       const grecaptcha = (window as any).grecaptcha;
 
@@ -78,6 +77,11 @@ export const ContactForm = () => {
     setIsSubmitting(true);
 
     try {
+      if (!isSupabaseConfigured) {
+        setIsSubmitting(false);
+        return;
+      }
+
       if (widgetId === null) {
         toast({
           title: "reCAPTCHA yüklenemedi",
@@ -144,6 +148,12 @@ export const ContactForm = () => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {!isSupabaseConfigured && (
+          <div className="rounded-md border border-white/15 bg-white/10 p-4 text-sm font-medium text-white/80">
+            İletişim formu şu anda yapılandırılıyor.
+          </div>
+        )}
+
         <div className="grid md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -155,6 +165,7 @@ export const ContactForm = () => {
                   <Input
                     placeholder={t.contactForm.namePlaceholder}
                     className="bg-navy-lighter border-border"
+                    disabled={!isSupabaseConfigured}
                     {...field}
                   />
                 </FormControl>
@@ -173,6 +184,7 @@ export const ContactForm = () => {
                   <Input
                     placeholder={t.contactForm.emailPlaceholder}
                     className="bg-navy-lighter border-border"
+                    disabled={!isSupabaseConfigured}
                     {...field}
                   />
                 </FormControl>
@@ -193,6 +205,7 @@ export const ContactForm = () => {
                   <Input
                     placeholder={t.contactForm.phonePlaceholder}
                     className="bg-navy-lighter border-border"
+                    disabled={!isSupabaseConfigured}
                     {...field}
                   />
                 </FormControl>
@@ -211,6 +224,7 @@ export const ContactForm = () => {
                   <Input
                     placeholder={t.contactForm.companyPlaceholder}
                     className="bg-navy-lighter border-border"
+                    disabled={!isSupabaseConfigured}
                     {...field}
                   />
                 </FormControl>
@@ -230,6 +244,7 @@ export const ContactForm = () => {
                 <Textarea
                   placeholder={t.contactForm.messagePlaceholder}
                   className="bg-navy-lighter border-border min-h-[120px]"
+                  disabled={!isSupabaseConfigured}
                   {...field}
                 />
               </FormControl>
@@ -241,7 +256,7 @@ export const ContactForm = () => {
         {/* ReCAPTCHA */}
         <div
   ref={recaptchaRef}
-  className="flex justify-center w-full"
+  className={isSupabaseConfigured ? "flex justify-center w-full" : "hidden"}
   style={{
     minHeight: "90px",
     paddingTop: "10px",
@@ -253,7 +268,7 @@ export const ContactForm = () => {
         <Button
           type="submit"
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isSupabaseConfigured}
         >
           {isSubmitting ? (
             <>
