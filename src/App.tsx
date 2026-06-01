@@ -22,6 +22,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Apps from "./pages/Apps";
 import { AdminRoutes } from "./features/admin";
+import ApplicationShellPage from "./features/erp/apps/ApplicationShellPage";
 import { ERPRoutes } from "./features/erp";
 import ERPHomePage from "./features/erp/dashboard/ERPHomePage";
 
@@ -98,6 +99,7 @@ const AppRoutes = () => {
       {exposeErpRoutes ? (
           <>
             <Route path="/apps" element={protectedElement(<Apps />)} />
+            <Route path="/apps/:appId" element={protectedElement(<ApplicationShellPage />)} />
             <Route path="/admin/*" element={protectedElement(<AdminRoutes />)} />
             <Route path="/dashboard" element={protectedElement(<ERPHomePage />)} />
             <Route path="/apps/calculator/*" element={protectedElement(<LegacyCalculatorRedirect />)} />

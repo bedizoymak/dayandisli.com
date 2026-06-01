@@ -56,7 +56,7 @@ export default function ProductionPage() {
         description="İş emri, rota ve operasyon takibini üretim odaklı ekranlardan yönetin."
         actions={
           <Button asChild>
-            <Link to="/calculator">DAYAN Calculator</Link>
+            <Link to="/calculator">DAYAN Hesaplama</Link>
           </Button>
         }
       />

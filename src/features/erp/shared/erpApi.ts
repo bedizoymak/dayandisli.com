@@ -46,7 +46,7 @@ import {
 } from "./types";
 
 export const ERP_MIGRATION_MESSAGE =
-  "ERP veritabanı tabloları henüz oluşturulmamış. Supabase SQL migration dosyasını çalıştırın.";
+  "ERP veritabanı tabloları henüz oluşturulmamış. Supabase SQL geçiş dosyasını çalıştırın.";
 
 type DbResult<T> = { data: T | null; error: unknown; count?: number | null };
 

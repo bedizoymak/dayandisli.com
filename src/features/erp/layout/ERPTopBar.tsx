@@ -65,6 +65,9 @@ export function ERPTopBar({ title, onMenuToggle }: ERPTopBarProps) {
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuToggle}>
             <Menu className="h-5 w-5" />
           </Button>
+          <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
+            <Link to="/apps">Uygulamalar</Link>
+          </Button>
           <Link to="/apps" className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Factory className="h-5 w-5" />
