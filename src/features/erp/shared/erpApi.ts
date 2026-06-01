@@ -1967,6 +1967,24 @@ export async function listFinancialAccounts(): Promise<ApiResult<FinancialAccoun
   return success(data ?? []);
 }
 
+export async function createFinancialAccount(payload: Partial<FinancialAccount> & { account_type: FinancialAccount["account_type"]; name: string }) {
+  const { data, error } = (await supabase
+    .from("financial_accounts" as never)
+    .insert({
+      account_type: payload.account_type,
+      name: payload.name,
+      currency: payload.currency ?? "TRY",
+      opening_balance: payload.opening_balance ?? 0,
+      current_balance: payload.current_balance ?? payload.opening_balance ?? 0,
+      is_active: payload.is_active ?? true,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<FinancialAccount>;
+
+  if (error) return failure("createFinancialAccount", error, null);
+  return success(data);
+}
+
 export async function listInvoices(): Promise<ApiResult<Invoice[]>> {
   const { data, error } = (await supabase
     .from("invoices" as never)
@@ -2000,6 +2018,18 @@ export async function createInvoice(payload: Partial<Invoice> & { invoice_type: 
   return success(data);
 }
 
+export async function updateInvoice(id: string, payload: Partial<Invoice>) {
+  const { data, error } = (await supabase
+    .from("invoices" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<Invoice>;
+
+  if (error) return failure("updateInvoice", error, null);
+  return success(data);
+}
+
 export async function listPayments(): Promise<ApiResult<Payment[]>> {
   const { data, error } = (await supabase
     .from("payments" as never)
@@ -2027,6 +2057,18 @@ export async function createPayment(payload: Partial<Payment> & { payment_type: 
     .single()) as unknown as DbResult<Payment>;
 
   if (error) return failure("createPayment", error, null);
+  return success(data);
+}
+
+export async function updatePayment(id: string, payload: Partial<Payment>) {
+  const { data, error } = (await supabase
+    .from("payments" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<Payment>;
+
+  if (error) return failure("updatePayment", error, null);
   return success(data);
 }
 

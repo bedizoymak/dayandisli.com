@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { FileBarChart, Plus, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DataTable } from "@/components/erp/DataTable";
 import { EmptyState } from "@/components/erp/EmptyState";
 import { MigrationNotice } from "@/components/erp/MigrationNotice";
 import { PageHeader } from "@/components/erp/PageHeader";
@@ -35,6 +38,7 @@ export default function FinancePage() {
   const [parties, setParties] = useState<Party[]>([]);
   const [selectedPartyId, setSelectedPartyId] = useState("");
   const [accountType, setAccountType] = useState<AccountType>("official");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +64,16 @@ export default function FinancePage() {
   }, []);
 
   const selectedParty = parties.find((party) => party.id === selectedPartyId) || null;
+  const q = search.toLocaleLowerCase("tr-TR");
+  const filteredTransactions = transactions.filter((transaction) => {
+    const partyTitle = transaction.party?.title || parties.find((party) => party.id === transaction.party_id)?.title || "";
+    return (
+      !q ||
+      partyTitle.toLocaleLowerCase("tr-TR").includes(q) ||
+      (transaction.reference_no || "").toLocaleLowerCase("tr-TR").includes(q) ||
+      (transaction.description || "").toLocaleLowerCase("tr-TR").includes(q)
+    );
+  });
   const selectedPartySummary = useMemo(
     () => calculatePartyFinancialSummary(transactions.filter((transaction) => transaction.party_id === selectedPartyId)),
     [selectedPartyId, transactions],
@@ -91,6 +105,116 @@ export default function FinancePage() {
       {error ? <MigrationNotice message={error} /> : null}
 
       <FinanceSummaryCards summary={summary} />
+
+      <Card>
+        <CardContent className="grid gap-3 pt-6 md:grid-cols-[1fr_220px_auto]">
+          <Input placeholder="Cari, referans veya açıklama ara..." value={search} onChange={(event) => setSearch(event.target.value)} />
+          <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={accountType} onChange={(event) => setAccountType(event.target.value as AccountType)}>
+            <option value="official">Resmi Hesap</option>
+            <option value="operational">Operasyonel Takip</option>
+          </select>
+          <Button variant="outline" onClick={() => setSearch("")}>Temizle</Button>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="transactions">
+        <TabsList className="flex h-auto flex-wrap justify-start">
+          <TabsTrigger value="chart">Hesap Planı</TabsTrigger>
+          <TabsTrigger value="vouchers">Muhasebe Fişleri</TabsTrigger>
+          <TabsTrigger value="journal">Yevmiye Kayıtları</TabsTrigger>
+          <TabsTrigger value="transactions">Finansal Hareketler</TabsTrigger>
+          <TabsTrigger value="parties">Cari Hesaplar</TabsTrigger>
+          <TabsTrigger value="periods">Dönemsel Hareketler</TabsTrigger>
+        </TabsList>
+        <TabsContent value="chart">
+          <DataTable
+            columns={[
+              { key: "code", header: "Hesap Kodu", render: (row) => row.code },
+              { key: "name", header: "Hesap Adı", render: (row) => row.name },
+              { key: "type", header: "Hesap Tipi", render: (row) => row.type },
+              { key: "source", header: "Kaynak", render: (row) => row.source },
+            ]}
+            data={[
+              { code: "100", name: "Kasa", type: "Varlık", source: "Kasa hesapları" },
+              { code: "102", name: "Bankalar", type: "Varlık", source: "Banka hesapları" },
+              { code: "120", name: "Alıcılar", type: "Cari", source: "Müşteri cari hesapları" },
+              { code: "320", name: "Satıcılar", type: "Cari", source: "Tedarikçi cari hesapları" },
+              { code: "600", name: "Yurt İçi Satışlar", type: "Gelir", source: "Satış faturaları" },
+              { code: "770", name: "Genel Yönetim Giderleri", type: "Gider", source: "Gider kayıtları" },
+            ]}
+            rowKey={(row) => row.code}
+            emptyMessage="Hesap planı yok"
+          />
+        </TabsContent>
+        <TabsContent value="vouchers">
+          <DataTable
+            columns={[
+              { key: "ref", header: "Fiş No", render: (row) => row.reference_no || row.id.slice(0, 8) },
+              { key: "party", header: "Cari", render: (row) => row.party?.title || parties.find((party) => party.id === row.party_id)?.title || "-" },
+              { key: "date", header: "Tarih", render: (row) => row.transaction_date },
+              { key: "status", header: "Durum", render: (row) => row.status === "completed" ? "Tamamlandı" : row.status === "cancelled" ? "İptal" : row.status === "planned" ? "Planlandı" : "Bekliyor" },
+              { key: "amount", header: "Tutar", className: "text-right", render: (row) => formatMoney(row.amount, row.currency) },
+            ]}
+            data={filteredTransactions}
+            rowKey={(row) => row.id}
+            emptyMessage="Muhasebe fişi yok"
+          />
+        </TabsContent>
+        <TabsContent value="journal">
+          <DataTable
+            columns={[
+              { key: "date", header: "Yevmiye Tarihi", render: (row) => row.transaction_date },
+              { key: "desc", header: "Açıklama", render: (row) => row.description || "-" },
+              { key: "debit", header: "Borç", className: "text-right", render: (row) => row.transaction_type === "debit" ? formatMoney(row.amount, row.currency) : "-" },
+              { key: "credit", header: "Alacak", className: "text-right", render: (row) => row.transaction_type === "credit" ? formatMoney(row.amount, row.currency) : "-" },
+              { key: "method", header: "Ödeme Yöntemi", render: (row) => row.payment_method || "-" },
+            ]}
+            data={filteredTransactions}
+            rowKey={(row) => row.id}
+            emptyMessage="Yevmiye kaydı yok"
+          />
+        </TabsContent>
+        <TabsContent value="transactions">
+          {filteredTransactions.length ? (
+            <FinanceTransactionTable transactions={filteredTransactions} />
+          ) : (
+            <EmptyState icon={<ReceiptText className="h-5 w-5" />} title="Finans hareketi yok" description="Arama veya filtreye uygun hareket bulunamadı." />
+          )}
+        </TabsContent>
+        <TabsContent value="parties">
+          <DataTable
+            columns={[
+              { key: "title", header: "Cari", render: (row) => row.title },
+              { key: "type", header: "Tip", render: (row) => row.party_type === "supplier" ? "Tedarikçi" : row.party_type === "both" ? "Müşteri/Tedarikçi" : "Müşteri" },
+              { key: "balance", header: "Bakiye", className: "text-right", render: (row) => formatMoney(calculatePartyFinancialSummary(transactions.filter((transaction) => transaction.party_id === row.id)).currentBalance, row.currency) },
+              { key: "status", header: "Durum", render: (row) => row.is_active ? "Aktif" : "Pasif" },
+            ]}
+            data={parties}
+            rowKey={(row) => row.id}
+            emptyMessage="Cari hesap yok"
+          />
+        </TabsContent>
+        <TabsContent value="periods">
+          <DataTable
+            columns={[
+              { key: "period", header: "Dönem", render: (row) => row.period },
+              { key: "count", header: "Hareket", className: "text-right", render: (row) => row.count },
+              { key: "in", header: "Giriş", className: "text-right", render: (row) => formatMoney(row.incoming) },
+              { key: "out", header: "Çıkış", className: "text-right", render: (row) => formatMoney(row.outgoing) },
+            ]}
+            data={Object.values(filteredTransactions.reduce<Record<string, { period: string; count: number; incoming: number; outgoing: number }>>((acc, transaction) => {
+              const period = (transaction.transaction_date || "").slice(0, 7) || "Tarihsiz";
+              if (!acc[period]) acc[period] = { period, count: 0, incoming: 0, outgoing: 0 };
+              acc[period].count += 1;
+              if (transaction.direction === "in") acc[period].incoming += Number(transaction.amount || 0);
+              else acc[period].outgoing += Number(transaction.amount || 0);
+              return acc;
+            }, {}))}
+            rowKey={(row) => row.period}
+            emptyMessage="Dönemsel hareket yok"
+          />
+        </TabsContent>
+      </Tabs>
 
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <Card>
