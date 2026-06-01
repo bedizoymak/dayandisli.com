@@ -14,6 +14,11 @@ import {
   DocumentMetadata,
   Employee,
   EmployeeTimeEntry,
+  HRDepartment,
+  HRLeaveRequest,
+  HROnboardingTask,
+  HRPosition,
+  HRRecruitmentCandidate,
   ERPAuditLog,
   ERPDashboardActivity,
   ERPDatabaseStatus,
@@ -209,7 +214,12 @@ export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatu
     "invoices",
     "payments",
     "employees",
+    "hr_departments",
+    "hr_positions",
     "employee_time_entries",
+    "hr_leave_requests",
+    "hr_recruitment_candidates",
+    "hr_onboarding_tasks",
     "employee_assets",
     "shipments",
     "shipment_items",
@@ -1658,13 +1668,99 @@ export async function listEmployees(): Promise<ApiResult<Employee[]>> {
   return success(data ?? []);
 }
 
+export async function listHRDepartments(): Promise<ApiResult<HRDepartment[]>> {
+  const { data, error } = (await supabase
+    .from("hr_departments" as never)
+    .select("*")
+    .order("name", { ascending: true })) as unknown as DbResult<HRDepartment[]>;
+
+  if (error) return failure("listHRDepartments", error, []);
+  return success(data ?? []);
+}
+
+export async function createHRDepartment(payload: Partial<HRDepartment> & { name: string }) {
+  const { data, error } = (await supabase
+    .from("hr_departments" as never)
+    .insert({
+      name: payload.name,
+      code: payload.code ?? null,
+      manager_employee_id: payload.manager_employee_id ?? null,
+      parent_department_id: payload.parent_department_id ?? null,
+      is_active: payload.is_active ?? true,
+      notes: payload.notes ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<HRDepartment>;
+
+  if (error) return failure("createHRDepartment", error, null);
+  return success(data);
+}
+
+export async function updateHRDepartment(id: string, payload: Partial<HRDepartment>) {
+  const { data, error } = (await supabase
+    .from("hr_departments" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<HRDepartment>;
+
+  if (error) return failure("updateHRDepartment", error, null);
+  return success(data);
+}
+
+export async function listHRPositions(): Promise<ApiResult<HRPosition[]>> {
+  const { data, error } = (await supabase
+    .from("hr_positions" as never)
+    .select("*")
+    .order("title", { ascending: true })) as unknown as DbResult<HRPosition[]>;
+
+  if (error) return failure("listHRPositions", error, []);
+  return success(data ?? []);
+}
+
+export async function createHRPosition(payload: Partial<HRPosition> & { title: string }) {
+  const { data, error } = (await supabase
+    .from("hr_positions" as never)
+    .insert({
+      title: payload.title,
+      code: payload.code ?? null,
+      department_id: payload.department_id ?? null,
+      reports_to_position_id: payload.reports_to_position_id ?? null,
+      is_active: payload.is_active ?? true,
+      notes: payload.notes ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<HRPosition>;
+
+  if (error) return failure("createHRPosition", error, null);
+  return success(data);
+}
+
+export async function updateHRPosition(id: string, payload: Partial<HRPosition>) {
+  const { data, error } = (await supabase
+    .from("hr_positions" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<HRPosition>;
+
+  if (error) return failure("updateHRPosition", error, null);
+  return success(data);
+}
+
 export async function createEmployee(payload: Partial<Employee> & { full_name: string }) {
   const { data, error } = (await supabase
     .from("employees" as never)
     .insert({
+      employee_no: payload.employee_no ?? null,
       full_name: payload.full_name,
       role: payload.role ?? null,
       department: payload.department ?? null,
+      department_id: payload.department_id ?? null,
+      position_id: payload.position_id ?? null,
+      manager_employee_id: payload.manager_employee_id ?? null,
+      erp_user_id: payload.erp_user_id ?? null,
+      status: payload.status ?? "active",
       phone: payload.phone ?? null,
       email: payload.email ?? null,
       hire_date: payload.hire_date ?? null,
@@ -1715,6 +1811,130 @@ export async function createEmployeeTimeEntry(payload: Partial<EmployeeTimeEntry
     .single()) as unknown as DbResult<EmployeeTimeEntry>;
 
   if (error) return failure("createEmployeeTimeEntry", error, null);
+  return success(data);
+}
+
+export async function listHRLeaveRequests(): Promise<ApiResult<HRLeaveRequest[]>> {
+  const { data, error } = (await supabase
+    .from("hr_leave_requests" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<HRLeaveRequest[]>;
+
+  if (error) return failure("listHRLeaveRequests", error, []);
+  return success(data ?? []);
+}
+
+export async function createHRLeaveRequest(payload: Partial<HRLeaveRequest> & { employee_id: string; start_date: string; end_date: string }) {
+  const { data, error } = (await supabase
+    .from("hr_leave_requests" as never)
+    .insert({
+      employee_id: payload.employee_id,
+      leave_type: payload.leave_type ?? "annual",
+      start_date: payload.start_date,
+      end_date: payload.end_date,
+      status: payload.status ?? "pending",
+      approver_employee_id: payload.approver_employee_id ?? null,
+      notes: payload.notes ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<HRLeaveRequest>;
+
+  if (error) return failure("createHRLeaveRequest", error, null);
+  return success(data);
+}
+
+export async function updateHRLeaveRequest(id: string, payload: Partial<HRLeaveRequest>) {
+  const { data, error } = (await supabase
+    .from("hr_leave_requests" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<HRLeaveRequest>;
+
+  if (error) return failure("updateHRLeaveRequest", error, null);
+  return success(data);
+}
+
+export async function listHRRecruitmentCandidates(): Promise<ApiResult<HRRecruitmentCandidate[]>> {
+  const { data, error } = (await supabase
+    .from("hr_recruitment_candidates" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<HRRecruitmentCandidate[]>;
+
+  if (error) return failure("listHRRecruitmentCandidates", error, []);
+  return success(data ?? []);
+}
+
+export async function createHRRecruitmentCandidate(payload: Partial<HRRecruitmentCandidate> & { full_name: string }) {
+  const { data, error } = (await supabase
+    .from("hr_recruitment_candidates" as never)
+    .insert({
+      full_name: payload.full_name,
+      email: payload.email ?? null,
+      phone: payload.phone ?? null,
+      position_id: payload.position_id ?? null,
+      department_id: payload.department_id ?? null,
+      status: payload.status ?? "new",
+      source: payload.source ?? null,
+      notes: payload.notes ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<HRRecruitmentCandidate>;
+
+  if (error) return failure("createHRRecruitmentCandidate", error, null);
+  return success(data);
+}
+
+export async function updateHRRecruitmentCandidate(id: string, payload: Partial<HRRecruitmentCandidate>) {
+  const { data, error } = (await supabase
+    .from("hr_recruitment_candidates" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<HRRecruitmentCandidate>;
+
+  if (error) return failure("updateHRRecruitmentCandidate", error, null);
+  return success(data);
+}
+
+export async function listHROnboardingTasks(): Promise<ApiResult<HROnboardingTask[]>> {
+  const { data, error } = (await supabase
+    .from("hr_onboarding_tasks" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<HROnboardingTask[]>;
+
+  if (error) return failure("listHROnboardingTasks", error, []);
+  return success(data ?? []);
+}
+
+export async function createHROnboardingTask(payload: Partial<HROnboardingTask> & { title: string }) {
+  const { data, error } = (await supabase
+    .from("hr_onboarding_tasks" as never)
+    .insert({
+      employee_id: payload.employee_id ?? null,
+      candidate_id: payload.candidate_id ?? null,
+      title: payload.title,
+      responsible_employee_id: payload.responsible_employee_id ?? null,
+      due_date: payload.due_date ?? null,
+      status: payload.status ?? "open",
+      notes: payload.notes ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<HROnboardingTask>;
+
+  if (error) return failure("createHROnboardingTask", error, null);
+  return success(data);
+}
+
+export async function updateHROnboardingTask(id: string, payload: Partial<HROnboardingTask>) {
+  const { data, error } = (await supabase
+    .from("hr_onboarding_tasks" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<HROnboardingTask>;
+
+  if (error) return failure("updateHROnboardingTask", error, null);
   return success(data);
 }
 

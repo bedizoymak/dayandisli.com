@@ -109,6 +109,12 @@ export function ERPRoutes() {
       <Route path="invoices" element={<InvoicesPage />} />
       <Route path="payments" element={<PaymentsPage />} />
       <Route path="hr" element={<EmployeesPage />} />
+      <Route path="hr/departmanlar" element={<EmployeesPage />} />
+      <Route path="hr/pozisyonlar" element={<EmployeesPage />} />
+      <Route path="hr/devam" element={<EmployeesPage />} />
+      <Route path="hr/izinler" element={<EmployeesPage />} />
+      <Route path="hr/ise-alim" element={<EmployeesPage />} />
+      <Route path="hr/oryantasyon" element={<EmployeesPage />} />
       <Route path="time-entries" element={<TimeEntriesPage />} />
       <Route path="logistics" element={<ShipmentsPage />} />
       <Route path="shipments/:id" element={<ShipmentDetailPage />} />

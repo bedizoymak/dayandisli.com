@@ -240,8 +240,14 @@ export const erpApplications: ErpApplication[] = [
     icon: Users,
     permissionKey: "hr.view",
     modules: [
-      { title: "Personeller", description: "Personel kartlarını yönetin.", route: "/hr", permissionKey: "hr.employees" },
-      { title: "Çalışma Süreleri", description: "Personel çalışma kayıtlarını takip edin.", route: "/time-entries", permissionKey: "hr.timeEntries" },
+      { title: "Çalışanlar", description: "Çalışan kartları, durum ve kullanıcı bağlantılarını yönetin.", route: "/hr", permissionKey: "hr.employees" },
+      { title: "Departmanlar", description: "Organizasyon departmanlarını ve yöneticilerini takip edin.", route: "/hr/departmanlar", permissionKey: "hr.departments" },
+      { title: "Pozisyonlar", description: "Pozisyon ve raporlama yapısını yönetin.", route: "/hr/pozisyonlar", permissionKey: "hr.positions" },
+      { title: "Devam Takibi", description: "Çalışma saati ve mesai kayıtlarını takip edin.", route: "/hr/devam", permissionKey: "hr.attendance" },
+      { title: "İzin Yönetimi", description: "İzin taleplerini ve durumlarını izleyin.", route: "/hr/izinler", permissionKey: "hr.leave" },
+      { title: "İşe Alım", description: "Aday kayıtları ve işe alım sürecini yönetin.", route: "/hr/ise-alim", permissionKey: "hr.recruitment" },
+      { title: "Oryantasyon", description: "Yeni çalışan görevlerini takip edin.", route: "/hr/oryantasyon", permissionKey: "hr.onboarding" },
+      { title: "Çalışma Süreleri", description: "Personel çalışma kayıtlarını listeleyin.", route: "/time-entries", permissionKey: "hr.timeEntries" },
     ],
   },
   {

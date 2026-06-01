@@ -44,6 +44,10 @@ export type FinancialAccountType = "cash" | "bank" | "customer" | "supplier";
 export type InvoiceType = "sales" | "purchase";
 export type PaymentType = "collection" | "payment";
 export type ERPRole = "admin" | "planner" | "sales" | "finance" | "operator" | "purchasing" | "warehouse" | "hr" | "quality" | "viewer";
+export type EmployeeStatus = "active" | "inactive" | "on_leave" | "terminated" | "candidate";
+export type LeaveRequestStatus = "draft" | "pending" | "approved" | "rejected" | "cancelled";
+export type RecruitmentStatus = "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+export type OnboardingTaskStatus = "open" | "in_progress" | "completed" | "cancelled";
 export type ERPNotificationSeverity = "info" | "success" | "warning" | "danger";
 export type ERPNotificationCategory = "workflow" | "quality" | "subcontracting" | "shipment" | "inventory" | "maintenance" | "system";
 export type CRMLeadStatus = "new" | "contacted" | "qualified" | "converted" | "lost";
@@ -268,15 +272,45 @@ export interface InventoryMovement {
 
 export interface Employee {
   id: string;
+  employee_no?: string | null;
   full_name: string;
   role: string | null;
   department: string | null;
+  department_id?: string | null;
+  position_id?: string | null;
+  manager_employee_id?: string | null;
+  erp_user_id?: string | null;
+  status?: EmployeeStatus;
   phone: string | null;
   email: string | null;
   hire_date: string | null;
   is_active: boolean;
   notes: string | null;
   created_at: string;
+}
+
+export interface HRDepartment {
+  id: string;
+  name: string;
+  code: string | null;
+  manager_employee_id: string | null;
+  parent_department_id: string | null;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface HRPosition {
+  id: string;
+  department_id: string | null;
+  title: string;
+  code: string | null;
+  reports_to_position_id: string | null;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface EmployeeTimeEntry {
@@ -288,6 +322,46 @@ export interface EmployeeTimeEntry {
   work_order_id: string | null;
   notes: string | null;
   created_at: string;
+}
+
+export interface HRLeaveRequest {
+  id: string;
+  employee_id: string;
+  leave_type: string;
+  start_date: string;
+  end_date: string;
+  status: LeaveRequestStatus;
+  approver_employee_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface HRRecruitmentCandidate {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  position_id: string | null;
+  department_id: string | null;
+  status: RecruitmentStatus;
+  source: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface HROnboardingTask {
+  id: string;
+  employee_id: string | null;
+  candidate_id: string | null;
+  title: string;
+  responsible_employee_id: string | null;
+  due_date: string | null;
+  status: OnboardingTaskStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface Shipment {
