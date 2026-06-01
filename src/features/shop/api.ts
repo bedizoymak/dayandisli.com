@@ -12,7 +12,7 @@ export async function fetchProducts(options?: {
 }): Promise<{ products: ProductWithImages[]; count: number }> {
   // Build query dynamically based on options
   let queryBuilder = supabase
-    .from('products' as never)
+    .from('products')
     .select('*, product_images(*)', { count: 'exact' });
 
   // Apply filters
@@ -72,7 +72,7 @@ export async function fetchProducts(options?: {
 // Fetch single product by slug
 export async function fetchProductBySlug(slug: string): Promise<ProductWithImages | null> {
   const { data, error } = await supabase
-    .from('products' as never)
+    .from('products')
     .select('*, product_images(*)')
     .eq('slug', slug)
     .maybeSingle() as unknown as { 
@@ -100,7 +100,7 @@ export async function fetchRelatedProducts(category: string | null, excludeId: s
   if (!category) return [];
 
   const { data, error } = await supabase
-    .from('products' as never)
+    .from('products')
     .select('*, product_images(*)')
     .eq('category', category)
     .neq('id', excludeId)
@@ -126,7 +126,7 @@ export async function fetchRelatedProducts(category: string | null, excludeId: s
 // Fetch all unique categories
 export async function fetchCategories(): Promise<string[]> {
   const { data, error } = await supabase
-    .from('products' as never)
+    .from('products')
     .select('category')
     .not('category', 'is', null) as unknown as { 
       data: { category: string }[] | null; 
@@ -144,7 +144,7 @@ export async function fetchCategories(): Promise<string[]> {
 
 // Generate order number
 export async function generateOrderNumber(): Promise<string> {
-  const { data, error } = await supabase.rpc('generate_order_number' as never) as unknown as {
+  const { data, error } = await supabase.rpc('generate_order_number') as unknown as {
     data: string | null;
     error: Error | null;
   };
@@ -170,11 +170,11 @@ export async function createOrder(
 
   // Insert order
   const { data: order, error: orderError } = await supabase
-    .from('orders' as never)
+    .from('orders')
     .insert({
       ...orderData,
       order_number: orderNumber,
-    } as never)
+    })
     .select()
     .single() as unknown as { data: Order | null; error: Error | null };
 
@@ -190,8 +190,8 @@ export async function createOrder(
   }));
 
   const { error: itemsError } = await supabase
-    .from('order_items' as never)
-    .insert(orderItems as never) as unknown as { error: Error | null };
+    .from('order_items')
+    .insert(orderItems) as unknown as { error: Error | null };
 
   if (itemsError) {
     console.error('Error creating order items:', itemsError);
@@ -204,7 +204,7 @@ export async function createOrder(
 // Fetch orders (for admin)
 export async function fetchOrders(limit = 50, offset = 0): Promise<{ orders: Order[]; count: number }> {
   const { data, error, count } = await supabase
-    .from('orders' as never)
+    .from('orders')
     .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1) as unknown as { 
@@ -224,7 +224,7 @@ export async function fetchOrders(limit = 50, offset = 0): Promise<{ orders: Ord
 // Fetch single order with items
 export async function fetchOrderWithItems(orderId: string): Promise<OrderWithItems | null> {
   const { data: order, error: orderError } = await supabase
-    .from('orders' as never)
+    .from('orders')
     .select('*')
     .eq('id', orderId)
     .maybeSingle() as unknown as { data: Order | null; error: Error | null };
@@ -235,7 +235,7 @@ export async function fetchOrderWithItems(orderId: string): Promise<OrderWithIte
   }
 
   const { data: items, error: itemsError } = await supabase
-    .from('order_items' as never)
+    .from('order_items')
     .select('*')
     .eq('order_id', orderId) as unknown as { data: OrderItem[] | null; error: Error | null };
 
@@ -252,8 +252,8 @@ export async function fetchOrderWithItems(orderId: string): Promise<OrderWithIte
 // Update order status
 export async function updateOrderStatus(orderId: string, status: string): Promise<void> {
   const { error } = await supabase
-    .from('orders' as never)
-    .update({ status } as never)
+    .from('orders')
+    .update({ status })
     .eq('id', orderId) as unknown as { error: Error | null };
 
   if (error) {

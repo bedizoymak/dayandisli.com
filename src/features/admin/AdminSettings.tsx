@@ -14,9 +14,9 @@ export default function AdminSettings() {
 
   useEffect(() => {
     supabase
-      .from("settings" as never)
+      .from("settings")
       .select("auth_enabled")
-      .eq("id" as never, 1 as never)
+      .eq("id", 1)
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) setError(error.message);
@@ -27,8 +27,8 @@ export default function AdminSettings() {
 
   const save = async () => {
     const { error } = await supabase
-      .from("settings" as never)
-      .upsert({ id: 1, auth_enabled: authEnabled, updated_at: new Date().toISOString() } as never);
+      .from("settings")
+      .upsert({ id: 1, auth_enabled: authEnabled, updated_at: new Date().toISOString() });
     if (error) {
       toast({ title: "Ayar kaydedilemedi", description: error.message, variant: "destructive" });
       return;

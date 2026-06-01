@@ -26,7 +26,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       }
 
       const { data: settingsData, error: settingsError } = (await supabase
-        .from("settings" as never)
+        .from("settings")
         .select("auth_enabled")
         .eq("id", "1")
         .maybeSingle()) as { data: SettingsRow | null; error: unknown };
