@@ -38,13 +38,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "border border-primary/20 bg-primary/15 text-primary shadow-sm shadow-primary/10"
+                  : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" />
               <span className="min-w-0 flex-1 truncate">{item.title}</span>
-              {item.status === "soon" ? <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">Yakında</span> : null}
+              {item.status === "soon" ? <span className="rounded border border-border bg-muted/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">Yakında</span> : null}
             </Link>
           );
         })}
@@ -61,7 +61,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function ERPSidebar({ mobileOpen, onCloseMobile }: ERPSidebarProps) {
   return (
     <>
-      <aside className="hidden w-72 shrink-0 border-r border-border/80 bg-card/70 lg:block">
+      <aside className="hidden w-72 shrink-0 border-r border-border/80 bg-erp-surface/80 shadow-xl shadow-black/10 backdrop-blur lg:block">
         <SidebarContent />
       </aside>
 

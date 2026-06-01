@@ -17,8 +17,9 @@ type DataTableProps<T> = {
 
 export function DataTable<T>({ columns, data, rowKey, emptyMessage = "Kayıt bulunamadı." }: DataTableProps<T>) {
   return (
+    <div className="overflow-hidden rounded-lg border border-border/80 bg-card/80 shadow-lg shadow-black/10">
     <Table>
-      <TableHeader>
+      <TableHeader className="bg-muted/50">
         <TableRow>
           {columns.map((column) => (
             <TableHead key={column.key} className={column.className}>
@@ -36,7 +37,7 @@ export function DataTable<T>({ columns, data, rowKey, emptyMessage = "Kayıt bul
           </TableRow>
         ) : (
           data.map((row, index) => (
-            <TableRow key={rowKey(row, index)}>
+            <TableRow key={rowKey(row, index)} className="border-border/70 hover:bg-muted/40">
               {columns.map((column) => (
                 <TableCell key={column.key} className={column.className}>
                   {column.render(row)}
@@ -47,5 +48,6 @@ export function DataTable<T>({ columns, data, rowKey, emptyMessage = "Kayıt bul
         )}
       </TableBody>
     </Table>
+    </div>
   );
 }

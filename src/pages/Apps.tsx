@@ -14,14 +14,14 @@ export default function Apps() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f3f5f8] text-slate-950">
-      <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
+    <main className="erp-theme erp-shell">
+      <header className="border-b border-border/80 bg-erp-surface/95 shadow-lg shadow-black/10 backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
           <Link to="/apps" className="flex min-w-0 items-center gap-3">
             <img src={`${import.meta.env.BASE_URL}logo-header.png`} alt="Dayan Dişli" className="h-10 w-auto object-contain" />
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Dayan Dişli</p>
-              <h1 className="truncate text-base font-semibold">Uygulamalar</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Dayan Dişli</p>
+              <h1 className="truncate text-base font-semibold text-foreground">Uygulamalar</h1>
             </div>
           </Link>
           <Button variant="outline" size="sm" onClick={handleLogout}>
@@ -34,7 +34,7 @@ export default function Apps() {
       <section className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
         <div className="mb-6">
           <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">ERP Uygulamaları</h2>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600">
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             Günlük operasyonlar için ihtiyacınız olan uygulamayı seçin. Yetkilendirme desteği için uygulama kayıtları hazırlandı.
           </p>
         </div>
@@ -44,13 +44,13 @@ export default function Apps() {
             <Link
               key={app.id}
               to={app.route}
-              className="group flex min-h-36 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+              className="group erp-surface flex min-h-36 flex-col rounded-lg p-4 transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-erp-surface-raised/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
             >
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-700 transition group-hover:bg-blue-600 group-hover:text-white">
+              <div className="erp-icon-surface mb-4 flex h-12 w-12 items-center justify-center rounded-lg transition group-hover:bg-primary group-hover:text-primary-foreground">
                 <app.icon className="h-6 w-6" />
               </div>
               <h3 className="text-sm font-semibold leading-tight">{app.title}</h3>
-              <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-500">{app.description}</p>
+              <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{app.description}</p>
             </Link>
           ))}
         </div>

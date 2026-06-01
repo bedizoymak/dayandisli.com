@@ -11,7 +11,7 @@ export function ERPLayout({ title, children }: ERPLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-muted/30 text-foreground">
+    <div className="erp-theme erp-shell">
       <ERPTopBar title={title} onMenuToggle={() => setMobileOpen((prev) => !prev)} />
       <div className="flex min-h-[calc(100vh-4rem)]">
         <ERPSidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
