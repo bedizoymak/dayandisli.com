@@ -28,6 +28,7 @@ import ERPSettingsPage from "./settings/ERPSettingsPage";
 import PurchasingPage from "./purchasing/PurchasingPage";
 import PurchaseOrdersPage from "./purchasing/PurchaseOrdersPage";
 import PurchaseOrderDetailPage from "./purchasing/PurchaseOrderDetailPage";
+import ECommercePage from "./ecommerce/ECommercePage";
 import TasksPage from "@/pages/erp/TasksPage";
 import NotesPage from "@/pages/erp/NotesPage";
 import ErpNotFoundPage from "@/pages/erp/ErpNotFoundPage";
@@ -103,6 +104,13 @@ export function ERPRoutes() {
       <Route path="inventory/:id" element={<InventoryDetailPage />} />
       <Route path="inventory-movements" element={<InventoryMovementsPage />} />
       <Route path="purchasing" element={<PurchasingPage />} />
+      <Route path="commerce" element={<ECommercePage />} />
+      <Route path="commerce/kategoriler" element={<ECommercePage />} />
+      <Route path="commerce/siparisler" element={<ECommercePage />} />
+      <Route path="commerce/musteriler" element={<ECommercePage />} />
+      <Route path="commerce/kampanyalar" element={<ECommercePage />} />
+      <Route path="commerce/sepetler" element={<ECommercePage />} />
+      <Route path="commerce/odemeler" element={<ECommercePage />} />
       <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
       <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
       <Route path="finance" element={<FinancePage />} />

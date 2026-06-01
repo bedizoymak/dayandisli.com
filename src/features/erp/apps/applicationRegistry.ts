@@ -78,10 +78,13 @@ export const erpApplications: ErpApplication[] = [
     icon: ShoppingBag,
     permissionKey: "commerce.view",
     modules: [
-      { title: "Siparişler", description: "Mağaza siparişlerini görüntüleyin ve durumlarını yönetin.", route: "/admin/siparisler", permissionKey: "commerce.orders" },
-      { title: "Ürünler", description: "Mağaza ürün katalog kayıtlarını yönetin.", route: "/admin/urunler", permissionKey: "commerce.products" },
-      { title: "Müşteriler", description: "Siparişle ilişkili müşteri kayıtlarına geçin.", route: "/crm", permissionKey: "commerce.customers" },
-      { title: "Kategoriler", description: "Kategori yönetimi için gelecekteki alan.", route: "/admin/urunler", permissionKey: "commerce.categories", status: "planned" },
+      { title: "Ürünler", description: "Mağaza ürün katalog kayıtlarını yönetin.", route: "/commerce", permissionKey: "commerce.products" },
+      { title: "Kategoriler", description: "Mağaza kategori yapısını yönetin.", route: "/commerce/kategoriler", permissionKey: "commerce.categories" },
+      { title: "Siparişler", description: "Mağaza siparişlerini görüntüleyin ve satış siparişine aktarın.", route: "/commerce/siparisler", permissionKey: "commerce.orders" },
+      { title: "Müşteriler", description: "Siparişle ilişkili müşteri kayıtlarını izleyin.", route: "/commerce/musteriler", permissionKey: "commerce.customers" },
+      { title: "Kampanyalar", description: "Kampanya ve indirim temelini yönetin.", route: "/commerce/kampanyalar", permissionKey: "commerce.campaigns" },
+      { title: "Sepetler", description: "Sepet durumlarını ve dönüşüm temelini takip edin.", route: "/commerce/sepetler", permissionKey: "commerce.carts" },
+      { title: "Ödeme Durumları", description: "Sipariş ödeme durumlarını izleyin.", route: "/commerce/odemeler", permissionKey: "commerce.payments" },
     ],
   },
   {

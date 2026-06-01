@@ -50,6 +50,13 @@ import {
   SalesOrderStatus,
   Shipment,
   ShipmentItem,
+  ShopCampaign,
+  ShopCart,
+  ShopCategory,
+  ShopOrder,
+  ShopOrderItem,
+  ShopPaymentStatusRecord,
+  ShopProduct,
   Stakeholder,
   StakeholderType,
   SubcontractingJob,
@@ -213,6 +220,13 @@ export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatu
     "financial_accounts",
     "invoices",
     "payments",
+    "products",
+    "orders",
+    "order_items",
+    "shop_categories",
+    "shop_campaigns",
+    "shop_carts",
+    "shop_payment_statuses",
     "employees",
     "hr_departments",
     "hr_positions",
@@ -2419,6 +2433,243 @@ export async function listPurchaseOrderItems(purchaseOrderId: string): Promise<A
 
   if (error) return failure("listPurchaseOrderItems", error, []);
   return success(data ?? []);
+}
+
+export async function listShopProducts(): Promise<ApiResult<ShopProduct[]>> {
+  const { data, error } = (await supabase
+    .from("products" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<ShopProduct[]>;
+
+  if (error) return failure("listShopProducts", error, []);
+  return success(data ?? []);
+}
+
+export async function updateShopProduct(id: string, payload: Partial<ShopProduct>) {
+  const { data, error } = (await supabase
+    .from("products" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ShopProduct>;
+
+  if (error) return failure("updateShopProduct", error, null);
+  return success(data);
+}
+
+export async function listShopCategories(): Promise<ApiResult<ShopCategory[]>> {
+  const { data, error } = (await supabase
+    .from("shop_categories" as never)
+    .select("*")
+    .order("sort_order", { ascending: true })) as unknown as DbResult<ShopCategory[]>;
+
+  if (error) return failure("listShopCategories", error, []);
+  return success(data ?? []);
+}
+
+export async function createShopCategory(payload: Partial<ShopCategory> & { name: string; slug: string }) {
+  const { data, error } = (await supabase
+    .from("shop_categories" as never)
+    .insert({
+      name: payload.name,
+      slug: payload.slug,
+      description: payload.description ?? null,
+      parent_category_id: payload.parent_category_id ?? null,
+      is_active: payload.is_active ?? true,
+      sort_order: payload.sort_order ?? 0,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<ShopCategory>;
+
+  if (error) return failure("createShopCategory", error, null);
+  return success(data);
+}
+
+export async function updateShopCategory(id: string, payload: Partial<ShopCategory>) {
+  const { data, error } = (await supabase
+    .from("shop_categories" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ShopCategory>;
+
+  if (error) return failure("updateShopCategory", error, null);
+  return success(data);
+}
+
+export async function listShopOrders(): Promise<ApiResult<ShopOrder[]>> {
+  const { data, error } = (await supabase
+    .from("orders" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<ShopOrder[]>;
+
+  if (error) return failure("listShopOrders", error, []);
+  return success(data ?? []);
+}
+
+export async function listShopOrderItems(orderId: string): Promise<ApiResult<ShopOrderItem[]>> {
+  const { data, error } = (await supabase
+    .from("order_items" as never)
+    .select("*")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: true })) as unknown as DbResult<ShopOrderItem[]>;
+
+  if (error) return failure("listShopOrderItems", error, []);
+  return success(data ?? []);
+}
+
+export async function updateShopOrder(id: string, payload: Partial<ShopOrder>) {
+  const { data, error } = (await supabase
+    .from("orders" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ShopOrder>;
+
+  if (error) return failure("updateShopOrder", error, null);
+  return success(data);
+}
+
+export async function listShopCampaigns(): Promise<ApiResult<ShopCampaign[]>> {
+  const { data, error } = (await supabase
+    .from("shop_campaigns" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<ShopCampaign[]>;
+
+  if (error) return failure("listShopCampaigns", error, []);
+  return success(data ?? []);
+}
+
+export async function createShopCampaign(payload: Partial<ShopCampaign> & { name: string }) {
+  const { data, error } = (await supabase
+    .from("shop_campaigns" as never)
+    .insert({
+      name: payload.name,
+      code: payload.code ?? null,
+      discount_type: payload.discount_type ?? "percentage",
+      discount_value: payload.discount_value ?? 0,
+      starts_at: payload.starts_at ?? null,
+      ends_at: payload.ends_at ?? null,
+      is_active: payload.is_active ?? true,
+      notes: payload.notes ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<ShopCampaign>;
+
+  if (error) return failure("createShopCampaign", error, null);
+  return success(data);
+}
+
+export async function updateShopCampaign(id: string, payload: Partial<ShopCampaign>) {
+  const { data, error } = (await supabase
+    .from("shop_campaigns" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ShopCampaign>;
+
+  if (error) return failure("updateShopCampaign", error, null);
+  return success(data);
+}
+
+export async function listShopCarts(): Promise<ApiResult<ShopCart[]>> {
+  const { data, error } = (await supabase
+    .from("shop_carts" as never)
+    .select("*")
+    .order("updated_at", { ascending: false })) as unknown as DbResult<ShopCart[]>;
+
+  if (error) return failure("listShopCarts", error, []);
+  return success(data ?? []);
+}
+
+export async function listShopPaymentStatuses(): Promise<ApiResult<ShopPaymentStatusRecord[]>> {
+  const { data, error } = (await supabase
+    .from("shop_payment_statuses" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<ShopPaymentStatusRecord[]>;
+
+  if (error) return failure("listShopPaymentStatuses", error, []);
+  return success(data ?? []);
+}
+
+export async function createShopPaymentStatus(payload: Partial<ShopPaymentStatusRecord> & { order_id: string }) {
+  const { data, error } = (await supabase
+    .from("shop_payment_statuses" as never)
+    .insert({
+      order_id: payload.order_id,
+      status: payload.status ?? "pending",
+      provider: payload.provider ?? null,
+      transaction_reference: payload.transaction_reference ?? null,
+      amount: payload.amount ?? 0,
+      currency: payload.currency ?? "TRY",
+      notes: payload.notes ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<ShopPaymentStatusRecord>;
+
+  if (error) return failure("createShopPaymentStatus", error, null);
+  await updateShopOrder(payload.order_id, { payment_status: payload.status ?? "pending" });
+  return success(data);
+}
+
+export async function convertShopOrderToSalesOrder(order: ShopOrder) {
+  if (order.sales_order_id) return { data: null, error: "Bu e-ticaret siparişi zaten satış siparişine bağlanmış." };
+
+  const stakeholder = order.stakeholder_id
+    ? success<Stakeholder | null>(null)
+    : await createStakeholder({
+        type: "customer",
+        company_name: order.company_name || order.customer_name,
+        contact_name: order.customer_name,
+        phone: order.phone,
+        email: order.email,
+        address: order.address,
+        notes: "E-ticaret siparişinden oluşturuldu.",
+      });
+  if (stakeholder.error) return { data: null, error: stakeholder.error };
+
+  const salesOrder = await createSalesOrder({
+    stakeholder_id: order.stakeholder_id ?? stakeholder.data?.id ?? null,
+    title: `E-Ticaret Siparişi ${order.order_number}`,
+    description: order.notes,
+    status: "new",
+    priority: "normal",
+    order_date: order.created_at.slice(0, 10),
+    currency: order.currency,
+    subtotal: order.subtotal,
+    tax_total: order.tax_total,
+    grand_total: order.grand_total,
+    notes: `Kaynak e-ticaret siparişi: ${order.order_number}`,
+  });
+  if (salesOrder.error || !salesOrder.data) return salesOrder;
+
+  const items = await listShopOrderItems(order.id);
+  for (const item of items.data) {
+    await createSalesOrderItem({
+      sales_order_id: salesOrder.data.id,
+      description: item.product_name,
+      quantity: item.quantity,
+      unit: "adet",
+      unit_price: item.unit_price,
+      total: item.line_total,
+    });
+  }
+
+  await updateShopOrder(order.id, {
+    sales_order_id: salesOrder.data.id,
+    stakeholder_id: order.stakeholder_id ?? stakeholder.data?.id ?? null,
+    status: "confirmed",
+  });
+
+  await createAuditLog({
+    entity_type: "shop_order",
+    entity_id: order.id,
+    action: "converted_to_sales_order",
+    description: `${order.order_number} e-ticaret siparişi satış siparişine dönüştürüldü.`,
+    metadata: { sales_order_id: salesOrder.data.id },
+  });
+
+  return salesOrder;
 }
 
 export async function createPurchaseOrderItem(payload: Partial<PurchaseOrderItem> & { purchase_order_id: string; description: string }) {

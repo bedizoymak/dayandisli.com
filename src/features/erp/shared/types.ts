@@ -43,6 +43,10 @@ export type PurchaseOrderStatus = "draft" | "sent" | "partially_received" | "rec
 export type FinancialAccountType = "cash" | "bank" | "customer" | "supplier";
 export type InvoiceType = "sales" | "purchase";
 export type PaymentType = "collection" | "payment";
+export type ShopOrderStatus = "pending" | "confirmed" | "shipped" | "completed" | "cancelled";
+export type ShopCartStatus = "active" | "converted" | "abandoned" | "expired";
+export type ShopPaymentStatus = "pending" | "authorized" | "paid" | "failed" | "refunded" | "cancelled";
+export type ShopCampaignDiscountType = "percentage" | "amount" | "free_shipping";
 export type ERPRole = "admin" | "planner" | "sales" | "finance" | "operator" | "purchasing" | "warehouse" | "hr" | "quality" | "viewer";
 export type EmployeeStatus = "active" | "inactive" | "on_leave" | "terminated" | "candidate";
 export type LeaveRequestStatus = "draft" | "pending" | "approved" | "rejected" | "cancelled";
@@ -494,6 +498,111 @@ export interface PurchaseOrderItem {
   total: number;
   received_quantity: number;
   created_at: string;
+}
+
+export interface ShopProduct {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  sku: string | null;
+  price: number;
+  currency: string;
+  in_stock: boolean;
+  stock_quantity: number;
+  category: string | null;
+  brand: string | null;
+  shop_category_id?: string | null;
+  inventory_item_id?: string | null;
+  is_shop_visible?: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ShopCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  parent_category_id: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ShopOrder {
+  id: string;
+  order_number: string;
+  status: ShopOrderStatus;
+  customer_name: string;
+  company_name: string | null;
+  email: string;
+  phone: string;
+  address: string;
+  notes: string | null;
+  subtotal: number;
+  tax_total: number;
+  grand_total: number;
+  currency: string;
+  payment_method: string;
+  payment_status?: ShopPaymentStatus;
+  stakeholder_id?: string | null;
+  sales_order_id?: string | null;
+  invoice_id?: string | null;
+  payment_id?: string | null;
+  campaign_id?: string | null;
+  created_at: string;
+}
+
+export interface ShopOrderItem {
+  id: string;
+  order_id: string;
+  product_id: string | null;
+  product_name: string;
+  unit_price: number;
+  quantity: number;
+  line_total: number;
+  created_at: string;
+}
+
+export interface ShopCampaign {
+  id: string;
+  name: string;
+  code: string | null;
+  discount_type: ShopCampaignDiscountType;
+  discount_value: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ShopCart {
+  id: string;
+  customer_email: string | null;
+  customer_name: string | null;
+  status: ShopCartStatus;
+  currency: string;
+  subtotal: number;
+  converted_order_id: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ShopPaymentStatusRecord {
+  id: string;
+  order_id: string;
+  status: ShopPaymentStatus;
+  provider: string | null;
+  transaction_reference: string | null;
+  amount: number;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface DocumentMetadata {

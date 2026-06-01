@@ -2,6 +2,7 @@ const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
 const DEFAULT_PUBLIC_BASE_URL = "https://dayandisli.com";
 const DEFAULT_ERP_BASE_URL = "https://erp.dayandisli.com";
+const DEFAULT_SHOP_BASE_URL = "https://shop.dayandisli.com";
 
 function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
@@ -27,6 +28,10 @@ export function getErpBaseUrl() {
   return normalizeBaseUrl(import.meta.env.VITE_ERP_BASE_URL || DEFAULT_ERP_BASE_URL);
 }
 
+export function getShopBaseUrl() {
+  return normalizeBaseUrl(import.meta.env.VITE_SHOP_BASE_URL || DEFAULT_SHOP_BASE_URL);
+}
+
 export function isPublicDomain(hostname = window.location.hostname) {
   const publicHostname = getHostnameFromUrl(getPublicBaseUrl());
   return hostname === publicHostname || hostname === `www.${publicHostname}`;
@@ -34,6 +39,10 @@ export function isPublicDomain(hostname = window.location.hostname) {
 
 export function isErpDomain(hostname = window.location.hostname) {
   return hostname === getHostnameFromUrl(getErpBaseUrl());
+}
+
+export function isShopDomain(hostname = window.location.hostname) {
+  return hostname === getHostnameFromUrl(getShopBaseUrl());
 }
 
 export function isPublicRuntimeDomain(hostname = window.location.hostname) {
@@ -45,7 +54,7 @@ export function isErpRuntimeDomain(hostname = window.location.hostname) {
 }
 
 export function shouldExposePublicRoutes(hostname = window.location.hostname) {
-  return isLocalhost(hostname) || isPublicDomain(hostname);
+  return isLocalhost(hostname) || isPublicDomain(hostname) || isShopDomain(hostname);
 }
 
 export function shouldExposeErpRoutes(hostname = window.location.hostname) {
@@ -73,4 +82,8 @@ export function buildErpPath(path = "/dashboard") {
 
 export function buildErpUrl(path = "/apps") {
   return `${getErpBaseUrl()}${buildErpPath(path)}`;
+}
+
+export function buildShopUrl(path = "/shop") {
+  return `${getShopBaseUrl()}${buildErpPath(path)}`;
 }
