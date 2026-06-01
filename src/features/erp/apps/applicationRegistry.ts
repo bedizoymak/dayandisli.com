@@ -258,9 +258,14 @@ export const erpApplications: ErpApplication[] = [
     icon: BarChart3,
     permissionKey: "reports.view",
     modules: [
-      { title: "Yönetim Raporları", description: "ERP genel raporlarını görüntüleyin.", route: "/reports", permissionKey: "reports.management" },
-      { title: "Finans Raporları", description: "Finans rapor ekranlarına geçin.", route: "/finans/raporlar", permissionKey: "reports.finance" },
-      { title: "Kalite Raporları", description: "Kalite raporlarını açın.", route: "/quality", permissionKey: "reports.quality" },
+      { title: "Yönetim Paneli", description: "ERP genel KPI ve yönetim görünürlüğünü açın.", route: "/reports", permissionKey: "reports.management" },
+      { title: "Satış Raporları", description: "Teklif, sipariş ve satış tutarlarını analiz edin.", route: "/reports", permissionKey: "reports.sales" },
+      { title: "CRM Raporları", description: "Müşteri, aday ve fırsat dağılımlarını görüntüleyin.", route: "/reports", permissionKey: "reports.crm" },
+      { title: "Stok Raporları", description: "Stok kartları, kritik stok ve hareket eğilimlerini izleyin.", route: "/reports", permissionKey: "reports.inventory" },
+      { title: "Satın Alma Raporları", description: "Satın alma siparişleri ve tedarik akışını analiz edin.", route: "/reports", permissionKey: "reports.purchasing" },
+      { title: "Üretim Raporları", description: "İş emri ve üretim durumlarını takip edin.", route: "/reports", permissionKey: "reports.production" },
+      { title: "Finans Raporları", description: "Fatura, alacak, borç ve hesap bakiyelerini görüntüleyin.", route: "/reports", permissionKey: "reports.finance" },
+      { title: "İnsan Kaynakları Raporları", description: "Çalışan ve departman dağılımlarını inceleyin.", route: "/reports", permissionKey: "reports.hr" },
     ],
   },
   {
