@@ -29,7 +29,7 @@ export function DocumentLinksPanel({ entityType, entityId }: DocumentLinksPanelP
   }, [entityType, entityId]);
 
   return (
-    <FormSection title="Bağlı Dokümanlar" description="Dosya yükleme entegrasyonu sonraki fazda aktif edilecek. Bu alan metadata bağlantısı tutar.">
+    <FormSection title="Bağlı Dokümanlar" description="Dosya yükleme entegrasyonu sonraki fazda aktif edilecek. Bu alan doküman bağlantısı tutar.">
       <form
         className="grid gap-3 md:grid-cols-[180px_1fr_1fr_120px_auto]"
         onSubmit={async (event) => {
@@ -59,7 +59,7 @@ export function DocumentLinksPanel({ entityType, entityId }: DocumentLinksPanelP
           {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
         <Input placeholder="Dosya adı" value={form.file_name} onChange={(event) => setForm((prev) => ({ ...prev, file_name: event.target.value }))} />
-        <Input placeholder="Dosya yolu / storage path" value={form.file_path} onChange={(event) => setForm((prev) => ({ ...prev, file_path: event.target.value }))} />
+        <Input placeholder="Dosya yolu / depolama yolu" value={form.file_path} onChange={(event) => setForm((prev) => ({ ...prev, file_path: event.target.value }))} />
         <Input type="number" min="1" value={form.version_no} onChange={(event) => setForm((prev) => ({ ...prev, version_no: event.target.value }))} />
         <Button type="submit">Bağla</Button>
       </form>

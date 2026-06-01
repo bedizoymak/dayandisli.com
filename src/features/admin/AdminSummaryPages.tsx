@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import AdminLayout from "./AdminLayout";
 import { AdminEmptyState, AdminMetricGrid, AdminSection } from "./AdminPage";
 import { formatAdminValue, getAdminFinanceSummary, getAdminOperationsSummary } from "./adminData";
+import { PAYMENT_TYPE_LABELS } from "@/features/erp/shared/statusLabels";
 
 type Operations = Awaited<ReturnType<typeof getAdminOperationsSummary>>;
 type Finance = Awaited<ReturnType<typeof getAdminFinanceSummary>>;
@@ -112,7 +113,7 @@ export function AdminFinancePage() {
       <AdminMetricGrid metrics={metrics} />
       <AdminSection
         title="Son Finans Hareketleri"
-        action={<Button asChild size="sm" variant="outline"><Link to="/finance">ERP Finans</Link></Button>}
+        action={<Button asChild size="sm" variant="outline"><Link to="/finance">Finans</Link></Button>}
       >
         {data?.payments.error ? (
           <AdminEmptyState message={data.payments.error} />
@@ -129,7 +130,7 @@ export function AdminFinancePage() {
             <TableBody>
               {data.payments.data.slice(0, 12).map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell>{row.payment_type}</TableCell>
+                  <TableCell>{PAYMENT_TYPE_LABELS[row.payment_type] || row.payment_type}</TableCell>
                   <TableCell>{formatAdminValue(row.amount, "currency")}</TableCell>
                   <TableCell>{formatAdminValue(row.payment_date, "date")}</TableCell>
                   <TableCell>{row.description || "-"}</TableCell>

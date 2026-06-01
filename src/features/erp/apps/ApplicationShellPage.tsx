@@ -1,15 +1,23 @@
-import { Link, Navigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronRight, LockKeyhole } from "lucide-react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ChevronRight, LockKeyhole, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { getErpApplication } from "./applicationRegistry";
 
 export default function ApplicationShellPage() {
   const { appId } = useParams();
+  const navigate = useNavigate();
   const app = getErpApplication(appId);
 
   if (!app) return <Navigate to="/apps" replace />;
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("auth_redirect_path");
+    navigate("/login", { replace: true });
+  };
 
   return (
     <main className="min-h-screen bg-[#f3f5f8] text-slate-950">
@@ -23,12 +31,18 @@ export default function ApplicationShellPage() {
             </div>
             <h1 className="mt-1 truncate text-lg font-semibold md:text-xl">{app.title}</h1>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/apps">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Uygulamalara Dön
-            </Link>
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/apps">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Uygulamalara Dön
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-600">
+              <LogOut className="mr-2 h-4 w-4" />
+              Çıkış Yap
+            </Button>
+          </div>
         </div>
       </header>
 

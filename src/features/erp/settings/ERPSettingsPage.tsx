@@ -8,6 +8,14 @@ import { canManageERP } from "../shared/permissions";
 import { ERPUser } from "../shared/types";
 import { ERPDatabaseStatusWidget } from "../dashboard/ERPDatabaseStatusWidget";
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Yönetici",
+  planner: "Planlama",
+  operator: "Operatör",
+  finance: "Finans",
+  viewer: "Görüntüleme",
+};
+
 export default function ERPSettingsPage() {
   const [user, setUser] = useState<ERPUser | null>(null);
 
@@ -29,8 +37,10 @@ export default function ERPSettingsPage() {
       />
 
       <div className="rounded-md border bg-card p-4 text-sm">
-        <p className="font-medium">Aktif ERP Rolü: <StatusBadge label={user?.role || "viewer"} tone={canEdit ? "success" : "muted"} /></p>
-        {!canEdit ? <p className="mt-2 text-muted-foreground">Bu kullanıcı ayarları görüntüleyebilir; yönetim aksiyonları admin/planner rolü gerektirir.</p> : null}
+        <p className="font-medium">
+          Aktif ERP Rolü: <StatusBadge label={ROLE_LABELS[user?.role || "viewer"]} tone={canEdit ? "success" : "muted"} />
+        </p>
+        {!canEdit ? <p className="mt-2 text-muted-foreground">Bu kullanıcı ayarları görüntüleyebilir; yönetim işlemleri yönetici veya planlama rolü gerektirir.</p> : null}
       </div>
 
       <ERPDatabaseStatusWidget />

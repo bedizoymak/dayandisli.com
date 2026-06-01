@@ -39,7 +39,7 @@ export default function AdminDashboard() {
           title="Son Teklifler"
           action={
             <Button asChild size="sm" variant="outline">
-              <Link to="/admin/teklifler">Tümünü Gör</Link>
+              <Link to="/teklifler">Tümünü Gör</Link>
             </Button>
           }
         >
@@ -74,10 +74,10 @@ export default function AdminDashboard() {
         <AdminSection title="Operasyon Durumu">
           <div className="space-y-3">
             {[
-              ["Tedarikçiler", overview?.suppliers.data.length ?? 0, "/admin/cariler"],
-              ["Stok Kartları", overview?.inventory.data.length ?? 0, "/admin/stok"],
-              ["Personeller", overview?.employees.data.length ?? 0, "/admin/uretim"],
-              ["Veritabanı", overview?.database.data.label ?? "Kontrol ediliyor", "/admin/ayarlar"],
+              ["Tedarikçiler", overview?.suppliers.data.length ?? 0, "/tedarikciler"],
+              ["Stok Kartları", overview?.inventory.data.length ?? 0, "/inventory"],
+              ["Personeller", overview?.employees.data.length ?? 0, "/hr"],
+              ["Veritabanı", overview?.database.data.label ?? "Kontrol ediliyor", "/ayarlar"],
             ].map(([label, value, path]) => (
               <Link key={String(label)} to={String(path)} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm hover:bg-slate-50">
                 <span className="text-slate-600">{label}</span>

@@ -49,13 +49,13 @@ export default function DocumentsPage() {
     <ERPLayout title="Teknik Resim ve Doküman">
       <PageHeader
         title="Teknik Resim ve Doküman Yönetimi"
-        description="Teknik resim, kalite raporu ve sevk dokümanı metadata kayıtlarını yönetin."
+        description="Teknik resim, kalite raporu ve sevk dokümanı kayıtlarını yönetin."
         actions={<Button variant="outline" disabled>Dosya Yükle (Hazırlanıyor)</Button>}
       />
 
       {error ? <MigrationNotice message={error} /> : null}
 
-      <FormSection title="Yeni Doküman Metadata" description="Dosya yükleme entegrasyonu sonraki fazda aktif edilecek.">
+      <FormSection title="Yeni Doküman Kaydı" description="Dosya yükleme entegrasyonu sonraki fazda aktif edilecek.">
         <form
           className="grid gap-3 md:grid-cols-3"
           onSubmit={async (event) => {
@@ -74,7 +74,7 @@ export default function DocumentsPage() {
               toast({ title: "Doküman", description: result.error, variant: "destructive" });
               return;
             }
-            toast({ title: "Kaydedildi", description: "Doküman metadata kaydı oluşturuldu." });
+            toast({ title: "Kaydedildi", description: "Doküman kaydı oluşturuldu." });
             setForm({ entity_type: "work_order", entity_id: "", document_type: "technical_drawing", file_name: "", file_path: "", version_no: "1", notes: "" });
             await load();
           }}
@@ -87,7 +87,7 @@ export default function DocumentsPage() {
             {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
           <Input placeholder="Dosya adı" value={form.file_name} onChange={(event) => setForm((prev) => ({ ...prev, file_name: event.target.value }))} />
-          <Input placeholder="Dosya yolu / storage path" value={form.file_path} onChange={(event) => setForm((prev) => ({ ...prev, file_path: event.target.value }))} />
+          <Input placeholder="Dosya yolu / depolama yolu" value={form.file_path} onChange={(event) => setForm((prev) => ({ ...prev, file_path: event.target.value }))} />
           <Input type="number" placeholder="Versiyon" value={form.version_no} onChange={(event) => setForm((prev) => ({ ...prev, version_no: event.target.value }))} />
           <Input className="md:col-span-2" placeholder="Not" value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
           <Button type="submit">Kaydet</Button>
@@ -97,7 +97,7 @@ export default function DocumentsPage() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Doküman kayıtları yükleniyor...</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="Doküman kaydı yok" description="İlk doküman metadata kayıtları oluştuğunda burada listelenecektir." />
+        <EmptyState title="Doküman kaydı yok" description="İlk doküman kayıtları oluştuğunda burada listelenecektir." />
       ) : (
         <DataTable
           columns={[

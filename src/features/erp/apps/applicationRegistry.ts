@@ -63,11 +63,11 @@ export const erpApplications: ErpApplication[] = [
     icon: Globe2,
     permissionKey: "website.view",
     modules: [
-      { title: "Genel Bakış", description: "Web sitesi yönetim özetine geçin.", route: "/admin", permissionKey: "website.overview" },
+      { title: "Genel Bakış", description: "Web sitesi yönetim özetine geçin.", route: "/dashboard", permissionKey: "website.overview" },
       { title: "Ürünler", description: "Web sitesinde gösterilen ürün kayıtlarını yönetin.", route: "/admin/urunler", permissionKey: "website.products" },
-      { title: "Medya", description: "Ürün görselleri ve teknik doküman alanlarına erişin.", route: "/admin/medya", permissionKey: "website.media" },
-      { title: "SEO", description: "Arama görünürlüğü ayarları için ayrılan alan.", route: "/admin/ayarlar", permissionKey: "website.seo", status: "planned" },
-      { title: "Formlar", description: "İletişim ve talep formları için gelecekteki alan.", route: "/admin", permissionKey: "website.forms", status: "planned" },
+      { title: "Medya", description: "Ürün görselleri ve teknik doküman alanlarına erişin.", route: "/documents", permissionKey: "website.media" },
+      { title: "SEO", description: "Arama görünürlüğü ayarları için ayrılan alan.", route: "/ayarlar", permissionKey: "website.seo", status: "planned" },
+      { title: "Formlar", description: "İletişim ve talep formları için gelecekteki alan.", route: "/apps/website", permissionKey: "website.forms", status: "planned" },
     ],
   },
   {
@@ -264,7 +264,7 @@ export const erpApplications: ErpApplication[] = [
     permissionKey: "settings.view",
     modules: [
       { title: "ERP Ayarları", description: "ERP yapılandırma ekranını açın.", route: "/settings", permissionKey: "settings.erp" },
-      { title: "Yönetim Ayarları", description: "Yönetim ve erişim ayarlarına geçin.", route: "/admin/ayarlar", permissionKey: "settings.admin" },
+      { title: "Yönetim Ayarları", description: "Yönetim ve erişim ayarlarına geçin.", route: "/ayarlar", permissionKey: "settings.admin" },
       { title: "Veritabanı Durumu", description: "Migration ve RLS kontrol ekranlarını görüntüleyin.", route: "/dashboard", permissionKey: "settings.database" },
     ],
   },
