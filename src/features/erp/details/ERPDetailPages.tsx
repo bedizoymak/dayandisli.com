@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AuditTimeline } from "@/components/erp/AuditTimeline";
 import { DataTable } from "@/components/erp/DataTable";
 import { EmptyState } from "@/components/erp/EmptyState";
@@ -35,6 +36,7 @@ import {
   listSubcontractingJobs,
   listWorkOrderOperations,
   listWorkOrders,
+  updateInventoryItem,
 } from "../shared/erpApi";
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from "../shared/formatters";
 import {
@@ -242,20 +244,29 @@ export function StakeholderDetailPage() {
 
 export function InventoryDetailPage() {
   const { id } = useParams();
+  const { toast } = useToast();
   const [item, setItem] = useState<InventoryItem | null>(null);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
+  const [editForm, setEditForm] = useState({ code: "", name: "", unit: "", min_stock: "0", location: "" });
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const load = async () => {
-      if (!id) return;
-      setLoading(true);
-      const [itemResult, movementResult] = await Promise.all([getInventoryItemById(id), listInventoryMovementsForItem(id)]);
-      setItem(itemResult.data);
-      setMovements(movementResult.data);
-      setLoading(false);
-    };
-    load();
-  }, [id]);
+  const load = async () => {
+    if (!id) return;
+    setLoading(true);
+    const [itemResult, movementResult] = await Promise.all([getInventoryItemById(id), listInventoryMovementsForItem(id)]);
+    setItem(itemResult.data);
+    if (itemResult.data) {
+      setEditForm({
+        code: itemResult.data.code || "",
+        name: itemResult.data.name,
+        unit: itemResult.data.unit,
+        min_stock: String(itemResult.data.min_stock || 0),
+        location: itemResult.data.location || "",
+      });
+    }
+    setMovements(movementResult.data);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, [id]);
   if (loading) return <ERPLayout title="Stok Detayı"><p className="text-sm text-muted-foreground">Stok kartı yükleniyor...</p></ERPLayout>;
   if (!item) return <ERPLayout title="Stok Detayı"><EmptyState title="Stok kartı bulunamadı" description="Kayıt görüntülenemedi." /></ERPLayout>;
   return (
@@ -268,6 +279,39 @@ export function InventoryDetailPage() {
         <div><span className="text-muted-foreground">Lokasyon</span><p className="font-medium">{item.location || "-"}</p></div>
       </section>
       {item.current_stock <= item.min_stock ? <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">Kritik stok uyarısı: stok seviyesi minimum değerin altında veya eşit.</div> : null}
+      <section className="rounded-md border bg-card p-4">
+        <h2 className="mb-3 text-lg font-semibold">Kart Bilgilerini Düzenle</h2>
+        <form
+          className="grid gap-3 md:grid-cols-[140px_1fr_120px_140px_1fr_auto]"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (!editForm.name.trim()) {
+              toast({ title: "Eksik Bilgi", description: "Ürün adı zorunludur.", variant: "destructive" });
+              return;
+            }
+            const result = await updateInventoryItem(item.id, {
+              code: editForm.code || null,
+              name: editForm.name,
+              unit: editForm.unit || "adet",
+              min_stock: Number(editForm.min_stock || 0),
+              location: editForm.location || null,
+            });
+            if (result.error) {
+              toast({ title: "Stok Kartı", description: result.error, variant: "destructive" });
+              return;
+            }
+            toast({ title: "Kaydedildi", description: "Stok kartı güncellendi." });
+            await load();
+          }}
+        >
+          <Input placeholder="Kod" value={editForm.code} onChange={(event) => setEditForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <Input placeholder="Ürün/Malzeme" value={editForm.name} onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <Input placeholder="Birim" value={editForm.unit} onChange={(event) => setEditForm((prev) => ({ ...prev, unit: event.target.value }))} />
+          <Input type="number" step="0.001" placeholder="Minimum" value={editForm.min_stock} onChange={(event) => setEditForm((prev) => ({ ...prev, min_stock: event.target.value }))} />
+          <Input placeholder="Depo/Lokasyon" value={editForm.location} onChange={(event) => setEditForm((prev) => ({ ...prev, location: event.target.value }))} />
+          <Button type="submit">Güncelle</Button>
+        </form>
+      </section>
       <DataTable columns={[
         { key: "type", header: "Hareket", render: (row) => INVENTORY_MOVEMENT_TYPE_LABELS[row.movement_type] },
         { key: "qty", header: "Miktar", className: "text-right", render: (row) => formatNumber(row.quantity, 3) },

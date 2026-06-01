@@ -54,12 +54,12 @@ export function WorkOrderForm({ stakeholders, loading = false, onSubmit }: WorkO
         </label>
 
         <label className="text-sm">
-          Baslik *
+          Başlık *
           <Input
             className="mt-1"
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-            placeholder="Örn: Modül 2 helis taslama"
+            placeholder="Örn: Modül 2 helis taşlama"
             required
           />
         </label>
@@ -70,7 +70,7 @@ export function WorkOrderForm({ stakeholders, loading = false, onSubmit }: WorkO
             className="mt-1"
             value={form.part_name}
             onChange={(e) => setForm((prev) => ({ ...prev, part_name: e.target.value }))}
-            placeholder="Parça adi"
+            placeholder="Parça adı"
           />
         </label>
 

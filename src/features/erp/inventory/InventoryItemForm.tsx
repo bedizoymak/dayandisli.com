@@ -38,7 +38,7 @@ export function InventoryItemForm({ loading = false, onSubmit }: InventoryItemFo
   };
 
   return (
-    <FormSection title="Yeni Stok Karti" description="Hammadde, sarf ve mamul kartlarini hizlica ekleyin.">
+    <FormSection title="Yeni Stok Kartı" description="Hammadde, sarf ve mamul kartlarını hızlıca ekleyin.">
       <form className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" onSubmit={submit}>
         <label className="text-sm">
           Tip
@@ -49,10 +49,10 @@ export function InventoryItemForm({ loading = false, onSubmit }: InventoryItemFo
           >
             <option value="raw_material">Hammadde</option>
             <option value="consumable">Sarf Malzeme</option>
-            <option value="tool">Takim</option>
+            <option value="tool">Takım</option>
             <option value="measuring_tool">Ölçüm Aleti</option>
             <option value="finished_good">Mamul</option>
-            <option value="semi_finished">Yari Mamul</option>
+            <option value="semi_finished">Yarı Mamul</option>
           </select>
         </label>
 
@@ -100,7 +100,7 @@ export function InventoryItemForm({ loading = false, onSubmit }: InventoryItemFo
 
         <div className="md:col-span-2 lg:col-span-3 flex justify-end">
           <Button type="submit" disabled={loading}>
-            {loading ? "Kaydediliyor..." : "Stok Karti Ekle"}
+            {loading ? "Kaydediliyor..." : "Stok Kartı Ekle"}
           </Button>
         </div>
       </form>

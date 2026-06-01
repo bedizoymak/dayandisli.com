@@ -9,6 +9,7 @@ import {
   createQualityReport,
   createSubcontractingJob,
   createWorkOrder,
+  listInventoryItems,
   listMachines,
   listProductionRoutes,
   listStakeholders,
@@ -16,7 +17,7 @@ import {
   updateWorkOrder,
   updateWorkOrderOperationStatus,
 } from "../shared/erpApi";
-import { Machine, ProductionRoute, Stakeholder, WorkOrder, WorkOrderOperation } from "../shared/types";
+import { InventoryItem, Machine, ProductionRoute, Stakeholder, WorkOrder, WorkOrderOperation } from "../shared/types";
 import { WorkOrderForm } from "./WorkOrderForm";
 import { WorkOrderTable } from "./WorkOrderTable";
 import { WorkOrderOperations } from "./WorkOrderOperations";
@@ -27,6 +28,7 @@ export default function WorkOrdersPage() {
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
   const [routes, setRoutes] = useState<ProductionRoute[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
@@ -35,11 +37,12 @@ export default function WorkOrdersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [workOrdersResult, stakeholdersResult, routesResult, machinesResult] = await Promise.all([
+    const [workOrdersResult, stakeholdersResult, routesResult, machinesResult, inventoryResult] = await Promise.all([
       listWorkOrders(),
       listStakeholders(),
       listProductionRoutes(),
       listMachines(),
+      listInventoryItems(),
     ]);
 
     if (workOrdersResult.error) {
@@ -57,6 +60,7 @@ export default function WorkOrdersPage() {
     setStakeholders(stakeholdersResult.data.filter((item) => item.is_active));
     setRoutes(routesResult.data.filter((route) => route.is_template));
     setMachines(machinesResult.data);
+    setInventoryItems(inventoryResult.data);
     setLoading(false);
   }, [toast]);
 
@@ -204,6 +208,7 @@ export default function WorkOrdersPage() {
         workOrder={selectedWorkOrder}
         routes={routes}
         machines={machines}
+        inventoryItems={inventoryItems}
         stakeholderName={selectedWorkOrder?.stakeholder_id ? stakeholderNameById[selectedWorkOrder.stakeholder_id] : undefined}
         onSendQuality={sendToQuality}
         onSendSubcontracting={sendOperationToSubcontracting}

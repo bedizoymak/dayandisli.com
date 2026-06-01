@@ -9,12 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import { ClipboardCheck, Truck } from "lucide-react";
 import {
   createOperationsFromRoute,
+  createInventoryMovement,
   createWorkOrderOperation,
+  listInventoryMovements,
   listWorkOrderOperations,
   updateWorkOrderOperationStatus,
 } from "../shared/erpApi";
-import { Machine, ProductionRoute, WorkOrder, WorkOrderOperation } from "../shared/types";
-import { WORK_ORDER_OPERATION_STATUS_LABELS, WORK_ORDER_STATUS_LABELS } from "../shared/statusLabels";
+import { InventoryItem, InventoryMovement, Machine, ProductionRoute, WorkOrder, WorkOrderOperation } from "../shared/types";
+import { INVENTORY_ITEM_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_LABELS, WORK_ORDER_OPERATION_STATUS_LABELS, WORK_ORDER_STATUS_LABELS } from "../shared/statusLabels";
 import { formatDate, formatDateTime, formatNumber } from "../shared/formatters";
 import { WorkOrderPrintSheet } from "./WorkOrderPrintSheet";
 
@@ -22,6 +24,7 @@ type WorkOrderOperationsProps = {
   workOrder: WorkOrder | null;
   routes: ProductionRoute[];
   machines: Machine[];
+  inventoryItems: InventoryItem[];
   stakeholderName?: string;
   onSendQuality: (workOrder: WorkOrder, operation?: WorkOrderOperation) => Promise<void>;
   onSendSubcontracting: (workOrder: WorkOrder, operation: WorkOrderOperation) => Promise<void>;
@@ -36,11 +39,13 @@ function tone(status: WorkOrderOperation["status"]) {
   return "default" as const;
 }
 
-export function WorkOrderOperations({ workOrder, routes, machines, stakeholderName, onSendQuality, onSendSubcontracting, onChanged }: WorkOrderOperationsProps) {
+export function WorkOrderOperations({ workOrder, routes, machines, inventoryItems, stakeholderName, onSendQuality, onSendSubcontracting, onChanged }: WorkOrderOperationsProps) {
   const { toast } = useToast();
   const [rows, setRows] = useState<WorkOrderOperation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [routeId, setRouteId] = useState("");
+  const [materialForm, setMaterialForm] = useState({ inventory_item_id: "", quantity: "1", notes: "" });
   const [form, setForm] = useState({
     step_no: "10",
     operation_name: "",
@@ -63,8 +68,10 @@ export function WorkOrderOperations({ workOrder, routes, machines, stakeholderNa
     if (!workOrder) return;
     setLoading(true);
     const result = await listWorkOrderOperations(workOrder.id);
+    const movementResult = await listInventoryMovements();
     if (result.error) toast({ title: "Hata", description: result.error, variant: "destructive" });
     setRows(result.data);
+    setMovements(movementResult.data.filter((movement) => movement.source_type === "work_order" && movement.source_id === workOrder.id));
     setLoading(false);
   }, [toast, workOrder]);
 
@@ -267,6 +274,72 @@ export function WorkOrderOperations({ workOrder, routes, machines, stakeholderNa
               rowKey={(row) => row.id}
             />
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Malzeme Tüketimi ve Mamul Stok Temeli</CardTitle>
+          <CardDescription>İş emrine bağlı stok çıkışı ve üretim sonrası stok hareketi altyapısını yönetin.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form
+            className="grid gap-3 md:grid-cols-[1fr_140px_1fr_auto]"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!materialForm.inventory_item_id) {
+                toast({ title: "Eksik Bilgi", description: "Stok kalemi seçiniz.", variant: "destructive" });
+                return;
+              }
+              const result = await createInventoryMovement({
+                inventory_item_id: materialForm.inventory_item_id,
+                movement_type: "out",
+                quantity: Number(materialForm.quantity || 0),
+                source_type: "work_order",
+                source_id: workOrder.id,
+                notes: materialForm.notes || `${workOrder.work_order_no} üretim tüketimi`,
+              });
+              if (result.error) {
+                toast({ title: "Malzeme Tüketimi", description: result.error, variant: "destructive" });
+                return;
+              }
+              toast({ title: "Stok Hareketi Oluşturuldu", description: "Malzeme tüketimi iş emrine bağlandı." });
+              setMaterialForm({ inventory_item_id: "", quantity: "1", notes: "" });
+              await load();
+              await onChanged();
+            }}
+          >
+            <select className="h-10 rounded-md border bg-background px-3 text-sm" value={materialForm.inventory_item_id} onChange={(event) => setMaterialForm((prev) => ({ ...prev, inventory_item_id: event.target.value }))}>
+              <option value="">Malzeme seçiniz</option>
+              {inventoryItems
+                .filter((item) => item.item_type !== "finished_good")
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.code ? `${item.code} - ${item.name}` : item.name} ({INVENTORY_ITEM_TYPE_LABELS[item.item_type]})
+                  </option>
+                ))}
+            </select>
+            <Input type="number" step="0.001" value={materialForm.quantity} onChange={(event) => setMaterialForm((prev) => ({ ...prev, quantity: event.target.value }))} />
+            <Input placeholder="Tüketim notu" value={materialForm.notes} onChange={(event) => setMaterialForm((prev) => ({ ...prev, notes: event.target.value }))} />
+            <Button type="submit">Tüketim İşle</Button>
+          </form>
+
+          <DataTable
+            columns={[
+              { key: "item", header: "Stok Kalemi", render: (row) => inventoryItems.find((item) => item.id === row.inventory_item_id)?.name || row.inventory_item_id },
+              { key: "type", header: "Hareket", render: (row) => INVENTORY_MOVEMENT_TYPE_LABELS[row.movement_type] },
+              { key: "qty", header: "Miktar", className: "text-right", render: (row) => formatNumber(row.quantity, 3) },
+              { key: "date", header: "Tarih", render: (row) => formatDateTime(row.movement_date) },
+              { key: "notes", header: "Not", render: (row) => row.notes || "-" },
+            ]}
+            data={movements}
+            rowKey={(row) => row.id}
+            emptyMessage="Bu iş emrine bağlı malzeme tüketimi yok."
+          />
+
+          <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+            Mamul stok girişi için mevcut stok hareketi altyapısı hazırdır. Tam otomatik mamul girişi, üretim maliyeti ve lot/seri takibi sonraki faza bırakıldı.
+          </div>
         </CardContent>
       </Card>
 
