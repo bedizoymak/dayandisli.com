@@ -6,6 +6,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
+import { buildErpUrl, shouldExposeErpRoutes, shouldExposePublicRoutes } from "@/lib/domains";
 
 import Index from "./pages/Index";
 import Hizmetler from "./pages/site/Hizmetler";
@@ -20,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Apps from "./pages/Apps";
+import { AdminRoutes } from "./features/admin";
 import { ERPRoutes } from "./features/erp";
 import ERPHomePage from "./features/erp/dashboard/ERPHomePage";
 
@@ -50,13 +52,19 @@ function LegacyErpRedirect() {
 
 const protectedElement = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
 
-const AppContent = () => (
-  <TooltipProvider>
-    <Toaster />
-    <Sonner />
-    <BrowserRouter>
-      <Routes>
-        {!isErpBuild && (
+function PublicDomainErpRedirect() {
+  const location = useLocation();
+  window.location.replace(buildErpUrl(`${location.pathname}${location.search}${location.hash}`));
+  return null;
+}
+
+const AppRoutes = () => {
+  const exposePublicRoutes = shouldExposePublicRoutes();
+  const exposeErpRoutes = shouldExposeErpRoutes();
+
+  return (
+    <Routes>
+      {exposePublicRoutes && (
           <>
             <Route path="/" element={<Index />} />
             <Route path="/hizmetler" element={<Hizmetler />} />
@@ -67,11 +75,11 @@ const AppContent = () => (
             <Route path="/hakkimizda" element={<Hakkimizda />} />
             <Route path="/referanslar" element={<Referanslar />} />
           </>
-        )}
+      )}
 
-        <Route path="/login" element={<Login />} />
+      <Route path="/login" element={exposeErpRoutes ? <Login /> : <PublicDomainErpRedirect />} />
 
-        {SHOP_FEATURE_ENABLED ? (
+      {exposePublicRoutes && SHOP_FEATURE_ENABLED ? (
           <>
             <Route path="/shop" element={<ShopPage />} />
             <Route path="/shop/:slug" element={<ProductDetailPage />} />
@@ -79,17 +87,18 @@ const AppContent = () => (
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
           </>
-        ) : (
+      ) : exposePublicRoutes ? (
           <>
             <Route path="/shop/*" element={<NotFound />} />
             <Route path="/cart" element={<NotFound />} />
             <Route path="/checkout/*" element={<NotFound />} />
           </>
-        )}
+      ) : null}
 
-        {isErpBuild ? (
+      {exposeErpRoutes ? (
           <>
             <Route path="/apps" element={protectedElement(<Apps />)} />
+            <Route path="/admin/*" element={protectedElement(<AdminRoutes />)} />
             <Route path="/dashboard" element={protectedElement(<ERPHomePage />)} />
             <Route path="/apps/calculator/*" element={protectedElement(<LegacyCalculatorRedirect />)} />
             {SHOP_FEATURE_ENABLED && <Route path="/apps/shop-orders" element={protectedElement(<ShopOrdersPage />)} />}
@@ -97,26 +106,19 @@ const AppContent = () => (
             <Route path="/erp/*" element={protectedElement(<LegacyErpRedirect />)} />
             <Route path="/*" element={protectedElement(<ERPRoutes />)} />
           </>
-        ) : (
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <Routes>
-                  <Route path="apps" element={<Apps />} />
-                  <Route path="dashboard" element={<ERPHomePage />} />
-                  <Route path="apps/calculator/*" element={<LegacyCalculatorRedirect />} />
-                  {SHOP_FEATURE_ENABLED && <Route path="apps/shop-orders" element={<ShopOrdersPage />} />}
-                  <Route path="kargo" element={<Navigate to="/erp/kargo" replace />} />
-                  <Route path="teklif-sayfasi" element={<Navigate to="/erp/teklifler/yeni" replace />} />
-                  <Route path="erp/*" element={<ERPRoutes />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </ProtectedRoute>
-            }
-          />
-        )}
-      </Routes>
+      ) : (
+        <Route path="/*" element={<NotFound />} />
+      )}
+    </Routes>
+  );
+};
+
+const AppContent = () => (
+  <TooltipProvider>
+    <Toaster />
+    <Sonner />
+    <BrowserRouter>
+      <AppRoutes />
     </BrowserRouter>
   </TooltipProvider>
 );

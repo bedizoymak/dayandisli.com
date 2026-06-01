@@ -68,7 +68,7 @@ export function ERPRoutes() {
       <Route path="tedarikciler/:id/duzenle" element={<SupplierFormPage />} />
       <Route path="teklifler" element={<ERPQuotationsPage />} />
       <Route path="teklifler/yeni" element={<ERPLayout title="Yeni Teklif"><TeklifSayfasi embedded /></ERPLayout>} />
-      <Route path="calculator/*" element={<ERPLayout title="DAYAN Calculator"><CalculatorRoutes /></ERPLayout>} />
+      <Route path="calculator/*" element={<ERPLayout title="DAYAN Hesaplama"><CalculatorRoutes /></ERPLayout>} />
       <Route path="kargo" element={<ERPLayout title="Kargo Yönetimi"><Kargo embedded /></ERPLayout>} />
       <Route path="siparisler" element={<SalesOrdersPage />} />
       <Route path="siparisler/:id" element={<SalesOrderDetailPage />} />

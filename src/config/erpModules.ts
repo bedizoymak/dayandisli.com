@@ -32,7 +32,7 @@ export type ErpModuleConfig = {
 export const erpModules: ErpModuleConfig[] = [
   {
     id: "dashboard",
-    title: "Dashboard",
+    title: "Kontrol Paneli",
     description: "Günlük operasyon özeti ve hızlı erişimler",
     path: "/dashboard",
     icon: LayoutDashboard,
@@ -97,7 +97,7 @@ export const erpModules: ErpModuleConfig[] = [
   },
   {
     id: "calculator",
-    title: "Calculator",
+    title: "Hesaplama",
     description: "Dişli hesaplama ve üretim reçetesi araçları",
     path: "/calculator",
     icon: Calculator,

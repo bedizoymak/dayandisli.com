@@ -79,11 +79,7 @@ export default function Login() {
         return;
       }
 
-      const storedRedirectPath = localStorage.getItem("auth_redirect_path");
-      const redirectPath =
-        storedRedirectPath && !["/login", "/apps", "/"].includes(storedRedirectPath)
-          ? storedRedirectPath
-          : "/dashboard";
+      const redirectPath = "/apps";
       localStorage.removeItem("auth_redirect_path");
       navigate(redirectPath, { replace: true });
     } catch {

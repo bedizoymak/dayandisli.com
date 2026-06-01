@@ -36,6 +36,22 @@ export function isErpDomain(hostname = window.location.hostname) {
   return hostname === getHostnameFromUrl(getErpBaseUrl());
 }
 
+export function isPublicRuntimeDomain(hostname = window.location.hostname) {
+  return !isLocalhost(hostname) && isPublicDomain(hostname);
+}
+
+export function isErpRuntimeDomain(hostname = window.location.hostname) {
+  return !isLocalhost(hostname) && isErpDomain(hostname);
+}
+
+export function shouldExposePublicRoutes(hostname = window.location.hostname) {
+  return isLocalhost(hostname) || isPublicDomain(hostname);
+}
+
+export function shouldExposeErpRoutes(hostname = window.location.hostname) {
+  return isLocalhost(hostname) || isErpDomain(hostname);
+}
+
 export function getPublicLoginRedirectUrl(location: Location = window.location) {
   if (isLocalhost(location.hostname) || isErpDomain(location.hostname) || !isPublicDomain(location.hostname)) {
     return null;
@@ -53,4 +69,8 @@ export function getPublicLoginRedirectUrl(location: Location = window.location) 
 
 export function buildErpPath(path = "/dashboard") {
   return path.startsWith("/") ? path : `/${path}`;
+}
+
+export function buildErpUrl(path = "/apps") {
+  return `${getErpBaseUrl()}${buildErpPath(path)}`;
 }
