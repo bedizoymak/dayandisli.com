@@ -39,7 +39,7 @@ export function ERPDatabaseStatusWidget() {
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <div>
           <CardTitle className="text-base">ERP Veritabanı Durumu</CardTitle>
-          <p className="text-sm text-muted-foreground">Ana ERP tablolarının migration ve RLS erişim kontrolü.</p>
+          <p className="text-sm text-muted-foreground">Ana ERP tablolarının geçiş ve RLS erişim kontrolü.</p>
         </div>
         <Icon className="h-5 w-5 text-primary" />
       </CardHeader>

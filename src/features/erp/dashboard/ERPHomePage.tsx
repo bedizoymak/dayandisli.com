@@ -47,7 +47,7 @@ const defaultActivity: ERPDashboardActivity = {
 const fallbackActivity = [
   {
     title: "ERP panel yapısı hazır",
-    description: "Dashboard, modül navigasyonu, hızlı işlem ve bildirim merkezi devrede.",
+    description: "Kontrol paneli, modül navigasyonu, hızlı işlem ve bildirim merkezi devrede.",
     time: "Sistem",
     tone: "success" as const,
   },
@@ -60,7 +60,7 @@ const fallbackActivity = [
   {
     title: "Veri bağlantısı bekleniyor",
     description: "Gerçek aktivite kayıtları geldiğinde bu alan Supabase verisiyle dolacak.",
-    time: "Fallback",
+    time: "Yedek",
     tone: "muted" as const,
   },
 ];
@@ -115,7 +115,7 @@ export default function ERPHomePage() {
   }, [activity]);
 
   return (
-    <ERPLayout title="Dashboard">
+    <ERPLayout title="Kontrol Paneli">
       <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <PageHeader
@@ -130,7 +130,7 @@ export default function ERPHomePage() {
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to="/calculator">Calculator Aç</Link>
+              <Link to="/calculator">Hesaplamayı Aç</Link>
             </Button>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function ERPHomePage() {
                 <Link to="/kargo">Kargo Etiketi</Link>
               </Button>
               <Button asChild variant="outline" className="justify-start">
-                <Link to="/calculator">Calculator Aç</Link>
+                <Link to="/calculator">Hesaplamayı Aç</Link>
               </Button>
             </CardContent>
           </Card>

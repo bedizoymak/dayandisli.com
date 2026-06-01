@@ -14,7 +14,7 @@ const actions = [
   { label: "Yeni Teklif", path: "/teklifler/yeni", icon: FilePlus2 },
   { label: "Yeni Müşteri", path: "/musteriler/yeni", icon: Users },
   { label: "Finans Hareketi", path: "/finans/hareketler/yeni", icon: ReceiptText },
-  { label: "Calculator", path: "/calculator", icon: Calculator },
+  { label: "Hesaplama", path: "/calculator", icon: Calculator },
   { label: "Siparişler", path: "/siparisler", icon: ShoppingCart },
   { label: "Kargo", path: "/kargo", icon: Package },
 ];

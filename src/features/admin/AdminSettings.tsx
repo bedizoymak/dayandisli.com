@@ -37,7 +37,7 @@ export default function AdminSettings() {
   };
 
   return (
-    <AdminLayout title="Ayarlar" description="Admin ve ERP erişim ayarları">
+    <AdminLayout title="Ayarlar" description="Yönetim ve ERP erişim ayarları">
       <AdminSection title="Erişim Kontrolü">
         {loading ? (
           <AdminEmptyState message="Ayarlar yükleniyor..." />
@@ -47,7 +47,7 @@ export default function AdminSettings() {
           <div className="space-y-4">
             <label className="flex items-center gap-3 rounded-md border p-3">
               <Checkbox checked={authEnabled} onCheckedChange={(value) => setAuthEnabled(Boolean(value))} />
-              <span className="text-sm font-medium">Admin/ERP girişinde Supabase Auth kontrolü aktif</span>
+              <span className="text-sm font-medium">Yönetim ve ERP girişinde Supabase kimlik kontrolü aktif</span>
             </label>
             <Button onClick={save}>Kaydet</Button>
           </div>
@@ -58,7 +58,7 @@ export default function AdminSettings() {
         <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-2">
           <div className="rounded-md border p-3">Logo: public/logo-header.png</div>
           <div className="rounded-md border p-3">Alan adı: dayandisli.com</div>
-          <div className="rounded-md border p-3">Ürün modeli: products, product_images</div>
+          <div className="rounded-md border p-3">Ürün modeli: ürün kayıtları ve ürün görselleri</div>
           <div className="rounded-md border p-3">Operasyon modeli: ERP Supabase tabloları</div>
         </div>
       </AdminSection>

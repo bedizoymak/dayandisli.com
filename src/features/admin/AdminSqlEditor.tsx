@@ -10,7 +10,7 @@ export default function AdminSqlEditor() {
   return (
     <AdminLayout title="SQL Düzenleyici" description="Supabase güvenlik sınırlarıyla teknik yönetim">
       <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Bu uygulama doğrudan tarayıcıdan keyfi SQL çalıştırmaz. Supabase projelerinde güvenli yol SQL Editor, migration veya admin-only Edge Function kullanmaktır.
+        Bu uygulama doğrudan tarayıcıdan keyfi SQL çalıştırmaz. Supabase projelerinde güvenli yol yönetim paneli, geçiş dosyası veya yalnızca yetkili kullanıcılara açık uç fonksiyon kullanmaktır.
       </div>
       <AdminSection title="Sorgu Notları">
         <Textarea value={sql} onChange={(event) => setSql(event.target.value)} className="min-h-48 font-mono" />

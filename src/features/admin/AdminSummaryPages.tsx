@@ -20,7 +20,7 @@ export function AdminOperationsPage({ mode }: { mode: "stakeholders" | "producti
     return (
       <AdminLayout title="Medya" description="Ürün görselleri ve teknik doküman akışları">
         <AdminSection title="Medya Yönetimi">
-          <AdminEmptyState message="Bu proje ürün görsellerini product_images tablosunda, teknik evrakları documents modülünde tutuyor. Görsel yükleme için mevcut Shop/ERP dosya akışı kullanılmalı." />
+          <AdminEmptyState message="Bu proje ürün görsellerini ve teknik evrakları Supabase üzerinde tutuyor. Görsel yükleme için mevcut mağaza ve ERP dosya akışı kullanılmalı." />
           <div className="mt-4 flex gap-2">
             <Button asChild variant="outline"><Link to="/admin/urunler">Ürün Görselleri</Link></Button>
             <Button asChild variant="outline"><Link to="/documents">Dokümanlar</Link></Button>

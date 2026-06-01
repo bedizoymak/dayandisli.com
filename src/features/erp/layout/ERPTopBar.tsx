@@ -65,12 +65,12 @@ export function ERPTopBar({ title, onMenuToggle }: ERPTopBarProps) {
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuToggle}>
             <Menu className="h-5 w-5" />
           </Button>
-          <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
+          <Link to="/apps" className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Factory className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dayan Dişli ERP</p>
+              <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dayan Dişli</p>
               <h1 className="truncate text-sm font-semibold text-foreground md:text-base">{title}</h1>
             </div>
           </Link>

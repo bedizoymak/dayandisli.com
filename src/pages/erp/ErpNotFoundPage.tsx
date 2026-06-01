@@ -11,7 +11,7 @@ export default function ErpNotFoundPage() {
         description="Aradığınız ERP ekranı taşınmış veya henüz oluşturulmamış olabilir."
         action={
           <Button asChild>
-            <Link to="/dashboard">Dashboard'a Dön</Link>
+            <Link to="/apps">Uygulamalara Dön</Link>
           </Button>
         }
       />
