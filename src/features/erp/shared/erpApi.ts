@@ -64,6 +64,13 @@ import {
   WorkOrderOperation,
   WorkOrderOperationStatus,
   WorkOrderStatus,
+  WebsiteBanner,
+  WebsiteForm,
+  WebsiteFormSubmission,
+  WebsiteMediaAsset,
+  WebsiteMenuItem,
+  WebsitePage,
+  WebsiteSEOSetting,
 } from "./types";
 
 export const ERP_MIGRATION_MESSAGE =
@@ -227,6 +234,13 @@ export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatu
     "shop_campaigns",
     "shop_carts",
     "shop_payment_statuses",
+    "website_pages",
+    "website_seo_settings",
+    "website_menu_items",
+    "website_media_assets",
+    "website_forms",
+    "website_form_submissions",
+    "website_banners",
     "employees",
     "hr_departments",
     "hr_positions",
@@ -2670,6 +2684,174 @@ export async function convertShopOrderToSalesOrder(order: ShopOrder) {
   });
 
   return salesOrder;
+}
+
+export async function listWebsitePages(): Promise<ApiResult<WebsitePage[]>> {
+  const { data, error } = (await supabase.from("website_pages" as never).select("*").order("updated_at", { ascending: false })) as unknown as DbResult<WebsitePage[]>;
+  if (error) return failure("listWebsitePages", error, []);
+  return success(data ?? []);
+}
+
+export async function createWebsitePage(payload: Partial<WebsitePage> & { title: string; slug: string }) {
+  const { data, error } = (await supabase
+    .from("website_pages" as never)
+    .insert({
+      title: payload.title,
+      slug: payload.slug,
+      page_type: payload.page_type ?? "content",
+      status: payload.status ?? "draft",
+      locale: payload.locale ?? "tr",
+      summary: payload.summary ?? null,
+      content: payload.content ?? null,
+      published_at: payload.status === "published" ? new Date().toISOString() : payload.published_at ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<WebsitePage>;
+  if (error) return failure("createWebsitePage", error, null);
+  return success(data);
+}
+
+export async function updateWebsitePage(id: string, payload: Partial<WebsitePage>) {
+  const { data, error } = (await supabase.from("website_pages" as never).update(payload as never).eq("id", id).select("*").single()) as unknown as DbResult<WebsitePage>;
+  if (error) return failure("updateWebsitePage", error, null);
+  return success(data);
+}
+
+export async function listWebsiteSEOSettings(): Promise<ApiResult<WebsiteSEOSetting[]>> {
+  const { data, error } = (await supabase.from("website_seo_settings" as never).select("*").order("route_path", { ascending: true })) as unknown as DbResult<WebsiteSEOSetting[]>;
+  if (error) return failure("listWebsiteSEOSettings", error, []);
+  return success(data ?? []);
+}
+
+export async function createWebsiteSEOSetting(payload: Partial<WebsiteSEOSetting> & { route_path: string }) {
+  const { data, error } = (await supabase
+    .from("website_seo_settings" as never)
+    .insert({
+      page_id: payload.page_id ?? null,
+      route_path: payload.route_path,
+      meta_title: payload.meta_title ?? null,
+      meta_description: payload.meta_description ?? null,
+      canonical_url: payload.canonical_url ?? null,
+      robots: payload.robots ?? "index,follow",
+      og_image_path: payload.og_image_path ?? null,
+      is_active: payload.is_active ?? true,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<WebsiteSEOSetting>;
+  if (error) return failure("createWebsiteSEOSetting", error, null);
+  return success(data);
+}
+
+export async function listWebsiteMenuItems(): Promise<ApiResult<WebsiteMenuItem[]>> {
+  const { data, error } = (await supabase.from("website_menu_items" as never).select("*").order("sort_order", { ascending: true })) as unknown as DbResult<WebsiteMenuItem[]>;
+  if (error) return failure("listWebsiteMenuItems", error, []);
+  return success(data ?? []);
+}
+
+export async function createWebsiteMenuItem(payload: Partial<WebsiteMenuItem> & { label: string; path: string }) {
+  const { data, error } = (await supabase
+    .from("website_menu_items" as never)
+    .insert({
+      label: payload.label,
+      path: payload.path,
+      menu_area: payload.menu_area ?? "header",
+      parent_item_id: payload.parent_item_id ?? null,
+      sort_order: payload.sort_order ?? 0,
+      is_active: payload.is_active ?? true,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<WebsiteMenuItem>;
+  if (error) return failure("createWebsiteMenuItem", error, null);
+  return success(data);
+}
+
+export async function updateWebsiteMenuItem(id: string, payload: Partial<WebsiteMenuItem>) {
+  const { data, error } = (await supabase.from("website_menu_items" as never).update(payload as never).eq("id", id).select("*").single()) as unknown as DbResult<WebsiteMenuItem>;
+  if (error) return failure("updateWebsiteMenuItem", error, null);
+  return success(data);
+}
+
+export async function listWebsiteMediaAssets(): Promise<ApiResult<WebsiteMediaAsset[]>> {
+  const { data, error } = (await supabase.from("website_media_assets" as never).select("*").order("created_at", { ascending: false })) as unknown as DbResult<WebsiteMediaAsset[]>;
+  if (error) return failure("listWebsiteMediaAssets", error, []);
+  return success(data ?? []);
+}
+
+export async function createWebsiteMediaAsset(payload: Partial<WebsiteMediaAsset> & { file_name: string; file_path: string }) {
+  const { data, error } = (await supabase
+    .from("website_media_assets" as never)
+    .insert({
+      file_name: payload.file_name,
+      file_path: payload.file_path,
+      media_type: payload.media_type ?? "image",
+      alt_text: payload.alt_text ?? null,
+      usage_area: payload.usage_area ?? null,
+      is_public: payload.is_public ?? true,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<WebsiteMediaAsset>;
+  if (error) return failure("createWebsiteMediaAsset", error, null);
+  return success(data);
+}
+
+export async function listWebsiteForms(): Promise<ApiResult<WebsiteForm[]>> {
+  const { data, error } = (await supabase.from("website_forms" as never).select("*").order("name", { ascending: true })) as unknown as DbResult<WebsiteForm[]>;
+  if (error) return failure("listWebsiteForms", error, []);
+  return success(data ?? []);
+}
+
+export async function createWebsiteForm(payload: Partial<WebsiteForm> & { name: string; form_key: string }) {
+  const { data, error } = (await supabase
+    .from("website_forms" as never)
+    .insert({
+      name: payload.name,
+      form_key: payload.form_key,
+      target_email: payload.target_email ?? null,
+      success_message: payload.success_message ?? null,
+      is_active: payload.is_active ?? true,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<WebsiteForm>;
+  if (error) return failure("createWebsiteForm", error, null);
+  return success(data);
+}
+
+export async function listWebsiteFormSubmissions(): Promise<ApiResult<WebsiteFormSubmission[]>> {
+  const { data, error } = (await supabase.from("website_form_submissions" as never).select("*").order("created_at", { ascending: false })) as unknown as DbResult<WebsiteFormSubmission[]>;
+  if (error) return failure("listWebsiteFormSubmissions", error, []);
+  return success(data ?? []);
+}
+
+export async function updateWebsiteFormSubmission(id: string, payload: Partial<WebsiteFormSubmission>) {
+  const { data, error } = (await supabase.from("website_form_submissions" as never).update(payload as never).eq("id", id).select("*").single()) as unknown as DbResult<WebsiteFormSubmission>;
+  if (error) return failure("updateWebsiteFormSubmission", error, null);
+  return success(data);
+}
+
+export async function listWebsiteBanners(): Promise<ApiResult<WebsiteBanner[]>> {
+  const { data, error } = (await supabase.from("website_banners" as never).select("*").order("sort_order", { ascending: true })) as unknown as DbResult<WebsiteBanner[]>;
+  if (error) return failure("listWebsiteBanners", error, []);
+  return success(data ?? []);
+}
+
+export async function createWebsiteBanner(payload: Partial<WebsiteBanner> & { title: string }) {
+  const { data, error } = (await supabase
+    .from("website_banners" as never)
+    .insert({
+      title: payload.title,
+      subtitle: payload.subtitle ?? null,
+      image_path: payload.image_path ?? null,
+      link_url: payload.link_url ?? null,
+      placement: payload.placement ?? "home",
+      status: payload.status ?? "draft",
+      starts_at: payload.starts_at ?? null,
+      ends_at: payload.ends_at ?? null,
+      sort_order: payload.sort_order ?? 0,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<WebsiteBanner>;
+  if (error) return failure("createWebsiteBanner", error, null);
+  return success(data);
 }
 
 export async function createPurchaseOrderItem(payload: Partial<PurchaseOrderItem> & { purchase_order_id: string; description: string }) {

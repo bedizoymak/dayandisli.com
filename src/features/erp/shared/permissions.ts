@@ -192,6 +192,7 @@ export function getRequiredPermissionForPath(pathname: string) {
   const normalized = pathname.replace(/^\/erp/, "") || "/";
   const routePermissions: Array<[RegExp, string]> = [
     [/^\/apps\/settings/, "settings.view"],
+    [/^\/apps\/website/, "website.view"],
     [/^\/apps\/crm/, "crm.view"],
     [/^\/apps\/sales/, "sales.view"],
     [/^\/apps\/commerce/, "commerce.view"],
@@ -211,6 +212,7 @@ export function getRequiredPermissionForPath(pathname: string) {
     [/^\/inventory|^\/inventory-movements/, "inventory.view"],
     [/^\/purchasing|^\/purchase-orders/, "purchasing.view"],
     [/^\/commerce/, "commerce.view"],
+    [/^\/website/, "website.view"],
     [/^\/production|^\/work-orders|^\/routes|^\/subcontracting|^\/calculator/, "production.view"],
     [/^\/quality/, "quality.view"],
     [/^\/maintenance/, "maintenance.view"],

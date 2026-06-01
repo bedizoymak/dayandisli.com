@@ -29,6 +29,7 @@ import PurchasingPage from "./purchasing/PurchasingPage";
 import PurchaseOrdersPage from "./purchasing/PurchaseOrdersPage";
 import PurchaseOrderDetailPage from "./purchasing/PurchaseOrderDetailPage";
 import ECommercePage from "./ecommerce/ECommercePage";
+import WebsiteManagementPage from "./website/WebsiteManagementPage";
 import TasksPage from "@/pages/erp/TasksPage";
 import NotesPage from "@/pages/erp/NotesPage";
 import ErpNotFoundPage from "@/pages/erp/ErpNotFoundPage";
@@ -111,6 +112,13 @@ export function ERPRoutes() {
       <Route path="commerce/kampanyalar" element={<ECommercePage />} />
       <Route path="commerce/sepetler" element={<ECommercePage />} />
       <Route path="commerce/odemeler" element={<ECommercePage />} />
+      <Route path="website" element={<WebsiteManagementPage />} />
+      <Route path="website/seo" element={<WebsiteManagementPage />} />
+      <Route path="website/menuler" element={<WebsiteManagementPage />} />
+      <Route path="website/medya" element={<WebsiteManagementPage />} />
+      <Route path="website/formlar" element={<WebsiteManagementPage />} />
+      <Route path="website/bannerlar" element={<WebsiteManagementPage />} />
+      <Route path="website/yayin" element={<WebsiteManagementPage />} />
       <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
       <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
       <Route path="finance" element={<FinancePage />} />

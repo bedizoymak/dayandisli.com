@@ -63,11 +63,13 @@ export const erpApplications: ErpApplication[] = [
     icon: Globe2,
     permissionKey: "website.view",
     modules: [
-      { title: "Genel Bakış", description: "Web sitesi yönetim özetine geçin.", route: "/dashboard", permissionKey: "website.overview" },
-      { title: "Ürünler", description: "Web sitesinde gösterilen ürün kayıtlarını yönetin.", route: "/admin/urunler", permissionKey: "website.products" },
-      { title: "Medya", description: "Ürün görselleri ve teknik doküman alanlarına erişin.", route: "/documents", permissionKey: "website.media" },
-      { title: "SEO", description: "Arama görünürlüğü ayarları için ayrılan alan.", route: "/ayarlar", permissionKey: "website.seo", status: "planned" },
-      { title: "Formlar", description: "İletişim ve talep formları için gelecekteki alan.", route: "/apps/website", permissionKey: "website.forms", status: "planned" },
+      { title: "Sayfalar", description: "Public site sayfalarını ve içerik durumlarını yönetin.", route: "/website", permissionKey: "website.pages" },
+      { title: "SEO Ayarları", description: "Rota bazlı meta başlık ve açıklamaları hazırlayın.", route: "/website/seo", permissionKey: "website.seo" },
+      { title: "Menü Yönetimi", description: "Üst, alt ve mobil menü bağlantılarını yönetin.", route: "/website/menuler", permissionKey: "website.menus" },
+      { title: "Medya Kütüphanesi", description: "Public medya kayıtları ve kullanım alanlarını izleyin.", route: "/website/medya", permissionKey: "website.media" },
+      { title: "Formlar", description: "Public form tanımları ve gönderimlerini yönetin.", route: "/website/formlar", permissionKey: "website.forms" },
+      { title: "Bannerlar", description: "Public banner kayıtları ve yayın alanlarını yönetin.", route: "/website/bannerlar", permissionKey: "website.banners" },
+      { title: "Yayın Durumu", description: "Sayfa ve banner yayın durumunu takip edin.", route: "/website/yayin", permissionKey: "website.publishing" },
     ],
   },
   {

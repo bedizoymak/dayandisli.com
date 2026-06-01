@@ -47,6 +47,12 @@ export type ShopOrderStatus = "pending" | "confirmed" | "shipped" | "completed" 
 export type ShopCartStatus = "active" | "converted" | "abandoned" | "expired";
 export type ShopPaymentStatus = "pending" | "authorized" | "paid" | "failed" | "refunded" | "cancelled";
 export type ShopCampaignDiscountType = "percentage" | "amount" | "free_shipping";
+export type WebsitePageStatus = "draft" | "review" | "published" | "archived";
+export type WebsitePageType = "home" | "content" | "landing" | "product" | "service" | "sector" | "contact";
+export type WebsiteMenuArea = "header" | "footer" | "mobile";
+export type WebsiteMediaType = "image" | "document" | "video" | "other";
+export type WebsiteFormSubmissionStatus = "new" | "reviewed" | "converted" | "archived";
+export type WebsiteBannerStatus = "draft" | "published" | "archived";
 export type ERPRole = "admin" | "planner" | "sales" | "finance" | "operator" | "purchasing" | "warehouse" | "hr" | "quality" | "viewer";
 export type EmployeeStatus = "active" | "inactive" | "on_leave" | "terminated" | "candidate";
 export type LeaveRequestStatus = "draft" | "pending" | "approved" | "rejected" | "cancelled";
@@ -601,6 +607,98 @@ export interface ShopPaymentStatusRecord {
   amount: number;
   currency: string;
   notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface WebsitePage {
+  id: string;
+  title: string;
+  slug: string;
+  page_type: WebsitePageType;
+  status: WebsitePageStatus;
+  locale: string;
+  summary: string | null;
+  content: string | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface WebsiteSEOSetting {
+  id: string;
+  page_id: string | null;
+  route_path: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  canonical_url: string | null;
+  robots: string;
+  og_image_path: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface WebsiteMenuItem {
+  id: string;
+  label: string;
+  path: string;
+  menu_area: WebsiteMenuArea;
+  parent_item_id: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface WebsiteMediaAsset {
+  id: string;
+  file_name: string;
+  file_path: string;
+  media_type: WebsiteMediaType;
+  alt_text: string | null;
+  usage_area: string | null;
+  is_public: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface WebsiteForm {
+  id: string;
+  name: string;
+  form_key: string;
+  target_email: string | null;
+  success_message: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface WebsiteFormSubmission {
+  id: string;
+  form_id: string | null;
+  sender_name: string | null;
+  sender_email: string | null;
+  sender_phone: string | null;
+  company_name: string | null;
+  subject: string | null;
+  message: string | null;
+  status: WebsiteFormSubmissionStatus;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface WebsiteBanner {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  image_path: string | null;
+  link_url: string | null;
+  placement: string;
+  status: WebsiteBannerStatus;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
   created_at: string;
   updated_at?: string;
 }
