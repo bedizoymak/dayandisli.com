@@ -8,9 +8,10 @@ import { EmptyState } from "@/components/erp/EmptyState";
 import { MigrationNotice } from "@/components/erp/MigrationNotice";
 import { ConfirmDialog } from "@/components/erp/ConfirmDialog";
 import { createSalesOrder, createWorkOrderFromSalesOrder, listSalesOrders, listStakeholders, updateSalesOrder } from "../shared/erpApi";
-import { SalesOrder, Stakeholder } from "../shared/types";
+import { SalesOrder, SalesOrderStatus, Stakeholder } from "../shared/types";
 import { SalesOrderForm } from "./SalesOrderForm";
 import { SalesOrderTable } from "./SalesOrderTable";
+import { SALES_ORDER_STATUS_LABELS } from "../shared/statusLabels";
 
 export default function SalesOrdersPage() {
   const { toast } = useToast();
@@ -20,6 +21,7 @@ export default function SalesOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<SalesOrderStatus | "all">("all");
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,10 +57,13 @@ export default function SalesOrdersPage() {
   }, [stakeholders]);
 
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows;
     const q = search.toLowerCase();
-    return rows.filter((row) => row.order_no.toLowerCase().includes(q) || row.title.toLowerCase().includes(q));
-  }, [rows, search]);
+    return rows.filter((row) => {
+      const matchesSearch = !q.trim() || row.order_no.toLowerCase().includes(q) || row.title.toLowerCase().includes(q);
+      const matchesStatus = statusFilter === "all" || row.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [rows, search, statusFilter]);
 
   const convertSelectedOrder = async () => {
     const order = selectedOrder;
@@ -113,11 +118,23 @@ export default function SalesOrdersPage() {
       <div className="space-y-3">
         {error ? <MigrationNotice message={error} /> : null}
 
-        <Input
-          placeholder="Sipariş no veya başlık ara..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+          <Input
+            placeholder="Sipariş no veya başlık ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select
+            className="h-10 rounded-md border bg-background px-3 text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as SalesOrderStatus | "all")}
+          >
+            <option value="all">Tüm Durumlar</option>
+            {Object.entries(SALES_ORDER_STATUS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Yükleniyor...</p>

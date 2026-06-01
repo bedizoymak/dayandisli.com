@@ -95,8 +95,9 @@ export const erpApplications: ErpApplication[] = [
       { title: "Paydaşlar", description: "Müşteri, tedarikçi ve fason firmaları tek listede yönetin.", route: "/crm", permissionKey: "crm.stakeholders" },
       { title: "Müşteriler", description: "Müşteri cari kartlarına erişin.", route: "/musteriler", permissionKey: "crm.customers" },
       { title: "Tedarikçiler", description: "Tedarikçi cari kartlarına erişin.", route: "/tedarikciler", permissionKey: "crm.suppliers" },
-      { title: "Aktiviteler", description: "Görüşme ve takip aktiviteleri için gelecekteki alan.", route: "/crm", permissionKey: "crm.activities", status: "planned" },
-      { title: "Fırsatlar", description: "Satış fırsatları için gelecekteki alan.", route: "/crm", permissionKey: "crm.opportunities", status: "planned" },
+      { title: "Potansiyel Müşteriler", description: "Yeni talep ve aday müşteri kayıtlarını yönetin.", route: "/crm", permissionKey: "crm.leads" },
+      { title: "Fırsatlar", description: "Satış fırsatlarını ve aşamalarını takip edin.", route: "/crm", permissionKey: "crm.opportunities" },
+      { title: "Aktiviteler", description: "Görüşme, arama, toplantı ve takip aktivitelerini yönetin.", route: "/crm", permissionKey: "crm.activities" },
     ],
   },
   {
@@ -110,6 +111,7 @@ export const erpApplications: ErpApplication[] = [
       { title: "Teklifler", description: "Teklif kayıtlarını ve teklif oluşturma akışını açın.", route: "/teklifler", permissionKey: "sales.quotations" },
       { title: "Yeni Teklif", description: "Yeni teklif hazırlama ekranına geçin.", route: "/teklifler/yeni", permissionKey: "sales.createQuotation" },
       { title: "Satış Siparişleri", description: "Satış siparişlerini ve iş emri dönüşümlerini yönetin.", route: "/siparisler", permissionKey: "sales.orders" },
+      { title: "Satış Faaliyetleri", description: "Fırsat, teklif, sipariş ve müşteri temaslarını takip edin.", route: "/satis-faaliyetleri", permissionKey: "sales.activities" },
     ],
   },
   {

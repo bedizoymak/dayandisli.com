@@ -1,11 +1,13 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import ERPHomePage from "./dashboard/ERPHomePage";
 import StakeholdersPage from "./crm/StakeholdersPage";
+import CRMOperationsPage from "./crm/CRMOperationsPage";
 import ERPQuotationsPage from "./quotations/ERPQuotationsPage";
 import TeklifSayfasi from "../quotation";
 import { CalculatorRoutes } from "@/calculator";
 import Kargo from "@/pages/Kargo";
 import SalesOrdersPage from "./sales/SalesOrdersPage";
+import SalesActivitiesPage from "./sales/SalesActivitiesPage";
 import ProductionPage from "./production/ProductionPage";
 import WorkOrdersPage from "./production/WorkOrdersPage";
 import RoutesPage from "./production/RoutesPage";
@@ -72,6 +74,7 @@ export function ERPRoutes() {
       <Route path="kargo" element={<ERPLayout title="Kargo Yönetimi"><Kargo embedded /></ERPLayout>} />
       <Route path="siparisler" element={<SalesOrdersPage />} />
       <Route path="siparisler/:id" element={<SalesOrderDetailPage />} />
+      <Route path="satis-faaliyetleri" element={<SalesActivitiesPage />} />
       <Route path="finans" element={<FinancePage />} />
       <Route path="finans/hareketler" element={<FinanceTransactionsPage />} />
       <Route path="finans/hareketler/yeni" element={<FinanceTransactionFormPage />} />
@@ -83,11 +86,13 @@ export function ERPRoutes() {
       <Route path="gorevler" element={<TasksPage />} />
       <Route path="notlar" element={<NotesPage />} />
       <Route path="ayarlar" element={<ERPSettingsPage />} />
-      <Route path="crm" element={<StakeholdersPage />} />
+      <Route path="crm" element={<CRMOperationsPage />} />
+      <Route path="paydaslar" element={<StakeholdersPage />} />
       <Route path="stakeholders/:id" element={<StakeholderDetailPage />} />
       <Route path="quotations" element={<ERPQuotationsPage />} />
       <Route path="sales-orders" element={<SalesOrdersPage />} />
       <Route path="sales-orders/:id" element={<SalesOrderDetailPage />} />
+      <Route path="sales-activities" element={<SalesActivitiesPage />} />
       <Route path="production" element={<ProductionPage />} />
       <Route path="work-orders" element={<WorkOrdersPage />} />
       <Route path="work-orders/:id" element={<WorkOrderDetailPage />} />

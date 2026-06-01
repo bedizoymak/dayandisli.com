@@ -46,6 +46,11 @@ export type PaymentType = "collection" | "payment";
 export type ERPRole = "admin" | "planner" | "operator" | "finance" | "viewer";
 export type ERPNotificationSeverity = "info" | "success" | "warning" | "danger";
 export type ERPNotificationCategory = "workflow" | "quality" | "subcontracting" | "shipment" | "inventory" | "maintenance" | "system";
+export type CRMLeadStatus = "new" | "contacted" | "qualified" | "converted" | "lost";
+export type CRMOpportunityStatus = "open" | "proposal" | "won" | "lost" | "cancelled";
+export type CRMTaskStatus = "open" | "in_progress" | "completed" | "cancelled";
+export type CRMActivityType = "note" | "call" | "meeting" | "email" | "visit" | "status_change";
+export type CRMRelatedType = "lead" | "opportunity" | "stakeholder" | "quotation" | "sales_order";
 
 export interface ERPUser {
   id: string;
@@ -76,6 +81,61 @@ export interface Stakeholder {
   is_active: boolean;
   created_at: string;
   updated_at?: string;
+}
+
+export interface CRMLead {
+  id: string;
+  lead_no: string;
+  company_name: string;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  source: string | null;
+  status: CRMLeadStatus;
+  priority: Priority;
+  stakeholder_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CRMOpportunity {
+  id: string;
+  opportunity_no: string;
+  title: string;
+  lead_id: string | null;
+  stakeholder_id: string | null;
+  status: CRMOpportunityStatus;
+  expected_value: number;
+  probability: number;
+  expected_close_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CRMTask {
+  id: string;
+  title: string;
+  related_type: CRMRelatedType | null;
+  related_id: string | null;
+  status: CRMTaskStatus;
+  priority: Priority;
+  due_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CRMActivity {
+  id: string;
+  subject: string;
+  activity_type: CRMActivityType;
+  related_type: CRMRelatedType | null;
+  related_id: string | null;
+  activity_date: string;
+  notes: string | null;
+  created_at: string;
 }
 
 export interface SalesOrder {

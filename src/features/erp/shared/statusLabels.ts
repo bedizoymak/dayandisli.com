@@ -17,6 +17,11 @@ import {
   FinancialAccountType,
   ERPNotificationCategory,
   ERPNotificationSeverity,
+  CRMActivityType,
+  CRMLeadStatus,
+  CRMOpportunityStatus,
+  CRMRelatedType,
+  CRMTaskStatus,
 } from "./types";
 
 export const SALES_ORDER_STATUS_LABELS: Record<SalesOrderStatus, string> = {
@@ -210,4 +215,44 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   delivery_completed: "Teslim Tamamlandı",
   inventory_movement_created: "Stok Hareketi Oluşturuldu",
   purchase_order_received: "Satın Alma Teslim Alındı",
+};
+
+export const CRM_LEAD_STATUS_LABELS: Record<CRMLeadStatus, string> = {
+  new: "Yeni",
+  contacted: "İletişime Geçildi",
+  qualified: "Nitelikli",
+  converted: "Fırsata Dönüştü",
+  lost: "Kaybedildi",
+};
+
+export const CRM_OPPORTUNITY_STATUS_LABELS: Record<CRMOpportunityStatus, string> = {
+  open: "Açık",
+  proposal: "Teklif Aşaması",
+  won: "Kazanıldı",
+  lost: "Kaybedildi",
+  cancelled: "İptal",
+};
+
+export const CRM_TASK_STATUS_LABELS: Record<CRMTaskStatus, string> = {
+  open: "Açık",
+  in_progress: "Devam Ediyor",
+  completed: "Tamamlandı",
+  cancelled: "İptal",
+};
+
+export const CRM_ACTIVITY_TYPE_LABELS: Record<CRMActivityType, string> = {
+  note: "Not",
+  call: "Telefon",
+  meeting: "Toplantı",
+  email: "E-posta",
+  visit: "Ziyaret",
+  status_change: "Durum Değişimi",
+};
+
+export const CRM_RELATED_TYPE_LABELS: Record<CRMRelatedType, string> = {
+  lead: "Potansiyel Müşteri",
+  opportunity: "Fırsat",
+  stakeholder: "Firma",
+  quotation: "Teklif",
+  sales_order: "Sipariş",
 };
