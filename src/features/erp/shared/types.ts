@@ -43,7 +43,7 @@ export type PurchaseOrderStatus = "draft" | "sent" | "partially_received" | "rec
 export type FinancialAccountType = "cash" | "bank" | "customer" | "supplier";
 export type InvoiceType = "sales" | "purchase";
 export type PaymentType = "collection" | "payment";
-export type ERPRole = "admin" | "planner" | "operator" | "finance" | "viewer";
+export type ERPRole = "admin" | "planner" | "sales" | "finance" | "operator" | "purchasing" | "warehouse" | "hr" | "quality" | "viewer";
 export type ERPNotificationSeverity = "info" | "success" | "warning" | "danger";
 export type ERPNotificationCategory = "workflow" | "quality" | "subcontracting" | "shipment" | "inventory" | "maintenance" | "system";
 export type CRMLeadStatus = "new" | "contacted" | "qualified" | "converted" | "lost";
@@ -58,6 +58,8 @@ export interface ERPUser {
   email: string;
   full_name: string | null;
   role: ERPRole;
+  roles?: ERPRole[] | null;
+  permissions?: string[] | null;
   department: string | null;
   is_active: boolean;
   created_at: string;

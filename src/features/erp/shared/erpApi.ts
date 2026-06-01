@@ -499,6 +499,48 @@ export async function getStakeholderById(id: string) {
   return success(data);
 }
 
+export async function listERPUsers(): Promise<ApiResult<ERPUser[]>> {
+  const { data, error } = (await supabase
+    .from("erp_users" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<ERPUser[]>;
+
+  if (error) return failure("listERPUsers", error, []);
+  return success(data ?? []);
+}
+
+export async function createERPUser(payload: Partial<ERPUser> & { email: string }) {
+  const { data, error } = (await supabase
+    .from("erp_users" as never)
+    .insert({
+      auth_user_id: payload.auth_user_id ?? null,
+      email: payload.email,
+      full_name: payload.full_name ?? null,
+      role: payload.role ?? "viewer",
+      roles: payload.roles ?? [payload.role ?? "viewer"],
+      permissions: payload.permissions ?? [],
+      department: payload.department ?? null,
+      is_active: payload.is_active ?? true,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<ERPUser>;
+
+  if (error) return failure("createERPUser", error, null);
+  return success(data);
+}
+
+export async function updateERPUser(id: string, payload: Partial<ERPUser>) {
+  const { data, error } = (await supabase
+    .from("erp_users" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ERPUser>;
+
+  if (error) return failure("updateERPUser", error, null);
+  return success(data);
+}
+
 export async function listCRMLeads(search = "", status: CRMLeadStatus | "all" = "all"): Promise<ApiResult<CRMLead[]>> {
   let query = supabase.from("crm_leads" as never).select("*").order("created_at", { ascending: false });
   if (status !== "all") query = query.eq("status" as never, status as never);

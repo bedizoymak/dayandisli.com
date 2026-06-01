@@ -1,11 +1,20 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { erpApplications } from "@/features/erp/apps/applicationRegistry";
+import { filterApplicationsByPermission, getCurrentERPUserSafe } from "@/features/erp/shared/permissions";
+import { ERPUser } from "@/features/erp/shared/types";
 
 export default function Apps() {
   const navigate = useNavigate();
+  const [user, setUser] = useState<ERPUser | null>(null);
+
+  useEffect(() => {
+    getCurrentERPUserSafe().then(setUser);
+  }, []);
+
+  const applications = filterApplicationsByPermission(user);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -40,7 +49,7 @@ export default function Apps() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-          {erpApplications.map((app) => (
+          {applications.map((app) => (
             <Link
               key={app.id}
               to={app.route}

@@ -1,6 +1,8 @@
 ﻿import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { getCurrentERPUser } from "@/features/erp/shared/erpApi";
+import { getRequiredPermissionForPath, hasPermission } from "@/features/erp/shared/permissions";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -14,6 +16,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAllowed, setIsAllowed] = useState(false);
+  const [redirectTo, setRedirectTo] = useState("/login");
   const location = useLocation();
 
   useEffect(() => {
@@ -67,7 +70,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
       if (adminUser) {
         setIsAuthenticated(true);
-        setIsAllowed(true);
+        const erpUserResult = await getCurrentERPUser();
+        const requiredPermission = getRequiredPermissionForPath(location.pathname);
+        const allowed = hasPermission(erpUserResult.data, requiredPermission);
+        setIsAllowed(allowed);
+        if (!allowed) setRedirectTo("/apps");
       } else {
         await supabase.auth.signOut();
       }
@@ -90,7 +97,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated || !isAllowed) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   return <>{children}</>;

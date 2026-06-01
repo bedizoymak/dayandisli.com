@@ -1,17 +1,28 @@
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ChevronRight, LockKeyhole, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentERPUserSafe, hasPermission } from "../shared/permissions";
+import { ERPUser } from "../shared/types";
 import { getErpApplication } from "./applicationRegistry";
 
 export default function ApplicationShellPage() {
   const { appId } = useParams();
   const navigate = useNavigate();
   const app = getErpApplication(appId);
+  const [user, setUser] = useState<ERPUser | null>(null);
+
+  useEffect(() => {
+    getCurrentERPUserSafe().then(setUser);
+  }, []);
 
   if (!app) return <Navigate to="/apps" replace />;
+  if (user && !hasPermission(user, app.permissionKey)) return <Navigate to="/apps" replace />;
+
+  const modules = app.modules.filter((module) => hasPermission(user, module.permissionKey));
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -71,7 +82,7 @@ export default function ApplicationShellPage() {
           <aside className="erp-surface rounded-lg p-3">
             <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Modüller</p>
             <nav className="space-y-1">
-              {app.modules.map((module) => (
+              {modules.map((module) => (
                 <Link
                   key={`${module.title}-${module.route}`}
                   to={module.route}
@@ -92,7 +103,7 @@ export default function ApplicationShellPage() {
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {app.modules.map((module) => (
+              {modules.map((module) => (
                 <Card key={`${module.title}-${module.route}`} className="erp-surface rounded-lg">
                   <CardContent className="flex h-full flex-col p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -109,6 +120,13 @@ export default function ApplicationShellPage() {
                   </CardContent>
                 </Card>
               ))}
+              {modules.length === 0 ? (
+                <Card className="erp-surface rounded-lg">
+                  <CardContent className="p-6 text-sm text-muted-foreground">
+                    Bu uygulamada görüntüleyebileceğiniz modül bulunmuyor.
+                  </CardContent>
+                </Card>
+              ) : null}
             </div>
           </section>
         </div>

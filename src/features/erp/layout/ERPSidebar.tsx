@@ -1,8 +1,11 @@
-﻿import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { visibleErpModules } from "@/config/erpModules";
 import { cn } from "@/lib/utils";
+import { getCurrentERPUserSafe, hasPermission } from "../shared/permissions";
+import { ERPUser } from "../shared/types";
 
 type ERPSidebarProps = {
   mobileOpen: boolean;
@@ -11,6 +14,13 @@ type ERPSidebarProps = {
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation();
+  const [user, setUser] = useState<ERPUser | null>(null);
+
+  useEffect(() => {
+    getCurrentERPUserSafe().then(setUser);
+  }, []);
+
+  const modules = visibleErpModules.filter((item) => hasPermission(user, item.requiredPermission));
 
   return (
     <div className="flex h-full flex-col">
@@ -19,7 +29,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <h2 className="mt-1 text-base font-semibold">ERP Modülleri</h2>
       </div>
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
-        {visibleErpModules.map((item) => {
+        {modules.map((item) => {
           const isActive =
             location.pathname === item.path ||
             (item.id !== "erp" && location.pathname.startsWith(`${item.path}/`)) ||

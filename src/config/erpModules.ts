@@ -37,6 +37,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/dashboard",
     icon: LayoutDashboard,
     status: "active",
+    requiredPermission: "dashboard.view",
   },
   {
     id: "customers",
@@ -45,6 +46,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/musteriler",
     icon: Users,
     status: "active",
+    requiredPermission: "crm.customers",
   },
   {
     id: "suppliers",
@@ -53,6 +55,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/tedarikciler",
     icon: Handshake,
     status: "active",
+    requiredPermission: "crm.suppliers",
   },
   {
     id: "erp",
@@ -61,6 +64,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/",
     icon: Factory,
     status: "active",
+    requiredPermission: "production.view",
     visible: false,
   },
   {
@@ -70,6 +74,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/teklifler",
     icon: FileText,
     status: "active",
+    requiredPermission: "sales.quotations",
   },
   {
     id: "orders",
@@ -78,6 +83,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/siparisler",
     icon: ShoppingCart,
     status: "active",
+    requiredPermission: "sales.orders",
   },
   {
     id: "finance",
@@ -86,6 +92,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/finans",
     icon: Wallet,
     status: "active",
+    requiredPermission: "finance.view",
   },
   {
     id: "cargo",
@@ -94,6 +101,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/kargo",
     icon: Package,
     status: "active",
+    requiredPermission: "inventory.view",
   },
   {
     id: "calculator",
@@ -102,6 +110,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/calculator",
     icon: Calculator,
     status: "active",
+    requiredPermission: "production.calculator",
   },
   {
     id: "notifications",
@@ -110,6 +119,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/bildirimler",
     icon: Bell,
     status: "active",
+    requiredPermission: "dashboard.view",
   },
   {
     id: "tasks",
@@ -118,6 +128,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/gorevler",
     icon: ClipboardList,
     status: "soon",
+    requiredPermission: "dashboard.view",
   },
   {
     id: "notes",
@@ -126,6 +137,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/notlar",
     icon: StickyNote,
     status: "soon",
+    requiredPermission: "dashboard.view",
   },
   {
     id: "settings",
@@ -134,6 +146,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/ayarlar",
     icon: Settings,
     status: "active",
+    requiredPermission: "settings.view",
   },
   {
     id: "logistics",
@@ -142,6 +155,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/logistics",
     icon: Truck,
     status: "active",
+    requiredPermission: "production.view",
     visible: false,
   },
 ];
