@@ -12,10 +12,16 @@ import { useToast } from "@/hooks/use-toast";
 import { ERPLayout } from "../layout/ERPLayout";
 import {
   convertShopOrderToSalesOrder,
+  createPaymentRefundOperation,
   createShopCampaign,
   createShopCategory,
   createShopPaymentStatus,
   createShopShipment,
+  listAccountingEntries,
+  listPaymentProviderEvents,
+  listPaymentProviderHealth,
+  listPaymentReconciliationLogs,
+  listPaymentRefundOperations,
   listShopCampaigns,
   listShopCarts,
   listShopCarriers,
@@ -33,9 +39,10 @@ import {
   updateShopProduct,
   updateShopReturnRequest,
   updateShopShipment,
+  verifyPaymentRefund,
 } from "../shared/erpApi";
 import { formatCurrency, formatDate } from "../shared/formatters";
-import { ShopCampaign, ShopCarrier, ShopCart, ShopCategory, ShopCustomerNotification, ShopFulfillmentHistory, ShopFulfillmentStatus, ShopOrder, ShopPaymentLifecycleStatus, ShopPaymentStatus, ShopPaymentStatusRecord, ShopProduct, ShopReturnRefundStatus, ShopReturnRequest, ShopReturnRequestStatus, ShopShipment, ShopShipmentStatus } from "../shared/types";
+import { AccountingEntry, PaymentProviderEvent, PaymentProviderHealth, PaymentReconciliationLog, PaymentRefundOperation, ShopCampaign, ShopCarrier, ShopCart, ShopCategory, ShopCustomerNotification, ShopFulfillmentHistory, ShopFulfillmentStatus, ShopOrder, ShopPaymentLifecycleStatus, ShopPaymentStatus, ShopPaymentStatusRecord, ShopProduct, ShopReturnRefundStatus, ShopReturnRequest, ShopReturnRequestStatus, ShopShipment, ShopShipmentStatus } from "../shared/types";
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending: "Beklemede",
@@ -136,6 +143,11 @@ export default function ECommercePage() {
   const [fulfillmentHistory, setFulfillmentHistory] = useState<ShopFulfillmentHistory[]>([]);
   const [notifications, setNotifications] = useState<ShopCustomerNotification[]>([]);
   const [returns, setReturns] = useState<ShopReturnRequest[]>([]);
+  const [providerEvents, setProviderEvents] = useState<PaymentProviderEvent[]>([]);
+  const [reconciliationLogs, setReconciliationLogs] = useState<PaymentReconciliationLog[]>([]);
+  const [refundOperations, setRefundOperations] = useState<PaymentRefundOperation[]>([]);
+  const [providerHealth, setProviderHealth] = useState<PaymentProviderHealth[]>([]);
+  const [accountingEntries, setAccountingEntries] = useState<AccountingEntry[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +157,7 @@ export default function ECommercePage() {
   const [shipmentForm, setShipmentForm] = useState({ order_id: "", carrier_id: "", carrier_name: "", tracking_number: "", status: "preparing" as ShopShipmentStatus, notes: "" });
 
   const load = async () => {
-    const [productResult, categoryResult, orderResult, campaignResult, cartResult, paymentResult, carrierResult, shipmentResult, historyResult, notificationResult, returnResult] = await Promise.all([
+    const [productResult, categoryResult, orderResult, campaignResult, cartResult, paymentResult, carrierResult, shipmentResult, historyResult, notificationResult, returnResult, eventResult, reconciliationResult, refundOperationResult, healthResult, accountingResult] = await Promise.all([
       listShopProducts(),
       listShopCategories(),
       listShopOrders(),
@@ -157,8 +169,13 @@ export default function ECommercePage() {
       listShopFulfillmentHistory(),
       listShopCustomerNotifications(),
       listShopReturnRequests(),
+      listPaymentProviderEvents(),
+      listPaymentReconciliationLogs(),
+      listPaymentRefundOperations(),
+      listPaymentProviderHealth(),
+      listAccountingEntries(),
     ]);
-    const firstError = [productResult, categoryResult, orderResult, campaignResult, cartResult, paymentResult, carrierResult, shipmentResult, historyResult, notificationResult, returnResult].find((result) => result.error)?.error ?? null;
+    const firstError = [productResult, categoryResult, orderResult, campaignResult, cartResult, paymentResult, carrierResult, shipmentResult, historyResult, notificationResult, returnResult, eventResult, reconciliationResult, refundOperationResult, healthResult, accountingResult].find((result) => result.error)?.error ?? null;
     setError(firstError);
     setProducts(productResult.data);
     setCategories(categoryResult.data);
@@ -171,6 +188,11 @@ export default function ECommercePage() {
     setFulfillmentHistory(historyResult.data);
     setNotifications(notificationResult.data);
     setReturns(returnResult.data);
+    setProviderEvents(eventResult.data);
+    setReconciliationLogs(reconciliationResult.data);
+    setRefundOperations(refundOperationResult.data);
+    setProviderHealth(healthResult.data);
+    setAccountingEntries(accountingResult.data);
     if (firstError) toast({ title: "E-Ticaret", description: firstError, variant: "destructive" });
   };
 
@@ -194,6 +216,41 @@ export default function ECommercePage() {
       return false;
     }
     toast({ title: "Kaydedildi", description: message });
+    await load();
+    return true;
+  };
+
+  const startRefundReview = async (row: ShopReturnRequest) => {
+    const order = orders.find((item) => item.id === row.order_id);
+    const payment = payments.find((item) => item.order_id === row.order_id && item.status === "paid") ?? payments.find((item) => item.order_id === row.order_id);
+    if (!order) return;
+    const operation = await createPaymentRefundOperation({
+      return_request_id: row.id,
+      order_id: row.order_id,
+      payment_status_id: payment?.id ?? null,
+      provider: (payment?.future_provider ?? payment?.provider ?? order.payment_provider ?? "manual") as PaymentRefundOperation["provider"],
+      requested_amount: order.grand_total,
+      currency: order.currency,
+      status: "erp_review",
+    });
+    if (operation.error) {
+      toast({ title: "Hata", description: operation.error, variant: "destructive" });
+      return false;
+    }
+    return save(updateShopReturnRequest(row.id, { status: "erp_review", refund_status: "refund_pending" }), "İade operasyonu incelemeye alındı.");
+  };
+
+  const verifyRefund = async (row: PaymentRefundOperation) => {
+    if (!row.provider || row.provider === "manual") {
+      toast({ title: "İade", description: "Sağlayıcı doğrulaması için iyzico, PayTR veya Stripe seçilmiş olmalıdır.", variant: "destructive" });
+      return false;
+    }
+    const result = await verifyPaymentRefund(row.return_request_id, row.provider, row.provider_refund_id || row.id, row.approved_amount ?? row.requested_amount);
+    if (result.error) {
+      toast({ title: "Hata", description: result.error, variant: "destructive" });
+      return false;
+    }
+    toast({ title: "İade", description: result.data?.verified ? "Sağlayıcı iade doğrulaması tamamlandı." : "Sağlayıcı iade doğrulaması başarısız." });
     await load();
     return true;
   };
@@ -270,6 +327,7 @@ export default function ECommercePage() {
         <Summary title="Siparişler" value={orders.length} />
         <Summary title="Açık Sepetler" value={carts.filter((cart) => cart.status === "active").length} />
         <Summary title="Ödeme Bekleyen" value={orders.filter((order) => (order.payment_status ?? "pending") === "pending").length} />
+        <Summary title="Mutabakat Bekleyen" value={reconciliationLogs.filter((row) => row.status === "pending" || row.status === "manual_review").length} />
       </div>
 
       <Tabs defaultValue="products" className="space-y-4">
@@ -281,6 +339,7 @@ export default function ECommercePage() {
           <TabsTrigger value="campaigns">Kampanyalar</TabsTrigger>
           <TabsTrigger value="carts">Sepetler</TabsTrigger>
           <TabsTrigger value="payments">Ödeme Durumları</TabsTrigger>
+          <TabsTrigger value="reliability">Finans Güvenliği</TabsTrigger>
           <TabsTrigger value="fulfillment">Karşılama</TabsTrigger>
           <TabsTrigger value="shipping">Sevkiyat</TabsTrigger>
           <TabsTrigger value="returns">İadeler</TabsTrigger>
@@ -381,6 +440,12 @@ export default function ECommercePage() {
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-4">
+            <Summary title="Ödeme Alındı" value={payments.filter((row) => row.status === "paid").length} />
+            <Summary title="Başarısız Ödeme" value={payments.filter((row) => row.status === "failed").length} />
+            <Summary title="Doğrulanan" value={payments.filter((row) => row.verification_status === "verified").length} />
+            <Summary title="Tekrar Olay" value={providerEvents.filter((row) => row.duplicate_detected || row.replay_detected).length} />
+          </div>
           <FormSection title="Ödeme Durumu" description="Sipariş ödeme durumunu ERP takibine alın.">
             <form className="grid gap-3 md:grid-cols-6" onSubmit={submitPayment}>
               <select className="h-10 rounded-md border bg-background px-3 text-sm" value={paymentForm.order_id} onChange={(event) => setPaymentForm((current) => ({ ...current, order_id: event.target.value }))}>
@@ -410,8 +475,42 @@ export default function ECommercePage() {
             { key: "status", header: "Durum", render: (row) => <StatusBadge label={PAYMENT_STATUS_LABELS[row.status]} tone={tone(row.status)} /> },
             { key: "lifecycle", header: "Yaşam Döngüsü", render: (row) => <StatusBadge label={PAYMENT_LIFECYCLE_LABELS[row.lifecycle_status ?? "payment_pending"]} tone={tone(row.lifecycle_status ?? "payment_pending")} /> },
             { key: "provider", header: "Sağlayıcı", render: (row) => row.provider || "-" },
+            { key: "verification", header: "Doğrulama", render: (row) => <StatusBadge label={row.verification_status === "verified" ? "Doğrulandı" : row.verification_status === "failed" ? "Başarısız" : row.verification_status === "duplicate" ? "Tekrar" : "Bekliyor"} tone={row.verification_status === "verified" ? "success" : row.verification_status === "failed" ? "danger" : "warning"} /> },
+            { key: "reconciliation", header: "Mutabakat", render: (row) => <StatusBadge label={row.reconciliation_status === "matched" ? "Eşleşti" : row.reconciliation_status === "mismatch" ? "Fark Var" : row.reconciliation_status === "duplicate" ? "Tekrar" : row.reconciliation_status === "manual_review" ? "İnceleme" : "Bekliyor"} tone={row.reconciliation_status === "matched" ? "success" : row.reconciliation_status === "mismatch" ? "danger" : "warning"} /> },
             { key: "reference", header: "Referans", render: (row) => row.transaction_reference || "-" },
             { key: "amount", header: "Tutar", className: "text-right", render: (row) => formatCurrency(row.amount, row.currency) },
+          ]} />
+        </TabsContent>
+
+        <TabsContent value="reliability" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-4">
+            <Summary title="Sağlayıcı Olayı" value={providerEvents.length} />
+            <Summary title="Mutabakat Kaydı" value={reconciliationLogs.length} />
+            <Summary title="Muhasebe Kaydı" value={accountingEntries.length} />
+            <Summary title="İade Operasyonu" value={refundOperations.length} />
+          </div>
+          <DataTable data={providerHealth} rowKey={(row) => row.id} emptyMessage="Sağlayıcı sağlık kaydı bulunamadı" columns={[
+            { key: "provider", header: "Sağlayıcı", render: (row) => row.provider },
+            { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.status === "healthy" ? "Sağlıklı" : row.status === "degraded" ? "Dikkat" : row.status === "down" ? "Kapalı" : "Bilinmiyor"} tone={row.status === "healthy" ? "success" : row.status === "degraded" ? "warning" : row.status === "down" ? "danger" : "muted"} /> },
+            { key: "success", header: "Son Başarı", render: (row) => row.last_success_at ? formatDate(row.last_success_at) : "-" },
+            { key: "failure", header: "Son Hata", render: (row) => row.last_failure_at ? formatDate(row.last_failure_at) : "-" },
+            { key: "error", header: "Hata", render: (row) => row.last_error || "-" },
+          ]} />
+          <DataTable data={reconciliationLogs} rowKey={(row) => row.id} emptyMessage="Mutabakat kaydı bulunamadı" columns={[
+            { key: "order", header: "Sipariş", render: (row) => orders.find((order) => order.id === row.order_id)?.order_number || row.order_id },
+            { key: "provider", header: "Sağlayıcı", render: (row) => row.provider || "-" },
+            { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.status === "matched" ? "Eşleşti" : row.status === "mismatch" ? "Fark Var" : row.status === "duplicate" ? "Tekrar" : row.status === "manual_review" ? "İnceleme" : "Bekliyor"} tone={row.status === "matched" ? "success" : row.status === "mismatch" ? "danger" : "warning"} /> },
+            { key: "expected", header: "Beklenen", className: "text-right", render: (row) => formatCurrency(row.expected_amount, row.currency) },
+            { key: "received", header: "Gelen", className: "text-right", render: (row) => formatCurrency(row.received_amount, row.currency) },
+            { key: "date", header: "Tarih", render: (row) => formatDate(row.created_at) },
+          ]} />
+          <DataTable data={providerEvents} rowKey={(row) => row.id} emptyMessage="Webhook olayı bulunamadı" columns={[
+            { key: "provider", header: "Sağlayıcı", render: (row) => row.provider },
+            { key: "event", header: "Olay", render: (row) => row.event_type },
+            { key: "signature", header: "İmza", render: (row) => <StatusBadge label={row.signature_valid ? "Geçerli" : "Geçersiz"} tone={row.signature_valid ? "success" : "danger"} /> },
+            { key: "duplicate", header: "Tekrar", render: (row) => row.duplicate_detected || row.replay_detected ? <StatusBadge label="Evet" tone="warning" /> : <StatusBadge label="Hayır" tone="success" /> },
+            { key: "status", header: "İşlem", render: (row) => <StatusBadge label={row.processing_status === "processed" ? "İşlendi" : row.processing_status === "failed" ? "Başarısız" : row.processing_status === "ignored" ? "Yoksayıldı" : "Alındı"} tone={row.processing_status === "processed" ? "success" : row.processing_status === "failed" ? "danger" : "warning"} /> },
+            { key: "date", header: "Tarih", render: (row) => formatDate(row.received_at) },
           ]} />
         </TabsContent>
 
@@ -460,7 +559,14 @@ export default function ECommercePage() {
             { key: "status", header: "İade Durumu", render: (row) => <StatusBadge label={RETURN_STATUS_LABELS[row.status]} tone={tone(row.status)} /> },
             { key: "refund", header: "Geri Ödeme", render: (row) => <StatusBadge label={RETURN_REFUND_LABELS[row.refund_status]} tone={tone(row.refund_status)} /> },
             { key: "request", header: "Talep", render: (row) => formatDate(row.requested_at) },
-            { key: "action", header: "İşlem", render: (row) => <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => save(updateShopReturnRequest(row.id, { status: "erp_review" }), "İade talebi incelemeye alındı.")}>İncele</Button><Button size="sm" onClick={() => save(updateShopReturnRequest(row.id, { status: "approved", refund_status: "refund_approved" }), "İade talebi onaylandı.")}>Onayla</Button></div> },
+            { key: "action", header: "İşlem", render: (row) => <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => startRefundReview(row)}>İncele</Button><Button size="sm" onClick={() => save(updateShopReturnRequest(row.id, { status: "approved", refund_status: "refund_approved" }), "İade talebi onaylandı.")}>Onayla</Button></div> },
+          ]} />
+          <DataTable data={refundOperations} rowKey={(row) => row.id} emptyMessage="İade operasyonu bulunamadı" columns={[
+            { key: "order", header: "Sipariş", render: (row) => orders.find((order) => order.id === row.order_id)?.order_number || row.order_id },
+            { key: "provider", header: "Sağlayıcı", render: (row) => row.provider || "manual" },
+            { key: "status", header: "Operasyon", render: (row) => <StatusBadge label={row.status === "provider_verified" ? "Doğrulandı" : row.status === "completed" ? "Tamamlandı" : row.status === "failed" ? "Başarısız" : row.status === "rejected" ? "Reddedildi" : row.status === "provider_pending" ? "Sağlayıcı Bekliyor" : row.status === "erp_review" ? "ERP İncelemede" : "Talep"} tone={row.status === "completed" || row.status === "provider_verified" ? "success" : row.status === "failed" || row.status === "rejected" ? "danger" : "warning"} /> },
+            { key: "amount", header: "Tutar", className: "text-right", render: (row) => formatCurrency(row.approved_amount ?? row.requested_amount, row.currency) },
+            { key: "action", header: "Doğrulama", render: (row) => <Button size="sm" variant="outline" onClick={() => verifyRefund(row)}>Sağlayıcıyı Doğrula</Button> },
           ]} />
         </TabsContent>
 

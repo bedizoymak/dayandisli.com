@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
   ApiResult,
+  AccountingEntry,
   CRMActivity,
   CRMActivityType,
   CRMLead,
@@ -38,6 +39,10 @@ import {
   Machine,
   MaintenanceTask,
   Payment,
+  PaymentProviderEvent,
+  PaymentProviderHealth,
+  PaymentReconciliationLog,
+  PaymentRefundOperation,
   Priority,
   ProductionRoute,
   ProductionRouteStep,
@@ -2817,6 +2822,89 @@ export async function updateShopReturnRequest(id: string, payload: Partial<ShopR
     });
   }
   return success(data);
+}
+
+export async function listPaymentProviderEvents(): Promise<ApiResult<PaymentProviderEvent[]>> {
+  const { data, error } = (await supabase
+    .from("payment_provider_events" as never)
+    .select("*")
+    .order("received_at", { ascending: false })
+    .limit(100)) as unknown as DbResult<PaymentProviderEvent[]>;
+
+  if (error) return failure("listPaymentProviderEvents", error, []);
+  return success(data ?? []);
+}
+
+export async function listPaymentReconciliationLogs(): Promise<ApiResult<PaymentReconciliationLog[]>> {
+  const { data, error } = (await supabase
+    .from("payment_reconciliation_logs" as never)
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100)) as unknown as DbResult<PaymentReconciliationLog[]>;
+
+  if (error) return failure("listPaymentReconciliationLogs", error, []);
+  return success(data ?? []);
+}
+
+export async function listPaymentRefundOperations(): Promise<ApiResult<PaymentRefundOperation[]>> {
+  const { data, error } = (await supabase
+    .from("payment_refund_operations" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<PaymentRefundOperation[]>;
+
+  if (error) return failure("listPaymentRefundOperations", error, []);
+  return success(data ?? []);
+}
+
+export async function listAccountingEntries(): Promise<ApiResult<AccountingEntry[]>> {
+  const { data, error } = (await supabase
+    .from("accounting_entries" as never)
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100)) as unknown as DbResult<AccountingEntry[]>;
+
+  if (error) return failure("listAccountingEntries", error, []);
+  return success(data ?? []);
+}
+
+export async function createPaymentRefundOperation(payload: Partial<PaymentRefundOperation> & { return_request_id: string; order_id: string }) {
+  const { data, error } = (await supabase
+    .from("payment_refund_operations" as never)
+    .insert({
+      return_request_id: payload.return_request_id,
+      order_id: payload.order_id,
+      payment_status_id: payload.payment_status_id ?? null,
+      provider: payload.provider ?? null,
+      requested_amount: payload.requested_amount ?? 0,
+      approved_amount: payload.approved_amount ?? null,
+      currency: payload.currency ?? "TRY",
+      status: payload.status ?? "requested",
+      metadata: payload.metadata ?? {},
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<PaymentRefundOperation>;
+
+  if (error) return failure("createPaymentRefundOperation", error, null);
+  return success(data);
+}
+
+export async function verifyPaymentRefund(returnRequestId: string, provider: "iyzico" | "paytr" | "stripe", providerRefundId: string, amount: number) {
+  const { data, error } = (await supabase.functions.invoke("payment-refund", {
+    body: { returnRequestId, provider, providerRefundId, amount },
+  })) as unknown as { data: { verified: boolean } | null; error: Error | null };
+
+  if (error) return failure("verifyPaymentRefund", error, null);
+  return success(data);
+}
+
+export async function listPaymentProviderHealth(): Promise<ApiResult<PaymentProviderHealth[]>> {
+  const { data, error } = (await supabase
+    .from("payment_provider_health" as never)
+    .select("*")
+    .order("provider", { ascending: true })) as unknown as DbResult<PaymentProviderHealth[]>;
+
+  if (error) return failure("listPaymentProviderHealth", error, []);
+  return success(data ?? []);
 }
 
 export async function convertShopOrderToSalesOrder(order: ShopOrder) {

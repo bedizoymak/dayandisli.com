@@ -55,6 +55,10 @@ export type ShopReturnRefundStatus = "refund_pending" | "refund_approved" | "ref
 export type ShopNotificationEventType = "order_created" | "payment_received" | "shipment_created" | "delivery_completed" | "return_requested" | "refund_completed";
 export type ShopNotificationChannel = "email_event" | "erp_notification";
 export type ShopNotificationStatus = "pending" | "sent" | "failed" | "read";
+export type PaymentProvider = "iyzico" | "paytr" | "stripe" | "manual";
+export type PaymentVerificationStatus = "pending" | "verified" | "failed" | "duplicate" | "replayed";
+export type PaymentReconciliationStatus = "pending" | "matched" | "mismatch" | "duplicate" | "manual_review";
+export type PaymentProviderHealthStatus = "healthy" | "degraded" | "down" | "unknown";
 export type ShopCampaignDiscountType = "percentage" | "amount" | "free_shipping";
 export type WebsitePageStatus = "draft" | "review" | "published" | "archived";
 export type WebsitePageType = "home" | "content" | "landing" | "product" | "service" | "sector" | "contact";
@@ -563,6 +567,12 @@ export interface ShopOrder {
   currency: string;
   payment_method: string;
   payment_status?: ShopPaymentStatus;
+  payment_provider?: PaymentProvider | null;
+  provider_payment_id?: string | null;
+  provider_payment_url?: string | null;
+  payment_reconciliation_status?: PaymentReconciliationStatus;
+  paid_at?: string | null;
+  refunded_at?: string | null;
   fulfillment_status?: ShopFulfillmentStatus;
   refund_status?: ShopRefundStatus;
   carrier_name?: string | null;
@@ -621,11 +631,17 @@ export interface ShopPaymentStatusRecord {
   customer_user_id?: string | null;
   status: ShopPaymentStatus;
   lifecycle_status?: ShopPaymentLifecycleStatus;
-  future_provider?: "iyzico" | "paytr" | "stripe" | "manual" | null;
+  future_provider?: PaymentProvider | null;
   provider: string | null;
   transaction_reference: string | null;
   amount: number;
   currency: string;
+  provider_event_id?: string | null;
+  provider_payload?: Record<string, unknown>;
+  verification_status?: PaymentVerificationStatus;
+  reconciliation_status?: PaymentReconciliationStatus;
+  invoice_id?: string | null;
+  payment_id?: string | null;
   notes: string | null;
   created_at: string;
   updated_at?: string;
@@ -694,6 +710,92 @@ export interface ShopReturnRequest {
   notes: string | null;
   created_at: string;
   updated_at?: string;
+}
+
+export interface PaymentProviderEvent {
+  id: string;
+  provider: Exclude<PaymentProvider, "manual">;
+  event_id: string;
+  event_type: string;
+  order_id: string | null;
+  customer_user_id: string | null;
+  payment_status_id: string | null;
+  signature_valid: boolean;
+  replay_detected: boolean;
+  duplicate_detected: boolean;
+  processing_status: "received" | "processed" | "ignored" | "failed";
+  error_message: string | null;
+  payload: Record<string, unknown>;
+  payload_hash: string;
+  received_at: string;
+  processed_at: string | null;
+}
+
+export interface PaymentReconciliationLog {
+  id: string;
+  order_id: string;
+  invoice_id: string | null;
+  payment_id: string | null;
+  payment_status_id: string | null;
+  provider: PaymentProvider | null;
+  provider_payment_id: string | null;
+  expected_amount: number;
+  received_amount: number;
+  currency: string;
+  status: PaymentReconciliationStatus;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AccountingEntry {
+  id: string;
+  order_id: string | null;
+  invoice_id: string | null;
+  payment_id: string | null;
+  refund_request_id: string | null;
+  entry_type: "payment_received" | "refund_approved" | "refund_completed" | "payment_failed";
+  provider: PaymentProvider | null;
+  external_reference: string | null;
+  amount: number;
+  currency: string;
+  debit_account: string | null;
+  credit_account: string | null;
+  status: "draft" | "posted" | "reversed";
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PaymentRefundOperation {
+  id: string;
+  return_request_id: string;
+  order_id: string;
+  payment_status_id: string | null;
+  provider: PaymentProvider | null;
+  provider_refund_id: string | null;
+  requested_amount: number;
+  approved_amount: number | null;
+  currency: string;
+  status: "requested" | "erp_review" | "provider_pending" | "provider_verified" | "completed" | "rejected" | "failed";
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  completed_at: string | null;
+  failure_reason: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface PaymentProviderHealth {
+  id: string;
+  provider: Exclude<PaymentProvider, "manual">;
+  status: PaymentProviderHealthStatus;
+  last_success_at: string | null;
+  last_failure_at: string | null;
+  failure_count: number;
+  last_error: string | null;
+  metadata: Record<string, unknown>;
+  updated_at: string;
 }
 
 export interface WebsitePage {

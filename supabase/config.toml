@@ -27,3 +27,23 @@ entrypoint = "./functions/parasut-sync-run/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/parasut-sync-run/*.html" ]
+
+[functions.payment-create]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/payment-create/index.ts"
+
+[functions.payment-webhook]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/payment-webhook/index.ts"
+
+[functions.payment-refund]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/payment-refund/index.ts"
+
+[functions.notification-dispatch]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/notification-dispatch/index.ts"

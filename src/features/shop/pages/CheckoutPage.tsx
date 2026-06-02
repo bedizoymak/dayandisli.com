@@ -11,8 +11,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { CartDrawer } from '../components';
 import { useCart } from '../CartContext';
-import { createCheckoutOrder, fetchShippingMethods, getCurrentCustomerProfile } from '../api';
-import { CheckoutPayload, ShippingMethod, TAX_RATE } from '../types';
+import { createCheckoutOrder, createPaymentSession, fetchShippingMethods, getCurrentCustomerProfile } from '../api';
+import { CheckoutPayload, PaymentProvider, ShippingMethod, TAX_RATE } from '../types';
 import { formatPrice } from '../utils';
 
 const PROFILE_STORAGE_KEY = 'dayan_shop_customer_profile';
@@ -21,7 +21,13 @@ const steps = [
   { key: 'customer', label: 'Müşteri', icon: User },
   { key: 'address', label: 'Adres', icon: MapPin },
   { key: 'shipping', label: 'Sevkiyat', icon: Truck },
-  { key: 'review', label: 'Onay', icon: PackageCheck },
+  { key: 'payment', label: 'Ödeme', icon: PackageCheck },
+];
+
+const paymentProviders: { value: PaymentProvider; label: string; description: string }[] = [
+  { value: 'iyzico', label: 'iyzico', description: 'Türkiye ödeme altyapısı ile güvenli ödeme.' },
+  { value: 'paytr', label: 'PayTR', description: 'PayTR ödeme altyapısı ile güvenli ödeme.' },
+  { value: 'stripe', label: 'Stripe', description: 'Stripe ödeme altyapısı ile güvenli ödeme.' },
 ];
 
 export function CheckoutPage() {
@@ -108,6 +114,7 @@ export function CheckoutPage() {
     setLoading(true);
     try {
       const result = await createCheckoutOrder(formData, items);
+      const payment = await createPaymentSession(result.order.id, formData.paymentProvider);
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify({
         customerName: formData.customerName,
         companyName: formData.companyName,
@@ -120,7 +127,11 @@ export function CheckoutPage() {
       if (result.conversionError) {
         toast({ title: 'ERP bağlantısı beklemede', description: 'Siparişiniz alındı. Satış siparişi ERP ekibi tarafından tamamlanacak.' });
       }
-      navigate(`/checkout/success?order=${result.order.order_number}`);
+      if (payment.paymentUrl) {
+        window.location.assign(payment.paymentUrl);
+        return;
+      }
+      navigate(`/checkout/success?order=${result.order.order_number}&payment=${payment.providerPaymentId}`);
     } catch (error) {
       console.error('Checkout error:', error);
       toast({ title: 'Hata', description: 'Sipariş talebi oluşturulurken bir hata oluştu.', variant: 'destructive' });
@@ -211,15 +222,23 @@ export function CheckoutPage() {
 
               {activeStep === 3 && (
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-                    Ödeme işlemi bu aşamada alınmaz. Sipariş talebiniz ERP satış siparişine bağlanır ve ekip teslimat, stok ve fatura sürecini sizinle paylaşır.
-                  </div>
+                  <RadioGroup value={formData.paymentProvider} onValueChange={(value) => updateField('paymentProvider', value)} className="space-y-3">
+                    {paymentProviders.map((provider) => (
+                      <label key={provider.value} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-4">
+                        <RadioGroupItem value={provider.value} className="mt-1" />
+                        <span>
+                          <span className="block font-medium text-foreground">{provider.label}</span>
+                          <span className="mt-1 block text-sm text-muted-foreground">{provider.description}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </RadioGroup>
                   <Field label="Sipariş Notu"><Textarea rows={3} value={formData.notes} onChange={(event) => updateField('notes', event.target.value)} /></Field>
                   <div className="grid gap-3 text-sm md:grid-cols-2">
                     <SummaryItem label="Müşteri" value={formData.customerName} />
                     <SummaryItem label="E-posta" value={formData.email} />
                     <SummaryItem label="Sevkiyat" value={selectedShipping?.name || formData.shippingMethod} />
-                    <SummaryItem label="Durum" value="ERP onayı bekliyor" />
+                    <SummaryItem label="Ödeme" value={paymentProviders.find((provider) => provider.value === formData.paymentProvider)?.label || ''} />
                   </div>
                 </div>
               )}
@@ -233,7 +252,7 @@ export function CheckoutPage() {
             ) : (
               <Button type="button" onClick={submit} disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Sipariş Talebini Gönder
+                Ödemeye Geç
               </Button>
             )}
           </div>
@@ -281,6 +300,7 @@ function emptyCheckoutPayload(): CheckoutPayload {
     billingAddress: '',
     shippingAddress: '',
     shippingMethod: 'company_shipping',
+    paymentProvider: 'iyzico',
     notes: '',
   };
 }

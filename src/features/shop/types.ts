@@ -96,6 +96,7 @@ export interface OrderWithItems extends Order {
 
 export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'completed' | 'cancelled';
 export type PaymentStatus = 'pending' | 'authorized' | 'paid' | 'failed' | 'refunded' | 'cancelled';
+export type PaymentProvider = 'iyzico' | 'paytr' | 'stripe';
 export type ShippingStatus = 'pending' | 'preparing' | 'ready' | 'shipped' | 'delivered' | 'cancelled';
 export type InventoryReservationStatus = 'pending' | 'reserved' | 'partial' | 'failed' | 'released';
 export type FulfillmentStatus = 'received' | 'preparing' | 'packed' | 'shipped' | 'delivered' | 'completed' | 'cancelled';
@@ -184,6 +185,7 @@ export interface CustomerProfile {
 
 export interface CheckoutPayload extends CustomerProfile {
   shippingMethod: string;
+  paymentProvider: PaymentProvider;
   notes: string;
 }
 

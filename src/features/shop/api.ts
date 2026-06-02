@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Product, ProductWithImages, ProductImage, Order, OrderItem, OrderWithItems, ShippingMethod, CartItem, CheckoutPayload, TAX_RATE, CustomerNotification, CustomerOrderDetails, FulfillmentHistory, ReturnRequest, Shipment } from './types';
+import { Product, ProductWithImages, ProductImage, Order, OrderItem, OrderWithItems, ShippingMethod, CartItem, CheckoutPayload, TAX_RATE, CustomerNotification, CustomerOrderDetails, FulfillmentHistory, ReturnRequest, Shipment, PaymentProvider } from './types';
 
 export type ShopCategory = {
   id: string;
@@ -330,6 +330,26 @@ export async function createCheckoutOrder(payload: CheckoutPayload, items: CartI
   }
 
   return { order: data.order, salesOrderId: data.order.sales_order_id ?? null, conversionError: null };
+}
+
+export async function createPaymentSession(orderId: string, provider: PaymentProvider) {
+  const { data, error } = await supabase.functions.invoke("payment-create", {
+    body: {
+      orderId,
+      provider,
+      callbackUrl: `${window.location.origin}/checkout/success`,
+    },
+  }) as unknown as {
+    data: { paymentUrl: string | null; providerPaymentId: string; provider: PaymentProvider } | null;
+    error: Error | null;
+  };
+
+  if (error || !data) {
+    console.error("Payment session error:", error);
+    throw error || new Error("Payment session failed");
+  }
+
+  return data;
 }
 
 // Fetch orders (for admin)

@@ -17,8 +17,12 @@ import {
   listInventoryMovements,
   listInvoices,
   listPayments,
+  listPaymentProviderHealth,
+  listPaymentReconciliationLogs,
+  listPaymentRefundOperations,
   listPurchaseOrders,
   listSalesOrders,
+  listShopPaymentStatuses,
   listStakeholders,
   listWorkOrders,
   listERPQuotationsFromExistingTable,
@@ -35,11 +39,15 @@ import {
   InventoryMovement,
   Invoice,
   Payment,
+  PaymentProviderHealth,
+  PaymentReconciliationLog,
+  PaymentRefundOperation,
   PurchaseOrder,
   SalesOrder,
   Stakeholder,
   WorkOrder,
   ERPQuotation,
+  ShopPaymentStatusRecord,
 } from "../shared/types";
 import {
   CRM_LEAD_STATUS_LABELS,
@@ -66,6 +74,10 @@ type ReportsData = {
   workOrders: WorkOrder[];
   invoices: Invoice[];
   payments: Payment[];
+  shopPayments: ShopPaymentStatusRecord[];
+  reconciliationLogs: PaymentReconciliationLog[];
+  refundOperations: PaymentRefundOperation[];
+  providerHealth: PaymentProviderHealth[];
   financialAccounts: FinancialAccount[];
   employees: Employee[];
   departments: HRDepartment[];
@@ -83,6 +95,10 @@ const emptyData: ReportsData = {
   workOrders: [],
   invoices: [],
   payments: [],
+  shopPayments: [],
+  reconciliationLogs: [],
+  refundOperations: [],
+  providerHealth: [],
   financialAccounts: [],
   employees: [],
   departments: [],
@@ -109,6 +125,37 @@ function sum(rows: number[]) {
 
 function statusChart(statuses: Record<string, number>, labels: Record<string, string>) {
   return Object.entries(statuses).map(([label, value]) => ({ label: labels[label] ?? label, value }));
+}
+
+function countMap<T>(rows: T[], labelGetter: (row: T) => string) {
+  return Object.entries(rows.reduce<Record<string, number>>((acc, row) => {
+    const label = labelGetter(row);
+    acc[label] = (acc[label] ?? 0) + 1;
+    return acc;
+  }, {})).map(([label, value]) => ({ label, value }));
+}
+
+function paymentStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    pending: "Bekliyor",
+    authorized: "Provizyon",
+    paid: "Ödendi",
+    failed: "Başarısız",
+    refunded: "İade",
+    cancelled: "İptal",
+  };
+  return labels[status] ?? status;
+}
+
+function reconciliationStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    pending: "Bekliyor",
+    matched: "Eşleşti",
+    mismatch: "Fark Var",
+    duplicate: "Tekrar",
+    manual_review: "İnceleme",
+  };
+  return labels[status] ?? status;
 }
 
 function normalizeRows(rows: Record<string, unknown>[]) {
@@ -142,6 +189,10 @@ export default function ReportsPage() {
         workOrders,
         invoices,
         payments,
+        shopPayments,
+        reconciliationLogs,
+        refundOperations,
+        providerHealth,
         financialAccounts,
         employees,
         departments,
@@ -157,12 +208,16 @@ export default function ReportsPage() {
         listWorkOrders(),
         listInvoices(),
         listPayments(),
+        listShopPaymentStatuses(),
+        listPaymentReconciliationLogs(),
+        listPaymentRefundOperations(),
+        listPaymentProviderHealth(),
         listFinancialAccounts(),
         listEmployees(),
         listHRDepartments(),
       ]);
 
-      const firstError = [stakeholders, leads, opportunities, quotations, salesOrders, inventoryItems, inventoryMovements, purchaseOrders, workOrders, invoices, payments, financialAccounts, employees, departments].find((result) => result.error)?.error;
+      const firstError = [stakeholders, leads, opportunities, quotations, salesOrders, inventoryItems, inventoryMovements, purchaseOrders, workOrders, invoices, payments, shopPayments, reconciliationLogs, refundOperations, providerHealth, financialAccounts, employees, departments].find((result) => result.error)?.error;
       if (firstError) toast({ title: "Rapor", description: firstError, variant: "destructive" });
       setData({
         stakeholders: stakeholders.data,
@@ -176,6 +231,10 @@ export default function ReportsPage() {
         workOrders: workOrders.data,
         invoices: invoices.data,
         payments: payments.data,
+        shopPayments: shopPayments.data,
+        reconciliationLogs: reconciliationLogs.data,
+        refundOperations: refundOperations.data,
+        providerHealth: providerHealth.data,
         financialAccounts: financialAccounts.data,
         employees: employees.data,
         departments: departments.data,
@@ -205,6 +264,10 @@ export default function ReportsPage() {
       purchaseOrders,
       invoices,
       payments,
+      shopPayments: data.shopPayments,
+      reconciliationLogs: data.reconciliationLogs,
+      refundOperations: data.refundOperations,
+      providerHealth: data.providerHealth,
       leads,
       opportunities,
       quotations,
@@ -221,6 +284,10 @@ export default function ReportsPage() {
   const lowStock = filtered.inventoryItems.filter((item) => item.current_stock <= item.min_stock);
   const activeCustomers = filtered.stakeholders.filter((item) => item.is_active && (item.type === "customer" || item.type === "both")).length;
   const openOpportunities = filtered.opportunities.filter((item) => item.status === "open" || item.status === "proposal").length;
+  const failedPayments = filtered.shopPayments.filter((row) => row.status === "failed").length;
+  const pendingReconciliation = filtered.reconciliationLogs.filter((row) => row.status === "pending" || row.status === "manual_review").length;
+  const refundCount = filtered.refundOperations.length;
+  const providerIssueCount = filtered.providerHealth.filter((row) => row.status !== "healthy").length;
 
   const executiveKpis = [
     { title: "Aktif Müşteriler", value: activeCustomers, description: "müşteri veya karma cari" },
@@ -232,6 +299,8 @@ export default function ReportsPage() {
     { title: "Üretim", value: filtered.workOrders.length, description: "iş emri" },
     { title: "Alacaklar", value: formatCurrency(receivables), description: "ödenmemiş satış faturası", tone: receivables ? "warning" : "success" },
     { title: "Borçlar", value: formatCurrency(payables), description: "ödenmemiş alış faturası", tone: payables ? "warning" : "success" },
+    { title: "Ödeme Sorunu", value: failedPayments, description: "başarısız sağlayıcı ödemesi", tone: failedPayments ? "danger" : "success" },
+    { title: "Mutabakat", value: pendingReconciliation, description: "bekleyen finans kontrolü", tone: pendingReconciliation ? "warning" : "success" },
     { title: "Çalışanlar", value: filtered.employees.filter((employee) => employee.is_active).length, description: "aktif çalışan" },
   ] as const;
 
@@ -394,9 +463,15 @@ export default function ReportsPage() {
             { title: "Alacaklar", value: formatCurrency(receivables), tone: receivables ? "warning" : "success" },
             { title: "Borçlar", value: formatCurrency(payables), tone: payables ? "warning" : "success" },
             { title: "Kasa/Banka", value: formatCurrency(sum(filtered.financialAccounts.map((row) => row.current_balance))) },
+            { title: "Başarısız Ödeme", value: failedPayments, tone: failedPayments ? "danger" : "success" },
+            { title: "Bekleyen Mutabakat", value: pendingReconciliation, tone: pendingReconciliation ? "warning" : "success" },
+            { title: "İade Operasyonu", value: refundCount },
+            { title: "Sağlayıcı Uyarısı", value: providerIssueCount, tone: providerIssueCount ? "warning" : "success" },
           ]} charts={[
             <ReportChart key="finance-trend" title="Finansal Eğilim" type="area" data={groupSumByMonth(filtered.invoices, (row) => row.invoice_date, (row) => row.grand_total)} />,
             <ReportChart key="invoice-status" title="Fatura Durumu" data={statusChart(countByStatus(filtered.invoices, (row) => row.status), INVOICE_STATUS_LABELS)} />,
+            <ReportChart key="payment-status" title="Ödeme Durumu" data={countMap(filtered.shopPayments, (row) => paymentStatusLabel(row.status))} />,
+            <ReportChart key="reconciliation-status" title="Mutabakat Durumu" data={countMap(filtered.reconciliationLogs, (row) => reconciliationStatusLabel(row.status))} />,
           ]} /> : <HiddenModule />}
         </TabsContent>
 
