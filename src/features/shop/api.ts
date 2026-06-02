@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Product, ProductWithImages, ProductImage, Order, OrderItem, OrderWithItems, ShippingMethod, CartItem, CheckoutPayload, TAX_RATE } from './types';
+import { Product, ProductWithImages, ProductImage, Order, OrderItem, OrderWithItems, ShippingMethod, CartItem, CheckoutPayload, TAX_RATE, CustomerNotification, CustomerOrderDetails, FulfillmentHistory, ReturnRequest, Shipment } from './types';
 
 export type ShopCategory = {
   id: string;
@@ -372,6 +372,93 @@ export async function fetchCustomerOrders(email?: string): Promise<Order[]> {
   }
 
   return data || [];
+}
+
+export async function fetchCustomerOrderDetails(orderId: string): Promise<CustomerOrderDetails | null> {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user?.id) return null;
+
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .eq('customer_user_id', authData.user.id)
+    .maybeSingle() as unknown as { data: Order | null; error: Error | null };
+
+  if (orderError || !order) {
+    console.error('Error fetching customer order details:', orderError);
+    return null;
+  }
+
+  const [itemsResult, shipmentsResult, historyResult, notificationsResult, returnsResult] = await Promise.all([
+    supabase.from('order_items').select('*').eq('order_id', orderId),
+    supabase.from('shop_shipments' as never).select('*').eq('order_id' as never, orderId as never).order('created_at', { ascending: false }),
+    supabase.from('shop_fulfillment_history' as never).select('*').eq('order_id' as never, orderId as never).order('created_at', { ascending: true }),
+    supabase.from('shop_customer_notifications' as never).select('*').eq('order_id' as never, orderId as never).order('created_at', { ascending: false }),
+    supabase.from('shop_return_requests' as never).select('*').eq('order_id' as never, orderId as never).order('created_at', { ascending: false }),
+  ]) as unknown as [
+    { data: OrderItem[] | null; error: Error | null },
+    { data: Shipment[] | null; error: Error | null },
+    { data: FulfillmentHistory[] | null; error: Error | null },
+    { data: CustomerNotification[] | null; error: Error | null },
+    { data: ReturnRequest[] | null; error: Error | null },
+  ];
+
+  for (const result of [itemsResult, shipmentsResult, historyResult, notificationsResult, returnsResult]) {
+    if (result.error) console.error('Error fetching customer order child records:', result.error);
+  }
+
+  return {
+    ...order,
+    items: itemsResult.data || [],
+    shipments: shipmentsResult.data || [],
+    fulfillmentHistory: historyResult.data || [],
+    notifications: notificationsResult.data || [],
+    returnRequests: returnsResult.data || [],
+  };
+}
+
+export async function fetchCustomerNotifications(): Promise<CustomerNotification[]> {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user?.id) return [];
+
+  const { data, error } = await supabase
+    .from('shop_customer_notifications' as never)
+    .select('*')
+    .eq('customer_user_id' as never, authData.user.id as never)
+    .order('created_at', { ascending: false })
+    .limit(50) as unknown as { data: CustomerNotification[] | null; error: Error | null };
+
+  if (error) {
+    console.error('Error fetching customer notifications:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function createCustomerReturnRequest(orderId: string, reason: string): Promise<ReturnRequest> {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user?.id) throw new Error('Müşteri oturumu gerekli.');
+
+  const { data, error } = await supabase
+    .from('shop_return_requests' as never)
+    .insert({
+      order_id: orderId,
+      customer_user_id: authData.user.id,
+      reason,
+      status: 'requested',
+      refund_status: 'refund_pending',
+    } as never)
+    .select('*')
+    .single() as unknown as { data: ReturnRequest | null; error: Error | null };
+
+  if (error || !data) {
+    console.error('Return request error:', error);
+    throw error || new Error('İade talebi oluşturulamadı.');
+  }
+
+  return data;
 }
 
 export async function signUpCustomer(email: string, password: string, fullName: string) {

@@ -53,10 +53,15 @@ import {
   ShopCampaign,
   ShopCart,
   ShopCategory,
+  ShopCarrier,
+  ShopCustomerNotification,
+  ShopFulfillmentHistory,
   ShopOrder,
   ShopOrderItem,
   ShopPaymentStatusRecord,
   ShopProduct,
+  ShopReturnRequest,
+  ShopShipment,
   Stakeholder,
   StakeholderType,
   SubcontractingJob,
@@ -2682,7 +2687,10 @@ export async function createShopPaymentStatus(payload: Partial<ShopPaymentStatus
     .from("shop_payment_statuses" as never)
     .insert({
       order_id: payload.order_id,
+      customer_user_id: payload.customer_user_id ?? null,
       status: payload.status ?? "pending",
+      lifecycle_status: payload.lifecycle_status ?? "payment_pending",
+      future_provider: payload.future_provider ?? null,
       provider: payload.provider ?? null,
       transaction_reference: payload.transaction_reference ?? null,
       amount: payload.amount ?? 0,
@@ -2694,6 +2702,120 @@ export async function createShopPaymentStatus(payload: Partial<ShopPaymentStatus
 
   if (error) return failure("createShopPaymentStatus", error, null);
   await updateShopOrder(payload.order_id, { payment_status: payload.status ?? "pending" });
+  return success(data);
+}
+
+export async function listShopCarriers(): Promise<ApiResult<ShopCarrier[]>> {
+  const { data, error } = (await supabase
+    .from("shop_carriers" as never)
+    .select("*")
+    .order("sort_order", { ascending: true })) as unknown as DbResult<ShopCarrier[]>;
+
+  if (error) return failure("listShopCarriers", error, []);
+  return success(data ?? []);
+}
+
+export async function listShopShipments(): Promise<ApiResult<ShopShipment[]>> {
+  const { data, error } = (await supabase
+    .from("shop_shipments" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<ShopShipment[]>;
+
+  if (error) return failure("listShopShipments", error, []);
+  return success(data ?? []);
+}
+
+export async function createShopShipment(payload: Partial<ShopShipment> & { order_id: string }) {
+  const { data, error } = (await supabase
+    .from("shop_shipments" as never)
+    .insert({
+      order_id: payload.order_id,
+      customer_user_id: payload.customer_user_id ?? null,
+      carrier_id: payload.carrier_id ?? null,
+      carrier_name: payload.carrier_name ?? null,
+      tracking_number: payload.tracking_number ?? null,
+      status: payload.status ?? "preparing",
+      shipped_at: payload.shipped_at ?? null,
+      delivered_at: payload.delivered_at ?? null,
+      notes: payload.notes ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<ShopShipment>;
+
+  if (error) return failure("createShopShipment", error, null);
+  await updateShopOrder(payload.order_id, {
+    carrier_name: payload.carrier_name ?? null,
+    tracking_number: payload.tracking_number ?? null,
+    shipping_status: payload.status ?? "preparing",
+    fulfillment_status: payload.status === "delivered" ? "delivered" : payload.status === "shipped" ? "shipped" : payload.status,
+  });
+  return success(data);
+}
+
+export async function updateShopShipment(id: string, payload: Partial<ShopShipment>) {
+  const { data, error } = (await supabase
+    .from("shop_shipments" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ShopShipment>;
+
+  if (error) return failure("updateShopShipment", error, null);
+  if (data?.order_id) {
+    await updateShopOrder(data.order_id, {
+      carrier_name: data.carrier_name,
+      tracking_number: data.tracking_number,
+      shipping_status: data.status,
+      fulfillment_status: data.status === "delivered" ? "delivered" : data.status === "shipped" ? "shipped" : data.status,
+    });
+  }
+  return success(data);
+}
+
+export async function listShopFulfillmentHistory(): Promise<ApiResult<ShopFulfillmentHistory[]>> {
+  const { data, error } = (await supabase
+    .from("shop_fulfillment_history" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<ShopFulfillmentHistory[]>;
+
+  if (error) return failure("listShopFulfillmentHistory", error, []);
+  return success(data ?? []);
+}
+
+export async function listShopCustomerNotifications(): Promise<ApiResult<ShopCustomerNotification[]>> {
+  const { data, error } = (await supabase
+    .from("shop_customer_notifications" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<ShopCustomerNotification[]>;
+
+  if (error) return failure("listShopCustomerNotifications", error, []);
+  return success(data ?? []);
+}
+
+export async function listShopReturnRequests(): Promise<ApiResult<ShopReturnRequest[]>> {
+  const { data, error } = (await supabase
+    .from("shop_return_requests" as never)
+    .select("*")
+    .order("created_at", { ascending: false })) as unknown as DbResult<ShopReturnRequest[]>;
+
+  if (error) return failure("listShopReturnRequests", error, []);
+  return success(data ?? []);
+}
+
+export async function updateShopReturnRequest(id: string, payload: Partial<ShopReturnRequest>) {
+  const { data, error } = (await supabase
+    .from("shop_return_requests" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ShopReturnRequest>;
+
+  if (error) return failure("updateShopReturnRequest", error, null);
+  if (data?.order_id) {
+    await updateShopOrder(data.order_id, {
+      refund_status: data.refund_status === "refund_completed" ? "completed" : data.refund_status === "refund_rejected" ? "rejected" : data.refund_status === "refund_approved" ? "approved" : "pending",
+    });
+  }
   return success(data);
 }
 

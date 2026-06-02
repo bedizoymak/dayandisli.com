@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, LogOut, MapPin, Package, User, WalletCards } from 'lucide-react';
+import { ArrowLeft, Bell, Loader2, LogOut, MapPin, Package, RotateCcw, Truck, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,14 +12,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CartDrawer } from '../components';
-import { fetchCustomerOrders, getCurrentCustomerProfile, signInCustomer, signOutCustomer, signUpCustomer, upsertCustomerProfile } from '../api';
-import { CustomerProfile, Order, ORDER_STATUS_LABELS } from '../types';
+import { createCustomerReturnRequest, fetchCustomerNotifications, fetchCustomerOrderDetails, fetchCustomerOrders, getCurrentCustomerProfile, signInCustomer, signOutCustomer, signUpCustomer, upsertCustomerProfile } from '../api';
+import { CustomerNotification, CustomerOrderDetails, CustomerProfile, FULFILLMENT_STATUS_LABELS, Order, ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS, ReturnRequest } from '../types';
 import { formatPrice } from '../utils';
 
 export function CustomerPortalPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<CustomerOrderDetails | null>(null);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
+  const [returnReason, setReturnReason] = useState('');
   const [profile, setProfile] = useState<Partial<CustomerProfile>>({});
   const [authForm, setAuthForm] = useState({ fullName: '', email: '', password: '' });
   const [loading, setLoading] = useState(true);
@@ -36,15 +39,24 @@ export function CustomerPortalPage() {
     const sessionEmail = data.user?.email ?? null;
     setEmail(sessionEmail);
     if (sessionEmail) {
-      const [customerProfile, customerOrders] = await Promise.all([
+      const [customerProfile, customerOrders, customerNotifications] = await Promise.all([
         getCurrentCustomerProfile(),
         fetchCustomerOrders(),
+        fetchCustomerNotifications(),
       ]);
       setProfile(customerProfile ?? { email: sessionEmail, customerName: data.user?.user_metadata?.full_name || '' });
       setOrders(customerOrders);
+      setNotifications(customerNotifications);
+      if (customerOrders[0]) {
+        setSelectedOrder(await fetchCustomerOrderDetails(customerOrders[0].id));
+      } else {
+        setSelectedOrder(null);
+      }
     } else {
       setProfile({});
       setOrders([]);
+      setNotifications([]);
+      setSelectedOrder(null);
     }
     setLoading(false);
   };
@@ -95,6 +107,25 @@ export function CustomerPortalPage() {
     await loadPortal();
   };
 
+  const openOrder = async (orderId: string) => {
+    const details = await fetchCustomerOrderDetails(orderId);
+    setSelectedOrder(details);
+  };
+
+  const submitReturnRequest = async () => {
+    if (!selectedOrder || !returnReason.trim()) return;
+    try {
+      await createCustomerReturnRequest(selectedOrder.id, returnReason.trim());
+      toast({ title: 'İade Talebi Alındı', description: 'Talebiniz ERP incelemesine iletildi.' });
+      setReturnReason('');
+      await openOrder(selectedOrder.id);
+      setNotifications(await fetchCustomerNotifications());
+    } catch (error) {
+      console.error('Return request error:', error);
+      toast({ title: 'İade Hatası', description: 'İade talebi oluşturulamadı.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-navy/95 backdrop-blur-sm">
@@ -134,11 +165,14 @@ export function CustomerPortalPage() {
           </Card>
         ) : (
           <Tabs defaultValue="orders" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid h-auto w-full grid-cols-2 md:grid-cols-7">
               <TabsTrigger value="orders">Siparişlerim</TabsTrigger>
+              <TabsTrigger value="detail">Sipariş Detayı</TabsTrigger>
+              <TabsTrigger value="shipping">Sevkiyat Takibi</TabsTrigger>
+              <TabsTrigger value="returns">İade Talepleri</TabsTrigger>
+              <TabsTrigger value="notifications">Bildirimler</TabsTrigger>
               <TabsTrigger value="addresses">Adreslerim</TabsTrigger>
-              <TabsTrigger value="profile">Profil Bilgilerim</TabsTrigger>
-              <TabsTrigger value="future">Hazırlık</TabsTrigger>
+              <TabsTrigger value="profile">Profil</TabsTrigger>
             </TabsList>
 
             <TabsContent value="orders">
@@ -156,12 +190,97 @@ export function CustomerPortalPage() {
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                               <Badge>{ORDER_STATUS_LABELS[order.status]}</Badge>
-                              <Badge variant="outline">{shippingLabel(order.shipping_status)}</Badge>
+                              <Badge variant="outline">{FULFILLMENT_STATUS_LABELS[order.fulfillment_status ?? 'received']}</Badge>
+                              <Badge variant="outline">{PAYMENT_STATUS_LABELS[order.payment_status ?? 'pending']}</Badge>
                               <Badge variant="secondary">{reservationLabel(order.inventory_reservation_status)}</Badge>
                               <span className="font-semibold text-primary">{formatPrice(order.grand_total, order.currency)}</span>
+                              <Button size="sm" variant="outline" onClick={() => openOrder(order.id)}>Detay</Button>
                             </div>
                           </div>
                           {order.tracking_number ? <p className="mt-3 text-sm text-muted-foreground">Takip No: {order.tracking_number}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="detail">
+              <Card className="border-border bg-card">
+                <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" /> Sipariş Detayı</CardTitle></CardHeader>
+                <CardContent>
+                  {!selectedOrder ? <Empty text="Detay için bir sipariş seçiniz." /> : (
+                    <div className="space-y-4">
+                      <div className="grid gap-3 md:grid-cols-4">
+                        <InfoBlock title="Sipariş" value={selectedOrder.order_number} />
+                        <InfoBlock title="Karşılama" value={FULFILLMENT_STATUS_LABELS[selectedOrder.fulfillment_status ?? 'received']} />
+                        <InfoBlock title="Ödeme" value={PAYMENT_STATUS_LABELS[selectedOrder.payment_status ?? 'pending']} />
+                        <InfoBlock title="Toplam" value={formatPrice(selectedOrder.grand_total, selectedOrder.currency)} />
+                      </div>
+                      <div className="rounded-lg border border-border">
+                        {selectedOrder.items.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between border-b border-border px-4 py-3 last:border-b-0">
+                            <span>{item.product_name}</span>
+                            <span className="text-sm text-muted-foreground">{item.quantity} adet</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="font-semibold text-foreground">İşlem Geçmişi</h3>
+                        {selectedOrder.fulfillmentHistory.length === 0 ? <Empty text="Henüz işlem geçmişi yok." /> : selectedOrder.fulfillmentHistory.map((entry) => (
+                          <div key={entry.id} className="rounded-lg border border-border p-3">
+                            <p className="font-medium">{FULFILLMENT_STATUS_LABELS[entry.to_status]}</p>
+                            <p className="text-sm text-muted-foreground">{entry.description || new Date(entry.created_at).toLocaleString('tr-TR')}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="shipping">
+              <Card className="border-border bg-card">
+                <CardHeader><CardTitle className="flex items-center gap-2"><Truck className="h-5 w-5" /> Sevkiyat Takibi</CardTitle></CardHeader>
+                <CardContent>
+                  {!selectedOrder ? <Empty text="Sevkiyat için bir sipariş seçiniz." /> : selectedOrder.shipments.length === 0 ? <Empty text="Bu sipariş için sevkiyat kaydı henüz oluşmadı." /> : (
+                    <div className="space-y-3">
+                      {selectedOrder.shipments.map((shipment) => (
+                        <InfoBlock key={shipment.id} title={`${shipment.carrier_name || 'Kargo'} - ${shippingLabel(shipment.status)}`} value={shipment.tracking_number ? `Takip No: ${shipment.tracking_number}` : 'Takip numarası bekleniyor'} />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="returns">
+              <Card className="border-border bg-card">
+                <CardHeader><CardTitle className="flex items-center gap-2"><RotateCcw className="h-5 w-5" /> İade Talepleri</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  {!selectedOrder ? <Empty text="İade için bir sipariş seçiniz." /> : (
+                    <>
+                      <Field label="İade Nedeni"><Textarea rows={4} value={returnReason} onChange={(event) => setReturnReason(event.target.value)} /></Field>
+                      <Button onClick={submitReturnRequest} disabled={!returnReason.trim()}>İade Talebi Gönder</Button>
+                      <ReturnList returns={selectedOrder.returnRequests} />
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="notifications">
+              <Card className="border-border bg-card">
+                <CardHeader><CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5" /> Bildirim Geçmişi</CardTitle></CardHeader>
+                <CardContent>
+                  {notifications.length === 0 ? <Empty text="Bildirim kaydı bulunmuyor." /> : (
+                    <div className="space-y-3">
+                      {notifications.map((notification) => (
+                        <div key={notification.id} className="rounded-lg border border-border p-4">
+                          <p className="font-semibold text-foreground">{notification.title}</p>
+                          <p className="text-sm text-muted-foreground">{notification.message || new Date(notification.created_at).toLocaleString('tr-TR')}</p>
                         </div>
                       ))}
                     </div>
@@ -193,17 +312,6 @@ export function CustomerPortalPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-
-            <TabsContent value="future">
-              <Card className="border-border bg-card">
-                <CardHeader><CardTitle className="flex items-center gap-2"><WalletCards className="h-5 w-5" /> Gelecek Hizmetler</CardTitle></CardHeader>
-                <CardContent className="grid gap-3 md:grid-cols-3">
-                  <InfoBlock title="Faturalar" value="ERP fatura bağlantısı için hazır." />
-                  <InfoBlock title="Destek Talepleri" value="CRM destek süreci için hazır." />
-                  <InfoBlock title="İade Talepleri" value="İade operasyonu için hazır." />
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         )}
       </main>
@@ -217,6 +325,20 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function InfoBlock({ title, value }: { title: string; value?: string | null }) {
   return <div className="rounded-lg border border-border p-4"><p className="text-sm text-muted-foreground">{title}</p><p className="mt-2 whitespace-pre-line font-medium text-foreground">{value || 'Henüz kayıt yok'}</p></div>;
+}
+
+function ReturnList({ returns }: { returns: ReturnRequest[] }) {
+  if (returns.length === 0) return <Empty text="Bu sipariş için iade talebi yok." />;
+  return (
+    <div className="space-y-3">
+      {returns.map((item) => (
+        <div key={item.id} className="rounded-lg border border-border p-4">
+          <p className="font-semibold text-foreground">{returnStatusLabel(item.status)}</p>
+          <p className="text-sm text-muted-foreground">{item.reason}</p>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function Empty({ text }: { text: string }) {
@@ -235,4 +357,13 @@ function reservationLabel(status?: string | null) {
   if (status === 'partial') return 'Kısmi Stok';
   if (status === 'failed') return 'Stok Bekliyor';
   return 'Stok Kontrolü';
+}
+
+function returnStatusLabel(status: string) {
+  if (status === 'erp_review') return 'ERP İncelemede';
+  if (status === 'approved') return 'Onaylandı';
+  if (status === 'rejected') return 'Reddedildi';
+  if (status === 'received') return 'İade Alındı';
+  if (status === 'closed') return 'Kapatıldı';
+  return 'Talep Alındı';
 }

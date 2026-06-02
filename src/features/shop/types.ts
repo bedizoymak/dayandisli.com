@@ -62,6 +62,9 @@ export interface Order {
   currency: string;
   payment_method: string;
   payment_status?: PaymentStatus;
+  fulfillment_status?: FulfillmentStatus;
+  refund_status?: RefundStatus;
+  carrier_name?: string | null;
   shipping_method?: string | null;
   shipping_status?: ShippingStatus;
   tracking_number?: string | null;
@@ -95,6 +98,64 @@ export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'completed' | 'c
 export type PaymentStatus = 'pending' | 'authorized' | 'paid' | 'failed' | 'refunded' | 'cancelled';
 export type ShippingStatus = 'pending' | 'preparing' | 'ready' | 'shipped' | 'delivered' | 'cancelled';
 export type InventoryReservationStatus = 'pending' | 'reserved' | 'partial' | 'failed' | 'released';
+export type FulfillmentStatus = 'received' | 'preparing' | 'packed' | 'shipped' | 'delivered' | 'completed' | 'cancelled';
+export type RefundStatus = 'none' | 'pending' | 'approved' | 'completed' | 'rejected';
+export type ShipmentStatus = 'preparing' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
+export type ReturnRequestStatus = 'requested' | 'erp_review' | 'approved' | 'rejected' | 'received' | 'closed';
+export type ReturnRefundStatus = 'refund_pending' | 'refund_approved' | 'refund_completed' | 'refund_rejected';
+export type CustomerNotificationStatus = 'pending' | 'sent' | 'failed' | 'read';
+
+export interface Shipment {
+  id: string;
+  order_id: string;
+  customer_user_id: string | null;
+  carrier_name: string | null;
+  tracking_number: string | null;
+  status: ShipmentStatus;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface FulfillmentHistory {
+  id: string;
+  order_id: string;
+  from_status: FulfillmentStatus | null;
+  to_status: FulfillmentStatus;
+  description: string | null;
+  created_at: string;
+}
+
+export interface CustomerNotification {
+  id: string;
+  order_id: string | null;
+  event_type: string;
+  title: string;
+  message: string | null;
+  channel: string;
+  status: CustomerNotificationStatus;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface ReturnRequest {
+  id: string;
+  order_id: string;
+  reason: string;
+  status: ReturnRequestStatus;
+  refund_status: ReturnRefundStatus;
+  requested_at: string;
+  reviewed_at: string | null;
+  notes: string | null;
+}
+
+export interface CustomerOrderDetails extends OrderWithItems {
+  shipments: Shipment[];
+  fulfillmentHistory: FulfillmentHistory[];
+  notifications: CustomerNotification[];
+  returnRequests: ReturnRequest[];
+}
 
 export interface ShippingMethod {
   id: string;
@@ -131,6 +192,25 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   confirmed: 'Onaylandı',
   shipped: 'Kargoda',
   completed: 'Tamamlandı',
+  cancelled: 'İptal Edildi',
+};
+
+export const FULFILLMENT_STATUS_LABELS: Record<FulfillmentStatus, string> = {
+  received: 'Sipariş Alındı',
+  preparing: 'Hazırlanıyor',
+  packed: 'Paketleniyor',
+  shipped: 'Kargoya Verildi',
+  delivered: 'Teslim Edildi',
+  completed: 'Tamamlandı',
+  cancelled: 'İptal Edildi',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  pending: 'Ödeme Bekliyor',
+  authorized: 'Provizyon Alındı',
+  paid: 'Ödeme Alındı',
+  failed: 'Ödeme Başarısız',
+  refunded: 'İade Tamamlandı',
   cancelled: 'İptal Edildi',
 };
 

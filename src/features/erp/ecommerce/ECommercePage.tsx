@@ -15,19 +15,27 @@ import {
   createShopCampaign,
   createShopCategory,
   createShopPaymentStatus,
+  createShopShipment,
   listShopCampaigns,
   listShopCarts,
+  listShopCarriers,
   listShopCategories,
+  listShopCustomerNotifications,
+  listShopFulfillmentHistory,
   listShopOrders,
   listShopPaymentStatuses,
   listShopProducts,
+  listShopReturnRequests,
+  listShopShipments,
   updateShopCampaign,
   updateShopCategory,
   updateShopOrder,
   updateShopProduct,
+  updateShopReturnRequest,
+  updateShopShipment,
 } from "../shared/erpApi";
 import { formatCurrency, formatDate } from "../shared/formatters";
-import { ShopCampaign, ShopCart, ShopCategory, ShopOrder, ShopPaymentStatus, ShopPaymentStatusRecord, ShopProduct } from "../shared/types";
+import { ShopCampaign, ShopCarrier, ShopCart, ShopCategory, ShopCustomerNotification, ShopFulfillmentHistory, ShopFulfillmentStatus, ShopOrder, ShopPaymentLifecycleStatus, ShopPaymentStatus, ShopPaymentStatusRecord, ShopProduct, ShopReturnRefundStatus, ShopReturnRequest, ShopReturnRequestStatus, ShopShipment, ShopShipmentStatus } from "../shared/types";
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending: "Beklemede",
@@ -45,18 +53,60 @@ const CART_STATUS_LABELS: Record<string, string> = {
 };
 
 const PAYMENT_STATUS_LABELS: Record<ShopPaymentStatus, string> = {
-  pending: "Beklemede",
+  pending: "Ödeme Bekliyor",
   authorized: "Provizyon",
-  paid: "Ödendi",
-  failed: "Başarısız",
-  refunded: "İade",
+  paid: "Ödeme Alındı",
+  failed: "Ödeme Başarısız",
+  refunded: "İade Tamamlandı",
   cancelled: "İptal",
 };
 
+const PAYMENT_LIFECYCLE_LABELS: Record<ShopPaymentLifecycleStatus, string> = {
+  payment_pending: "Ödeme Bekliyor",
+  payment_received: "Ödeme Alındı",
+  payment_failed: "Ödeme Başarısız",
+  refund_pending: "İade Bekliyor",
+  refund_completed: "İade Tamamlandı",
+};
+
+const FULFILLMENT_STATUS_LABELS: Record<ShopFulfillmentStatus, string> = {
+  received: "Sipariş Alındı",
+  preparing: "Hazırlanıyor",
+  packed: "Paketleniyor",
+  shipped: "Kargoya Verildi",
+  delivered: "Teslim Edildi",
+  completed: "Tamamlandı",
+  cancelled: "İptal",
+};
+
+const SHIPMENT_STATUS_LABELS: Record<ShopShipmentStatus, string> = {
+  preparing: "Hazırlanıyor",
+  packed: "Paketleniyor",
+  shipped: "Kargoya Verildi",
+  delivered: "Teslim Edildi",
+  cancelled: "İptal",
+};
+
+const RETURN_STATUS_LABELS: Record<ShopReturnRequestStatus, string> = {
+  requested: "Talep Alındı",
+  erp_review: "ERP İncelemede",
+  approved: "Onaylandı",
+  rejected: "Reddedildi",
+  received: "İade Alındı",
+  closed: "Kapatıldı",
+};
+
+const RETURN_REFUND_LABELS: Record<ShopReturnRefundStatus, string> = {
+  refund_pending: "Geri Ödeme Bekliyor",
+  refund_approved: "Geri Ödeme Onaylandı",
+  refund_completed: "Geri Ödeme Tamamlandı",
+  refund_rejected: "Geri Ödeme Reddedildi",
+};
+
 function tone(status: string) {
-  if (["completed", "paid", "converted", "active"].includes(status)) return "success" as const;
-  if (["pending", "authorized", "shipped"].includes(status)) return "warning" as const;
-  if (["cancelled", "failed", "refunded", "abandoned", "expired"].includes(status)) return "danger" as const;
+  if (["completed", "paid", "converted", "active", "delivered", "payment_received", "refund_completed", "approved", "refund_approved"].includes(status)) return "success" as const;
+  if (["pending", "authorized", "shipped", "preparing", "packed", "received", "payment_pending", "refund_pending", "requested", "erp_review"].includes(status)) return "warning" as const;
+  if (["cancelled", "failed", "refunded", "abandoned", "expired", "payment_failed", "rejected", "refund_rejected"].includes(status)) return "danger" as const;
   return "default" as const;
 }
 
@@ -81,23 +131,34 @@ export default function ECommercePage() {
   const [campaigns, setCampaigns] = useState<ShopCampaign[]>([]);
   const [carts, setCarts] = useState<ShopCart[]>([]);
   const [payments, setPayments] = useState<ShopPaymentStatusRecord[]>([]);
+  const [carriers, setCarriers] = useState<ShopCarrier[]>([]);
+  const [shipments, setShipments] = useState<ShopShipment[]>([]);
+  const [fulfillmentHistory, setFulfillmentHistory] = useState<ShopFulfillmentHistory[]>([]);
+  const [notifications, setNotifications] = useState<ShopCustomerNotification[]>([]);
+  const [returns, setReturns] = useState<ShopReturnRequest[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [error, setError] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: "", slug: "", description: "" });
   const [campaignForm, setCampaignForm] = useState({ name: "", code: "", discount_type: "percentage", discount_value: "0", starts_at: "", ends_at: "" });
-  const [paymentForm, setPaymentForm] = useState({ order_id: "", status: "pending" as ShopPaymentStatus, provider: "", transaction_reference: "", amount: "", notes: "" });
+  const [paymentForm, setPaymentForm] = useState({ order_id: "", status: "pending" as ShopPaymentStatus, lifecycle_status: "payment_pending" as ShopPaymentLifecycleStatus, future_provider: "manual", provider: "", transaction_reference: "", amount: "", notes: "" });
+  const [shipmentForm, setShipmentForm] = useState({ order_id: "", carrier_id: "", carrier_name: "", tracking_number: "", status: "preparing" as ShopShipmentStatus, notes: "" });
 
   const load = async () => {
-    const [productResult, categoryResult, orderResult, campaignResult, cartResult, paymentResult] = await Promise.all([
+    const [productResult, categoryResult, orderResult, campaignResult, cartResult, paymentResult, carrierResult, shipmentResult, historyResult, notificationResult, returnResult] = await Promise.all([
       listShopProducts(),
       listShopCategories(),
       listShopOrders(),
       listShopCampaigns(),
       listShopCarts(),
       listShopPaymentStatuses(),
+      listShopCarriers(),
+      listShopShipments(),
+      listShopFulfillmentHistory(),
+      listShopCustomerNotifications(),
+      listShopReturnRequests(),
     ]);
-    const firstError = [productResult, categoryResult, orderResult, campaignResult, cartResult, paymentResult].find((result) => result.error)?.error ?? null;
+    const firstError = [productResult, categoryResult, orderResult, campaignResult, cartResult, paymentResult, carrierResult, shipmentResult, historyResult, notificationResult, returnResult].find((result) => result.error)?.error ?? null;
     setError(firstError);
     setProducts(productResult.data);
     setCategories(categoryResult.data);
@@ -105,6 +166,11 @@ export default function ECommercePage() {
     setCampaigns(campaignResult.data);
     setCarts(cartResult.data);
     setPayments(paymentResult.data);
+    setCarriers(carrierResult.data);
+    setShipments(shipmentResult.data);
+    setFulfillmentHistory(historyResult.data);
+    setNotifications(notificationResult.data);
+    setReturns(returnResult.data);
     if (firstError) toast({ title: "E-Ticaret", description: firstError, variant: "destructive" });
   };
 
@@ -162,13 +228,35 @@ export default function ECommercePage() {
     const ok = await save(createShopPaymentStatus({
       order_id: order.id,
       status: paymentForm.status,
+      lifecycle_status: paymentForm.lifecycle_status,
+      future_provider: paymentForm.future_provider as ShopPaymentStatusRecord["future_provider"],
+      customer_user_id: order.customer_user_id ?? null,
       provider: paymentForm.provider || null,
       transaction_reference: paymentForm.transaction_reference || null,
       amount: Number(paymentForm.amount || order.grand_total || 0),
       currency: order.currency,
       notes: paymentForm.notes || null,
     }), "Ödeme durumu kaydedildi.");
-    if (ok) setPaymentForm({ order_id: "", status: "pending", provider: "", transaction_reference: "", amount: "", notes: "" });
+    if (ok) setPaymentForm({ order_id: "", status: "pending", lifecycle_status: "payment_pending", future_provider: "manual", provider: "", transaction_reference: "", amount: "", notes: "" });
+  };
+
+  const submitShipment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const order = orders.find((item) => item.id === shipmentForm.order_id);
+    const carrier = carriers.find((item) => item.id === shipmentForm.carrier_id);
+    if (!order) return;
+    const ok = await save(createShopShipment({
+      order_id: order.id,
+      customer_user_id: order.customer_user_id ?? null,
+      carrier_id: carrier?.id ?? null,
+      carrier_name: shipmentForm.carrier_name || carrier?.name || null,
+      tracking_number: shipmentForm.tracking_number || null,
+      status: shipmentForm.status,
+      notes: shipmentForm.notes || null,
+      shipped_at: shipmentForm.status === "shipped" || shipmentForm.status === "delivered" ? new Date().toISOString() : null,
+      delivered_at: shipmentForm.status === "delivered" ? new Date().toISOString() : null,
+    }), "Sevkiyat kaydı oluşturuldu.");
+    if (ok) setShipmentForm({ order_id: "", carrier_id: "", carrier_name: "", tracking_number: "", status: "preparing", notes: "" });
   };
 
   return (
@@ -193,6 +281,10 @@ export default function ECommercePage() {
           <TabsTrigger value="campaigns">Kampanyalar</TabsTrigger>
           <TabsTrigger value="carts">Sepetler</TabsTrigger>
           <TabsTrigger value="payments">Ödeme Durumları</TabsTrigger>
+          <TabsTrigger value="fulfillment">Karşılama</TabsTrigger>
+          <TabsTrigger value="shipping">Sevkiyat</TabsTrigger>
+          <TabsTrigger value="returns">İadeler</TabsTrigger>
+          <TabsTrigger value="notifications">Bildirimler</TabsTrigger>
         </TabsList>
 
         <TabsContent value="products">
@@ -237,7 +329,9 @@ export default function ECommercePage() {
             { key: "customer", header: "Müşteri", render: (row) => <div><p>{row.customer_name}</p><p className="text-xs text-muted-foreground">{row.company_name || row.email}</p></div> },
             { key: "status", header: "Durum", render: (row) => <StatusBadge label={ORDER_STATUS_LABELS[row.status] ?? row.status} tone={tone(row.status)} /> },
             { key: "payment", header: "Ödeme", render: (row) => <StatusBadge label={PAYMENT_STATUS_LABELS[row.payment_status ?? "pending"]} tone={tone(row.payment_status ?? "pending")} /> },
+            { key: "fulfillment", header: "Karşılama", render: (row) => <StatusBadge label={FULFILLMENT_STATUS_LABELS[row.fulfillment_status ?? "received"]} tone={tone(row.fulfillment_status ?? "received")} /> },
             { key: "total", header: "Toplam", className: "text-right", render: (row) => formatCurrency(row.grand_total, row.currency) },
+            { key: "next", header: "Sonraki Adım", render: (row) => <select className="h-9 rounded-md border bg-background px-2 text-sm" value={row.fulfillment_status ?? "received"} onChange={(event) => save(updateShopOrder(row.id, { fulfillment_status: event.target.value as ShopFulfillmentStatus }), "Karşılama durumu güncellendi.")}>{Object.entries(FULFILLMENT_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select> },
             { key: "flow", header: "ERP Akışı", render: (row) => row.sales_order_id ? <StatusBadge label="Satış Siparişine Bağlı" tone="success" /> : <Button size="sm" onClick={() => save(convertShopOrderToSalesOrder(row), "Satış siparişi oluşturuldu.")}>Satış Siparişine Aktar</Button> },
           ]} />
         </TabsContent>
@@ -296,6 +390,15 @@ export default function ECommercePage() {
               <select className="h-10 rounded-md border bg-background px-3 text-sm" value={paymentForm.status} onChange={(event) => setPaymentForm((current) => ({ ...current, status: event.target.value as ShopPaymentStatus }))}>
                 {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
+              <select className="h-10 rounded-md border bg-background px-3 text-sm" value={paymentForm.lifecycle_status} onChange={(event) => setPaymentForm((current) => ({ ...current, lifecycle_status: event.target.value as ShopPaymentLifecycleStatus }))}>
+                {Object.entries(PAYMENT_LIFECYCLE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+              <select className="h-10 rounded-md border bg-background px-3 text-sm" value={paymentForm.future_provider} onChange={(event) => setPaymentForm((current) => ({ ...current, future_provider: event.target.value }))}>
+                <option value="manual">Manuel</option>
+                <option value="iyzico">iyzico Hazırlığı</option>
+                <option value="paytr">PayTR Hazırlığı</option>
+                <option value="stripe">Stripe Hazırlığı</option>
+              </select>
               <Input placeholder="Sağlayıcı" value={paymentForm.provider} onChange={(event) => setPaymentForm((current) => ({ ...current, provider: event.target.value }))} />
               <Input placeholder="Referans" value={paymentForm.transaction_reference} onChange={(event) => setPaymentForm((current) => ({ ...current, transaction_reference: event.target.value }))} />
               <Input type="number" step="0.01" placeholder="Tutar" value={paymentForm.amount} onChange={(event) => setPaymentForm((current) => ({ ...current, amount: event.target.value }))} />
@@ -305,9 +408,70 @@ export default function ECommercePage() {
           <DataTable data={payments} rowKey={(row) => row.id} columns={[
             { key: "order", header: "Sipariş", render: (row) => orders.find((order) => order.id === row.order_id)?.order_number || row.order_id },
             { key: "status", header: "Durum", render: (row) => <StatusBadge label={PAYMENT_STATUS_LABELS[row.status]} tone={tone(row.status)} /> },
+            { key: "lifecycle", header: "Yaşam Döngüsü", render: (row) => <StatusBadge label={PAYMENT_LIFECYCLE_LABELS[row.lifecycle_status ?? "payment_pending"]} tone={tone(row.lifecycle_status ?? "payment_pending")} /> },
             { key: "provider", header: "Sağlayıcı", render: (row) => row.provider || "-" },
             { key: "reference", header: "Referans", render: (row) => row.transaction_reference || "-" },
             { key: "amount", header: "Tutar", className: "text-right", render: (row) => formatCurrency(row.amount, row.currency) },
+          ]} />
+        </TabsContent>
+
+        <TabsContent value="fulfillment">
+          <DataTable data={fulfillmentHistory} rowKey={(row) => row.id} emptyMessage="Karşılama geçmişi bulunamadı" columns={[
+            { key: "order", header: "Sipariş", render: (row) => orders.find((order) => order.id === row.order_id)?.order_number || row.order_id },
+            { key: "from", header: "Önceki", render: (row) => row.from_status ? FULFILLMENT_STATUS_LABELS[row.from_status] : "-" },
+            { key: "to", header: "Yeni", render: (row) => <StatusBadge label={FULFILLMENT_STATUS_LABELS[row.to_status]} tone={tone(row.to_status)} /> },
+            { key: "description", header: "Açıklama", render: (row) => row.description || "-" },
+            { key: "date", header: "Tarih", render: (row) => formatDate(row.created_at) },
+          ]} />
+        </TabsContent>
+
+        <TabsContent value="shipping" className="space-y-4">
+          <FormSection title="Yeni Sevkiyat" description="Kargo firması, takip numarası ve teslimat durumunu ERP ile müşteriye görünür hale getirin.">
+            <form className="grid gap-3 md:grid-cols-6" onSubmit={submitShipment}>
+              <select className="h-10 rounded-md border bg-background px-3 text-sm" value={shipmentForm.order_id} onChange={(event) => setShipmentForm((current) => ({ ...current, order_id: event.target.value }))}>
+                <option value="">Sipariş seçiniz</option>
+                {orders.map((order) => <option key={order.id} value={order.id}>{order.order_number} - {order.customer_name}</option>)}
+              </select>
+              <select className="h-10 rounded-md border bg-background px-3 text-sm" value={shipmentForm.carrier_id} onChange={(event) => setShipmentForm((current) => ({ ...current, carrier_id: event.target.value }))}>
+                <option value="">Kargo firması</option>
+                {carriers.map((carrier) => <option key={carrier.id} value={carrier.id}>{carrier.name}</option>)}
+              </select>
+              <Input placeholder="Firma adı" value={shipmentForm.carrier_name} onChange={(event) => setShipmentForm((current) => ({ ...current, carrier_name: event.target.value }))} />
+              <Input placeholder="Takip numarası" value={shipmentForm.tracking_number} onChange={(event) => setShipmentForm((current) => ({ ...current, tracking_number: event.target.value }))} />
+              <select className="h-10 rounded-md border bg-background px-3 text-sm" value={shipmentForm.status} onChange={(event) => setShipmentForm((current) => ({ ...current, status: event.target.value as ShopShipmentStatus }))}>
+                {Object.entries(SHIPMENT_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+              <Button type="submit">Sevkiyat Ekle</Button>
+            </form>
+          </FormSection>
+          <DataTable data={shipments} rowKey={(row) => row.id} emptyMessage="Sevkiyat kaydı bulunamadı" columns={[
+            { key: "order", header: "Sipariş", render: (row) => orders.find((order) => order.id === row.order_id)?.order_number || row.order_id },
+            { key: "carrier", header: "Kargo", render: (row) => row.carrier_name || "-" },
+            { key: "tracking", header: "Takip No", render: (row) => row.tracking_number || "-" },
+            { key: "status", header: "Durum", render: (row) => <StatusBadge label={SHIPMENT_STATUS_LABELS[row.status]} tone={tone(row.status)} /> },
+            { key: "action", header: "İşlem", render: (row) => <select className="h-9 rounded-md border bg-background px-2 text-sm" value={row.status} onChange={(event) => save(updateShopShipment(row.id, { status: event.target.value as ShopShipmentStatus, delivered_at: event.target.value === "delivered" ? new Date().toISOString() : row.delivered_at }), "Sevkiyat durumu güncellendi.")}>{Object.entries(SHIPMENT_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select> },
+          ]} />
+        </TabsContent>
+
+        <TabsContent value="returns">
+          <DataTable data={returns} rowKey={(row) => row.id} emptyMessage="İade talebi bulunamadı" columns={[
+            { key: "order", header: "Sipariş", render: (row) => orders.find((order) => order.id === row.order_id)?.order_number || row.order_id },
+            { key: "reason", header: "Neden", render: (row) => row.reason },
+            { key: "status", header: "İade Durumu", render: (row) => <StatusBadge label={RETURN_STATUS_LABELS[row.status]} tone={tone(row.status)} /> },
+            { key: "refund", header: "Geri Ödeme", render: (row) => <StatusBadge label={RETURN_REFUND_LABELS[row.refund_status]} tone={tone(row.refund_status)} /> },
+            { key: "request", header: "Talep", render: (row) => formatDate(row.requested_at) },
+            { key: "action", header: "İşlem", render: (row) => <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => save(updateShopReturnRequest(row.id, { status: "erp_review" }), "İade talebi incelemeye alındı.")}>İncele</Button><Button size="sm" onClick={() => save(updateShopReturnRequest(row.id, { status: "approved", refund_status: "refund_approved" }), "İade talebi onaylandı.")}>Onayla</Button></div> },
+          ]} />
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <DataTable data={notifications} rowKey={(row) => row.id} emptyMessage="Bildirim kaydı bulunamadı" columns={[
+            { key: "order", header: "Sipariş", render: (row) => row.order_id ? orders.find((order) => order.id === row.order_id)?.order_number || row.order_id : "-" },
+            { key: "title", header: "Başlık", render: (row) => row.title },
+            { key: "message", header: "Mesaj", render: (row) => row.message || "-" },
+            { key: "channel", header: "Kanal", render: (row) => row.channel === "email_event" ? "E-posta Olayı" : "ERP Bildirimi" },
+            { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.status === "read" ? "Okundu" : row.status === "sent" ? "Gönderildi" : row.status === "failed" ? "Başarısız" : "Bekliyor"} tone={tone(row.status)} /> },
+            { key: "date", header: "Tarih", render: (row) => formatDate(row.created_at) },
           ]} />
         </TabsContent>
       </Tabs>

@@ -46,6 +46,15 @@ export type PaymentType = "collection" | "payment";
 export type ShopOrderStatus = "pending" | "confirmed" | "shipped" | "completed" | "cancelled";
 export type ShopCartStatus = "active" | "converted" | "abandoned" | "expired";
 export type ShopPaymentStatus = "pending" | "authorized" | "paid" | "failed" | "refunded" | "cancelled";
+export type ShopPaymentLifecycleStatus = "payment_pending" | "payment_received" | "payment_failed" | "refund_pending" | "refund_completed";
+export type ShopFulfillmentStatus = "received" | "preparing" | "packed" | "shipped" | "delivered" | "completed" | "cancelled";
+export type ShopRefundStatus = "none" | "pending" | "approved" | "completed" | "rejected";
+export type ShopShipmentStatus = "preparing" | "packed" | "shipped" | "delivered" | "cancelled";
+export type ShopReturnRequestStatus = "requested" | "erp_review" | "approved" | "rejected" | "received" | "closed";
+export type ShopReturnRefundStatus = "refund_pending" | "refund_approved" | "refund_completed" | "refund_rejected";
+export type ShopNotificationEventType = "order_created" | "payment_received" | "shipment_created" | "delivery_completed" | "return_requested" | "refund_completed";
+export type ShopNotificationChannel = "email_event" | "erp_notification";
+export type ShopNotificationStatus = "pending" | "sent" | "failed" | "read";
 export type ShopCampaignDiscountType = "percentage" | "amount" | "free_shipping";
 export type WebsitePageStatus = "draft" | "review" | "published" | "archived";
 export type WebsitePageType = "home" | "content" | "landing" | "product" | "service" | "sector" | "contact";
@@ -541,6 +550,7 @@ export interface ShopOrder {
   id: string;
   order_number: string;
   status: ShopOrderStatus;
+  customer_user_id?: string | null;
   customer_name: string;
   company_name: string | null;
   email: string;
@@ -553,6 +563,13 @@ export interface ShopOrder {
   currency: string;
   payment_method: string;
   payment_status?: ShopPaymentStatus;
+  fulfillment_status?: ShopFulfillmentStatus;
+  refund_status?: ShopRefundStatus;
+  carrier_name?: string | null;
+  shipping_method?: string | null;
+  shipping_status?: string | null;
+  tracking_number?: string | null;
+  inventory_reservation_status?: string | null;
   stakeholder_id?: string | null;
   sales_order_id?: string | null;
   invoice_id?: string | null;
@@ -601,11 +618,79 @@ export interface ShopCart {
 export interface ShopPaymentStatusRecord {
   id: string;
   order_id: string;
+  customer_user_id?: string | null;
   status: ShopPaymentStatus;
+  lifecycle_status?: ShopPaymentLifecycleStatus;
+  future_provider?: "iyzico" | "paytr" | "stripe" | "manual" | null;
   provider: string | null;
   transaction_reference: string | null;
   amount: number;
   currency: string;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ShopCarrier {
+  id: string;
+  name: string;
+  code: string;
+  tracking_url_template: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ShopShipment {
+  id: string;
+  order_id: string;
+  customer_user_id: string | null;
+  carrier_id: string | null;
+  carrier_name: string | null;
+  tracking_number: string | null;
+  status: ShopShipmentStatus;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ShopFulfillmentHistory {
+  id: string;
+  order_id: string;
+  customer_user_id: string | null;
+  from_status: ShopFulfillmentStatus | null;
+  to_status: ShopFulfillmentStatus;
+  description: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface ShopCustomerNotification {
+  id: string;
+  order_id: string | null;
+  customer_user_id: string;
+  event_type: ShopNotificationEventType;
+  title: string;
+  message: string | null;
+  channel: ShopNotificationChannel;
+  status: ShopNotificationStatus;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface ShopReturnRequest {
+  id: string;
+  order_id: string;
+  customer_user_id: string;
+  reason: string;
+  status: ShopReturnRequestStatus;
+  refund_status: ShopReturnRefundStatus;
+  requested_at: string;
+  reviewed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at?: string;
