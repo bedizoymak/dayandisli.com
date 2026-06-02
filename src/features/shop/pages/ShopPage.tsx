@@ -3,7 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Loader2, ShoppingCart, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProductCard, ShopFilters, CartDrawer } from '../components';
-import { fetchProducts, fetchCategories } from '../api';
+import { applyCategoryStructuredMetadata, fetchProducts, fetchCategories } from '../api';
 import { ProductWithImages } from '../types';
 import { useDebounce } from '@/hooks/use-mobile';
 
@@ -44,6 +44,7 @@ export function ShopPage() {
       setLoading(true);
       setOffset(0);
       try {
+        applyCategoryStructuredMetadata(category !== 'all' ? category : undefined);
         const { products: fetchedProducts, count } = await fetchProducts({
           search: debouncedSearch || undefined,
           category: category !== 'all' ? category : undefined,

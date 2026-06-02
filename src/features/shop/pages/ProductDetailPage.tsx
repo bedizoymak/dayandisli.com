@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { CartDrawer, ProductCard } from '../components';
-import { fetchProductBySlug, fetchRelatedProducts, getAvailability } from '../api';
+import { applyProductStructuredMetadata, fetchProductBySlug, fetchRelatedProducts, getAvailability } from '../api';
 import { ProductWithImages } from '../types';
 import { formatPrice } from '../utils';
 import { useCart } from '../CartContext';
@@ -31,6 +31,7 @@ export function ProductDetailPage() {
         const fetchedProduct = await fetchProductBySlug(slug);
         setProduct(fetchedProduct);
         if (fetchedProduct) {
+          applyProductStructuredMetadata(fetchedProduct);
           setSelectedImage(fetchedProduct.primary_image || null);
           setQuantity(1);
           // Fetch related products

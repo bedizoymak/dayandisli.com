@@ -103,6 +103,55 @@ export function getAvailability(product: Pick<Product, 'in_stock' | 'stock_quant
   return { status: 'available' as const, label: 'Stokta Var' };
 }
 
+export function applyProductStructuredMetadata(product: ProductWithImages) {
+  document.title = `${product.name} | Dayan Dişli Mağaza`;
+  setMeta("description", product.description || `${product.name} ürün detayları ve stok durumu.`);
+  setMeta("og:title", product.name, "property");
+  setMeta("og:description", product.description || `${product.name} ürün detayları.`, "property");
+  if (product.primary_image) setMeta("og:image", product.primary_image, "property");
+  setJsonLd("commerce-product-jsonld", {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    sku: product.sku,
+    image: product.primary_image ? [product.primary_image] : undefined,
+    description: product.description,
+    offers: {
+      "@type": "Offer",
+      price: product.price,
+      priceCurrency: product.currency,
+      availability: product.in_stock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+    },
+  });
+}
+
+export function applyCategoryStructuredMetadata(category?: string) {
+  const title = category ? `${category} | Dayan Dişli Mağaza` : "Mağaza | Dayan Dişli";
+  document.title = title;
+  setMeta("description", category ? `${category} kategorisindeki Dayan Dişli ürünleri.` : "Dayan Dişli ürün kataloğu.");
+}
+
+function setMeta(name: string, content: string, key: "name" | "property" = "name") {
+  let element = document.querySelector(`meta[${key}="${name}"]`) as HTMLMetaElement | null;
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute(key, name);
+    document.head.appendChild(element);
+  }
+  element.content = content;
+}
+
+function setJsonLd(id: string, payload: unknown) {
+  let element = document.getElementById(id) as HTMLScriptElement | null;
+  if (!element) {
+    element = document.createElement("script");
+    element.id = id;
+    element.type = "application/ld+json";
+    document.head.appendChild(element);
+  }
+  element.textContent = JSON.stringify(payload);
+}
+
 // Fetch single product by slug
 export async function fetchProductBySlug(slug: string): Promise<ProductWithImages | null> {
   const { data, error } = await supabase
@@ -271,47 +320,16 @@ export async function createOrder(
 }
 
 export async function createCheckoutOrder(payload: CheckoutPayload, items: CartItem[]) {
-  const { data: authData } = await supabase.auth.getUser();
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const taxAmount = subtotal * TAX_RATE;
-  const total = subtotal + taxAmount;
+  const { data, error } = await supabase.functions.invoke("commerce-checkout", {
+    body: { ...payload, items },
+  }) as unknown as { data: { order: Order } | null; error: Error | null };
 
-  const order = await createOrder(
-    {
-      status: 'pending',
-      customer_user_id: authData.user?.id ?? null,
-      customer_name: payload.customerName,
-      company_name: payload.companyName || null,
-      email: payload.email,
-      phone: payload.phone,
-      address: payload.shippingAddress || payload.billingAddress,
-      billing_address: payload.billingAddress,
-      shipping_address: payload.shippingAddress || payload.billingAddress,
-      notes: payload.notes || null,
-      subtotal,
-      tax_total: taxAmount,
-      grand_total: total,
-      currency: 'TRY',
-      payment_method: 'erp_review',
-      payment_status: 'pending',
-      shipping_method: payload.shippingMethod,
-      shipping_status: 'pending',
-      inventory_reservation_status: 'pending',
-      checkout_source: 'public_shop',
-      customer_reference: payload.email,
-    },
-    items.map((item) => ({
-      product_id: item.productId,
-      inventory_item_id: item.inventoryItemId ?? null,
-      product_name: item.name,
-      unit_price: item.price,
-      quantity: item.quantity,
-      line_total: item.price * item.quantity,
-      reservation_status: 'pending',
-    }))
-  );
+  if (error || !data?.order) {
+    console.error("Checkout function error:", error);
+    throw error || new Error("Checkout function failed");
+  }
 
-  return { order, salesOrderId: order.sales_order_id ?? null, conversionError: null };
+  return { order: data.order, salesOrderId: data.order.sales_order_id ?? null, conversionError: null };
 }
 
 // Fetch orders (for admin)
@@ -336,13 +354,12 @@ export async function fetchOrders(limit = 50, offset = 0): Promise<{ orders: Ord
 
 export async function fetchCustomerOrders(email?: string): Promise<Order[]> {
   const { data: authData } = await supabase.auth.getUser();
-  const customerEmail = authData.user?.email || email;
-  if (!customerEmail) return [];
+  if (!authData.user?.id) return [];
 
   const { data, error } = await supabase
     .from('orders')
     .select('*')
-    .eq('email', customerEmail)
+    .eq('customer_user_id', authData.user.id)
     .order('created_at', { ascending: false })
     .limit(25) as unknown as {
       data: Order[] | null;
@@ -355,6 +372,102 @@ export async function fetchCustomerOrders(email?: string): Promise<Order[]> {
   }
 
   return data || [];
+}
+
+export async function signUpCustomer(email: string, password: string, fullName: string) {
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: fullName } },
+  });
+}
+
+export async function signInCustomer(email: string, password: string) {
+  return supabase.auth.signInWithPassword({ email, password });
+}
+
+export async function signOutCustomer() {
+  return supabase.auth.signOut();
+}
+
+export async function getCurrentCustomerProfile() {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user?.id) return null;
+
+  const { data, error } = await supabase
+    .from("shop_customer_profiles" as never)
+    .select("*")
+    .eq("auth_user_id" as never, authData.user.id as never)
+    .maybeSingle() as unknown as {
+      data: {
+        id: string;
+        auth_user_id: string;
+        email: string;
+        full_name: string;
+        company_name: string | null;
+        phone: string | null;
+        billing_address: string | null;
+        shipping_address: string | null;
+        stakeholder_id: string | null;
+        is_active: boolean;
+      } | null;
+      error: Error | null;
+    };
+
+  if (error) {
+    console.error("Customer profile fetch error:", error);
+    return null;
+  }
+
+  if (!data) {
+    return {
+      auth_user_id: authData.user.id,
+      customerName: authData.user.user_metadata?.full_name || "",
+      companyName: "",
+      email: authData.user.email || "",
+      phone: "",
+      billingAddress: "",
+      shippingAddress: "",
+      stakeholder_id: null,
+      is_active: true,
+    };
+  }
+
+  return {
+    id: data.id,
+    auth_user_id: data.auth_user_id,
+    customerName: data.full_name,
+    companyName: data.company_name || "",
+    email: data.email,
+    phone: data.phone || "",
+    billingAddress: data.billing_address || "",
+    shippingAddress: data.shipping_address || "",
+    stakeholder_id: data.stakeholder_id,
+    is_active: data.is_active,
+  };
+}
+
+export async function upsertCustomerProfile(profile: CheckoutPayload) {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user?.id || !authData.user.email) throw new Error("Müşteri oturumu gerekli.");
+
+  const { data, error } = await supabase
+    .from("shop_customer_profiles" as never)
+    .upsert({
+      auth_user_id: authData.user.id,
+      email: authData.user.email,
+      full_name: profile.customerName,
+      company_name: profile.companyName || null,
+      phone: profile.phone || null,
+      billing_address: profile.billingAddress || null,
+      shipping_address: profile.shippingAddress || null,
+      is_active: true,
+    } as never, { onConflict: "auth_user_id" })
+    .select("*")
+    .single() as unknown as { data: unknown; error: Error | null };
+
+  if (error) throw error;
+  return data;
 }
 
 // Fetch single order with items

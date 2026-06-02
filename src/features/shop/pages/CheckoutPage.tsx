@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { CartDrawer } from '../components';
 import { useCart } from '../CartContext';
-import { createCheckoutOrder, fetchShippingMethods } from '../api';
+import { createCheckoutOrder, fetchShippingMethods, getCurrentCustomerProfile } from '../api';
 import { CheckoutPayload, ShippingMethod, TAX_RATE } from '../types';
 import { formatPrice } from '../utils';
 
@@ -30,6 +30,7 @@ export function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [customerReady, setCustomerReady] = useState(false);
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [formData, setFormData] = useState<CheckoutPayload>(() => {
     const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
@@ -58,6 +59,25 @@ export function CheckoutPage() {
   }, [items.length, navigate]);
 
   useEffect(() => {
+    getCurrentCustomerProfile().then((profile) => {
+      if (!profile) {
+        setCustomerReady(false);
+        return;
+      }
+      setCustomerReady(true);
+      setFormData((current) => ({
+        ...current,
+        customerName: profile.customerName || current.customerName,
+        companyName: profile.companyName || current.companyName,
+        email: profile.email || current.email,
+        phone: profile.phone || current.phone,
+        billingAddress: profile.billingAddress || current.billingAddress,
+        shippingAddress: profile.shippingAddress || current.shippingAddress,
+      }));
+    });
+  }, []);
+
+  useEffect(() => {
     fetchShippingMethods().then((methods) => {
       setShippingMethods(methods);
       if (methods.length > 0 && !methods.some((method) => method.code === formData.shippingMethod)) {
@@ -80,6 +100,11 @@ export function CheckoutPage() {
 
   const submit = async () => {
     if (!canGoNext || items.length === 0) return;
+    if (!customerReady) {
+      toast({ title: 'Müşteri Girişi Gerekli', description: 'Sipariş talebi göndermek için hesabınıza giriş yapın.', variant: 'destructive' });
+      navigate('/hesabim');
+      return;
+    }
     setLoading(true);
     try {
       const result = await createCheckoutOrder(formData, items);
@@ -146,6 +171,11 @@ export function CheckoutPage() {
           <Card className="border-border bg-card">
             <CardHeader><CardTitle>{steps[activeStep].label}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              {!customerReady ? (
+                <div className="rounded-lg border border-primary/30 bg-primary/10 p-4 text-sm text-foreground">
+                  Sipariş talebi göndermek için müşteri hesabı gerekir. <Link className="font-semibold text-primary underline-offset-4 hover:underline" to="/hesabim">Hesabım</Link> sayfasından giriş yapabilir veya yeni hesap oluşturabilirsiniz.
+                </div>
+              ) : null}
               {activeStep === 0 && (
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Ad Soyad *"><Input value={formData.customerName} onChange={(event) => updateField('customerName', event.target.value)} /></Field>

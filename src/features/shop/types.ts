@@ -109,12 +109,16 @@ export interface ShippingMethod {
 }
 
 export interface CustomerProfile {
+  id?: string;
+  auth_user_id?: string;
   customerName: string;
   companyName: string;
   email: string;
   phone: string;
   billingAddress: string;
   shippingAddress: string;
+  stakeholder_id?: string | null;
+  is_active?: boolean;
 }
 
 export interface CheckoutPayload extends CustomerProfile {
