@@ -30,8 +30,8 @@ const ERPHomePage = lazy(() => import("./features/erp/dashboard/ERPHomePage"));
 const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CartPage })));
-const CheckoutPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CheckoutPage })));
-const CheckoutSuccessPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CheckoutSuccessPage })));
+const DynamicCMSPage = lazy(() => import("./features/public-cms/DynamicCMSPage"));
+const SitemapPage = lazy(() => import("./features/public-cms/SitemapPage"));
 
 const queryClient = new QueryClient();
 const isErpBuild = (import.meta.env.VITE_APP_TARGET || "erp") === "erp";
@@ -73,6 +73,7 @@ const AppRoutes = () => {
             <Route path="/iletisim" element={<SiteIletisim />} />
             <Route path="/hakkimizda" element={<Hakkimizda />} />
             <Route path="/referanslar" element={<Referanslar />} />
+            <Route path="/site-haritasi" element={<SitemapPage />} />
           </>
       )}
 
@@ -81,10 +82,10 @@ const AppRoutes = () => {
       {exposePublicRoutes && SHOP_FEATURE_ENABLED ? (
           <>
             <Route path="/shop" element={<ShopPage />} />
+            <Route path="/shop/kategori/:categorySlug" element={<ShopPage />} />
             <Route path="/shop/:slug" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+            <Route path="/checkout/*" element={<Navigate to="/shop" replace />} />
           </>
       ) : exposePublicRoutes ? (
           <>
@@ -93,6 +94,8 @@ const AppRoutes = () => {
             <Route path="/checkout/*" element={<NotFound />} />
           </>
       ) : null}
+
+      {exposePublicRoutes && <Route path="/sayfa/*" element={<DynamicCMSPage />} />}
 
       {exposeErpRoutes ? (
           <>

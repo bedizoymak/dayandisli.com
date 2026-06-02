@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Loader2, ShoppingCart, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProductCard, ShopFilters, CartDrawer } from '../components';
@@ -10,6 +10,7 @@ import { useDebounce } from '@/hooks/use-mobile';
 const ITEMS_PER_PAGE = 12;
 
 export function ShopPage() {
+  const { categorySlug } = useParams<{ categorySlug?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<ProductWithImages[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -20,7 +21,7 @@ export function ShopPage() {
 
   // Filter states
   const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [category, setCategory] = useState(searchParams.get('category') || 'all');
+  const [category, setCategory] = useState(categorySlug || searchParams.get('category') || 'all');
   const [inStockOnly, setInStockOnly] = useState(searchParams.get('inStock') === 'true');
   const [sortBy, setSortBy] = useState<'newest' | 'price_asc' | 'price_desc'>(
     (searchParams.get('sort') as 'newest' | 'price_asc' | 'price_desc') || 'newest'
@@ -34,6 +35,10 @@ export function ShopPage() {
   }, []);
 
   // Load products when filters change
+  useEffect(() => {
+    if (categorySlug) setCategory(categorySlug);
+  }, [categorySlug]);
+
   useEffect(() => {
     const loadProducts = async () => {
       setLoading(true);

@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Send, Loader2 } from "lucide-react";
+import { submitWebsiteForm } from "@/features/public-cms/api";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -123,6 +124,16 @@ export const ContactForm = () => {
       if (!response.ok) {
         throw new Error(data?.error || "Unknown error");
       }
+
+      await submitWebsiteForm({
+        formKey: "contact",
+        sender_name: values.name,
+        sender_email: values.email,
+        sender_phone: values.phone,
+        company_name: values.company || null,
+        subject: "İletişim Formu",
+        message: values.message,
+      });
 
       toast({
         title: t.contactForm.successTitle,

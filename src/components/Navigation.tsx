@@ -1,13 +1,14 @@
 import { Menu, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { Link } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useCart } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
+import { listPublicMenus } from "@/features/public-cms/api";
 
 function CartLink({ compact = false }: { compact?: boolean }) {
   const { itemCount } = useCart();
@@ -34,9 +35,10 @@ function CartLink({ compact = false }: { compact?: boolean }) {
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [cmsLinks, setCmsLinks] = useState<Array<{ to: string; label: string }>>([]);
   const { t } = useLanguage();
 
-  const pageLinks: Array<{ to: string; label: string; end?: boolean }> = [
+  const fallbackLinks: Array<{ to: string; label: string; end?: boolean }> = [
     { to: "/", label: t.nav.home, end: true },
     { to: "/hizmetler", label: t.nav.services },
     { to: "/teknolojiler", label: t.nav.technologies },
@@ -44,6 +46,18 @@ export const Navigation = () => {
     { to: "/sektorler", label: t.nav.sectors },
     { to: "/iletisim", label: t.nav.contact },
   ];
+  const pageLinks = cmsLinks.length > 0 ? cmsLinks.map((link) => ({ ...link, end: link.to === "/" })) : fallbackLinks;
+
+  useEffect(() => {
+    let active = true;
+    listPublicMenus("header").then((items) => {
+      if (!active) return;
+      setCmsLinks(items.map((item) => ({ to: item.path, label: item.label })));
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-navy/95 backdrop-blur-sm border-b border-border">

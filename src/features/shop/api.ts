@@ -1,6 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Product, ProductWithImages, ProductImage, Order, OrderItem, OrderWithItems } from './types';
 
+export type ShopCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
+
 // Fetch all products with their primary images
 export async function fetchProducts(options?: {
   category?: string;
@@ -13,11 +22,26 @@ export async function fetchProducts(options?: {
   // Build query dynamically based on options
   let queryBuilder = supabase
     .from('products')
-    .select('*, product_images(*)', { count: 'exact' });
+    .select('*, product_images(*)', { count: 'exact' })
+    .eq('is_shop_visible', true);
 
   // Apply filters
   if (options?.category) {
-    queryBuilder = queryBuilder.eq('category', options.category);
+    const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(options.category);
+    if (uuidLike) {
+      queryBuilder = queryBuilder.eq('shop_category_id', options.category);
+    } else {
+      const { data: shopCategory } = await supabase
+        .from('shop_categories' as never)
+        .select('id')
+        .eq('is_active' as never, true as never)
+        .or(`slug.eq.${options.category},name.eq.${options.category}`)
+        .maybeSingle() as unknown as { data: { id: string } | null; error: Error | null };
+
+      queryBuilder = shopCategory?.id
+        ? queryBuilder.or(`category.eq.${options.category},shop_category_id.eq.${shopCategory.id}`)
+        : queryBuilder.eq('category', options.category);
+    }
   }
 
   if (options?.inStockOnly) {
@@ -75,6 +99,7 @@ export async function fetchProductBySlug(slug: string): Promise<ProductWithImage
     .from('products')
     .select('*, product_images(*)')
     .eq('slug', slug)
+    .eq('is_shop_visible', true)
     .maybeSingle() as unknown as { 
       data: (Product & { product_images: ProductImage[] }) | null; 
       error: Error | null 
@@ -105,6 +130,7 @@ export async function fetchRelatedProducts(category: string | null, excludeId: s
     .eq('category', category)
     .neq('id', excludeId)
     .eq('in_stock', true)
+    .eq('is_shop_visible', true)
     .limit(limit) as unknown as { 
       data: (Product & { product_images: ProductImage[] })[] | null; 
       error: Error | null 
@@ -125,9 +151,23 @@ export async function fetchRelatedProducts(category: string | null, excludeId: s
 
 // Fetch all unique categories
 export async function fetchCategories(): Promise<string[]> {
+  const { data: shopCategories, error: categoryError } = await supabase
+    .from('shop_categories' as never)
+    .select('id, name, slug, description, is_active, sort_order')
+    .eq('is_active' as never, true as never)
+    .order('sort_order', { ascending: true }) as unknown as {
+      data: ShopCategory[] | null;
+      error: Error | null;
+    };
+
+  if (!categoryError && shopCategories?.length) {
+    return shopCategories.map((category) => category.slug || category.name);
+  }
+
   const { data, error } = await supabase
     .from('products')
     .select('category')
+    .eq('is_shop_visible', true)
     .not('category', 'is', null) as unknown as { 
       data: { category: string }[] | null; 
       error: Error | null 
