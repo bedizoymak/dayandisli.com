@@ -6,8 +6,6 @@ import { SpurGearResult } from "../utils/gearSpur";
 import { findSpurCombinations } from "../utils/gearCombinations";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, FileText } from "lucide-react";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 
 export default function SpurGearReceipt() {
   const { machineId } = useParams<{ machineId: string }>();
@@ -36,7 +34,12 @@ export default function SpurGearReceipt() {
 
   const combinations = findSpurCombinations(result.z);
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    const [{ jsPDF }, autoTableModule] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const autoTable = autoTableModule.default;
     const doc = new jsPDF();
 
     // Title

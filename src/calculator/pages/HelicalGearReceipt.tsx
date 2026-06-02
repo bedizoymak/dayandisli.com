@@ -9,8 +9,6 @@ import {
 } from "../utils/gearCombinations";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, FileText } from "lucide-react";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 
 export default function HelicalGearReceipt() {
   const { machineId } = useParams<{ machineId: string }>();
@@ -38,7 +36,12 @@ export default function HelicalGearReceipt() {
   const taksimatCombinations = findTaksimatCombinations(result.z);
   const helicalCombinations = findHelicalCombinations(result.helicalGearRatio);
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    const [{ jsPDF }, autoTableModule] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const autoTable = autoTableModule.default;
     const doc = new jsPDF();
 
     // Title

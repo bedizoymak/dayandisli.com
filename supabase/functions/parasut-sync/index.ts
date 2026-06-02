@@ -3,6 +3,12 @@
 import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
+function requireEnv(name: string) {
+  const value = Deno.env.get(name);
+  if (!value) throw new Error(`${name} is not configured`);
+  return value;
+}
+
 serve(async (req: Request) => {
   try {
     if (req.method !== "GET") {
@@ -16,10 +22,10 @@ serve(async (req: Request) => {
       return new Response("Authorization code missing", { status: 400 });
     }
 
-    const clientId = Deno.env.get("PARASUT_CLIENT_ID")!;
-    const clientSecret = Deno.env.get("PARASUT_CLIENT_SECRET")!;
-    const redirectUri = Deno.env.get("PARASUT_REDIRECT_URI")!;
-    const companyId = Deno.env.get("PARASUT_COMPANY_ID")!;
+    const clientId = requireEnv("PARASUT_CLIENT_ID");
+    const clientSecret = requireEnv("PARASUT_CLIENT_SECRET");
+    const redirectUri = requireEnv("PARASUT_REDIRECT_URI");
+    const companyId = requireEnv("PARASUT_COMPANY_ID");
 
     const tokenUrl = "https://api.parasut.com/oauth/token";
 
@@ -38,11 +44,14 @@ serve(async (req: Request) => {
     });
 
     const data = await response.json();
-    console.log("Token Response:", data);
 
     if (!response.ok) {
-      console.error("OAuth Error:", data);
-      return new Response(JSON.stringify(data), { status: 400 });
+      console.error("Paraşüt OAuth token exchange failed", {
+        status: response.status,
+        error: data?.error,
+        description: data?.error_description,
+      });
+      return new Response("OAuth token exchange failed", { status: 400 });
     }
 
     await saveTokenToDatabase(companyId, data);
@@ -58,8 +67,8 @@ serve(async (req: Request) => {
 });
 
 async function saveTokenToDatabase(companyId: string, data: any) {
-  const url = Deno.env.get("SUPABASE_URL")!;
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const url = requireEnv("SUPABASE_URL");
+  const key = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
 
   const supabase = createClient(url, key);
 
@@ -70,11 +79,12 @@ async function saveTokenToDatabase(companyId: string, data: any) {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       expires_at: Date.now() + data.expires_in * 1000,
-      updated_at: new Date()
+      updated_at: new Date().toISOString()
     });
 
   if (error) {
     console.error("DB Error:", error);
+    throw error;
   } else {
     console.log("Token saved successfully!");
   }

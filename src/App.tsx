@@ -1,38 +1,37 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
 import { buildErpUrl, shouldExposeErpRoutes, shouldExposePublicRoutes } from "@/lib/domains";
+import { ERPErrorBoundary } from "@/components/ERPErrorBoundary";
 
-import Index from "./pages/Index";
-import Hizmetler from "./pages/site/Hizmetler";
-import Teknolojiler from "./pages/site/Teknolojiler";
-import SiteUrunler from "./pages/site/Urunler";
-import Sektorler from "./pages/site/Sektorler";
-import SiteIletisim from "./pages/site/Iletisim";
-import Hakkimizda from "./pages/Hakkimizda";
-import Referanslar from "./pages/Referanslar";
-import Login from "./pages/Login";
-import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import Apps from "./pages/Apps";
-import { AdminRoutes } from "./features/admin";
-import ApplicationShellPage from "./features/erp/apps/ApplicationShellPage";
-import { ERPRoutes } from "./features/erp";
-import ERPHomePage from "./features/erp/dashboard/ERPHomePage";
-
-import {
-  ShopPage,
-  ProductDetailPage,
-  CartPage,
-  CheckoutPage,
-  CheckoutSuccessPage,
-} from "./features/shop";
+const Index = lazy(() => import("./pages/Index"));
+const Hizmetler = lazy(() => import("./pages/site/Hizmetler"));
+const Teknolojiler = lazy(() => import("./pages/site/Teknolojiler"));
+const SiteUrunler = lazy(() => import("./pages/site/Urunler"));
+const Sektorler = lazy(() => import("./pages/site/Sektorler"));
+const SiteIletisim = lazy(() => import("./pages/site/Iletisim"));
+const Hakkimizda = lazy(() => import("./pages/Hakkimizda"));
+const Referanslar = lazy(() => import("./pages/Referanslar"));
+const Login = lazy(() => import("./pages/Login"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Apps = lazy(() => import("./pages/Apps"));
+const AdminRoutes = lazy(() => import("./features/admin").then((module) => ({ default: module.AdminRoutes })));
+const ApplicationShellPage = lazy(() => import("./features/erp/apps/ApplicationShellPage"));
+const ERPRoutes = lazy(() => import("./features/erp").then((module) => ({ default: module.ERPRoutes })));
+const ERPHomePage = lazy(() => import("./features/erp/dashboard/ERPHomePage"));
+const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
+const ProductDetailPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ProductDetailPage })));
+const CartPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CartPage })));
+const CheckoutPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CheckoutPage })));
+const CheckoutSuccessPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CheckoutSuccessPage })));
 
 const queryClient = new QueryClient();
 const isErpBuild = (import.meta.env.VITE_APP_TARGET || "erp") === "erp";
@@ -119,7 +118,11 @@ const AppContent = () => (
     <Toaster />
     <Sonner />
     <BrowserRouter>
-      <AppRoutes />
+      <ERPErrorBoundary>
+      <Suspense fallback={<div className="min-h-screen bg-background p-6 text-sm text-muted-foreground">Sayfa yükleniyor...</div>}>
+        <AppRoutes />
+      </Suspense>
+      </ERPErrorBoundary>
     </BrowserRouter>
   </TooltipProvider>
 );

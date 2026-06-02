@@ -1,64 +1,73 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import ERPHomePage from "./dashboard/ERPHomePage";
-import StakeholdersPage from "./crm/StakeholdersPage";
-import CRMOperationsPage from "./crm/CRMOperationsPage";
-import ERPQuotationsPage from "./quotations/ERPQuotationsPage";
-import TeklifSayfasi from "../quotation";
-import { CalculatorRoutes } from "@/calculator";
-import Kargo from "@/pages/Kargo";
-import SalesOrdersPage from "./sales/SalesOrdersPage";
-import SalesActivitiesPage from "./sales/SalesActivitiesPage";
-import ProductionPage from "./production/ProductionPage";
-import WorkOrdersPage from "./production/WorkOrdersPage";
-import RoutesPage from "./production/RoutesPage";
-import SubcontractingPage from "./subcontracting/SubcontractingPage";
-import InventoryPage from "./inventory/InventoryPage";
-import InventoryMovementsPage from "./inventory/InventoryMovementsPage";
-import InvoicesPage from "./finance/InvoicesPage";
-import PaymentsPage from "./finance/PaymentsPage";
-import EmployeesPage from "./hr/EmployeesPage";
-import TimeEntriesPage from "./hr/TimeEntriesPage";
-import ShipmentsPage from "./logistics/ShipmentsPage";
-import QualityReportsPage from "./quality/QualityReportsPage";
-import MaintenancePage from "./maintenance/MaintenancePage";
-import DocumentsPage from "./documents/DocumentsPage";
-import NotificationsPage from "./notifications/NotificationsPage";
-import ReportsPage from "./reports/ReportsPage";
-import ERPSettingsPage from "./settings/ERPSettingsPage";
-import PurchasingPage from "./purchasing/PurchasingPage";
-import PurchaseOrdersPage from "./purchasing/PurchaseOrdersPage";
-import PurchaseOrderDetailPage from "./purchasing/PurchaseOrderDetailPage";
-import ECommercePage from "./ecommerce/ECommercePage";
-import WebsiteManagementPage from "./website/WebsiteManagementPage";
-import TasksPage from "@/pages/erp/TasksPage";
-import NotesPage from "@/pages/erp/NotesPage";
-import ErpNotFoundPage from "@/pages/erp/ErpNotFoundPage";
-import CustomersPage from "@/pages/erp/CustomersPage";
-import CustomerFormPage from "@/pages/erp/CustomerFormPage";
-import CustomerDetailPage from "@/pages/erp/CustomerDetailPage";
-import SuppliersPage from "@/pages/erp/SuppliersPage";
-import SupplierFormPage from "@/pages/erp/SupplierFormPage";
-import SupplierDetailPage from "@/pages/erp/SupplierDetailPage";
-import FinancePage from "@/pages/erp/FinancePage";
-import FinanceTransactionsPage from "@/pages/erp/FinanceTransactionsPage";
-import FinanceTransactionFormPage from "@/pages/erp/FinanceTransactionFormPage";
-import FinanceTransactionDetailPage from "@/pages/erp/FinanceTransactionDetailPage";
-import FinancePaymentsPage from "@/pages/erp/FinancePaymentsPage";
-import PaymentDocumentsPage from "@/pages/erp/PaymentDocumentsPage";
-import FinanceReportsPage from "@/pages/erp/FinanceReportsPage";
 import { ERPLayout } from "./layout/ERPLayout";
-import {
-  InventoryDetailPage,
-  QualityDetailPage,
-  SalesOrderDetailPage,
-  ShipmentDetailPage,
-  StakeholderDetailPage,
-  SubcontractingDetailPage,
-  WorkOrderDetailPage,
-} from "./details/ERPDetailPages";
+
+const ERPHomePage = lazy(() => import("./dashboard/ERPHomePage"));
+const StakeholdersPage = lazy(() => import("./crm/StakeholdersPage"));
+const CRMOperationsPage = lazy(() => import("./crm/CRMOperationsPage"));
+const ERPQuotationsPage = lazy(() => import("./quotations/ERPQuotationsPage"));
+const TeklifSayfasi = lazy(() => import("../quotation"));
+const CalculatorRoutes = lazy(() => import("@/calculator").then((module) => ({ default: module.CalculatorRoutes })));
+const Kargo = lazy(() => import("@/pages/Kargo"));
+const SalesOrdersPage = lazy(() => import("./sales/SalesOrdersPage"));
+const SalesActivitiesPage = lazy(() => import("./sales/SalesActivitiesPage"));
+const ProductionPage = lazy(() => import("./production/ProductionPage"));
+const WorkOrdersPage = lazy(() => import("./production/WorkOrdersPage"));
+const RoutesPage = lazy(() => import("./production/RoutesPage"));
+const SubcontractingPage = lazy(() => import("./subcontracting/SubcontractingPage"));
+const InventoryPage = lazy(() => import("./inventory/InventoryPage"));
+const InventoryMovementsPage = lazy(() => import("./inventory/InventoryMovementsPage"));
+const InvoicesPage = lazy(() => import("./finance/InvoicesPage"));
+const PaymentsPage = lazy(() => import("./finance/PaymentsPage"));
+const EmployeesPage = lazy(() => import("./hr/EmployeesPage"));
+const TimeEntriesPage = lazy(() => import("./hr/TimeEntriesPage"));
+const ShipmentsPage = lazy(() => import("./logistics/ShipmentsPage"));
+const QualityReportsPage = lazy(() => import("./quality/QualityReportsPage"));
+const MaintenancePage = lazy(() => import("./maintenance/MaintenancePage"));
+const DocumentsPage = lazy(() => import("./documents/DocumentsPage"));
+const NotificationsPage = lazy(() => import("./notifications/NotificationsPage"));
+const ReportsPage = lazy(() => import("./reports/ReportsPage"));
+const ERPSettingsPage = lazy(() => import("./settings/ERPSettingsPage"));
+const PurchasingPage = lazy(() => import("./purchasing/PurchasingPage"));
+const PurchaseOrdersPage = lazy(() => import("./purchasing/PurchaseOrdersPage"));
+const PurchaseOrderDetailPage = lazy(() => import("./purchasing/PurchaseOrderDetailPage"));
+const ECommercePage = lazy(() => import("./ecommerce/ECommercePage"));
+const WebsiteManagementPage = lazy(() => import("./website/WebsiteManagementPage"));
+const TasksPage = lazy(() => import("@/pages/erp/TasksPage"));
+const NotesPage = lazy(() => import("@/pages/erp/NotesPage"));
+const ErpNotFoundPage = lazy(() => import("@/pages/erp/ErpNotFoundPage"));
+const CustomersPage = lazy(() => import("@/pages/erp/CustomersPage"));
+const CustomerFormPage = lazy(() => import("@/pages/erp/CustomerFormPage"));
+const CustomerDetailPage = lazy(() => import("@/pages/erp/CustomerDetailPage"));
+const SuppliersPage = lazy(() => import("@/pages/erp/SuppliersPage"));
+const SupplierFormPage = lazy(() => import("@/pages/erp/SupplierFormPage"));
+const SupplierDetailPage = lazy(() => import("@/pages/erp/SupplierDetailPage"));
+const FinancePage = lazy(() => import("@/pages/erp/FinancePage"));
+const FinanceTransactionsPage = lazy(() => import("@/pages/erp/FinanceTransactionsPage"));
+const FinanceTransactionFormPage = lazy(() => import("@/pages/erp/FinanceTransactionFormPage"));
+const FinanceTransactionDetailPage = lazy(() => import("@/pages/erp/FinanceTransactionDetailPage"));
+const FinancePaymentsPage = lazy(() => import("@/pages/erp/FinancePaymentsPage"));
+const PaymentDocumentsPage = lazy(() => import("@/pages/erp/PaymentDocumentsPage"));
+const FinanceReportsPage = lazy(() => import("@/pages/erp/FinanceReportsPage"));
+const InventoryDetailPage = lazy(() => import("./details/ERPDetailPages").then((module) => ({ default: module.InventoryDetailPage })));
+const QualityDetailPage = lazy(() => import("./details/ERPDetailPages").then((module) => ({ default: module.QualityDetailPage })));
+const SalesOrderDetailPage = lazy(() => import("./details/ERPDetailPages").then((module) => ({ default: module.SalesOrderDetailPage })));
+const ShipmentDetailPage = lazy(() => import("./details/ERPDetailPages").then((module) => ({ default: module.ShipmentDetailPage })));
+const StakeholderDetailPage = lazy(() => import("./details/ERPDetailPages").then((module) => ({ default: module.StakeholderDetailPage })));
+const SubcontractingDetailPage = lazy(() => import("./details/ERPDetailPages").then((module) => ({ default: module.SubcontractingDetailPage })));
+const WorkOrderDetailPage = lazy(() => import("./details/ERPDetailPages").then((module) => ({ default: module.WorkOrderDetailPage })));
+
+function RouteLoading() {
+  return (
+    <ERPLayout title="Yükleniyor">
+      <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">Sayfa yükleniyor...</div>
+    </ERPLayout>
+  );
+}
 
 export function ERPRoutes() {
   return (
+    <Suspense fallback={<RouteLoading />}>
     <Routes>
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<ERPHomePage />} />
@@ -143,6 +152,7 @@ export function ERPRoutes() {
       <Route path="settings" element={<ERPSettingsPage />} />
       <Route path="*" element={<ErpNotFoundPage />} />
     </Routes>
+    </Suspense>
   );
 }
 
