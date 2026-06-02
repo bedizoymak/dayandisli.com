@@ -14,6 +14,7 @@ import {
 import { NotificationCenter } from "@/components/erp/NotificationCenter";
 import { QuickActionMenu } from "@/components/erp/QuickActionMenu";
 import { supabase } from "@/integrations/supabase/client";
+import { createAuditLog } from "../shared/erpApi";
 
 type ERPTopBarProps = {
   title: string;
@@ -53,6 +54,12 @@ export function ERPTopBar({ title, onMenuToggle }: ERPTopBarProps) {
   }, [email]);
 
   const handleLogout = async () => {
+    await createAuditLog({
+      entity_type: "auth_session",
+      action: "logout",
+      description: `${email ?? "Bilinmeyen kullanıcı"} ERP oturumunu kapattı.`,
+      metadata: { email },
+    });
     await supabase.auth.signOut();
     localStorage.removeItem("auth_redirect_path");
     navigate("/login", { replace: true });

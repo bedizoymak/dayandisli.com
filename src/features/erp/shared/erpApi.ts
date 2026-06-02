@@ -564,10 +564,31 @@ export async function createERPUser(payload: Partial<ERPUser> & { email: string 
     .single()) as unknown as DbResult<ERPUser>;
 
   if (error) return failure("createERPUser", error, null);
+  if (data) {
+    await createAuditLog({
+      entity_type: "erp_user",
+      entity_id: data.id,
+      action: "user_created",
+      description: `${data.email} ERP kullanıcısı oluşturuldu.`,
+      metadata: {
+        email: data.email,
+        role: data.role,
+        roles: data.roles ?? null,
+        permissions: data.permissions ?? null,
+        department: data.department ?? null,
+      },
+    });
+  }
   return success(data);
 }
 
 export async function updateERPUser(id: string, payload: Partial<ERPUser>) {
+  const previous = (await supabase
+    .from("erp_users" as never)
+    .select("id, email, role, roles, permissions, is_active, department")
+    .eq("id" as never, id as never)
+    .maybeSingle()) as unknown as DbResult<Partial<ERPUser>>;
+
   const { data, error } = (await supabase
     .from("erp_users" as never)
     .update(payload as never)
@@ -576,6 +597,43 @@ export async function updateERPUser(id: string, payload: Partial<ERPUser>) {
     .single()) as unknown as DbResult<ERPUser>;
 
   if (error) return failure("updateERPUser", error, null);
+  if (data) {
+    const before = previous.data ?? {};
+    const changedKeys = Object.keys(payload).filter((key) => {
+      const beforeValue = JSON.stringify((before as Record<string, unknown>)[key] ?? null);
+      const afterValue = JSON.stringify((data as unknown as Record<string, unknown>)[key] ?? null);
+      return beforeValue !== afterValue;
+    });
+    const action =
+      changedKeys.some((key) => key === "role" || key === "roles")
+        ? "role_changed"
+        : changedKeys.includes("permissions")
+          ? "permissions_changed"
+          : changedKeys.includes("is_active")
+            ? "user_status_changed"
+            : "user_updated";
+
+    await createAuditLog({
+      entity_type: "erp_user",
+      entity_id: data.id,
+      action,
+      old_status: before.is_active === undefined ? null : before.is_active ? "active" : "inactive",
+      new_status: data.is_active ? "active" : "inactive",
+      description: `${data.email} ERP kullanıcı kaydı güncellendi.`,
+      metadata: {
+        changed_keys: changedKeys,
+        previous: before,
+        next: {
+          email: data.email,
+          role: data.role,
+          roles: data.roles ?? null,
+          permissions: data.permissions ?? null,
+          is_active: data.is_active,
+          department: data.department ?? null,
+        },
+      },
+    });
+  }
   return success(data);
 }
 
@@ -1225,12 +1283,25 @@ export async function updateProductionRouteStep(id: string, payload: Partial<Pro
 }
 
 export async function deleteProductionRouteStep(id: string) {
+  const previous = (await supabase
+    .from("production_route_steps" as never)
+    .select("*")
+    .eq("id" as never, id as never)
+    .maybeSingle()) as unknown as DbResult<ProductionRouteStep>;
+
   const { error } = (await supabase
     .from("production_route_steps" as never)
     .delete()
     .eq("id", id)) as unknown as { error: unknown };
 
   if (error) return failure("deleteProductionRouteStep", error, false);
+  await createAuditLog({
+    entity_type: "production_route_step",
+    entity_id: id,
+    action: "deleted",
+    description: `${previous.data?.operation_name ?? "Operasyon adımı"} silindi.`,
+    metadata: { previous: previous.data ?? null },
+  });
   return success(true);
 }
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { getPublicLoginRedirectUrl } from "@/lib/domains";
+import { createAuditLog } from "@/features/erp/shared/erpApi";
 
 const SUPABASE_SETUP_MESSAGE =
   "ERP giriş sistemi yapılandırılmamış. Lütfen VITE_SUPABASE_URL ve VITE_SUPABASE_PUBLISHABLE_KEY değerleriyle yeniden build alın.";
@@ -78,6 +79,14 @@ export default function Login() {
         });
         return;
       }
+
+      await createAuditLog({
+        entity_type: "auth_session",
+        entity_id: data.user.id,
+        action: "login",
+        description: `${userEmail} ERP sistemine giriş yaptı.`,
+        metadata: { email: userEmail },
+      });
 
       const redirectPath = "/apps";
       localStorage.removeItem("auth_redirect_path");

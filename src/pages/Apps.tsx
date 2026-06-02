@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { createAuditLog } from "@/features/erp/shared/erpApi";
 import { filterApplicationsByPermission, getCurrentERPUserSafe } from "@/features/erp/shared/permissions";
 import { ERPUser } from "@/features/erp/shared/types";
 
@@ -17,6 +18,12 @@ export default function Apps() {
   const applications = filterApplicationsByPermission(user);
 
   const handleLogout = async () => {
+    await createAuditLog({
+      entity_type: "auth_session",
+      action: "logout",
+      description: `${user?.email ?? "Bilinmeyen kullanıcı"} ERP oturumunu kapattı.`,
+      metadata: { email: user?.email ?? null },
+    });
     await supabase.auth.signOut();
     localStorage.removeItem("auth_redirect_path");
     navigate("/login", { replace: true });
