@@ -17,7 +17,7 @@ type DataTableProps<T> = {
 
 export function DataTable<T>({ columns, data, rowKey, emptyMessage = "Kayıt bulunamadı." }: DataTableProps<T>) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border/80 bg-card/80 shadow-lg shadow-black/10">
+    <div className="overflow-x-auto rounded-lg border border-border/80 bg-card/80 shadow-lg shadow-black/10">
     <Table>
       <TableHeader className="bg-muted/50">
         <TableRow>

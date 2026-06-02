@@ -24,6 +24,7 @@ import { ERPDatabaseStatusWidget } from "../dashboard/ERPDatabaseStatusWidget";
 const MODULE_LABELS: Record<string, string> = {
   accounting: "Muhasebe",
   calculator: "Hesaplama",
+  commerce: "E-Ticaret",
   crm: "CRM",
   dashboard: "Kontrol Paneli",
   documents: "Dokümanlar",
@@ -43,6 +44,7 @@ const MODULE_LABELS: Record<string, string> = {
   settings: "Ayarlar",
   system: "Sistem",
   users: "Kullanıcılar",
+  website: "Web Sitesi",
 };
 
 const EXTRA_ACTION_LABELS: Record<string, string> = {
@@ -64,6 +66,9 @@ const EXTRA_ACTION_LABELS: Record<string, string> = {
   operations: "Operasyonlar",
   history: "Geçmiş",
   accounts: "Hesaplar",
+  banners: "Bannerlar",
+  campaigns: "Kampanyalar",
+  carts: "Sepetler",
   entries: "Fişler",
   journals: "Yevmiye",
   transactions: "Hareketler",
@@ -71,6 +76,14 @@ const EXTRA_ACTION_LABELS: Record<string, string> = {
   categories: "Kategoriler",
   cash_bank: "Kasa ve Banka",
   export: "Dışa Aktarma",
+  forms: "Formlar",
+  media: "Medya",
+  menus: "Menüler",
+  pages: "Sayfalar",
+  payments: "Ödemeler",
+  products: "Ürünler",
+  publishing: "Yayın Durumu",
+  seo: "SEO",
 };
 
 function describePermission(permission: string) {

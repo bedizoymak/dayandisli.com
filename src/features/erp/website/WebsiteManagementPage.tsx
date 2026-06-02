@@ -171,7 +171,7 @@ export default function WebsiteManagementPage() {
         </TabsList>
 
         <TabsContent value="pages" className="space-y-4">
-          <FormSection title="Yeni Sayfa" description="Public site için yönetilebilir sayfa kaydı oluşturun.">
+          <FormSection title="Yeni Sayfa" description="Yayındaki site için yönetilebilir sayfa kaydı oluşturun.">
             <form className="grid gap-3 md:grid-cols-5" onSubmit={createPage}>
               <Input required placeholder="Sayfa başlığı *" value={pageForm.title} onChange={(event) => setPageForm((current) => ({ ...current, title: event.target.value, slug: current.slug || slugify(event.target.value) }))} />
               <Input placeholder="SEO adresi" value={pageForm.slug} onChange={(event) => setPageForm((current) => ({ ...current, slug: event.target.value }))} />
@@ -264,7 +264,7 @@ export default function WebsiteManagementPage() {
         </TabsContent>
 
         <TabsContent value="forms" className="space-y-4">
-          <FormSection title="Form Tanımı" description="Public formların hedef ve başarı mesajı temelini yönetin.">
+          <FormSection title="Form Tanımı" description="Yayındaki formların hedef ve başarı mesajı temelini yönetin.">
             <form className="grid gap-3 md:grid-cols-5" onSubmit={async (event) => {
               event.preventDefault();
               const ok = await save(createWebsiteForm({ ...formForm, target_email: formForm.target_email || null, success_message: formForm.success_message || null }), "Form tanımı oluşturuldu.");

@@ -78,7 +78,7 @@ export function LegacyCustomerImportPanel({ onImported }: LegacyCustomerImportPa
               <p className="text-xl font-semibold">{preview.importable}</p>
             </div>
             <div className="rounded-md border p-3">
-              <p className="text-xs text-muted-foreground">Duplicate Atlandı</p>
+              <p className="text-xs text-muted-foreground">Yinelenen Atlandı</p>
               <p className="text-xl font-semibold">{preview.skippedDuplicates}</p>
             </div>
             <div className="rounded-md border p-3">

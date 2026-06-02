@@ -32,7 +32,6 @@ import {
   CartPage,
   CheckoutPage,
   CheckoutSuccessPage,
-  ShopOrdersPage,
 } from "./features/shop";
 
 const queryClient = new QueryClient();
@@ -103,7 +102,7 @@ const AppRoutes = () => {
             <Route path="/admin/*" element={protectedElement(<AdminRoutes />)} />
             <Route path="/dashboard" element={protectedElement(<ERPHomePage />)} />
             <Route path="/apps/calculator/*" element={protectedElement(<LegacyCalculatorRedirect />)} />
-            {SHOP_FEATURE_ENABLED && <Route path="/apps/shop-orders" element={protectedElement(<ShopOrdersPage />)} />}
+            <Route path="/apps/shop-orders" element={protectedElement(<Navigate to="/commerce/siparisler" replace />)} />
             <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/teklifler/yeni" replace />)} />
             <Route path="/erp/*" element={protectedElement(<LegacyErpRedirect />)} />
             <Route path="/*" element={protectedElement(<ERPRoutes />)} />
