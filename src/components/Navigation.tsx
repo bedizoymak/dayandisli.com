@@ -1,4 +1,4 @@
-import { Menu, ShoppingCart } from "lucide-react";
+import { Menu, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useEffect, useState } from "react";
@@ -29,6 +29,20 @@ function CartLink({ compact = false }: { compact?: boolean }) {
           </span>
         )}
       </Button>
+    </Link>
+  );
+}
+
+function AccountLink({ compact = false }: { compact?: boolean }) {
+  return (
+    <Link to="/hesabim" className="text-foreground hover:text-primary transition-colors">
+      {compact ? (
+        "Hesabım"
+      ) : (
+        <Button variant="ghost" size="icon">
+          <User className="h-5 w-5" />
+        </Button>
+      )}
     </Link>
   );
 }
@@ -87,6 +101,7 @@ export const Navigation = () => {
                 </Link>
 
                 <CartLink />
+                <AccountLink />
               </>
             )}
 
@@ -95,6 +110,7 @@ export const Navigation = () => {
 
           <div className="md:hidden flex items-center gap-2">
             {SHOP_FEATURE_ENABLED && <CartLink compact />}
+            {SHOP_FEATURE_ENABLED && <AccountLink />}
 
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
@@ -119,13 +135,22 @@ export const Navigation = () => {
                   ))}
 
                   {SHOP_FEATURE_ENABLED && (
-                    <Link
-                      to="/shop"
-                      onClick={() => setIsOpen(false)}
-                      className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                    >
-                      {"Ma\u011faza"}
-                    </Link>
+                    <>
+                      <Link
+                        to="/shop"
+                        onClick={() => setIsOpen(false)}
+                        className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                      >
+                        {"Ma\u011faza"}
+                      </Link>
+                      <Link
+                        to="/hesabim"
+                        onClick={() => setIsOpen(false)}
+                        className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                      >
+                        Hesabım
+                      </Link>
+                    </>
                   )}
                 </nav>
               </SheetContent>

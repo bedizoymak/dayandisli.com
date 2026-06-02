@@ -1,208 +1,261 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, CheckCircle, Loader2, MapPin, PackageCheck, Truck, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useCart } from '../CartContext';
-import { createOrder } from '../api';
-import { formatPrice } from '../utils';
-import { TAX_RATE, OrderStatus } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { CartDrawer } from '../components';
+import { useCart } from '../CartContext';
+import { createCheckoutOrder, fetchShippingMethods } from '../api';
+import { CheckoutPayload, ShippingMethod, TAX_RATE } from '../types';
+import { formatPrice } from '../utils';
+
+const PROFILE_STORAGE_KEY = 'dayan_shop_customer_profile';
+
+const steps = [
+  { key: 'customer', label: 'Müşteri', icon: User },
+  { key: 'address', label: 'Adres', icon: MapPin },
+  { key: 'shipping', label: 'Sevkiyat', icon: Truck },
+  { key: 'review', label: 'Onay', icon: PackageCheck },
+];
 
 export function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, subtotal, clearCart } = useCart();
   const { toast } = useToast();
+  const { items, subtotal, clearCart } = useCart();
+  const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [formData, setFormData] = useState<CheckoutPayload>(() => {
+    const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (stored) {
+      try {
+        return { shippingMethod: 'company_shipping', notes: '', ...JSON.parse(stored) };
+      } catch {
+        return emptyCheckoutPayload();
+      }
+    }
+    return emptyCheckoutPayload();
+  });
 
   const taxAmount = subtotal * TAX_RATE;
   const total = subtotal + taxAmount;
+  const selectedShipping = shippingMethods.find((method) => method.code === formData.shippingMethod);
+  const canGoNext = useMemo(() => {
+    if (activeStep === 0) return Boolean(formData.customerName && formData.email && formData.phone);
+    if (activeStep === 1) return Boolean(formData.billingAddress && formData.shippingAddress);
+    if (activeStep === 2) return Boolean(formData.shippingMethod);
+    return true;
+  }, [activeStep, formData]);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    customerName: '',
-    companyName: '',
-    email: '',
-    phone: '',
-    address: '',
-    notes: '',
-    paymentMethod: 'bank_transfer',
-  });
-
-  // Redirect if cart is empty
   useEffect(() => {
-    if (items.length === 0) {
-      navigate('/shop');
-    }
+    if (items.length === 0) navigate('/shop', { replace: true });
   }, [items.length, navigate]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  useEffect(() => {
+    fetchShippingMethods().then((methods) => {
+      setShippingMethods(methods);
+      if (methods.length > 0 && !methods.some((method) => method.code === formData.shippingMethod)) {
+        setFormData((current) => ({ ...current, shippingMethod: methods[0].code }));
+      }
+    });
+  }, [formData.shippingMethod]);
+
+  const updateField = (field: keyof CheckoutPayload, value: string) => {
+    setFormData((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Basic validation
-    if (!formData.customerName || !formData.email || !formData.phone || !formData.address) {
-      toast({
-        title: 'Eksik Bilgi',
-        description: 'Lütfen zorunlu alanları doldurun.',
-        variant: 'destructive',
-      });
+  const next = () => {
+    if (!canGoNext) {
+      toast({ title: 'Eksik Bilgi', description: 'Devam etmek için zorunlu alanları doldurun.', variant: 'destructive' });
       return;
     }
+    setActiveStep((current) => Math.min(current + 1, steps.length - 1));
+  };
 
+  const submit = async () => {
+    if (!canGoNext || items.length === 0) return;
     setLoading(true);
-
     try {
-      const order = await createOrder(
-        {
-          status: 'pending' as OrderStatus,
-          customer_name: formData.customerName,
-          company_name: formData.companyName || null,
-          email: formData.email,
-          phone: formData.phone,
-          address: formData.address,
-          notes: formData.notes || null,
-          subtotal,
-          tax_total: taxAmount,
-          grand_total: total,
-          currency: 'TRY',
-          payment_method: formData.paymentMethod,
-        },
-        items.map((item) => ({
-          product_id: item.productId,
-          product_name: item.name,
-          unit_price: item.price,
-          quantity: item.quantity,
-          line_total: item.price * item.quantity,
-        }))
-      );
-
+      const result = await createCheckoutOrder(formData, items);
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify({
+        customerName: formData.customerName,
+        companyName: formData.companyName,
+        email: formData.email,
+        phone: formData.phone,
+        billingAddress: formData.billingAddress,
+        shippingAddress: formData.shippingAddress,
+      }));
       clearCart();
-      navigate(`/checkout/success?order=${order.order_number}`);
+      if (result.conversionError) {
+        toast({ title: 'ERP bağlantısı beklemede', description: 'Siparişiniz alındı. Satış siparişi ERP ekibi tarafından tamamlanacak.' });
+      }
+      navigate(`/checkout/success?order=${result.order.order_number}`);
     } catch (error) {
       console.error('Checkout error:', error);
-      toast({
-        title: 'Hata',
-        description: 'Sipariş oluşturulurken bir hata oluştu.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Hata', description: 'Sipariş talebi oluşturulurken bir hata oluştu.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  if (items.length === 0) {
-    return null;
-  }
+  if (items.length === 0) return null;
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 bg-navy/95 backdrop-blur-sm border-b border-border">
+      <header className="sticky top-0 z-40 border-b border-border bg-navy/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button asChild variant="ghost" size="icon">
                 <Link to="/cart"><ArrowLeft className="h-5 w-5" /></Link>
               </Button>
-              <h1 className="text-xl font-bold text-foreground">Ödeme</h1>
+              <h1 className="text-xl font-bold text-foreground">Sipariş Talebi</h1>
             </div>
             <CartDrawer />
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
-        <form onSubmit={handleSubmit}>
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <Card className="bg-card border-border">
-                <CardHeader><CardTitle>Müşteri Bilgileri</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="customerName">Ad Soyad *</Label>
-                      <Input id="customerName" name="customerName" value={formData.customerName} onChange={handleInputChange} required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="companyName">Firma Adı</Label>
-                      <Input id="companyName" name="companyName" value={formData.companyName} onChange={handleInputChange} />
-                    </div>
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-posta *</Label>
-                      <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Telefon *</Label>
-                      <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Adres *</Label>
-                    <Textarea id="address" name="address" value={formData.address} onChange={handleInputChange} required rows={3} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Sipariş Notu</Label>
-                    <Textarea id="notes" name="notes" value={formData.notes} onChange={handleInputChange} rows={2} />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-card border-border">
-                <CardHeader><CardTitle>Ödeme Yöntemi</CardTitle></CardHeader>
-                <CardContent>
-                  <RadioGroup value={formData.paymentMethod} onValueChange={(v) => setFormData((prev) => ({ ...prev, paymentMethod: v }))}>
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border border-border">
-                      <RadioGroupItem value="bank_transfer" id="bank_transfer" />
-                      <Label htmlFor="bank_transfer" className="flex-1 cursor-pointer">Havale / EFT</Label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border border-border mt-2">
-                      <RadioGroupItem value="proforma" id="proforma" />
-                      <Label htmlFor="proforma" className="flex-1 cursor-pointer">Proforma Fatura</Label>
-                    </div>
-                  </RadioGroup>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="lg:col-span-1">
-              <Card className="bg-card border-border sticky top-24">
-                <CardHeader><CardTitle>Sipariş Özeti</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {items.map((item) => (
-                      <div key={item.productId} className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{item.name} x{item.quantity}</span>
-                        <span>{formatPrice(item.price * item.quantity)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="border-t border-border pt-3 space-y-2">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Ara Toplam</span><span>{formatPrice(subtotal)}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">KDV (%{TAX_RATE * 100})</span><span>{formatPrice(taxAmount)}</span></div>
-                    <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
-                      <span>Toplam</span><span className="text-primary">{formatPrice(total)}</span>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full" size="lg" disabled={loading}>
-                    {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />İşleniyor...</> : 'Siparişi Onayla'}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+      <main className="container mx-auto grid gap-6 px-4 py-6 lg:grid-cols-[1fr_360px]">
+        <section className="space-y-6">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {steps.map((step, index) => {
+              const Icon = step.icon;
+              const active = index === activeStep;
+              const complete = index < activeStep;
+              return (
+                <button
+                  key={step.key}
+                  type="button"
+                  onClick={() => index <= activeStep && setActiveStep(index)}
+                  className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${active ? 'border-primary bg-primary/10 text-primary' : complete ? 'border-green-500/40 text-green-500' : 'border-border text-muted-foreground'}`}
+                >
+                  {complete ? <CheckCircle className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+                  {step.label}
+                </button>
+              );
+            })}
           </div>
-        </form>
+
+          <Card className="border-border bg-card">
+            <CardHeader><CardTitle>{steps[activeStep].label}</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              {activeStep === 0 && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Ad Soyad *"><Input value={formData.customerName} onChange={(event) => updateField('customerName', event.target.value)} /></Field>
+                  <Field label="Firma"><Input value={formData.companyName} onChange={(event) => updateField('companyName', event.target.value)} /></Field>
+                  <Field label="E-posta *"><Input type="email" value={formData.email} onChange={(event) => updateField('email', event.target.value)} /></Field>
+                  <Field label="Telefon *"><Input value={formData.phone} onChange={(event) => updateField('phone', event.target.value)} /></Field>
+                </div>
+              )}
+
+              {activeStep === 1 && (
+                <div className="space-y-4">
+                  <Field label="Fatura Adresi *"><Textarea rows={4} value={formData.billingAddress} onChange={(event) => updateField('billingAddress', event.target.value)} /></Field>
+                  <Field label="Teslimat Adresi *"><Textarea rows={4} value={formData.shippingAddress} onChange={(event) => updateField('shippingAddress', event.target.value)} /></Field>
+                  <Button type="button" variant="outline" onClick={() => updateField('shippingAddress', formData.billingAddress)}>Fatura Adresini Kullan</Button>
+                </div>
+              )}
+
+              {activeStep === 2 && (
+                <RadioGroup value={formData.shippingMethod} onValueChange={(value) => updateField('shippingMethod', value)} className="space-y-3">
+                  {(shippingMethods.length ? shippingMethods : fallbackShippingMethods).map((method) => (
+                    <label key={method.code} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-4">
+                      <RadioGroupItem value={method.code} className="mt-1" />
+                      <span className="flex-1">
+                        <span className="block font-medium text-foreground">{method.name}</span>
+                        <span className="mt-1 block text-sm text-muted-foreground">{method.description}</span>
+                        {method.estimated_days ? <span className="mt-1 block text-xs text-muted-foreground">Süre: {method.estimated_days}</span> : null}
+                      </span>
+                      <span className="text-sm font-semibold text-primary">{formatPrice(method.base_price, method.currency)}</span>
+                    </label>
+                  ))}
+                </RadioGroup>
+              )}
+
+              {activeStep === 3 && (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+                    Ödeme işlemi bu aşamada alınmaz. Sipariş talebiniz ERP satış siparişine bağlanır ve ekip teslimat, stok ve fatura sürecini sizinle paylaşır.
+                  </div>
+                  <Field label="Sipariş Notu"><Textarea rows={3} value={formData.notes} onChange={(event) => updateField('notes', event.target.value)} /></Field>
+                  <div className="grid gap-3 text-sm md:grid-cols-2">
+                    <SummaryItem label="Müşteri" value={formData.customerName} />
+                    <SummaryItem label="E-posta" value={formData.email} />
+                    <SummaryItem label="Sevkiyat" value={selectedShipping?.name || formData.shippingMethod} />
+                    <SummaryItem label="Durum" value="ERP onayı bekliyor" />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-between">
+            <Button type="button" variant="outline" disabled={activeStep === 0 || loading} onClick={() => setActiveStep((current) => Math.max(0, current - 1))}>Geri</Button>
+            {activeStep < steps.length - 1 ? (
+              <Button type="button" onClick={next}>Devam Et</Button>
+            ) : (
+              <Button type="button" onClick={submit} disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Sipariş Talebini Gönder
+              </Button>
+            )}
+          </div>
+        </section>
+
+        <aside>
+          <Card className="sticky top-24 border-border bg-card">
+            <CardHeader><CardTitle>Sipariş Özeti</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="max-h-56 space-y-3 overflow-y-auto">
+                {items.map((item) => (
+                  <div key={item.productId} className="flex justify-between gap-3 text-sm">
+                    <span className="text-muted-foreground">{item.name} x{item.quantity}</span>
+                    <span>{formatPrice(item.price * item.quantity, item.currency)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-border pt-3 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Ara Toplam</span><span>{formatPrice(subtotal)}</span></div>
+                <div className="mt-2 flex justify-between"><span className="text-muted-foreground">KDV (%{TAX_RATE * 100})</span><span>{formatPrice(taxAmount)}</span></div>
+                <div className="mt-3 flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Toplam</span><span className="text-primary">{formatPrice(total)}</span></div>
+              </div>
+            </CardContent>
+          </Card>
+        </aside>
       </main>
     </div>
   );
 }
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <div className="space-y-2"><Label>{label}</Label>{children}</div>;
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg bg-muted p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-medium text-foreground">{value || '-'}</p></div>;
+}
+
+function emptyCheckoutPayload(): CheckoutPayload {
+  return {
+    customerName: '',
+    companyName: '',
+    email: '',
+    phone: '',
+    billingAddress: '',
+    shippingAddress: '',
+    shippingMethod: 'company_shipping',
+    notes: '',
+  };
+}
+
+const fallbackShippingMethods: ShippingMethod[] = [
+  { id: 'company_shipping', name: 'Firma Sevkiyatı', code: 'company_shipping', description: 'Dayan Dişli ekibi tarafından planlanan sevkiyat.', estimated_days: 'Teklif sonrası planlanır', base_price: 0, currency: 'TRY', is_active: true, sort_order: 10 },
+  { id: 'customer_pickup', name: 'Müşteri Teslim Alır', code: 'customer_pickup', description: 'Müşteri tarafından teslim alma seçeneği.', estimated_days: 'Hazırlık sonrası', base_price: 0, currency: 'TRY', is_active: true, sort_order: 20 },
+];

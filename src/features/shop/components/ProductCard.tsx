@@ -7,6 +7,7 @@ import { ProductWithImages } from '../types';
 import { formatPrice, truncateText } from '../utils';
 import { useCart } from '../CartContext';
 import { useToast } from '@/hooks/use-toast';
+import { getAvailability } from '../api';
 
 interface ProductCardProps {
   product: ProductWithImages;
@@ -15,6 +16,7 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
   const { toast } = useToast();
+  const availability = getAvailability(product);
 
   const handleAddToCart = () => {
     if (!product.in_stock || product.stock_quantity < 1) {
@@ -28,6 +30,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
     addItem({
       productId: product.id,
+      inventoryItemId: product.inventory_item_id ?? null,
       name: product.name,
       slug: product.slug,
       price: product.price,
@@ -59,15 +62,19 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
 
         {/* Stock badge */}
-        {!product.in_stock || product.stock_quantity < 1 ? (
+        {availability.status === 'out_of_stock' ? (
           <Badge variant="destructive" className="absolute top-2 right-2">
-            Stokta Yok
+            {availability.label}
           </Badge>
-        ) : product.stock_quantity < 5 ? (
+        ) : availability.status === 'low_stock' ? (
           <Badge variant="secondary" className="absolute top-2 right-2 bg-yellow-500/20 text-yellow-500">
-            Son {product.stock_quantity} Adet
+            {availability.label}
           </Badge>
-        ) : null}
+        ) : (
+          <Badge variant="secondary" className="absolute top-2 right-2 bg-green-500/20 text-green-500">
+            {availability.label}
+          </Badge>
+        )}
 
         {/* Category badge */}
         {product.category && (

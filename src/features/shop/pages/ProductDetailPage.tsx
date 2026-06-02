@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { CartDrawer, ProductCard } from '../components';
-import { fetchProductBySlug, fetchRelatedProducts } from '../api';
+import { fetchProductBySlug, fetchRelatedProducts, getAvailability } from '../api';
 import { ProductWithImages } from '../types';
 import { formatPrice } from '../utils';
 import { useCart } from '../CartContext';
@@ -61,6 +61,7 @@ export function ProductDetailPage() {
 
     addItem({
       productId: product.id,
+      inventoryItemId: product.inventory_item_id ?? null,
       name: product.name,
       slug: product.slug,
       price: product.price,
@@ -113,6 +114,7 @@ export function ProductDetailPage() {
   }
 
   const isInStock = product.in_stock && product.stock_quantity > 0;
+  const availability = getAvailability(product);
 
   return (
     <div className="min-h-screen bg-background">
@@ -205,9 +207,9 @@ export function ProductDetailPage() {
             <div className="flex items-center gap-2">
               {isInStock ? (
                 <>
-                  <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
+                  <Badge className={availability.status === 'low_stock' ? 'bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-500 hover:bg-green-500/30'}>
                     <Check className="w-3 h-3 mr-1" />
-                    Stokta
+                    {availability.label}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
                     ({product.stock_quantity} adet mevcut)

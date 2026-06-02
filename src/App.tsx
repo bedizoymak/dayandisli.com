@@ -30,6 +30,9 @@ const ERPHomePage = lazy(() => import("./features/erp/dashboard/ERPHomePage"));
 const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CartPage })));
+const CheckoutPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CheckoutPage })));
+const CheckoutSuccessPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CheckoutSuccessPage })));
+const CustomerPortalPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CustomerPortalPage })));
 const DynamicCMSPage = lazy(() => import("./features/public-cms/DynamicCMSPage"));
 const SitemapPage = lazy(() => import("./features/public-cms/SitemapPage"));
 
@@ -85,13 +88,16 @@ const AppRoutes = () => {
             <Route path="/shop/kategori/:categorySlug" element={<ShopPage />} />
             <Route path="/shop/:slug" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout/*" element={<Navigate to="/shop" replace />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+            <Route path="/hesabim" element={<CustomerPortalPage />} />
           </>
       ) : exposePublicRoutes ? (
           <>
             <Route path="/shop/*" element={<NotFound />} />
             <Route path="/cart" element={<NotFound />} />
             <Route path="/checkout/*" element={<NotFound />} />
+            <Route path="/hesabim" element={<NotFound />} />
           </>
       ) : null}
 

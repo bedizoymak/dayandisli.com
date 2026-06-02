@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Product, ProductWithImages, ProductImage, Order, OrderItem, OrderWithItems } from './types';
+import { Product, ProductWithImages, ProductImage, Order, OrderItem, OrderWithItems, ShippingMethod, CartItem, CheckoutPayload, TAX_RATE } from './types';
 
 export type ShopCategory = {
   id: string;
@@ -93,6 +93,16 @@ export async function fetchProducts(options?: {
   return { products, count: count || 0 };
 }
 
+export function getAvailability(product: Pick<Product, 'in_stock' | 'stock_quantity'>) {
+  if (!product.in_stock || product.stock_quantity <= 0) {
+    return { status: 'out_of_stock' as const, label: 'Stokta Yok' };
+  }
+  if (product.stock_quantity <= 5) {
+    return { status: 'low_stock' as const, label: `Son ${product.stock_quantity} Adet` };
+  }
+  return { status: 'available' as const, label: 'Stokta Var' };
+}
+
 // Fetch single product by slug
 export async function fetchProductBySlug(slug: string): Promise<ProductWithImages | null> {
   const { data, error } = await supabase
@@ -147,6 +157,25 @@ export async function fetchRelatedProducts(category: string | null, excludeId: s
     primary_image: p.product_images?.find((img) => img.is_primary)?.image_url ||
                    p.product_images?.[0]?.image_url,
   }));
+}
+
+// Fetch public shipping method foundation
+export async function fetchShippingMethods(): Promise<ShippingMethod[]> {
+  const { data, error } = await supabase
+    .from('shop_shipping_methods' as never)
+    .select('*')
+    .eq('is_active' as never, true as never)
+    .order('sort_order', { ascending: true }) as unknown as {
+      data: ShippingMethod[] | null;
+      error: Error | null;
+    };
+
+  if (error) {
+    console.error('Error fetching shipping methods:', error);
+    return [];
+  }
+
+  return data || [];
 }
 
 // Fetch all unique categories
@@ -241,6 +270,50 @@ export async function createOrder(
   return order;
 }
 
+export async function createCheckoutOrder(payload: CheckoutPayload, items: CartItem[]) {
+  const { data: authData } = await supabase.auth.getUser();
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const taxAmount = subtotal * TAX_RATE;
+  const total = subtotal + taxAmount;
+
+  const order = await createOrder(
+    {
+      status: 'pending',
+      customer_user_id: authData.user?.id ?? null,
+      customer_name: payload.customerName,
+      company_name: payload.companyName || null,
+      email: payload.email,
+      phone: payload.phone,
+      address: payload.shippingAddress || payload.billingAddress,
+      billing_address: payload.billingAddress,
+      shipping_address: payload.shippingAddress || payload.billingAddress,
+      notes: payload.notes || null,
+      subtotal,
+      tax_total: taxAmount,
+      grand_total: total,
+      currency: 'TRY',
+      payment_method: 'erp_review',
+      payment_status: 'pending',
+      shipping_method: payload.shippingMethod,
+      shipping_status: 'pending',
+      inventory_reservation_status: 'pending',
+      checkout_source: 'public_shop',
+      customer_reference: payload.email,
+    },
+    items.map((item) => ({
+      product_id: item.productId,
+      inventory_item_id: item.inventoryItemId ?? null,
+      product_name: item.name,
+      unit_price: item.price,
+      quantity: item.quantity,
+      line_total: item.price * item.quantity,
+      reservation_status: 'pending',
+    }))
+  );
+
+  return { order, salesOrderId: order.sales_order_id ?? null, conversionError: null };
+}
+
 // Fetch orders (for admin)
 export async function fetchOrders(limit = 50, offset = 0): Promise<{ orders: Order[]; count: number }> {
   const { data, error, count } = await supabase
@@ -259,6 +332,29 @@ export async function fetchOrders(limit = 50, offset = 0): Promise<{ orders: Ord
   }
 
   return { orders: data || [], count: count || 0 };
+}
+
+export async function fetchCustomerOrders(email?: string): Promise<Order[]> {
+  const { data: authData } = await supabase.auth.getUser();
+  const customerEmail = authData.user?.email || email;
+  if (!customerEmail) return [];
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('email', customerEmail)
+    .order('created_at', { ascending: false })
+    .limit(25) as unknown as {
+      data: Order[] | null;
+      error: Error | null;
+    };
+
+  if (error) {
+    console.error('Error fetching customer orders:', error);
+    return [];
+  }
+
+  return data || [];
 }
 
 // Fetch single order with items
