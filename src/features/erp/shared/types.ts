@@ -918,6 +918,92 @@ export interface PaymentProviderHealth {
   updated_at: string;
 }
 
+export type PlatformSeverity = "info" | "success" | "warning" | "critical";
+export type PlatformMetricStatus = "active" | "inactive" | "resolved" | "archived";
+export type PlatformEventStatus = "recorded" | "processing" | "processed" | "failed" | "ignored";
+export type PlatformAlertStatus = "open" | "acknowledged" | "resolved" | "dismissed";
+export type ScheduledJobRunStatus = "scheduled" | "running" | "success" | "failed" | "cancelled";
+export type ScheduledJobType = "reconciliation_check" | "inventory_verification" | "webhook_cleanup" | "backup_verification" | "rls_control_check" | "maintenance";
+
+export interface PlatformMetricRecord {
+  id: string;
+  company_id: string;
+  branch_id: string | null;
+  metric_key: string;
+  metric_name: string;
+  metric_value: number | null;
+  metric_unit: string | null;
+  severity: PlatformSeverity;
+  status: PlatformMetricStatus;
+  source: string;
+  module: string;
+  measured_at: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PlatformEventRecord {
+  id: string;
+  company_id: string;
+  branch_id: string | null;
+  event_key: string;
+  event_type: string;
+  severity: PlatformSeverity;
+  status: PlatformEventStatus;
+  source: string;
+  module: string;
+  actor_email: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  title: string;
+  description: string | null;
+  occurred_at: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PlatformAlertRecord {
+  id: string;
+  company_id: string;
+  branch_id: string | null;
+  alert_key: string;
+  title: string;
+  description: string | null;
+  severity: Exclude<PlatformSeverity, "success">;
+  status: PlatformAlertStatus;
+  source: string;
+  module: string;
+  event_id: string | null;
+  acknowledged_by: string | null;
+  acknowledged_at: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  resolution_notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ScheduledJobRunRecord {
+  id: string;
+  company_id: string;
+  branch_id: string | null;
+  job_key: string;
+  job_name: string;
+  job_type: ScheduledJobType;
+  status: ScheduledJobRunStatus;
+  severity: PlatformSeverity;
+  source: string;
+  module: string;
+  started_at: string | null;
+  completed_at: string | null;
+  duration_ms: number | null;
+  failure_reason: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface WebsitePage {
   id: string;
   title: string;

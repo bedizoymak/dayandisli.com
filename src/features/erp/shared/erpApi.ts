@@ -46,6 +46,10 @@ import {
   PaymentProviderHealth,
   PaymentReconciliationLog,
   PaymentRefundOperation,
+  PlatformAlertRecord,
+  PlatformEventRecord,
+  PlatformMetricRecord,
+  ScheduledJobRunRecord,
   Priority,
   ProductionRoute,
   ProductionRouteStep,
@@ -280,6 +284,10 @@ export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatu
     "erp_number_sequences",
     "erp_audit_logs",
     "erp_notifications",
+    "platform_metrics",
+    "platform_events",
+    "platform_alerts",
+    "scheduled_job_runs",
     "purchase_orders",
     "purchase_order_items",
   ];
@@ -462,6 +470,283 @@ export async function listRecentAuditLogs(limit = 10): Promise<ApiResult<ERPAudi
 
   if (error) return failure("listRecentAuditLogs", error, []);
   return success(data ?? []);
+}
+
+export type PlatformOperationalSummary = {
+  metrics: PlatformMetricRecord[];
+  events: PlatformEventRecord[];
+  alerts: PlatformAlertRecord[];
+  scheduledJobRuns: ScheduledJobRunRecord[];
+  openAlertCount: number;
+  criticalAlertCount: number;
+  failedJobCount: number;
+};
+
+async function getCurrentActorEmail() {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.email ?? null;
+}
+
+export async function listPlatformMetrics(scope?: EnterpriseQueryScope, limit = 100): Promise<ApiResult<PlatformMetricRecord[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = supabase
+    .from("platform_metrics" as never)
+    .select("*")
+    .order("measured_at", { ascending: false })
+    .limit(limit);
+
+  query = applyEnterpriseScope(query, enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<PlatformMetricRecord[]>;
+  if (error) return failure("listPlatformMetrics", error, []);
+  return success(data ?? []);
+}
+
+export async function createPlatformMetric(payload: Partial<PlatformMetricRecord> & { metric_key: string; metric_name: string; source: string; module: string }, scope?: EnterpriseQueryScope) {
+  const record = await withEnterpriseOwnership({
+    metric_key: payload.metric_key,
+    metric_name: payload.metric_name,
+    metric_value: payload.metric_value ?? null,
+    metric_unit: payload.metric_unit ?? null,
+    severity: payload.severity ?? "info",
+    status: payload.status ?? "active",
+    source: payload.source,
+    module: payload.module,
+    measured_at: payload.measured_at ?? new Date().toISOString(),
+    metadata: payload.metadata ?? {},
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  }, scope);
+
+  const { data, error } = (await supabase
+    .from("platform_metrics" as never)
+    .insert(record as never)
+    .select("*")
+    .single()) as unknown as DbResult<PlatformMetricRecord>;
+
+  if (error) return failure("createPlatformMetric", error, null);
+  return success(data);
+}
+
+export async function listPlatformEvents(scope?: EnterpriseQueryScope, limit = 200): Promise<ApiResult<PlatformEventRecord[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = supabase
+    .from("platform_events" as never)
+    .select("*")
+    .order("occurred_at", { ascending: false })
+    .limit(limit);
+
+  query = applyEnterpriseScope(query, enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<PlatformEventRecord[]>;
+  if (error) return failure("listPlatformEvents", error, []);
+  return success(data ?? []);
+}
+
+export async function createPlatformEvent(payload: Partial<PlatformEventRecord> & { event_key: string; event_type: string; source: string; module: string; title: string }, scope?: EnterpriseQueryScope) {
+  const record = await withEnterpriseOwnership({
+    event_key: payload.event_key,
+    event_type: payload.event_type,
+    severity: payload.severity ?? "info",
+    status: payload.status ?? "recorded",
+    source: payload.source,
+    module: payload.module,
+    actor_email: payload.actor_email ?? await getCurrentActorEmail(),
+    entity_type: payload.entity_type ?? null,
+    entity_id: payload.entity_id ?? null,
+    title: payload.title,
+    description: payload.description ?? null,
+    occurred_at: payload.occurred_at ?? new Date().toISOString(),
+    metadata: payload.metadata ?? {},
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  }, scope);
+
+  const { data, error } = (await supabase
+    .from("platform_events" as never)
+    .insert(record as never)
+    .select("*")
+    .single()) as unknown as DbResult<PlatformEventRecord>;
+
+  if (error) return failure("createPlatformEvent", error, null);
+  return success(data);
+}
+
+export async function listPlatformAlerts(scope?: EnterpriseQueryScope, limit = 100): Promise<ApiResult<PlatformAlertRecord[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = supabase
+    .from("platform_alerts" as never)
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  query = applyEnterpriseScope(query, enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<PlatformAlertRecord[]>;
+  if (error) return failure("listPlatformAlerts", error, []);
+  return success(data ?? []);
+}
+
+export async function createPlatformAlert(payload: Partial<PlatformAlertRecord> & { alert_key: string; title: string; severity: PlatformAlertRecord["severity"]; source: string; module: string }, scope?: EnterpriseQueryScope) {
+  const record = await withEnterpriseOwnership({
+    alert_key: payload.alert_key,
+    title: payload.title,
+    description: payload.description ?? null,
+    severity: payload.severity,
+    status: payload.status ?? "open",
+    source: payload.source,
+    module: payload.module,
+    event_id: payload.event_id ?? null,
+    metadata: payload.metadata ?? {},
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  }, scope);
+
+  const { data, error } = (await supabase
+    .from("platform_alerts" as never)
+    .insert(record as never)
+    .select("*")
+    .single()) as unknown as DbResult<PlatformAlertRecord>;
+
+  if (error) return failure("createPlatformAlert", error, null);
+  await createPlatformEvent({
+    company_id: data.company_id,
+    branch_id: data.branch_id,
+    event_key: `alert-created-${data.id}`,
+    event_type: "alert_created",
+    severity: data.severity,
+    status: "recorded",
+    source: data.source,
+    module: data.module,
+    entity_type: "platform_alert",
+    entity_id: data.id,
+    title: data.title,
+    description: data.description,
+    metadata: { alert_key: data.alert_key },
+  });
+  return success(data);
+}
+
+export async function acknowledgePlatformAlert(id: string) {
+  const actor = await getCurrentActorEmail();
+  const now = new Date().toISOString();
+  const { data, error } = (await supabase
+    .from("platform_alerts" as never)
+    .update({ status: "acknowledged", acknowledged_by: actor, acknowledged_at: now, updated_at: now } as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<PlatformAlertRecord>;
+
+  if (error) return failure("acknowledgePlatformAlert", error, null);
+  await createPlatformEvent({
+    company_id: data.company_id,
+    branch_id: data.branch_id,
+    event_key: `alert-acknowledged-${data.id}-${now}`,
+    event_type: "alert_acknowledged",
+    severity: data.severity,
+    status: "recorded",
+    source: data.source,
+    module: data.module,
+    actor_email: actor,
+    entity_type: "platform_alert",
+    entity_id: data.id,
+    title: data.title,
+    description: "Alert acknowledged.",
+    metadata: { alert_key: data.alert_key },
+  });
+  return success(data);
+}
+
+export async function resolvePlatformAlert(id: string, resolutionNotes?: string) {
+  const actor = await getCurrentActorEmail();
+  const now = new Date().toISOString();
+  const { data, error } = (await supabase
+    .from("platform_alerts" as never)
+    .update({ status: "resolved", resolved_by: actor, resolved_at: now, resolution_notes: resolutionNotes ?? null, updated_at: now } as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<PlatformAlertRecord>;
+
+  if (error) return failure("resolvePlatformAlert", error, null);
+  await createPlatformEvent({
+    company_id: data.company_id,
+    branch_id: data.branch_id,
+    event_key: `alert-resolved-${data.id}-${now}`,
+    event_type: "alert_resolved",
+    severity: "success",
+    status: "recorded",
+    source: data.source,
+    module: data.module,
+    actor_email: actor,
+    entity_type: "platform_alert",
+    entity_id: data.id,
+    title: data.title,
+    description: resolutionNotes ?? "Alert resolved.",
+    metadata: { alert_key: data.alert_key },
+  });
+  return success(data);
+}
+
+export async function listScheduledJobRuns(scope?: EnterpriseQueryScope, limit = 100): Promise<ApiResult<ScheduledJobRunRecord[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = supabase
+    .from("scheduled_job_runs" as never)
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  query = applyEnterpriseScope(query, enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<ScheduledJobRunRecord[]>;
+  if (error) return failure("listScheduledJobRuns", error, []);
+  return success(data ?? []);
+}
+
+export async function createScheduledJobRun(payload: Partial<ScheduledJobRunRecord> & { job_key: string; job_name: string; job_type: ScheduledJobRunRecord["job_type"] }, scope?: EnterpriseQueryScope) {
+  const record = await withEnterpriseOwnership({
+    job_key: payload.job_key,
+    job_name: payload.job_name,
+    job_type: payload.job_type,
+    status: payload.status ?? "scheduled",
+    severity: payload.severity ?? "info",
+    source: payload.source ?? "erp",
+    module: payload.module ?? "operations",
+    started_at: payload.started_at ?? null,
+    completed_at: payload.completed_at ?? null,
+    duration_ms: payload.duration_ms ?? null,
+    failure_reason: payload.failure_reason ?? null,
+    metadata: payload.metadata ?? {},
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  }, scope);
+
+  const { data, error } = (await supabase
+    .from("scheduled_job_runs" as never)
+    .insert(record as never)
+    .select("*")
+    .single()) as unknown as DbResult<ScheduledJobRunRecord>;
+
+  if (error) return failure("createScheduledJobRun", error, null);
+  return success(data);
+}
+
+export async function listPlatformOperationalSummary(scope?: EnterpriseQueryScope): Promise<ApiResult<PlatformOperationalSummary>> {
+  const [metrics, events, alerts, scheduledJobRuns] = await Promise.all([
+    listPlatformMetrics(scope, 100),
+    listPlatformEvents(scope, 200),
+    listPlatformAlerts(scope, 100),
+    listScheduledJobRuns(scope, 100),
+  ]);
+
+  const firstError = [metrics, events, alerts, scheduledJobRuns].find((result) => result.error);
+  const summary: PlatformOperationalSummary = {
+    metrics: metrics.data,
+    events: events.data,
+    alerts: alerts.data,
+    scheduledJobRuns: scheduledJobRuns.data,
+    openAlertCount: alerts.data.filter((alert) => alert.status === "open" || alert.status === "acknowledged").length,
+    criticalAlertCount: alerts.data.filter((alert) => alert.severity === "critical" && alert.status !== "resolved").length,
+    failedJobCount: scheduledJobRuns.data.filter((job) => job.status === "failed").length,
+  };
+
+  if (firstError?.error) return { ...success(summary), error: firstError.error, missingTable: firstError.missingTable };
+  return success(summary);
 }
 
 export async function listNotifications(limit = 100, includeRead = true): Promise<ApiResult<ERPNotification[]>> {

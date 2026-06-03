@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/erp/StatusBadge";
 import { ERPLayout } from "../layout/ERPLayout";
 import {
   getERPDatabaseStatus,
+  acknowledgePlatformAlert,
   listAccountingEntries,
   listAuditLogs,
   listBranches,
@@ -23,11 +24,14 @@ import {
   listPaymentProviderHealth,
   listPaymentReconciliationLogs,
   listPaymentRefundOperations,
+  listPlatformOperationalSummary,
   listShopFulfillmentHistory,
   listShopPaymentStatuses,
   listShopReturnRequests,
   listShopShipments,
   listWebsiteMediaAssets,
+  resolvePlatformAlert,
+  type PlatformOperationalSummary,
 } from "../shared/erpApi";
 import {
   AccountingEntry,
@@ -43,6 +47,7 @@ import {
   PaymentProviderHealth,
   PaymentReconciliationLog,
   PaymentRefundOperation,
+  PlatformAlertRecord,
   ShopFulfillmentHistory,
   ShopPaymentStatusRecord,
   ShopReturnRequest,
@@ -53,6 +58,7 @@ import {
   AlertDefinition,
   HealthItem,
   OperationalMetric,
+  OperationalTone,
   PlatformTimelineEvent,
   buildMetric,
   healthTone,
@@ -80,6 +86,7 @@ type HealthData = {
   inventoryMovements: InventoryMovement[];
   mediaAssets: WebsiteMediaAsset[];
   documents: DocumentMetadata[];
+  platformSummary: PlatformOperationalSummary | null;
 };
 
 const emptyData: HealthData = {
@@ -101,6 +108,7 @@ const emptyData: HealthData = {
   inventoryMovements: [],
   mediaAssets: [],
   documents: [],
+  platformSummary: null,
 };
 
 const alertLabels: Record<AlertDefinition["severity"], string> = {
@@ -127,6 +135,27 @@ function branchName(branches: CompanyBranch[], id: string | null | undefined) {
 function dateLabel(value: string | null | undefined) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+}
+
+function severityTone(severity: string): OperationalTone {
+  if (severity === "success") return "success";
+  if (severity === "warning") return "warning";
+  if (severity === "critical") return "danger";
+  return "default";
+}
+
+function severityLabel(severity: string) {
+  if (severity === "critical") return "Kritik";
+  if (severity === "warning") return "Uyarı";
+  if (severity === "success") return "Başarılı";
+  return "Bilgi";
+}
+
+function alertStatusLabel(status: PlatformAlertRecord["status"]) {
+  if (status === "open") return "Açık";
+  if (status === "acknowledged") return "Onaylandı";
+  if (status === "resolved") return "Çözüldü";
+  return "Kapatıldı";
 }
 
 export default function ERPHealthCenterPage() {
@@ -164,6 +193,7 @@ export default function ERPHealthCenterPage() {
       inventoryMovements,
       mediaAssets,
       documents,
+      platformSummary,
     ] = await Promise.all([
       getERPDatabaseStatus(),
       listCompanies(),
@@ -183,6 +213,7 @@ export default function ERPHealthCenterPage() {
       listInventoryMovements(),
       listWebsiteMediaAssets(),
       listDocuments(),
+      listPlatformOperationalSummary(),
     ]);
 
     const firstError = [
@@ -204,6 +235,7 @@ export default function ERPHealthCenterPage() {
       inventoryMovements,
       mediaAssets,
       documents,
+      platformSummary,
     ].find((result) => result.error)?.error;
 
     setError(firstError ?? null);
@@ -226,8 +258,21 @@ export default function ERPHealthCenterPage() {
       inventoryMovements: inventoryMovements.data,
       mediaAssets: mediaAssets.data,
       documents: documents.data,
+      platformSummary: platformSummary.data,
     });
     setLoading(false);
+  };
+
+  const handleAcknowledgeAlert = async (id: string) => {
+    const result = await acknowledgePlatformAlert(id);
+    if (result.error) setError(result.error);
+    await load();
+  };
+
+  const handleResolveAlert = async (id: string) => {
+    const result = await resolvePlatformAlert(id, "Resolved from ERP Health Center.");
+    if (result.error) setError(result.error);
+    await load();
   };
 
   useEffect(() => {
@@ -325,6 +370,19 @@ export default function ERPHealthCenterPage() {
   }, [data, error]);
 
   const metrics = useMemo<OperationalMetric[]>(() => {
+    const persistedMetrics = data.platformSummary?.metrics ?? [];
+    if (persistedMetrics.length) {
+      return persistedMetrics.map((metric) =>
+        buildMetric(
+          metric.metric_key,
+          metric.metric_name,
+          metric.metric_value ?? "-",
+          `${metric.source} / ${metric.module}${metric.metric_unit ? ` / ${metric.metric_unit}` : ""}`,
+          severityTone(metric.severity),
+        ),
+      );
+    }
+
     const failedProviderEvents = data.providerEvents.filter((row) => row.processing_status === "failed").length;
     const duplicateEvents = data.providerEvents.filter((row) => row.duplicate_detected).length;
     const failedPayments = data.paymentStatuses.filter((row) => row.status === "failed").length;
@@ -347,6 +405,18 @@ export default function ERPHealthCenterPage() {
   }, [data]);
 
   const alerts = useMemo<AlertDefinition[]>(() => {
+    const persistedAlerts = data.platformSummary?.alerts ?? [];
+    if (persistedAlerts.length) {
+      return persistedAlerts.map((alert) => ({
+        key: alert.id,
+        title: alert.title,
+        severity: alert.severity === "critical" ? "kritik" : alert.severity === "warning" ? "uyarı" : "bilgi",
+        active: alert.status === "open" || alert.status === "acknowledged",
+        count: 1,
+        description: alert.description ?? `${alert.source} / ${alert.module}`,
+      }));
+    }
+
     const failedPayments = data.paymentStatuses.filter((row) => row.status === "failed").length;
     const webhookFailures = data.providerEvents.filter((row) => row.processing_status === "failed").length;
     const syncFailures = data.notifications.filter((row) => row.category === "system" && row.severity === "danger").length;
@@ -362,6 +432,17 @@ export default function ERPHealthCenterPage() {
   }, [data]);
 
   const timeline = useMemo<PlatformTimelineEvent[]>(() => {
+    const persistedEvents = (data.platformSummary?.events ?? []).map((row) => ({
+      id: `platform-${row.id}`,
+      module: row.module,
+      title: row.title,
+      description: row.description || row.event_type,
+      actor: row.actor_email || row.source,
+      companyId: row.company_id,
+      branchId: row.branch_id,
+      createdAt: row.occurred_at,
+      tone: severityTone(row.severity),
+    } satisfies PlatformTimelineEvent));
     const paymentEvents = data.providerEvents.map((row) => ({
       id: `payment-${row.id}`,
       module: "Ödeme",
@@ -415,11 +496,11 @@ export default function ERPHealthCenterPage() {
       createdAt: row.created_at,
       tone: row.severity === "danger" ? "danger" : row.severity === "warning" ? "warning" : row.severity === "success" ? "success" : "default",
     } satisfies PlatformTimelineEvent));
-    return sortTimeline([...paymentEvents, ...fulfillmentEvents, ...inventoryEvents, ...auditEvents, ...automationEvents]).slice(0, 200);
+    return sortTimeline([...persistedEvents, ...paymentEvents, ...fulfillmentEvents, ...inventoryEvents, ...auditEvents, ...automationEvents]).slice(0, 200);
   }, [data]);
 
-  const activeAlerts = alerts.filter((alert) => alert.active).length;
-  const criticalHealth = healthItems.filter((item) => item.status === "critical").length;
+  const activeAlerts = data.platformSummary?.openAlertCount ?? alerts.filter((alert) => alert.active).length;
+  const criticalHealth = data.platformSummary?.criticalAlertCount ?? healthItems.filter((item) => item.status === "critical").length;
 
   return (
     <ERPLayout title="Sağlık Merkezi">
@@ -471,7 +552,7 @@ export default function ERPHealthCenterPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             {metrics.map((metric) => <OverviewCard key={metric.key} title={metric.label} value={metric.value} description={metric.description} tone={metric.tone === "muted" ? "default" : metric.tone} />)}
           </div>
-          <ScheduleFoundation />
+          <ScheduleFoundation jobRuns={data.platformSummary?.scheduledJobRuns ?? []} />
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-4">
@@ -529,22 +610,47 @@ export default function ERPHealthCenterPage() {
         </TabsContent>
 
         <TabsContent value="alerts">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {alerts.map((alert) => (
-              <Card key={alert.key} className="erp-surface rounded-lg">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center justify-between gap-2 text-sm">
-                    {alert.title}
-                    <StatusBadge label={alert.active ? alertLabels[alert.severity] : "Pasif"} tone={alert.active ? alert.severity === "kritik" ? "danger" : alert.severity === "uyarı" ? "warning" : "default" : "muted"} />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold">{alert.count}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">{alert.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {(data.platformSummary?.alerts ?? []).length ? (
+            <DataTable
+              data={data.platformSummary?.alerts ?? []}
+              rowKey={(row) => row.id}
+              emptyMessage="Alarm kaydı bulunamadı"
+              columns={[
+                { key: "time", header: "Zaman", render: (row) => dateLabel(row.created_at) },
+                { key: "title", header: "Alarm", render: (row) => <div><p className="font-medium">{row.title}</p><p className="text-xs text-muted-foreground">{row.description || `${row.source} / ${row.module}`}</p></div> },
+                { key: "severity", header: "Önem", render: (row) => <StatusBadge label={severityLabel(row.severity)} tone={severityTone(row.severity)} /> },
+                { key: "status", header: "Durum", render: (row) => <StatusBadge label={alertStatusLabel(row.status)} tone={row.status === "resolved" ? "success" : row.status === "acknowledged" ? "warning" : row.status === "open" ? "danger" : "muted"} /> },
+                { key: "scope", header: "Kapsam", render: (row) => <div><p>{companyName(data.companies, row.company_id)}</p><p className="text-xs text-muted-foreground">{branchName(data.branches, row.branch_id)}</p></div> },
+                {
+                  key: "actions",
+                  header: "İşlem",
+                  render: (row) => (
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" disabled={row.status !== "open" || loading} onClick={() => handleAcknowledgeAlert(row.id)}>Onayla</Button>
+                      <Button size="sm" variant="outline" disabled={row.status === "resolved" || loading} onClick={() => handleResolveAlert(row.id)}>Çöz</Button>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {alerts.map((alert) => (
+                <Card key={alert.key} className="erp-surface rounded-lg">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center justify-between gap-2 text-sm">
+                      {alert.title}
+                      <StatusBadge label={alert.active ? alertLabels[alert.severity] : "Pasif"} tone={alert.active ? alert.severity === "kritik" ? "danger" : alert.severity === "uyarı" ? "warning" : "default" : "muted"} />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-semibold">{alert.count}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{alert.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="governance" className="space-y-4">
@@ -587,7 +693,7 @@ function OverviewCard({ title, value, description, tone = "default", icon }: { t
   );
 }
 
-function ScheduleFoundation() {
+function ScheduleFoundation({ jobRuns }: { jobRuns: PlatformOperationalSummary["scheduledJobRuns"] }) {
   const jobs = [
     { name: "Mutabakat Kontrolü", cadence: "Saatlik", owner: "Finans", status: "Hazır" },
     { name: "Stok Doğrulama", cadence: "Günlük", owner: "Depo", status: "Hazır" },
@@ -600,13 +706,13 @@ function ScheduleFoundation() {
       <CardHeader><CardTitle className="text-base">Planlı Operasyon Temeli</CardTitle></CardHeader>
       <CardContent>
         <DataTable
-          data={jobs}
-          rowKey={(row) => row.name}
+          data={jobRuns.length ? jobRuns.map((job) => ({ name: job.job_name, cadence: dateLabel(job.created_at), owner: job.module, status: job.status === "success" ? "Başarılı" : job.status === "failed" ? "Hatalı" : job.status === "running" ? "Çalışıyor" : "Planlandı" })) : jobs}
+          rowKey={(row) => `${row.name}-${row.cadence}`}
           columns={[
             { key: "name", header: "İş", render: (row) => row.name },
-            { key: "cadence", header: "Sıklık", render: (row) => row.cadence },
+            { key: "cadence", header: jobRuns.length ? "Son Kayıt" : "Sıklık", render: (row) => row.cadence },
             { key: "owner", header: "Sorumlu", render: (row) => row.owner },
-            { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.status} tone={row.status === "Hazır" ? "success" : "muted"} /> },
+            { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.status} tone={row.status === "Hazır" || row.status === "Başarılı" ? "success" : row.status === "Hatalı" ? "danger" : "muted"} /> },
           ]}
         />
       </CardContent>
