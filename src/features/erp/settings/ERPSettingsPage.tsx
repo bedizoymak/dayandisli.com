@@ -22,6 +22,7 @@ import {
   updateCompany,
   updateERPUser,
   updateWarehouse,
+  upsertCompanyMembership,
 } from "../shared/erpApi";
 import {
   canManageERP,
@@ -229,6 +230,41 @@ export default function ERPSettingsPage() {
     load();
   };
 
+  const assignUserCompany = async (target: ERPUser, companyId: string | null) => {
+    await updateUser(target, { default_company_id: companyId, default_branch_id: null, accessible_company_ids: companyId ? [companyId] : [], accessible_branch_ids: [] }, "Varsayılan şirket güncellendi.");
+    if (companyId) {
+      await upsertCompanyMembership({
+        company_id: companyId,
+        branch_id: null,
+        erp_user_id: target.id,
+        auth_user_id: target.auth_user_id,
+        email: target.email,
+        role: target.role,
+        is_company_admin: target.role === "admin",
+        is_active: target.is_active,
+      });
+    }
+    load();
+  };
+
+  const assignUserBranch = async (target: ERPUser, branchId: string | null) => {
+    const branch = branches.find((item) => item.id === branchId);
+    await updateUser(target, { default_branch_id: branchId, accessible_branch_ids: branchId ? [branchId] : [] }, "Varsayılan şube güncellendi.");
+    if (branch) {
+      await upsertCompanyMembership({
+        company_id: branch.company_id,
+        branch_id: branch.id,
+        erp_user_id: target.id,
+        auth_user_id: target.auth_user_id,
+        email: target.email,
+        role: target.role,
+        is_branch_manager: target.role === "admin" || target.role === "warehouse",
+        is_active: target.is_active,
+      });
+    }
+    load();
+  };
+
   const companyName = (id: string | null | undefined) => companies.find((company) => company.id === id)?.trade_name || companies.find((company) => company.id === id)?.legal_name || "-";
   const branchName = (id: string | null | undefined) => branches.find((branch) => branch.id === id)?.name || "-";
 
@@ -400,7 +436,7 @@ export default function ERPSettingsPage() {
                       disabled={!canEdit}
                       className="h-9 rounded-md border border-input bg-background px-2 text-xs"
                       value={row.default_company_id ?? ""}
-                      onChange={(event) => updateUser(row, { default_company_id: event.target.value || null, accessible_company_ids: event.target.value ? [event.target.value] : [] }, "Varsayılan şirket güncellendi.")}
+                      onChange={(event) => assignUserCompany(row, event.target.value || null)}
                     >
                       <option value="">Şirket Seç</option>
                       {companies.map((company) => <option key={company.id} value={company.id}>{company.trade_name || company.legal_name}</option>)}
@@ -409,7 +445,7 @@ export default function ERPSettingsPage() {
                       disabled={!canEdit}
                       className="h-9 rounded-md border border-input bg-background px-2 text-xs"
                       value={row.default_branch_id ?? ""}
-                      onChange={(event) => updateUser(row, { default_branch_id: event.target.value || null, accessible_branch_ids: event.target.value ? [event.target.value] : [] }, "Varsayılan şube güncellendi.")}
+                      onChange={(event) => assignUserBranch(row, event.target.value || null)}
                     >
                       <option value="">Şube Seç</option>
                       {branches.filter((branch) => !row.default_company_id || branch.company_id === row.default_company_id).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}

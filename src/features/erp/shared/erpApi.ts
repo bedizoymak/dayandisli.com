@@ -91,6 +91,11 @@ export const ERP_MIGRATION_MESSAGE =
   "ERP veritabanı tabloları henüz oluşturulmamış. Supabase SQL geçiş dosyasını çalıştırın.";
 
 type DbResult<T> = { data: T | null; error: unknown; count?: number | null };
+export type EnterpriseQueryScope = {
+  companyId?: string | null;
+  branchId?: string | null;
+  consolidated?: boolean;
+};
 
 function toErrorMessage(error: unknown) {
   if (!error) return "Bilinmeyen hata";
@@ -490,11 +495,12 @@ export async function markAllNotificationsRead() {
   return success(true);
 }
 
-export async function listStakeholders(search = "", type?: StakeholderType | "all"): Promise<ApiResult<Stakeholder[]>> {
-  let query = supabase
+export async function listStakeholders(search = "", type?: StakeholderType | "all", scope?: EnterpriseQueryScope): Promise<ApiResult<Stakeholder[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = applyEnterpriseScope(supabase
     .from("stakeholders" as never)
     .select("*")
-    .order("company_name", { ascending: true });
+    .order("company_name", { ascending: true }), enterpriseScope);
 
   const q = normalizeSearch(search);
   if (q) {
@@ -511,24 +517,27 @@ export async function listStakeholders(search = "", type?: StakeholderType | "al
 }
 
 export async function createStakeholder(payload: Partial<Stakeholder> & { type: StakeholderType; company_name: string }) {
+  const record = await withEnterpriseOwnership({
+    type: payload.type,
+    company_name: payload.company_name,
+    contact_name: payload.contact_name ?? null,
+    phone: payload.phone ?? null,
+    email: payload.email ?? null,
+    tax_office: payload.tax_office ?? null,
+    tax_number: payload.tax_number ?? null,
+    address: payload.address ?? null,
+    city: payload.city ?? null,
+    country: payload.country ?? "Türkiye",
+    risk_limit: payload.risk_limit ?? 0,
+    current_balance: payload.current_balance ?? 0,
+    notes: payload.notes ?? null,
+    is_active: payload.is_active ?? true,
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
   const { data, error } = (await supabase
     .from("stakeholders" as never)
-    .insert({
-      type: payload.type,
-      company_name: payload.company_name,
-      contact_name: payload.contact_name ?? null,
-      phone: payload.phone ?? null,
-      email: payload.email ?? null,
-      tax_office: payload.tax_office ?? null,
-      tax_number: payload.tax_number ?? null,
-      address: payload.address ?? null,
-      city: payload.city ?? null,
-      country: payload.country ?? "Türkiye",
-      risk_limit: payload.risk_limit ?? 0,
-      current_balance: payload.current_balance ?? 0,
-      notes: payload.notes ?? null,
-      is_active: payload.is_active ?? true,
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<Stakeholder>;
 
@@ -557,6 +566,51 @@ export async function getStakeholderById(id: string) {
 
   if (error) return failure("getStakeholderById", error, null);
   return success(data);
+}
+
+async function getDefaultEnterpriseScope(): Promise<EnterpriseQueryScope> {
+  const { data: authData } = await supabase.auth.getUser();
+  const email = authData.user?.email;
+  if (!email) return { consolidated: true };
+
+  const { data, error } = (await supabase
+    .from("erp_users" as never)
+    .select("default_company_id, default_branch_id, role")
+    .eq("email", email)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()) as unknown as DbResult<Pick<ERPUser, "default_company_id" | "default_branch_id" | "role">>;
+
+  if (error || !data) return { consolidated: true };
+  if (data.role === "admin" && !data.default_company_id) return { consolidated: true };
+  return {
+    companyId: data.default_company_id ?? null,
+    branchId: data.default_branch_id ?? null,
+    consolidated: !data.default_company_id,
+  };
+}
+
+async function resolveEnterpriseScope(scope?: EnterpriseQueryScope): Promise<EnterpriseQueryScope> {
+  if (scope?.consolidated) return scope;
+  if (scope?.companyId || scope?.branchId) return scope;
+  return getDefaultEnterpriseScope();
+}
+
+function applyEnterpriseScope<T>(query: T, scope: EnterpriseQueryScope): T {
+  if (scope.consolidated) return query;
+  let scopedQuery = query as { eq: (column: string, value: string) => unknown };
+  if (scope.companyId) scopedQuery = scopedQuery.eq("company_id", scope.companyId) as typeof scopedQuery;
+  if (scope.branchId) scopedQuery = scopedQuery.eq("branch_id", scope.branchId) as typeof scopedQuery;
+  return scopedQuery as T;
+}
+
+async function withEnterpriseOwnership<T extends { company_id?: string | null; branch_id?: string | null }>(payload: T, scope?: EnterpriseQueryScope): Promise<T> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  return {
+    ...payload,
+    company_id: payload.company_id ?? enterpriseScope.companyId ?? null,
+    branch_id: payload.branch_id ?? enterpriseScope.branchId ?? null,
+  };
 }
 
 export async function listCompanies(): Promise<ApiResult<Company[]>> {
@@ -704,6 +758,46 @@ export async function listCompanyMemberships(): Promise<ApiResult<CompanyMembers
   return success(data ?? []);
 }
 
+export async function upsertCompanyMembership(payload: Partial<CompanyMembership> & { company_id: string; email: string }) {
+  const record = {
+    company_id: payload.company_id,
+    branch_id: payload.branch_id ?? null,
+    erp_user_id: payload.erp_user_id ?? null,
+    auth_user_id: payload.auth_user_id ?? null,
+    email: payload.email,
+    role: payload.role ?? "viewer",
+    is_company_admin: payload.is_company_admin ?? false,
+    is_branch_manager: payload.is_branch_manager ?? false,
+    is_active: payload.is_active ?? true,
+  };
+  const existing = (await supabase
+    .from("company_memberships" as never)
+    .select("id")
+    .eq("company_id" as never, record.company_id as never)
+    .eq("email" as never, record.email as never)
+    .limit(1)
+    .maybeSingle()) as unknown as DbResult<{ id: string }>;
+
+  const { data, error } = existing.data
+    ? ((await supabase.from("company_memberships" as never).update(record as never).eq("id", existing.data.id).select("*").single()) as unknown as DbResult<CompanyMembership>)
+    : ((await supabase
+      .from("company_memberships" as never)
+      .insert(record as never)
+    .select("*")
+      .single()) as unknown as DbResult<CompanyMembership>);
+
+  if (error) return failure("upsertCompanyMembership", error, null);
+  await createAuditLog({
+    company_id: data?.company_id,
+    branch_id: data?.branch_id,
+    entity_type: "company_membership",
+    entity_id: data?.id,
+    action: "membership_upserted",
+    description: `${data?.email} şirket üyeliği güncellendi.`,
+  });
+  return success(data);
+}
+
 export async function listERPUsers(): Promise<ApiResult<ERPUser[]>> {
   const { data, error } = (await supabase
     .from("erp_users" as never)
@@ -814,8 +908,9 @@ export async function updateERPUser(id: string, payload: Partial<ERPUser>) {
   return success(data);
 }
 
-export async function listCRMLeads(search = "", status: CRMLeadStatus | "all" = "all"): Promise<ApiResult<CRMLead[]>> {
-  let query = supabase.from("crm_leads" as never).select("*").order("created_at", { ascending: false });
+export async function listCRMLeads(search = "", status: CRMLeadStatus | "all" = "all", scope?: EnterpriseQueryScope): Promise<ApiResult<CRMLead[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = applyEnterpriseScope(supabase.from("crm_leads" as never).select("*").order("created_at", { ascending: false }), enterpriseScope);
   if (status !== "all") query = query.eq("status" as never, status as never);
   const q = normalizeSearch(search);
   if (q) query = query.or(`company_name.ilike.%${q}%,contact_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,lead_no.ilike.%${q}%` as never);
@@ -826,7 +921,8 @@ export async function listCRMLeads(search = "", status: CRMLeadStatus | "all" = 
 
 export async function createCRMLead(payload: Partial<CRMLead> & { company_name: string }) {
   const leadNo = await getNextERPNumber("CRM_LEAD");
-  const { data, error } = (await supabase.from("crm_leads" as never).insert({ ...payload, lead_no: leadNo.data } as never).select("*").single()) as unknown as DbResult<CRMLead>;
+  const record = await withEnterpriseOwnership({ ...payload, lead_no: leadNo.data });
+  const { data, error } = (await supabase.from("crm_leads" as never).insert(record as never).select("*").single()) as unknown as DbResult<CRMLead>;
   if (error) return failure<CRMLead | null>("createCRMLead", error, null);
   await createAuditLog({ entity_type: "lead", entity_id: data?.id, action: "created", description: `${data?.lead_no} potansiyel müşteri oluşturuldu.` });
   return success(data);
@@ -842,8 +938,9 @@ export async function updateCRMLead(id: string, payload: Partial<CRMLead>) {
   return success(data);
 }
 
-export async function listCRMOpportunities(search = "", status: CRMOpportunityStatus | "all" = "all"): Promise<ApiResult<CRMOpportunity[]>> {
-  let query = supabase.from("crm_opportunities" as never).select("*").order("created_at", { ascending: false });
+export async function listCRMOpportunities(search = "", status: CRMOpportunityStatus | "all" = "all", scope?: EnterpriseQueryScope): Promise<ApiResult<CRMOpportunity[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = applyEnterpriseScope(supabase.from("crm_opportunities" as never).select("*").order("created_at", { ascending: false }), enterpriseScope);
   if (status !== "all") query = query.eq("status" as never, status as never);
   const q = normalizeSearch(search);
   if (q) query = query.or(`title.ilike.%${q}%,opportunity_no.ilike.%${q}%` as never);
@@ -854,7 +951,8 @@ export async function listCRMOpportunities(search = "", status: CRMOpportunitySt
 
 export async function createCRMOpportunity(payload: Partial<CRMOpportunity> & { title: string }) {
   const opportunityNo = await getNextERPNumber("CRM_OPPORTUNITY");
-  const { data, error } = (await supabase.from("crm_opportunities" as never).insert({ ...payload, opportunity_no: opportunityNo.data } as never).select("*").single()) as unknown as DbResult<CRMOpportunity>;
+  const record = await withEnterpriseOwnership({ ...payload, opportunity_no: opportunityNo.data });
+  const { data, error } = (await supabase.from("crm_opportunities" as never).insert(record as never).select("*").single()) as unknown as DbResult<CRMOpportunity>;
   if (error) return failure<CRMOpportunity | null>("createCRMOpportunity", error, null);
   await createAuditLog({ entity_type: "opportunity", entity_id: data?.id, action: "created", description: `${data?.opportunity_no} fırsat oluşturuldu.` });
   return success(data);
@@ -881,8 +979,9 @@ export async function convertLeadToOpportunity(lead: CRMLead) {
   return opportunity;
 }
 
-export async function listCRMTasks(search = "", status: CRMTaskStatus | "all" = "all"): Promise<ApiResult<CRMTask[]>> {
-  let query = supabase.from("crm_tasks" as never).select("*").order("created_at", { ascending: false });
+export async function listCRMTasks(search = "", status: CRMTaskStatus | "all" = "all", scope?: EnterpriseQueryScope): Promise<ApiResult<CRMTask[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = applyEnterpriseScope(supabase.from("crm_tasks" as never).select("*").order("created_at", { ascending: false }), enterpriseScope);
   if (status !== "all") query = query.eq("status" as never, status as never);
   const q = normalizeSearch(search);
   if (q) query = query.ilike("title" as never, `%${q}%` as never);
@@ -892,7 +991,8 @@ export async function listCRMTasks(search = "", status: CRMTaskStatus | "all" = 
 }
 
 export async function createCRMTask(payload: Partial<CRMTask> & { title: string }) {
-  const { data, error } = (await supabase.from("crm_tasks" as never).insert(payload as never).select("*").single()) as unknown as DbResult<CRMTask>;
+  const record = await withEnterpriseOwnership(payload);
+  const { data, error } = (await supabase.from("crm_tasks" as never).insert(record as never).select("*").single()) as unknown as DbResult<CRMTask>;
   if (error) return failure<CRMTask | null>("createCRMTask", error, null);
   return success(data);
 }
@@ -1223,11 +1323,12 @@ function quotationProductToItem(product: Record<string, unknown>, fallbackCurren
   };
 }
 
-export async function listSalesOrders(search = ""): Promise<ApiResult<SalesOrder[]>> {
-  let query = supabase
+export async function listSalesOrders(search = "", scope?: EnterpriseQueryScope): Promise<ApiResult<SalesOrder[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = applyEnterpriseScope(supabase
     .from("sales_orders" as never)
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }), enterpriseScope);
 
   const q = normalizeSearch(search);
   if (q) query = query.or(`order_no.ilike.%${q}%,title.ilike.%${q}%`);
@@ -1253,25 +1354,28 @@ export const getSalesOrderById = getSalesOrder;
 export async function createSalesOrder(payload: Partial<SalesOrder> & { title: string }) {
   const generated = payload.order_no ? success(payload.order_no) : await getNextERPNumber("SALES_ORDER");
   const orderNo = generated.data;
+  const record = await withEnterpriseOwnership({
+    order_no: orderNo,
+    stakeholder_id: payload.stakeholder_id ?? null,
+    source_quotation_id: payload.source_quotation_id ?? null,
+    title: payload.title,
+    description: payload.description ?? null,
+    status: payload.status ?? "new",
+    priority: payload.priority ?? "normal",
+    order_date: payload.order_date ?? new Date().toISOString().slice(0, 10),
+    due_date: payload.due_date ?? null,
+    currency: payload.currency ?? "TRY",
+    subtotal: payload.subtotal ?? 0,
+    tax_total: payload.tax_total ?? 0,
+    grand_total: payload.grand_total ?? 0,
+    notes: payload.notes ?? null,
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
 
   const { data, error } = (await supabase
     .from("sales_orders" as never)
-    .insert({
-      order_no: orderNo,
-      stakeholder_id: payload.stakeholder_id ?? null,
-      source_quotation_id: payload.source_quotation_id ?? null,
-      title: payload.title,
-      description: payload.description ?? null,
-      status: payload.status ?? "new",
-      priority: payload.priority ?? "normal",
-      order_date: payload.order_date ?? new Date().toISOString().slice(0, 10),
-      due_date: payload.due_date ?? null,
-      currency: payload.currency ?? "TRY",
-      subtotal: payload.subtotal ?? 0,
-      tax_total: payload.tax_total ?? 0,
-      grand_total: payload.grand_total ?? 0,
-      notes: payload.notes ?? null,
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<SalesOrder>;
 
@@ -1482,11 +1586,12 @@ export async function deleteProductionRouteStep(id: string) {
   return success(true);
 }
 
-export async function listWorkOrders(search = ""): Promise<ApiResult<WorkOrder[]>> {
-  let query = supabase
+export async function listWorkOrders(search = "", scope?: EnterpriseQueryScope): Promise<ApiResult<WorkOrder[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = applyEnterpriseScope(supabase
     .from("work_orders" as never)
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }), enterpriseScope);
 
   const q = normalizeSearch(search);
   if (q) query = query.or(`work_order_no.ilike.%${q}%,title.ilike.%${q}%,part_name.ilike.%${q}%`);
@@ -1511,23 +1616,26 @@ export const getWorkOrderById = getWorkOrder;
 
 export async function createWorkOrder(payload: Partial<WorkOrder> & { title: string }) {
   const generated = payload.work_order_no ? success(payload.work_order_no) : await getNextERPNumber("WORK_ORDER");
+  const record = await withEnterpriseOwnership({
+    work_order_no: generated.data,
+    sales_order_id: payload.sales_order_id ?? null,
+    stakeholder_id: payload.stakeholder_id ?? null,
+    title: payload.title,
+    part_name: payload.part_name ?? null,
+    part_code: payload.part_code ?? null,
+    quantity: payload.quantity ?? 1,
+    status: payload.status ?? "planned",
+    priority: payload.priority ?? "normal",
+    planned_start_date: payload.planned_start_date ?? null,
+    planned_end_date: payload.planned_end_date ?? null,
+    notes: payload.notes ?? null,
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
 
   const { data, error } = (await supabase
     .from("work_orders" as never)
-    .insert({
-      work_order_no: generated.data,
-      sales_order_id: payload.sales_order_id ?? null,
-      stakeholder_id: payload.stakeholder_id ?? null,
-      title: payload.title,
-      part_name: payload.part_name ?? null,
-      part_code: payload.part_code ?? null,
-      quantity: payload.quantity ?? 1,
-      status: payload.status ?? "planned",
-      priority: payload.priority ?? "normal",
-      planned_start_date: payload.planned_start_date ?? null,
-      planned_end_date: payload.planned_end_date ?? null,
-      notes: payload.notes ?? null,
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<WorkOrder>;
 
@@ -1785,11 +1893,12 @@ export async function updateSubcontractingJob(id: string, payload: Partial<Subco
   return success(data);
 }
 
-export async function listInventoryItems(search = ""): Promise<ApiResult<InventoryItem[]>> {
-  let query = supabase
+export async function listInventoryItems(search = "", scope?: EnterpriseQueryScope): Promise<ApiResult<InventoryItem[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = applyEnterpriseScope(supabase
     .from("inventory_items" as never)
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }), enterpriseScope);
 
   const q = normalizeSearch(search);
   if (q) query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%`);
@@ -1811,21 +1920,24 @@ export async function getInventoryItemById(id: string) {
 }
 
 export async function createInventoryItem(payload: Partial<InventoryItem> & { item_type: InventoryItem["item_type"]; name: string }) {
+  const record = await withEnterpriseOwnership({
+    item_type: payload.item_type,
+    code: payload.code ?? null,
+    name: payload.name,
+    description: payload.description ?? null,
+    unit: payload.unit ?? "adet",
+    current_stock: payload.current_stock ?? 0,
+    min_stock: payload.min_stock ?? 0,
+    location: payload.location ?? null,
+    supplier_id: payload.supplier_id ?? null,
+    unit_cost: payload.unit_cost ?? 0,
+    is_active: payload.is_active ?? true,
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
   const { data, error } = (await supabase
     .from("inventory_items" as never)
-    .insert({
-      item_type: payload.item_type,
-      code: payload.code ?? null,
-      name: payload.name,
-      description: payload.description ?? null,
-      unit: payload.unit ?? "adet",
-      current_stock: payload.current_stock ?? 0,
-      min_stock: payload.min_stock ?? 0,
-      location: payload.location ?? null,
-      supplier_id: payload.supplier_id ?? null,
-      unit_cost: payload.unit_cost ?? 0,
-      is_active: payload.is_active ?? true,
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<InventoryItem>;
 
@@ -1845,12 +1957,14 @@ export async function updateInventoryItem(id: string, payload: Partial<Inventory
   return success(data);
 }
 
-export async function listInventoryMovements(): Promise<ApiResult<InventoryMovement[]>> {
-  const { data, error } = (await supabase
+export async function listInventoryMovements(scope?: EnterpriseQueryScope): Promise<ApiResult<InventoryMovement[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("inventory_movements" as never)
     .select("*")
     .order("movement_date", { ascending: false })
-    .limit(200)) as unknown as DbResult<InventoryMovement[]>;
+    .limit(200), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<InventoryMovement[]>;
 
   if (error) return failure("listInventoryMovements", error, []);
   return success(data ?? []);
@@ -1934,11 +2048,13 @@ export async function createInventoryMovement(payload: {
   return success(data);
 }
 
-export async function listEmployees(): Promise<ApiResult<Employee[]>> {
-  const { data, error } = (await supabase
+export async function listEmployees(scope?: EnterpriseQueryScope): Promise<ApiResult<Employee[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("employees" as never)
     .select("*")
-    .order("full_name", { ascending: true })) as unknown as DbResult<Employee[]>;
+    .order("full_name", { ascending: true }), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<Employee[]>;
 
   if (error) return failure("listEmployees", error, []);
   return success(data ?? []);
@@ -2495,27 +2611,32 @@ export async function updateMaintenanceTask(id: string, payload: Partial<Mainten
   return success(data);
 }
 
-export async function listFinancialAccounts(): Promise<ApiResult<FinancialAccount[]>> {
-  const { data, error } = (await supabase
+export async function listFinancialAccounts(scope?: EnterpriseQueryScope): Promise<ApiResult<FinancialAccount[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("financial_accounts" as never)
     .select("*")
-    .order("name", { ascending: true })) as unknown as DbResult<FinancialAccount[]>;
+    .order("name", { ascending: true }), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<FinancialAccount[]>;
 
   if (error) return failure("listFinancialAccounts", error, []);
   return success(data ?? []);
 }
 
 export async function createFinancialAccount(payload: Partial<FinancialAccount> & { account_type: FinancialAccount["account_type"]; name: string }) {
+  const record = await withEnterpriseOwnership({
+    account_type: payload.account_type,
+    name: payload.name,
+    currency: payload.currency ?? "TRY",
+    opening_balance: payload.opening_balance ?? 0,
+    current_balance: payload.current_balance ?? payload.opening_balance ?? 0,
+    is_active: payload.is_active ?? true,
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
   const { data, error } = (await supabase
     .from("financial_accounts" as never)
-    .insert({
-      account_type: payload.account_type,
-      name: payload.name,
-      currency: payload.currency ?? "TRY",
-      opening_balance: payload.opening_balance ?? 0,
-      current_balance: payload.current_balance ?? payload.opening_balance ?? 0,
-      is_active: payload.is_active ?? true,
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<FinancialAccount>;
 
@@ -2523,32 +2644,37 @@ export async function createFinancialAccount(payload: Partial<FinancialAccount> 
   return success(data);
 }
 
-export async function listInvoices(): Promise<ApiResult<Invoice[]>> {
-  const { data, error } = (await supabase
+export async function listInvoices(scope?: EnterpriseQueryScope): Promise<ApiResult<Invoice[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("invoices" as never)
     .select("*")
-    .order("invoice_date", { ascending: false })) as unknown as DbResult<Invoice[]>;
+    .order("invoice_date", { ascending: false }), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<Invoice[]>;
 
   if (error) return failure("listInvoices", error, []);
   return success(data ?? []);
 }
 
 export async function createInvoice(payload: Partial<Invoice> & { invoice_type: "sales" | "purchase" }) {
+  const record = await withEnterpriseOwnership({
+    invoice_type: payload.invoice_type,
+    invoice_no: payload.invoice_no ?? null,
+    stakeholder_id: payload.stakeholder_id ?? null,
+    invoice_date: payload.invoice_date ?? new Date().toISOString().slice(0, 10),
+    due_date: payload.due_date ?? null,
+    currency: payload.currency ?? "TRY",
+    subtotal: payload.subtotal ?? 0,
+    tax_total: payload.tax_total ?? 0,
+    grand_total: payload.grand_total ?? 0,
+    status: payload.status ?? "draft",
+    notes: payload.notes ?? null,
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
   const { data, error } = (await supabase
     .from("invoices" as never)
-    .insert({
-      invoice_type: payload.invoice_type,
-      invoice_no: payload.invoice_no ?? null,
-      stakeholder_id: payload.stakeholder_id ?? null,
-      invoice_date: payload.invoice_date ?? new Date().toISOString().slice(0, 10),
-      due_date: payload.due_date ?? null,
-      currency: payload.currency ?? "TRY",
-      subtotal: payload.subtotal ?? 0,
-      tax_total: payload.tax_total ?? 0,
-      grand_total: payload.grand_total ?? 0,
-      status: payload.status ?? "draft",
-      notes: payload.notes ?? null,
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<Invoice>;
 
@@ -2568,29 +2694,34 @@ export async function updateInvoice(id: string, payload: Partial<Invoice>) {
   return success(data);
 }
 
-export async function listPayments(): Promise<ApiResult<Payment[]>> {
-  const { data, error } = (await supabase
+export async function listPayments(scope?: EnterpriseQueryScope): Promise<ApiResult<Payment[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("payments" as never)
     .select("*")
-    .order("payment_date", { ascending: false })) as unknown as DbResult<Payment[]>;
+    .order("payment_date", { ascending: false }), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<Payment[]>;
 
   if (error) return failure("listPayments", error, []);
   return success(data ?? []);
 }
 
 export async function createPayment(payload: Partial<Payment> & { payment_type: "collection" | "payment"; amount: number }) {
+  const record = await withEnterpriseOwnership({
+    payment_type: payload.payment_type,
+    stakeholder_id: payload.stakeholder_id ?? null,
+    financial_account_id: payload.financial_account_id ?? null,
+    amount: payload.amount,
+    currency: payload.currency ?? "TRY",
+    payment_date: payload.payment_date ?? new Date().toISOString().slice(0, 10),
+    description: payload.description ?? null,
+    related_invoice_id: payload.related_invoice_id ?? null,
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
   const { data, error } = (await supabase
     .from("payments" as never)
-    .insert({
-      payment_type: payload.payment_type,
-      stakeholder_id: payload.stakeholder_id ?? null,
-      financial_account_id: payload.financial_account_id ?? null,
-      amount: payload.amount,
-      currency: payload.currency ?? "TRY",
-      payment_date: payload.payment_date ?? new Date().toISOString().slice(0, 10),
-      description: payload.description ?? null,
-      related_invoice_id: payload.related_invoice_id ?? null,
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<Payment>;
 
@@ -2610,11 +2741,12 @@ export async function updatePayment(id: string, payload: Partial<Payment>) {
   return success(data);
 }
 
-export async function listPurchaseOrders(search = ""): Promise<ApiResult<PurchaseOrder[]>> {
-  let query = supabase
+export async function listPurchaseOrders(search = "", scope?: EnterpriseQueryScope): Promise<ApiResult<PurchaseOrder[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = applyEnterpriseScope(supabase
     .from("purchase_orders" as never)
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }), enterpriseScope);
 
   const q = normalizeSearch(search);
   if (q) query = query.or(`purchase_order_no.ilike.%${q}%,title.ilike.%${q}%`);
@@ -2637,21 +2769,24 @@ export async function getPurchaseOrderById(id: string) {
 
 export async function createPurchaseOrder(payload: Partial<PurchaseOrder> & { title: string }) {
   const generated = payload.purchase_order_no ? success(payload.purchase_order_no) : await getNextERPNumber("PURCHASE_ORDER");
+  const record = await withEnterpriseOwnership({
+    purchase_order_no: generated.data,
+    supplier_id: payload.supplier_id ?? null,
+    title: payload.title,
+    status: payload.status ?? "draft",
+    order_date: payload.order_date ?? new Date().toISOString().slice(0, 10),
+    expected_delivery_date: payload.expected_delivery_date ?? null,
+    currency: payload.currency ?? "TRY",
+    subtotal: payload.subtotal ?? 0,
+    tax_total: payload.tax_total ?? 0,
+    grand_total: payload.grand_total ?? 0,
+    notes: payload.notes ?? null,
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
   const { data, error } = (await supabase
     .from("purchase_orders" as never)
-    .insert({
-      purchase_order_no: generated.data,
-      supplier_id: payload.supplier_id ?? null,
-      title: payload.title,
-      status: payload.status ?? "draft",
-      order_date: payload.order_date ?? new Date().toISOString().slice(0, 10),
-      expected_delivery_date: payload.expected_delivery_date ?? null,
-      currency: payload.currency ?? "TRY",
-      subtotal: payload.subtotal ?? 0,
-      tax_total: payload.tax_total ?? 0,
-      grand_total: payload.grand_total ?? 0,
-      notes: payload.notes ?? null,
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<PurchaseOrder>;
 
@@ -2844,31 +2979,36 @@ export async function listShopCarts(): Promise<ApiResult<ShopCart[]>> {
   return success(data ?? []);
 }
 
-export async function listShopPaymentStatuses(): Promise<ApiResult<ShopPaymentStatusRecord[]>> {
-  const { data, error } = (await supabase
+export async function listShopPaymentStatuses(scope?: EnterpriseQueryScope): Promise<ApiResult<ShopPaymentStatusRecord[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("shop_payment_statuses" as never)
     .select("*")
-    .order("created_at", { ascending: false })) as unknown as DbResult<ShopPaymentStatusRecord[]>;
+    .order("created_at", { ascending: false }), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<ShopPaymentStatusRecord[]>;
 
   if (error) return failure("listShopPaymentStatuses", error, []);
   return success(data ?? []);
 }
 
 export async function createShopPaymentStatus(payload: Partial<ShopPaymentStatusRecord> & { order_id: string }) {
+  const record = await withEnterpriseOwnership({
+    order_id: payload.order_id,
+    customer_user_id: payload.customer_user_id ?? null,
+    status: payload.status ?? "pending",
+    lifecycle_status: payload.lifecycle_status ?? "payment_pending",
+    future_provider: payload.future_provider ?? null,
+    provider: payload.provider ?? null,
+    transaction_reference: payload.transaction_reference ?? null,
+    amount: payload.amount ?? 0,
+    currency: payload.currency ?? "TRY",
+    notes: payload.notes ?? null,
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
   const { data, error } = (await supabase
     .from("shop_payment_statuses" as never)
-    .insert({
-      order_id: payload.order_id,
-      customer_user_id: payload.customer_user_id ?? null,
-      status: payload.status ?? "pending",
-      lifecycle_status: payload.lifecycle_status ?? "payment_pending",
-      future_provider: payload.future_provider ?? null,
-      provider: payload.provider ?? null,
-      transaction_reference: payload.transaction_reference ?? null,
-      amount: payload.amount ?? 0,
-      currency: payload.currency ?? "TRY",
-      notes: payload.notes ?? null,
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<ShopPaymentStatusRecord>;
 
@@ -2991,63 +3131,74 @@ export async function updateShopReturnRequest(id: string, payload: Partial<ShopR
   return success(data);
 }
 
-export async function listPaymentProviderEvents(): Promise<ApiResult<PaymentProviderEvent[]>> {
-  const { data, error } = (await supabase
+export async function listPaymentProviderEvents(scope?: EnterpriseQueryScope): Promise<ApiResult<PaymentProviderEvent[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("payment_provider_events" as never)
     .select("*")
     .order("received_at", { ascending: false })
-    .limit(100)) as unknown as DbResult<PaymentProviderEvent[]>;
+    .limit(100), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<PaymentProviderEvent[]>;
 
   if (error) return failure("listPaymentProviderEvents", error, []);
   return success(data ?? []);
 }
 
-export async function listPaymentReconciliationLogs(): Promise<ApiResult<PaymentReconciliationLog[]>> {
-  const { data, error } = (await supabase
+export async function listPaymentReconciliationLogs(scope?: EnterpriseQueryScope): Promise<ApiResult<PaymentReconciliationLog[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("payment_reconciliation_logs" as never)
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(100)) as unknown as DbResult<PaymentReconciliationLog[]>;
+    .limit(100), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<PaymentReconciliationLog[]>;
 
   if (error) return failure("listPaymentReconciliationLogs", error, []);
   return success(data ?? []);
 }
 
-export async function listPaymentRefundOperations(): Promise<ApiResult<PaymentRefundOperation[]>> {
-  const { data, error } = (await supabase
+export async function listPaymentRefundOperations(scope?: EnterpriseQueryScope): Promise<ApiResult<PaymentRefundOperation[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("payment_refund_operations" as never)
     .select("*")
-    .order("created_at", { ascending: false })) as unknown as DbResult<PaymentRefundOperation[]>;
+    .order("created_at", { ascending: false }), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<PaymentRefundOperation[]>;
 
   if (error) return failure("listPaymentRefundOperations", error, []);
   return success(data ?? []);
 }
 
-export async function listAccountingEntries(): Promise<ApiResult<AccountingEntry[]>> {
-  const { data, error } = (await supabase
+export async function listAccountingEntries(scope?: EnterpriseQueryScope): Promise<ApiResult<AccountingEntry[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  const query = applyEnterpriseScope(supabase
     .from("accounting_entries" as never)
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(100)) as unknown as DbResult<AccountingEntry[]>;
+    .limit(100), enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<AccountingEntry[]>;
 
   if (error) return failure("listAccountingEntries", error, []);
   return success(data ?? []);
 }
 
 export async function createPaymentRefundOperation(payload: Partial<PaymentRefundOperation> & { return_request_id: string; order_id: string }) {
+  const record = await withEnterpriseOwnership({
+    return_request_id: payload.return_request_id,
+    order_id: payload.order_id,
+    payment_status_id: payload.payment_status_id ?? null,
+    provider: payload.provider ?? null,
+    requested_amount: payload.requested_amount ?? 0,
+    approved_amount: payload.approved_amount ?? null,
+    currency: payload.currency ?? "TRY",
+    status: payload.status ?? "requested",
+    metadata: payload.metadata ?? {},
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
   const { data, error } = (await supabase
     .from("payment_refund_operations" as never)
-    .insert({
-      return_request_id: payload.return_request_id,
-      order_id: payload.order_id,
-      payment_status_id: payload.payment_status_id ?? null,
-      provider: payload.provider ?? null,
-      requested_amount: payload.requested_amount ?? 0,
-      approved_amount: payload.approved_amount ?? null,
-      currency: payload.currency ?? "TRY",
-      status: payload.status ?? "requested",
-      metadata: payload.metadata ?? {},
-    } as never)
+    .insert(record as never)
     .select("*")
     .single()) as unknown as DbResult<PaymentRefundOperation>;
 
