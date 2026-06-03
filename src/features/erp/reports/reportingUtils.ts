@@ -1,6 +1,8 @@
 export type ReportFilters = {
   startDate: string;
   endDate: string;
+  company: string;
+  branch: string;
   department: string;
   module: string;
   status: string;

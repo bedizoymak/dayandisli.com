@@ -11,6 +11,9 @@ import {
   CRMRelatedType,
   CRMTask,
   CRMTaskStatus,
+  Company,
+  CompanyBranch,
+  CompanyMembership,
   DashboardMetrics,
   DocumentMetadata,
   Employee,
@@ -81,6 +84,7 @@ import {
   WebsiteMenuItem,
   WebsitePage,
   WebsiteSEOSetting,
+  Warehouse,
 } from "./types";
 
 export const ERP_MIGRATION_MESSAGE =
@@ -218,6 +222,10 @@ export async function getNextERPNumber(sequenceKey: string): Promise<ApiResult<s
 export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatus>> {
   const keyTables = [
     "admin_users",
+    "companies",
+    "company_branches",
+    "warehouses",
+    "company_memberships",
     "erp_users",
     "stakeholders",
     "erp_quotation_links",
@@ -351,6 +359,8 @@ export async function getCurrentERPUser(): Promise<ApiResult<ERPUser | null>> {
 }
 
 export async function createAuditLog(payload: {
+  company_id?: string | null;
+  branch_id?: string | null;
   entity_type: string;
   entity_id?: string | null;
   action: string;
@@ -365,6 +375,8 @@ export async function createAuditLog(payload: {
     .insert({
       actor_user_id: authData.user?.id ?? null,
       actor_email: authData.user?.email ?? null,
+      company_id: payload.company_id ?? null,
+      branch_id: payload.branch_id ?? null,
       entity_type: payload.entity_type,
       entity_id: payload.entity_id ?? null,
       action: payload.action,
@@ -547,6 +559,151 @@ export async function getStakeholderById(id: string) {
   return success(data);
 }
 
+export async function listCompanies(): Promise<ApiResult<Company[]>> {
+  const { data, error } = (await supabase
+    .from("companies" as never)
+    .select("*")
+    .order("legal_name", { ascending: true })) as unknown as DbResult<Company[]>;
+
+  if (error) return failure("listCompanies", error, []);
+  return success(data ?? []);
+}
+
+export async function createCompany(payload: Partial<Company> & { code: string; legal_name: string }) {
+  const { data, error } = (await supabase
+    .from("companies" as never)
+    .insert({
+      code: payload.code,
+      legal_name: payload.legal_name,
+      trade_name: payload.trade_name ?? null,
+      tax_office: payload.tax_office ?? null,
+      tax_number: payload.tax_number ?? null,
+      status: payload.status ?? "active",
+      base_currency: payload.base_currency ?? "TRY",
+      timezone: payload.timezone ?? "Europe/Istanbul",
+      settings: payload.settings ?? {},
+      primary_admin_email: payload.primary_admin_email ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<Company>;
+
+  if (error) return failure("createCompany", error, null);
+  await createAuditLog({ company_id: data?.id, entity_type: "company", entity_id: data?.id, action: "company_created", description: `${data?.legal_name} şirket kaydı oluşturuldu.` });
+  return success(data);
+}
+
+export async function updateCompany(id: string, payload: Partial<Company>) {
+  const { data, error } = (await supabase
+    .from("companies" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<Company>;
+
+  if (error) return failure("updateCompany", error, null);
+  await createAuditLog({ company_id: id, entity_type: "company", entity_id: id, action: "company_updated", description: `${data?.legal_name} şirket kaydı güncellendi.` });
+  return success(data);
+}
+
+export async function listBranches(companyId?: string | null): Promise<ApiResult<CompanyBranch[]>> {
+  let query = supabase.from("company_branches" as never).select("*").order("name", { ascending: true });
+  if (companyId) query = query.eq("company_id" as never, companyId as never);
+  const { data, error } = (await query) as unknown as DbResult<CompanyBranch[]>;
+  if (error) return failure("listBranches", error, []);
+  return success(data ?? []);
+}
+
+export async function createBranch(payload: Partial<CompanyBranch> & { company_id: string; code: string; name: string }) {
+  const { data, error } = (await supabase
+    .from("company_branches" as never)
+    .insert({
+      company_id: payload.company_id,
+      code: payload.code,
+      name: payload.name,
+      status: payload.status ?? "active",
+      manager_email: payload.manager_email ?? null,
+      phone: payload.phone ?? null,
+      email: payload.email ?? null,
+      address_line: payload.address_line ?? null,
+      city: payload.city ?? null,
+      country: payload.country ?? "Turkiye",
+      settings: payload.settings ?? {},
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<CompanyBranch>;
+
+  if (error) return failure("createBranch", error, null);
+  await createAuditLog({ company_id: data?.company_id, branch_id: data?.id, entity_type: "branch", entity_id: data?.id, action: "branch_created", description: `${data?.name} şube kaydı oluşturuldu.` });
+  return success(data);
+}
+
+export async function updateBranch(id: string, payload: Partial<CompanyBranch>) {
+  const { data, error } = (await supabase
+    .from("company_branches" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<CompanyBranch>;
+
+  if (error) return failure("updateBranch", error, null);
+  await createAuditLog({ company_id: data?.company_id, branch_id: data?.id, entity_type: "branch", entity_id: id, action: "branch_updated", description: `${data?.name} şube kaydı güncellendi.` });
+  return success(data);
+}
+
+export async function listWarehouses(companyId?: string | null, branchId?: string | null): Promise<ApiResult<Warehouse[]>> {
+  let query = supabase.from("warehouses" as never).select("*").order("name", { ascending: true });
+  if (companyId) query = query.eq("company_id" as never, companyId as never);
+  if (branchId) query = query.eq("branch_id" as never, branchId as never);
+  const { data, error } = (await query) as unknown as DbResult<Warehouse[]>;
+  if (error) return failure("listWarehouses", error, []);
+  return success(data ?? []);
+}
+
+export async function createWarehouse(payload: Partial<Warehouse> & { company_id: string; code: string; name: string }) {
+  const { data, error } = (await supabase
+    .from("warehouses" as never)
+    .insert({
+      company_id: payload.company_id,
+      branch_id: payload.branch_id ?? null,
+      code: payload.code,
+      name: payload.name,
+      status: payload.status ?? "active",
+      visibility_scope: payload.visibility_scope ?? "branch",
+      address_line: payload.address_line ?? null,
+      city: payload.city ?? null,
+      manager_email: payload.manager_email ?? null,
+    } as never)
+    .select("*")
+    .single()) as unknown as DbResult<Warehouse>;
+
+  if (error) return failure("createWarehouse", error, null);
+  await createAuditLog({ company_id: data?.company_id, branch_id: data?.branch_id, entity_type: "warehouse", entity_id: data?.id, action: "warehouse_created", description: `${data?.name} depo kaydı oluşturuldu.` });
+  return success(data);
+}
+
+export async function updateWarehouse(id: string, payload: Partial<Warehouse>) {
+  const { data, error } = (await supabase
+    .from("warehouses" as never)
+    .update(payload as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<Warehouse>;
+
+  if (error) return failure("updateWarehouse", error, null);
+  await createAuditLog({ company_id: data?.company_id, branch_id: data?.branch_id, entity_type: "warehouse", entity_id: id, action: "warehouse_updated", description: `${data?.name} depo kaydı güncellendi.` });
+  return success(data);
+}
+
+export async function listCompanyMemberships(): Promise<ApiResult<CompanyMembership[]>> {
+  const { data, error } = (await supabase
+    .from("company_memberships" as never)
+    .select("*")
+    .order("email", { ascending: true })) as unknown as DbResult<CompanyMembership[]>;
+
+  if (error) return failure("listCompanyMemberships", error, []);
+  return success(data ?? []);
+}
+
 export async function listERPUsers(): Promise<ApiResult<ERPUser[]>> {
   const { data, error } = (await supabase
     .from("erp_users" as never)
@@ -568,6 +725,10 @@ export async function createERPUser(payload: Partial<ERPUser> & { email: string 
       roles: payload.roles ?? [payload.role ?? "viewer"],
       permissions: payload.permissions ?? [],
       department: payload.department ?? null,
+      default_company_id: payload.default_company_id ?? null,
+      default_branch_id: payload.default_branch_id ?? null,
+      accessible_company_ids: payload.accessible_company_ids ?? [],
+      accessible_branch_ids: payload.accessible_branch_ids ?? [],
       is_active: payload.is_active ?? true,
     } as never)
     .select("*")
@@ -586,6 +747,8 @@ export async function createERPUser(payload: Partial<ERPUser> & { email: string 
         roles: data.roles ?? null,
         permissions: data.permissions ?? null,
         department: data.department ?? null,
+        default_company_id: data.default_company_id ?? null,
+        default_branch_id: data.default_branch_id ?? null,
       },
     });
   }
@@ -595,7 +758,7 @@ export async function createERPUser(payload: Partial<ERPUser> & { email: string 
 export async function updateERPUser(id: string, payload: Partial<ERPUser>) {
   const previous = (await supabase
     .from("erp_users" as never)
-    .select("id, email, role, roles, permissions, is_active, department")
+    .select("id, email, role, roles, permissions, is_active, department, default_company_id, default_branch_id, accessible_company_ids, accessible_branch_ids")
     .eq("id" as never, id as never)
     .maybeSingle()) as unknown as DbResult<Partial<ERPUser>>;
 
@@ -640,6 +803,10 @@ export async function updateERPUser(id: string, payload: Partial<ERPUser>) {
           permissions: data.permissions ?? null,
           is_active: data.is_active,
           department: data.department ?? null,
+          default_company_id: data.default_company_id ?? null,
+          default_branch_id: data.default_branch_id ?? null,
+          accessible_company_ids: data.accessible_company_ids ?? null,
+          accessible_branch_ids: data.accessible_branch_ids ?? null,
         },
       },
     });

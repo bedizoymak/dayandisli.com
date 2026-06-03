@@ -8,7 +8,21 @@ import { PageHeader } from "@/components/erp/PageHeader";
 import { StatusBadge } from "@/components/erp/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { ERPLayout } from "../layout/ERPLayout";
-import { createERPUser, getCurrentERPUser, listERPUsers, updateERPUser } from "../shared/erpApi";
+import {
+  createBranch,
+  createCompany,
+  createERPUser,
+  createWarehouse,
+  getCurrentERPUser,
+  listBranches,
+  listCompanies,
+  listERPUsers,
+  listWarehouses,
+  updateBranch,
+  updateCompany,
+  updateERPUser,
+  updateWarehouse,
+} from "../shared/erpApi";
 import {
   canManageERP,
   canManageUsers,
@@ -18,7 +32,7 @@ import {
   PERMISSION_CATALOG,
   ROLE_LABELS,
 } from "../shared/permissions";
-import { ERPRole, ERPUser } from "../shared/types";
+import { Company, CompanyBranch, ERPRole, ERPUser, Warehouse } from "../shared/types";
 import { ERPDatabaseStatusWidget } from "../dashboard/ERPDatabaseStatusWidget";
 
 const MODULE_LABELS: Record<string, string> = {
@@ -104,6 +118,30 @@ const defaultForm = {
   department: "",
 };
 
+const defaultCompanyForm = {
+  code: "",
+  legal_name: "",
+  trade_name: "",
+  primary_admin_email: "",
+};
+
+const defaultBranchForm = {
+  company_id: "",
+  code: "",
+  name: "",
+  city: "",
+  manager_email: "",
+};
+
+const defaultWarehouseForm = {
+  company_id: "",
+  branch_id: "",
+  code: "",
+  name: "",
+  city: "",
+  manager_email: "",
+};
+
 export default function ERPSettingsPage() {
   const { toast } = useToast();
   const [user, setUser] = useState<ERPUser | null>(null);
@@ -111,15 +149,34 @@ export default function ERPSettingsPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [form, setForm] = useState(defaultForm);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [branches, setBranches] = useState<CompanyBranch[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [companyForm, setCompanyForm] = useState(defaultCompanyForm);
+  const [branchForm, setBranchForm] = useState(defaultBranchForm);
+  const [warehouseForm, setWarehouseForm] = useState(defaultWarehouseForm);
 
   const canEdit = canManageERP(user) || canManageUsers(user);
 
   const load = async () => {
-    const [currentResult, usersResult] = await Promise.all([getCurrentERPUser(), listERPUsers()]);
+    const [currentResult, usersResult, companiesResult, branchesResult, warehousesResult] = await Promise.all([
+      getCurrentERPUser(),
+      listERPUsers(),
+      listCompanies(),
+      listBranches(),
+      listWarehouses(),
+    ]);
     setUser(currentResult.data);
     setUsers(usersResult.data);
+    setCompanies(companiesResult.data);
+    setBranches(branchesResult.data);
+    setWarehouses(warehousesResult.data);
     if (usersResult.error) {
       toast({ title: "Hata", description: `Kullanıcılar yüklenemedi: ${usersResult.error}`, variant: "destructive" });
+    }
+    const enterpriseError = companiesResult.error || branchesResult.error || warehousesResult.error;
+    if (enterpriseError) {
+      toast({ title: "Hata", description: `Kurumsal yapı yüklenemedi: ${enterpriseError}`, variant: "destructive" });
     }
   };
 
@@ -172,6 +229,70 @@ export default function ERPSettingsPage() {
     load();
   };
 
+  const companyName = (id: string | null | undefined) => companies.find((company) => company.id === id)?.trade_name || companies.find((company) => company.id === id)?.legal_name || "-";
+  const branchName = (id: string | null | undefined) => branches.find((branch) => branch.id === id)?.name || "-";
+
+  const handleCreateCompany = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canEdit) return;
+    const result = await createCompany({
+      code: companyForm.code.trim().toUpperCase(),
+      legal_name: companyForm.legal_name.trim(),
+      trade_name: companyForm.trade_name.trim() || null,
+      primary_admin_email: companyForm.primary_admin_email.trim() || null,
+      status: "active",
+    });
+    if (result.error) {
+      toast({ title: "Hata", description: `Şirket oluşturulamadı: ${result.error}`, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Kaydedildi", description: "Şirket kaydı oluşturuldu." });
+    setCompanyForm(defaultCompanyForm);
+    load();
+  };
+
+  const handleCreateBranch = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canEdit || !branchForm.company_id) return;
+    const result = await createBranch({
+      company_id: branchForm.company_id,
+      code: branchForm.code.trim().toUpperCase(),
+      name: branchForm.name.trim(),
+      city: branchForm.city.trim() || null,
+      manager_email: branchForm.manager_email.trim() || null,
+      status: "active",
+    });
+    if (result.error) {
+      toast({ title: "Hata", description: `Şube oluşturulamadı: ${result.error}`, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Kaydedildi", description: "Şube kaydı oluşturuldu." });
+    setBranchForm(defaultBranchForm);
+    load();
+  };
+
+  const handleCreateWarehouse = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canEdit || !warehouseForm.company_id) return;
+    const result = await createWarehouse({
+      company_id: warehouseForm.company_id,
+      branch_id: warehouseForm.branch_id || null,
+      code: warehouseForm.code.trim().toUpperCase(),
+      name: warehouseForm.name.trim(),
+      city: warehouseForm.city.trim() || null,
+      manager_email: warehouseForm.manager_email.trim() || null,
+      visibility_scope: warehouseForm.branch_id ? "branch" : "company",
+      status: "active",
+    });
+    if (result.error) {
+      toast({ title: "Hata", description: `Depo oluşturulamadı: ${result.error}`, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Kaydedildi", description: "Depo kaydı oluşturuldu." });
+    setWarehouseForm(defaultWarehouseForm);
+    load();
+  };
+
   return (
     <ERPLayout title="Sistem Ayarları">
       <PageHeader
@@ -191,6 +312,9 @@ export default function ERPSettingsPage() {
       <Tabs defaultValue="users" className="space-y-4">
         <TabsList className="flex h-auto flex-wrap justify-start">
           <TabsTrigger value="users">Kullanıcılar</TabsTrigger>
+          <TabsTrigger value="companies">Şirketler</TabsTrigger>
+          <TabsTrigger value="branches">Şubeler</TabsTrigger>
+          <TabsTrigger value="warehouses">Depolar</TabsTrigger>
           <TabsTrigger value="roles">Roller</TabsTrigger>
           <TabsTrigger value="permissions">Yetkiler</TabsTrigger>
         </TabsList>
@@ -237,6 +361,8 @@ export default function ERPSettingsPage() {
               { key: "user", header: "Kullanıcı", render: (row) => <div><p className="font-medium">{row.full_name || row.email}</p><p className="text-xs text-muted-foreground">{row.email}</p></div> },
               { key: "role", header: "Rol", render: (row) => <StatusBadge label={roleLabel(row.role)} tone="default" /> },
               { key: "department", header: "Departman", render: (row) => row.department || "-" },
+              { key: "company", header: "Varsayılan Şirket", render: (row) => companyName(row.default_company_id) },
+              { key: "branch", header: "Varsayılan Şube", render: (row) => branchName(row.default_branch_id) },
               { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.is_active ? "Aktif" : "Pasif"} tone={row.is_active ? "success" : "muted"} /> },
               { key: "permission_count", header: "Özel Yetki", render: (row) => `${row.permissions?.length ?? 0}` },
               {
@@ -270,12 +396,125 @@ export default function ERPSettingsPage() {
                       })}
                     </select>
                     <Button disabled={!canEdit} variant="outline" size="sm" onClick={() => updateUser(row, { permissions: [] }, "Özel yetkiler temizlendi.")}>Temizle</Button>
+                    <select
+                      disabled={!canEdit}
+                      className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                      value={row.default_company_id ?? ""}
+                      onChange={(event) => updateUser(row, { default_company_id: event.target.value || null, accessible_company_ids: event.target.value ? [event.target.value] : [] }, "Varsayılan şirket güncellendi.")}
+                    >
+                      <option value="">Şirket Seç</option>
+                      {companies.map((company) => <option key={company.id} value={company.id}>{company.trade_name || company.legal_name}</option>)}
+                    </select>
+                    <select
+                      disabled={!canEdit}
+                      className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                      value={row.default_branch_id ?? ""}
+                      onChange={(event) => updateUser(row, { default_branch_id: event.target.value || null, accessible_branch_ids: event.target.value ? [event.target.value] : [] }, "Varsayılan şube güncellendi.")}
+                    >
+                      <option value="">Şube Seç</option>
+                      {branches.filter((branch) => !row.default_company_id || branch.company_id === row.default_company_id).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+                    </select>
                     <Button disabled={!canEdit} variant="outline" size="sm" onClick={() => updateUser(row, { is_active: !row.is_active }, row.is_active ? "Kullanıcı pasifleştirildi." : "Kullanıcı aktifleştirildi.")}>
                       {row.is_active ? "Pasifleştir" : "Aktifleştir"}
                     </Button>
                   </div>
                 ),
               },
+            ]}
+          />
+        </TabsContent>
+
+        <TabsContent value="companies" className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Şirket Oluştur</CardTitle></CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateCompany} className="grid gap-3 md:grid-cols-5">
+                <Input required disabled={!canEdit} placeholder="Kod" value={companyForm.code} onChange={(event) => setCompanyForm((current) => ({ ...current, code: event.target.value }))} />
+                <Input required disabled={!canEdit} placeholder="Yasal Unvan" value={companyForm.legal_name} onChange={(event) => setCompanyForm((current) => ({ ...current, legal_name: event.target.value }))} />
+                <Input disabled={!canEdit} placeholder="Ticari Unvan" value={companyForm.trade_name} onChange={(event) => setCompanyForm((current) => ({ ...current, trade_name: event.target.value }))} />
+                <Input disabled={!canEdit} type="email" placeholder="Yönetici E-posta" value={companyForm.primary_admin_email} onChange={(event) => setCompanyForm((current) => ({ ...current, primary_admin_email: event.target.value }))} />
+                <Button disabled={!canEdit} type="submit">Oluştur</Button>
+              </form>
+            </CardContent>
+          </Card>
+          <DataTable
+            data={companies}
+            rowKey={(row) => row.id}
+            columns={[
+              { key: "code", header: "Kod", render: (row) => row.code },
+              { key: "name", header: "Şirket", render: (row) => <div><p className="font-medium">{row.trade_name || row.legal_name}</p><p className="text-xs text-muted-foreground">{row.legal_name}</p></div> },
+              { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.status === "active" ? "Aktif" : row.status === "passive" ? "Pasif" : "Askıda"} tone={row.status === "active" ? "success" : "muted"} /> },
+              { key: "currency", header: "Para Birimi", render: (row) => row.base_currency },
+              { key: "admin", header: "Yönetici", render: (row) => row.primary_admin_email || "-" },
+              { key: "actions", header: "İşlemler", render: (row) => <Button disabled={!canEdit} variant="outline" size="sm" onClick={() => updateCompany(row.id, { status: row.status === "active" ? "passive" : "active" }).then(load)}>{row.status === "active" ? "Pasifleştir" : "Aktifleştir"}</Button> },
+            ]}
+          />
+        </TabsContent>
+
+        <TabsContent value="branches" className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Şube Oluştur</CardTitle></CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateBranch} className="grid gap-3 md:grid-cols-6">
+                <select required disabled={!canEdit} className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={branchForm.company_id} onChange={(event) => setBranchForm((current) => ({ ...current, company_id: event.target.value }))}>
+                  <option value="">Şirket Seç</option>
+                  {companies.map((company) => <option key={company.id} value={company.id}>{company.trade_name || company.legal_name}</option>)}
+                </select>
+                <Input required disabled={!canEdit} placeholder="Kod" value={branchForm.code} onChange={(event) => setBranchForm((current) => ({ ...current, code: event.target.value }))} />
+                <Input required disabled={!canEdit} placeholder="Şube Adı" value={branchForm.name} onChange={(event) => setBranchForm((current) => ({ ...current, name: event.target.value }))} />
+                <Input disabled={!canEdit} placeholder="Şehir" value={branchForm.city} onChange={(event) => setBranchForm((current) => ({ ...current, city: event.target.value }))} />
+                <Input disabled={!canEdit} type="email" placeholder="Yönetici E-posta" value={branchForm.manager_email} onChange={(event) => setBranchForm((current) => ({ ...current, manager_email: event.target.value }))} />
+                <Button disabled={!canEdit} type="submit">Oluştur</Button>
+              </form>
+            </CardContent>
+          </Card>
+          <DataTable
+            data={branches}
+            rowKey={(row) => row.id}
+            columns={[
+              { key: "company", header: "Şirket", render: (row) => companyName(row.company_id) },
+              { key: "code", header: "Kod", render: (row) => row.code },
+              { key: "name", header: "Şube", render: (row) => row.name },
+              { key: "city", header: "Şehir", render: (row) => row.city || "-" },
+              { key: "manager", header: "Yönetici", render: (row) => row.manager_email || "-" },
+              { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.status === "active" ? "Aktif" : row.status === "passive" ? "Pasif" : "Kapalı"} tone={row.status === "active" ? "success" : "muted"} /> },
+              { key: "actions", header: "İşlemler", render: (row) => <Button disabled={!canEdit} variant="outline" size="sm" onClick={() => updateBranch(row.id, { status: row.status === "active" ? "passive" : "active" }).then(load)}>{row.status === "active" ? "Pasifleştir" : "Aktifleştir"}</Button> },
+            ]}
+          />
+        </TabsContent>
+
+        <TabsContent value="warehouses" className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Depo Oluştur</CardTitle></CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateWarehouse} className="grid gap-3 md:grid-cols-7">
+                <select required disabled={!canEdit} className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={warehouseForm.company_id} onChange={(event) => setWarehouseForm((current) => ({ ...current, company_id: event.target.value, branch_id: "" }))}>
+                  <option value="">Şirket Seç</option>
+                  {companies.map((company) => <option key={company.id} value={company.id}>{company.trade_name || company.legal_name}</option>)}
+                </select>
+                <select disabled={!canEdit} className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={warehouseForm.branch_id} onChange={(event) => setWarehouseForm((current) => ({ ...current, branch_id: event.target.value }))}>
+                  <option value="">Şirket Geneli</option>
+                  {branches.filter((branch) => !warehouseForm.company_id || branch.company_id === warehouseForm.company_id).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+                </select>
+                <Input required disabled={!canEdit} placeholder="Kod" value={warehouseForm.code} onChange={(event) => setWarehouseForm((current) => ({ ...current, code: event.target.value }))} />
+                <Input required disabled={!canEdit} placeholder="Depo Adı" value={warehouseForm.name} onChange={(event) => setWarehouseForm((current) => ({ ...current, name: event.target.value }))} />
+                <Input disabled={!canEdit} placeholder="Şehir" value={warehouseForm.city} onChange={(event) => setWarehouseForm((current) => ({ ...current, city: event.target.value }))} />
+                <Input disabled={!canEdit} type="email" placeholder="Yönetici E-posta" value={warehouseForm.manager_email} onChange={(event) => setWarehouseForm((current) => ({ ...current, manager_email: event.target.value }))} />
+                <Button disabled={!canEdit} type="submit">Oluştur</Button>
+              </form>
+            </CardContent>
+          </Card>
+          <DataTable
+            data={warehouses}
+            rowKey={(row) => row.id}
+            columns={[
+              { key: "company", header: "Şirket", render: (row) => companyName(row.company_id) },
+              { key: "branch", header: "Şube", render: (row) => branchName(row.branch_id) },
+              { key: "code", header: "Kod", render: (row) => row.code },
+              { key: "name", header: "Depo", render: (row) => row.name },
+              { key: "scope", header: "Görünürlük", render: (row) => row.visibility_scope === "branch" ? "Şube" : row.visibility_scope === "company" ? "Şirket" : "Özel" },
+              { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.status === "active" ? "Aktif" : row.status === "passive" ? "Pasif" : "Kapalı"} tone={row.status === "active" ? "success" : "muted"} /> },
+              { key: "actions", header: "İşlemler", render: (row) => <Button disabled={!canEdit} variant="outline" size="sm" onClick={() => updateWarehouse(row.id, { status: row.status === "active" ? "passive" : "active" }).then(load)}>{row.status === "active" ? "Pasifleştir" : "Aktifleştir"}</Button> },
             ]}
           />
         </TabsContent>

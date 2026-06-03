@@ -78,6 +78,79 @@ export type CRMOpportunityStatus = "open" | "proposal" | "won" | "lost" | "cance
 export type CRMTaskStatus = "open" | "in_progress" | "completed" | "cancelled";
 export type CRMActivityType = "note" | "call" | "meeting" | "email" | "visit" | "status_change";
 export type CRMRelatedType = "lead" | "opportunity" | "stakeholder" | "quotation" | "sales_order";
+export type CompanyStatus = "active" | "passive" | "suspended";
+export type BranchStatus = "active" | "passive" | "closed";
+export type WarehouseStatus = "active" | "passive" | "closed";
+export type WarehouseVisibilityScope = "company" | "branch" | "private";
+
+export interface Company {
+  id: string;
+  code: string;
+  legal_name: string;
+  trade_name: string | null;
+  tax_office: string | null;
+  tax_number: string | null;
+  status: CompanyStatus;
+  base_currency: string;
+  timezone: string;
+  settings: Record<string, unknown>;
+  primary_admin_email: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CompanyBranch {
+  id: string;
+  company_id: string;
+  code: string;
+  name: string;
+  status: BranchStatus;
+  manager_email: string | null;
+  phone: string | null;
+  email: string | null;
+  address_line: string | null;
+  city: string | null;
+  country: string | null;
+  settings: Record<string, unknown>;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface Warehouse {
+  id: string;
+  company_id: string;
+  branch_id: string | null;
+  code: string;
+  name: string;
+  status: WarehouseStatus;
+  visibility_scope: WarehouseVisibilityScope;
+  address_line: string | null;
+  city: string | null;
+  manager_email: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CompanyMembership {
+  id: string;
+  company_id: string;
+  branch_id: string | null;
+  erp_user_id: string | null;
+  auth_user_id: string | null;
+  email: string;
+  role: ERPRole;
+  is_company_admin: boolean;
+  is_branch_manager: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface EnterpriseOwnership {
+  company_id?: string | null;
+  branch_id?: string | null;
+  warehouse_id?: string | null;
+}
 
 export interface ERPUser {
   id: string;
@@ -88,12 +161,18 @@ export interface ERPUser {
   roles?: ERPRole[] | null;
   permissions?: string[] | null;
   department: string | null;
+  default_company_id?: string | null;
+  default_branch_id?: string | null;
+  accessible_company_ids?: string[] | null;
+  accessible_branch_ids?: string[] | null;
   is_active: boolean;
   created_at: string;
 }
 
 export interface Stakeholder {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   type: StakeholderType;
   company_name: string;
   contact_name: string | null;
@@ -114,6 +193,8 @@ export interface Stakeholder {
 
 export interface CRMLead {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   lead_no: string;
   company_name: string;
   contact_name: string | null;
@@ -130,6 +211,8 @@ export interface CRMLead {
 
 export interface CRMOpportunity {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   opportunity_no: string;
   title: string;
   lead_id: string | null;
@@ -145,6 +228,8 @@ export interface CRMOpportunity {
 
 export interface CRMTask {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   title: string;
   related_type: CRMRelatedType | null;
   related_id: string | null;
@@ -169,6 +254,8 @@ export interface CRMActivity {
 
 export interface SalesOrder {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   order_no: string;
   stakeholder_id: string | null;
   source_quotation_id: string | null;
@@ -230,6 +317,8 @@ export interface ProductionRouteStep {
 
 export interface WorkOrder {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   work_order_no: string;
   sales_order_id: string | null;
   stakeholder_id: string | null;
@@ -267,6 +356,9 @@ export interface WorkOrderOperation {
 
 export interface InventoryItem {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
+  default_warehouse_id?: string | null;
   item_type: InventoryItemType;
   code: string | null;
   name: string;
@@ -283,6 +375,9 @@ export interface InventoryItem {
 
 export interface InventoryMovement {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
+  warehouse_id?: string | null;
   inventory_item_id: string;
   movement_type: InventoryMovementType;
   quantity: number;
@@ -295,6 +390,8 @@ export interface InventoryMovement {
 
 export interface Employee {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   employee_no?: string | null;
   full_name: string;
   role: string | null;
@@ -451,6 +548,8 @@ export interface MaintenanceTask {
 
 export interface FinancialAccount {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   account_type: FinancialAccountType;
   name: string;
   currency: string;
@@ -462,6 +561,8 @@ export interface FinancialAccount {
 
 export interface Invoice {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   invoice_type: InvoiceType;
   invoice_no: string | null;
   stakeholder_id: string | null;
@@ -478,6 +579,8 @@ export interface Invoice {
 
 export interface Payment {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   payment_type: PaymentType;
   stakeholder_id: string | null;
   financial_account_id: string | null;
@@ -491,6 +594,8 @@ export interface Payment {
 
 export interface PurchaseOrder {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   purchase_order_no: string;
   supplier_id: string | null;
   title: string;
@@ -521,6 +626,9 @@ export interface PurchaseOrderItem {
 
 export interface ShopProduct {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
+  warehouse_id?: string | null;
   name: string;
   slug: string;
   description: string | null;
@@ -552,6 +660,8 @@ export interface ShopCategory {
 
 export interface ShopOrder {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   order_number: string;
   status: ShopOrderStatus;
   customer_user_id?: string | null;
@@ -627,6 +737,8 @@ export interface ShopCart {
 
 export interface ShopPaymentStatusRecord {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   order_id: string;
   customer_user_id?: string | null;
   status: ShopPaymentStatus;
@@ -714,6 +826,8 @@ export interface ShopReturnRequest {
 
 export interface PaymentProviderEvent {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   provider: Exclude<PaymentProvider, "manual">;
   event_id: string;
   event_type: string;
@@ -733,6 +847,8 @@ export interface PaymentProviderEvent {
 
 export interface PaymentReconciliationLog {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   order_id: string;
   invoice_id: string | null;
   payment_id: string | null;
@@ -750,6 +866,8 @@ export interface PaymentReconciliationLog {
 
 export interface AccountingEntry {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   order_id: string | null;
   invoice_id: string | null;
   payment_id: string | null;
@@ -768,6 +886,8 @@ export interface AccountingEntry {
 
 export interface PaymentRefundOperation {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   return_request_id: string;
   order_id: string;
   payment_status_id: string | null;
@@ -1021,6 +1141,8 @@ export interface ERPDashboardActivity {
 
 export interface ERPAuditLog {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   actor_user_id: string | null;
   actor_email: string | null;
   entity_type: string;
@@ -1035,6 +1157,8 @@ export interface ERPAuditLog {
 
 export interface ERPNotification {
   id: string;
+  company_id?: string | null;
+  branch_id?: string | null;
   recipient_user_id: string | null;
   recipient_email: string | null;
   severity: ERPNotificationSeverity;

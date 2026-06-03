@@ -10,6 +10,8 @@ import { ERPLayout } from "../layout/ERPLayout";
 import {
   listCRMLeads,
   listCRMOpportunities,
+  listBranches,
+  listCompanies,
   listEmployees,
   listFinancialAccounts,
   listHRDepartments,
@@ -32,6 +34,8 @@ import { formatCurrency, formatNumber } from "../shared/formatters";
 import {
   CRMLead,
   CRMOpportunity,
+  Company,
+  CompanyBranch,
   Employee,
   FinancialAccount,
   HRDepartment,
@@ -63,6 +67,8 @@ import { ReportFilters, countByStatus, groupCountByMonth, groupSumByMonth, isWit
 import { useToast } from "@/hooks/use-toast";
 
 type ReportsData = {
+  companies: Company[];
+  branches: CompanyBranch[];
   stakeholders: Stakeholder[];
   leads: CRMLead[];
   opportunities: CRMOpportunity[];
@@ -84,6 +90,8 @@ type ReportsData = {
 };
 
 const emptyData: ReportsData = {
+  companies: [],
+  branches: [],
   stakeholders: [],
   leads: [],
   opportunities: [],
@@ -169,6 +177,8 @@ export default function ReportsPage() {
   const [filters, setFilters] = useState<ReportFilters>({
     startDate: "",
     endDate: "",
+    company: "all",
+    branch: "all",
     department: "all",
     module: "all",
     status: "all",
@@ -179,6 +189,8 @@ export default function ReportsPage() {
       setLoading(true);
       const [
         stakeholders,
+        companies,
+        branches,
         leads,
         opportunities,
         quotations,
@@ -198,6 +210,8 @@ export default function ReportsPage() {
         departments,
       ] = await Promise.all([
         listStakeholders(),
+        listCompanies(),
+        listBranches(),
         listCRMLeads(),
         listCRMOpportunities(),
         listERPQuotationsFromExistingTable(),
@@ -217,10 +231,12 @@ export default function ReportsPage() {
         listHRDepartments(),
       ]);
 
-      const firstError = [stakeholders, leads, opportunities, quotations, salesOrders, inventoryItems, inventoryMovements, purchaseOrders, workOrders, invoices, payments, shopPayments, reconciliationLogs, refundOperations, providerHealth, financialAccounts, employees, departments].find((result) => result.error)?.error;
+      const firstError = [stakeholders, companies, branches, leads, opportunities, quotations, salesOrders, inventoryItems, inventoryMovements, purchaseOrders, workOrders, invoices, payments, shopPayments, reconciliationLogs, refundOperations, providerHealth, financialAccounts, employees, departments].find((result) => result.error)?.error;
       if (firstError) toast({ title: "Rapor", description: firstError, variant: "destructive" });
       setData({
         stakeholders: stakeholders.data,
+        companies: companies.data,
+        branches: branches.data,
         leads: leads.data,
         opportunities: opportunities.data,
         quotations: quotations.data,
@@ -245,18 +261,20 @@ export default function ReportsPage() {
   }, [toast]);
 
   const filtered = useMemo(() => {
-    const salesOrders = data.salesOrders.filter((row) => isWithinDateRange(row.order_date, filters) && statusMatches(row.status, filters));
-    const workOrders = data.workOrders.filter((row) => isWithinDateRange(row.planned_start_date ?? row.created_at, filters) && statusMatches(row.status, filters));
-    const purchaseOrders = data.purchaseOrders.filter((row) => isWithinDateRange(row.order_date, filters) && statusMatches(row.status, filters));
-    const invoices = data.invoices.filter((row) => isWithinDateRange(row.invoice_date, filters) && statusMatches(row.status, filters));
-    const payments = data.payments.filter((row) => isWithinDateRange(row.payment_date, filters));
-    const leads = data.leads.filter((row) => isWithinDateRange(row.created_at, filters) && statusMatches(row.status, filters));
-    const opportunities = data.opportunities.filter((row) => isWithinDateRange(row.created_at, filters) && statusMatches(row.status, filters));
+    const matchesEnterprise = (row: { company_id?: string | null; branch_id?: string | null }) =>
+      (filters.company === "all" || row.company_id === filters.company) && (filters.branch === "all" || row.branch_id === filters.branch);
+    const salesOrders = data.salesOrders.filter((row) => matchesEnterprise(row) && isWithinDateRange(row.order_date, filters) && statusMatches(row.status, filters));
+    const workOrders = data.workOrders.filter((row) => matchesEnterprise(row) && isWithinDateRange(row.planned_start_date ?? row.created_at, filters) && statusMatches(row.status, filters));
+    const purchaseOrders = data.purchaseOrders.filter((row) => matchesEnterprise(row) && isWithinDateRange(row.order_date, filters) && statusMatches(row.status, filters));
+    const invoices = data.invoices.filter((row) => matchesEnterprise(row) && isWithinDateRange(row.invoice_date, filters) && statusMatches(row.status, filters));
+    const payments = data.payments.filter((row) => matchesEnterprise(row) && isWithinDateRange(row.payment_date, filters));
+    const leads = data.leads.filter((row) => matchesEnterprise(row) && isWithinDateRange(row.created_at, filters) && statusMatches(row.status, filters));
+    const opportunities = data.opportunities.filter((row) => matchesEnterprise(row) && isWithinDateRange(row.created_at, filters) && statusMatches(row.status, filters));
     const quotations = data.quotations.filter((row) => isWithinDateRange(row.created_at, filters));
-    const inventoryMovements = data.inventoryMovements.filter((row) => isWithinDateRange(row.movement_date, filters));
+    const inventoryMovements = data.inventoryMovements.filter((row) => matchesEnterprise(row) && isWithinDateRange(row.movement_date, filters));
     const employees = data.employees.filter((row) => {
       const matchesDepartment = filters.department === "all" || row.department_id === filters.department || row.department === data.departments.find((department) => department.id === filters.department)?.name;
-      return matchesDepartment && statusMatches(row.status ?? (row.is_active ? "active" : "inactive"), filters);
+      return matchesEnterprise(row) && matchesDepartment && statusMatches(row.status ?? (row.is_active ? "active" : "inactive"), filters);
     });
     return {
       salesOrders,
@@ -273,9 +291,9 @@ export default function ReportsPage() {
       quotations,
       inventoryMovements,
       employees,
-      inventoryItems: data.inventoryItems,
-      stakeholders: data.stakeholders,
-      financialAccounts: data.financialAccounts,
+      inventoryItems: data.inventoryItems.filter(matchesEnterprise),
+      stakeholders: data.stakeholders.filter(matchesEnterprise),
+      financialAccounts: data.financialAccounts.filter(matchesEnterprise),
     };
   }, [data, filters]);
 
@@ -288,11 +306,15 @@ export default function ReportsPage() {
   const pendingReconciliation = filtered.reconciliationLogs.filter((row) => row.status === "pending" || row.status === "manual_review").length;
   const refundCount = filtered.refundOperations.length;
   const providerIssueCount = filtered.providerHealth.filter((row) => row.status !== "healthy").length;
+  const selectedCompanyCount = filters.company === "all" ? data.companies.length : 1;
+  const selectedBranchCount = filters.branch === "all" ? data.branches.filter((branch) => filters.company === "all" || branch.company_id === filters.company).length : 1;
 
   const executiveKpis = [
     { title: "Aktif Müşteriler", value: activeCustomers, description: "müşteri veya karma cari" },
     { title: "Açık Fırsatlar", value: openOpportunities, description: "açık CRM fırsatı" },
     { title: "Teklifler", value: filtered.quotations.length, description: "seçili dönem" },
+    { title: "Şirketler", value: selectedCompanyCount, description: "rapor kapsamı" },
+    { title: "Şubeler", value: selectedBranchCount, description: "rapor kapsamı" },
     { title: "Satış Siparişleri", value: filtered.salesOrders.length, description: "seçili dönem" },
     { title: "Kritik Stok", value: lowStock.length, description: "minimum seviyede", tone: lowStock.length ? "warning" : "success" },
     { title: "Satın Alma", value: filtered.purchaseOrders.length, description: "satın alma siparişi" },
@@ -335,9 +357,21 @@ export default function ReportsPage() {
         <CardHeader>
           <CardTitle className="text-base">Rapor Filtreleri</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-5">
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
           <InputLabel label="Başlangıç"><input className="h-10 rounded-md border border-input bg-background px-3 text-sm" type="date" value={filters.startDate} onChange={(event) => setFilters((current) => ({ ...current, startDate: event.target.value }))} /></InputLabel>
           <InputLabel label="Bitiş"><input className="h-10 rounded-md border border-input bg-background px-3 text-sm" type="date" value={filters.endDate} onChange={(event) => setFilters((current) => ({ ...current, endDate: event.target.value }))} /></InputLabel>
+          <InputLabel label="Şirket">
+            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={filters.company} onChange={(event) => setFilters((current) => ({ ...current, company: event.target.value, branch: "all" }))}>
+              <option value="all">Tüm Şirketler</option>
+              {data.companies.map((company) => <option key={company.id} value={company.id}>{company.trade_name || company.legal_name}</option>)}
+            </select>
+          </InputLabel>
+          <InputLabel label="Şube">
+            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={filters.branch} onChange={(event) => setFilters((current) => ({ ...current, branch: event.target.value }))}>
+              <option value="all">Tüm Şubeler</option>
+              {data.branches.filter((branch) => filters.company === "all" || branch.company_id === filters.company).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+            </select>
+          </InputLabel>
           <InputLabel label="Departman">
             <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={filters.department} onChange={(event) => setFilters((current) => ({ ...current, department: event.target.value }))}>
               <option value="all">Tüm Departmanlar</option>
