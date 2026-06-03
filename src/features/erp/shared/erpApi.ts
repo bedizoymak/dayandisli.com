@@ -2,6 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   ApiResult,
   AccountingEntry,
+  AutomationExecutionRecord,
+  AutomationRuleRecord,
   CRMActivity,
   CRMActivityType,
   CRMLead,
@@ -288,6 +290,8 @@ export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatu
     "platform_events",
     "platform_alerts",
     "scheduled_job_runs",
+    "automation_rules",
+    "automation_executions",
     "purchase_orders",
     "purchase_order_items",
   ];
@@ -477,14 +481,65 @@ export type PlatformOperationalSummary = {
   events: PlatformEventRecord[];
   alerts: PlatformAlertRecord[];
   scheduledJobRuns: ScheduledJobRunRecord[];
+  automationRules: AutomationRuleRecord[];
+  automationExecutions: AutomationExecutionRecord[];
   openAlertCount: number;
   criticalAlertCount: number;
   failedJobCount: number;
+  jobSuccessRate: number;
+  jobFailureRate: number;
+  retryCount: number;
+  automationSuccessRate: number;
+  automationFailureRate: number;
 };
+
+export type RegisteredOperationalJob = {
+  key: ScheduledJobRunRecord["job_type"];
+  name: string;
+  module: string;
+  description: string;
+  maxRetries: number;
+};
+
+type JobExecutionResult = {
+  severity: ScheduledJobRunRecord["severity"];
+  summary: string;
+  metrics: Array<{ key: string; name: string; value: number; unit?: string; severity?: ScheduledJobRunRecord["severity"] }>;
+  alert?: { key: string; title: string; description: string; severity: PlatformAlertRecord["severity"] };
+  metadata?: Record<string, unknown>;
+};
+
+const operationalJobRegistry: RegisteredOperationalJob[] = [
+  { key: "reconciliation_check", name: "Mutabakat Kontrolü", module: "finance", description: "Ödeme ve mutabakat kayıtlarını doğrular.", maxRetries: 2 },
+  { key: "inventory_verification", name: "Stok Doğrulama", module: "inventory", description: "Minimum stok ve hareket risklerini kontrol eder.", maxRetries: 2 },
+  { key: "backup_verification", name: "Yedek Doğrulama", module: "governance", description: "Yedek doğrulama prosedürü için kayıt üretir.", maxRetries: 1 },
+  { key: "webhook_cleanup", name: "Webhook Temizliği", module: "commerce", description: "Webhook tekrar ve hata kayıtlarını denetler.", maxRetries: 2 },
+  { key: "tenant_isolation_verification", name: "Tenant İzolasyon Kontrolü", module: "security", description: "Şirket ve şube kapsamlı veri kayıtlarını doğrular.", maxRetries: 1 },
+  { key: "observability_aggregation", name: "Observability Agregasyonu", module: "operations", description: "Operasyon metriklerini kalıcı kayıtlara toplar.", maxRetries: 2 },
+];
+
+export function listRegisteredOperationalJobs() {
+  return operationalJobRegistry;
+}
 
 async function getCurrentActorEmail() {
   const { data } = await supabase.auth.getUser();
   return data.user?.email ?? null;
+}
+
+async function requireScopedCompany(scope?: EnterpriseQueryScope): Promise<EnterpriseQueryScope & { companyId: string }> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  if (!enterpriseScope.companyId) throw new Error("Şirket kapsamı seçilmeden operasyon çalıştırılamaz.");
+  return { ...enterpriseScope, companyId: enterpriseScope.companyId };
+}
+
+function durationMs(startedAt: string, completedAt: string) {
+  return Math.max(0, new Date(completedAt).getTime() - new Date(startedAt).getTime());
+}
+
+function successRate(successes: number, total: number) {
+  if (!total) return 0;
+  return Math.round((successes / total) * 100);
 }
 
 export async function listPlatformMetrics(scope?: EnterpriseQueryScope, limit = 100): Promise<ApiResult<PlatformMetricRecord[]>> {
@@ -703,13 +758,19 @@ export async function createScheduledJobRun(payload: Partial<ScheduledJobRunReco
     job_key: payload.job_key,
     job_name: payload.job_name,
     job_type: payload.job_type,
-    status: payload.status ?? "scheduled",
+    status: payload.status ?? "queued",
     severity: payload.severity ?? "info",
     source: payload.source ?? "erp",
     module: payload.module ?? "operations",
+    queued_at: payload.queued_at ?? new Date().toISOString(),
     started_at: payload.started_at ?? null,
     completed_at: payload.completed_at ?? null,
     duration_ms: payload.duration_ms ?? null,
+    retry_count: payload.retry_count ?? 0,
+    max_retries: payload.max_retries ?? 2,
+    next_retry_at: payload.next_retry_at ?? null,
+    parent_job_run_id: payload.parent_job_run_id ?? null,
+    audit_log_id: payload.audit_log_id ?? null,
     failure_reason: payload.failure_reason ?? null,
     metadata: payload.metadata ?? {},
     company_id: payload.company_id ?? null,
@@ -726,23 +787,488 @@ export async function createScheduledJobRun(payload: Partial<ScheduledJobRunReco
   return success(data);
 }
 
+async function updateScheduledJobRun(id: string, payload: Partial<ScheduledJobRunRecord>) {
+  const { data, error } = (await supabase
+    .from("scheduled_job_runs" as never)
+    .update({ ...payload, updated_at: new Date().toISOString() } as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<ScheduledJobRunRecord>;
+
+  if (error) return failure("updateScheduledJobRun", error, null);
+  return success(data);
+}
+
+async function runOperationalJobHandler(jobType: ScheduledJobRunRecord["job_type"], scope: EnterpriseQueryScope): Promise<JobExecutionResult> {
+  if (jobType === "reconciliation_check") {
+    const [reconciliations, payments] = await Promise.all([listPaymentReconciliationLogs(), listShopPaymentStatuses()]);
+    const pending = reconciliations.data.filter((row) => row.status === "pending" || row.status === "manual_review").length;
+    const failedPayments = payments.data.filter((row) => row.status === "failed").length;
+    return {
+      severity: pending || failedPayments ? "warning" : "success",
+      summary: `${pending} pending reconciliation records and ${failedPayments} failed payments found.`,
+      metrics: [
+        { key: "reconciliation.pending", name: "Bekleyen Mutabakat", value: pending, severity: pending ? "warning" : "success" },
+        { key: "payments.failed", name: "Başarısız Ödeme", value: failedPayments, severity: failedPayments ? "warning" : "success" },
+      ],
+      alert: pending || failedPayments ? { key: "reconciliation-risk", title: "Mutabakat Riski", description: "Bekleyen mutabakat veya başarısız ödeme kaydı var.", severity: failedPayments ? "critical" : "warning" } : undefined,
+      metadata: { pending, failedPayments, paymentError: payments.error, reconciliationError: reconciliations.error },
+    };
+  }
+
+  if (jobType === "inventory_verification") {
+    const items = await listInventoryItems(scope);
+    const lowStock = items.data.filter((row) => row.current_stock <= row.min_stock).length;
+    return {
+      severity: lowStock ? "warning" : "success",
+      summary: `${lowStock} low stock records found.`,
+      metrics: [{ key: "inventory.low_stock", name: "Kritik Stok", value: lowStock, severity: lowStock ? "warning" : "success" }],
+      alert: lowStock ? { key: "inventory-threshold", title: "Stok Eşiği Aşıldı", description: "Minimum seviyenin altında stok kayıtları var.", severity: lowStock >= 10 ? "critical" : "warning" } : undefined,
+      metadata: { lowStock, totalItems: items.data.length, error: items.error },
+    };
+  }
+
+  if (jobType === "webhook_cleanup") {
+    const events = await listPaymentProviderEvents();
+    const duplicates = events.data.filter((row) => row.duplicate_detected).length;
+    const failed = events.data.filter((row) => row.processing_status === "failed").length;
+    return {
+      severity: failed ? "warning" : "success",
+      summary: `${duplicates} duplicate webhook records and ${failed} failed webhook records detected.`,
+      metrics: [
+        { key: "webhooks.duplicates", name: "Tekrar Webhook", value: duplicates, severity: duplicates ? "warning" : "success" },
+        { key: "webhooks.failed", name: "Webhook Hatası", value: failed, severity: failed ? "warning" : "success" },
+      ],
+      alert: failed ? { key: "webhook-cleanup-required", title: "Webhook İncelemesi Gerekli", description: "Başarısız webhook kayıtları bulundu.", severity: failed >= 3 ? "critical" : "warning" } : undefined,
+      metadata: { duplicates, failed, error: events.error },
+    };
+  }
+
+  if (jobType === "backup_verification") {
+    return {
+      severity: "success",
+      summary: "Backup verification procedure checkpoint recorded.",
+      metrics: [{ key: "backup.verification", name: "Yedek Doğrulama", value: 1, unit: "checkpoint", severity: "success" }],
+      metadata: { procedure: "manual_supabase_backup_verification", destructive: false },
+    };
+  }
+
+  if (jobType === "rls_control_check" || jobType === "tenant_isolation_verification") {
+    const [companies, branches, auditLogs] = await Promise.all([listCompanies(), listBranches(), listAuditLogs({ limit: 100 })]);
+    const unscopedAuditLogs = auditLogs.data.filter((row) => !row.company_id).length;
+    return {
+      severity: unscopedAuditLogs ? "warning" : "success",
+      summary: `${unscopedAuditLogs} audit records without company scope detected in visible scope.`,
+      metrics: [
+        { key: "tenant.unscoped_audit", name: "Kapsamsız Audit", value: unscopedAuditLogs, severity: unscopedAuditLogs ? "warning" : "success" },
+        { key: "tenant.visible_companies", name: "Görünen Şirket", value: companies.data.length, severity: "info" },
+        { key: "tenant.visible_branches", name: "Görünen Şube", value: branches.data.length, severity: "info" },
+      ],
+      alert: unscopedAuditLogs ? { key: "tenant-scope-review", title: "Tenant Kapsam İncelemesi", description: "Şirket kapsamı olmayan audit kayıtları bulundu.", severity: "warning" } : undefined,
+      metadata: { unscopedAuditLogs, companies: companies.data.length, branches: branches.data.length, auditError: auditLogs.error },
+    };
+  }
+
+  const summary = await listPlatformOperationalSummary(scope);
+  return {
+    severity: summary.data.criticalAlertCount || summary.data.failedJobCount ? "warning" : "success",
+    summary: "Operational observability aggregation completed.",
+    metrics: [
+      { key: "operations.open_alerts", name: "Açık Alarm", value: summary.data.openAlertCount, severity: summary.data.openAlertCount ? "warning" : "success" },
+      { key: "operations.failed_jobs", name: "Hatalı İş", value: summary.data.failedJobCount, severity: summary.data.failedJobCount ? "warning" : "success" },
+      { key: "operations.retry_count", name: "Tekrar Sayısı", value: summary.data.retryCount, severity: summary.data.retryCount ? "warning" : "success" },
+    ],
+    metadata: { summaryError: summary.error },
+  };
+}
+
+export async function executeOperationalJob(jobType: ScheduledJobRunRecord["job_type"], scope?: EnterpriseQueryScope) {
+  let executionScope: EnterpriseQueryScope & { companyId: string };
+  try {
+    executionScope = await requireScopedCompany(scope);
+  } catch (error) {
+    return failure("executeOperationalJob", error, null);
+  }
+
+  const definition = operationalJobRegistry.find((job) => job.key === jobType);
+  if (!definition) return failure("executeOperationalJob", `Unknown job type ${jobType}`, null);
+
+  const queued = await createScheduledJobRun({
+    job_key: `${definition.key}-${Date.now()}`,
+    job_name: definition.name,
+    job_type: definition.key,
+    status: "queued",
+    severity: "info",
+    module: definition.module,
+    max_retries: definition.maxRetries,
+    metadata: { description: definition.description },
+  }, executionScope);
+  if (queued.error || !queued.data) return queued;
+
+  const startedAt = new Date().toISOString();
+  await updateScheduledJobRun(queued.data.id, { status: "running", started_at: startedAt });
+
+  try {
+    const result = await runOperationalJobHandler(jobType, executionScope);
+    const completedAt = new Date().toISOString();
+    const audit = await createAuditLog({
+      company_id: executionScope.companyId,
+      branch_id: executionScope.branchId ?? null,
+      entity_type: "scheduled_job_run",
+      entity_id: queued.data.id,
+      action: "scheduled_job_completed",
+      description: result.summary,
+      metadata: { jobType, ...result.metadata },
+    });
+
+    const event = await createPlatformEvent({
+      company_id: executionScope.companyId,
+      branch_id: executionScope.branchId ?? null,
+      event_key: `job-${queued.data.id}-completed`,
+      event_type: "scheduled_job_completed",
+      severity: result.severity,
+      status: "processed",
+      source: "scheduled_operations_engine",
+      module: definition.module,
+      entity_type: "scheduled_job_run",
+      entity_id: queued.data.id,
+      title: definition.name,
+      description: result.summary,
+      metadata: { jobType, durationMs: durationMs(startedAt, completedAt), ...result.metadata },
+    }, executionScope);
+
+    await Promise.all(result.metrics.map((metric) => createPlatformMetric({
+      metric_key: metric.key,
+      metric_name: metric.name,
+      metric_value: metric.value,
+      metric_unit: metric.unit ?? null,
+      severity: metric.severity ?? result.severity,
+      status: "active",
+      source: "scheduled_operations_engine",
+      module: definition.module,
+      metadata: { jobRunId: queued.data?.id, jobType },
+    }, executionScope)));
+
+    let alertId: string | null = null;
+    if (result.alert) {
+      const alert = await createPlatformAlert({
+        alert_key: result.alert.key,
+        title: result.alert.title,
+        description: result.alert.description,
+        severity: result.alert.severity,
+        source: "scheduled_operations_engine",
+        module: definition.module,
+        event_id: event.data?.id ?? null,
+        metadata: { jobRunId: queued.data.id, jobType },
+      }, executionScope);
+      alertId = alert.data?.id ?? null;
+    }
+
+    return updateScheduledJobRun(queued.data.id, {
+      status: "completed",
+      severity: result.severity,
+      completed_at: completedAt,
+      duration_ms: durationMs(startedAt, completedAt),
+      audit_log_id: audit.data?.id ?? null,
+      metadata: { ...queued.data.metadata, result: result.metadata, eventId: event.data?.id ?? null, alertId },
+    });
+  } catch (error) {
+    const completedAt = new Date().toISOString();
+    const retryCount = (queued.data.retry_count ?? 0) + 1;
+    const canRetry = retryCount <= (queued.data.max_retries ?? definition.maxRetries);
+    await createAuditLog({
+      company_id: executionScope.companyId,
+      branch_id: executionScope.branchId ?? null,
+      entity_type: "scheduled_job_run",
+      entity_id: queued.data.id,
+      action: canRetry ? "scheduled_job_retry_queued" : "scheduled_job_failed",
+      description: toErrorMessage(error),
+      metadata: { jobType, retryCount },
+    });
+    if (!canRetry) {
+      await createPlatformAlert({
+        alert_key: `job-failed-${jobType}`,
+        title: "Operasyon İşi Hatası",
+        description: toErrorMessage(error),
+        severity: "critical",
+        source: "scheduled_operations_engine",
+        module: definition.module,
+        metadata: { jobRunId: queued.data.id, jobType, retryCount },
+      }, executionScope);
+    }
+    return updateScheduledJobRun(queued.data.id, {
+      status: "failed",
+      severity: "critical",
+      completed_at: completedAt,
+      duration_ms: durationMs(startedAt, completedAt),
+      retry_count: retryCount,
+      next_retry_at: canRetry ? new Date(Date.now() + 5 * 60 * 1000).toISOString() : null,
+      failure_reason: toErrorMessage(error),
+    });
+  }
+}
+
+export async function listAutomationRules(scope?: EnterpriseQueryScope, limit = 100): Promise<ApiResult<AutomationRuleRecord[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = supabase
+    .from("automation_rules" as never)
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  query = applyEnterpriseScope(query, enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<AutomationRuleRecord[]>;
+  if (error) return failure("listAutomationRules", error, []);
+  return success(data ?? []);
+}
+
+export async function createAutomationRule(payload: Partial<AutomationRuleRecord> & { rule_key: string; name: string; trigger_event: string }) {
+  const record = await withEnterpriseOwnership({
+    rule_key: payload.rule_key,
+    name: payload.name,
+    description: payload.description ?? null,
+    trigger_event: payload.trigger_event,
+    condition: payload.condition ?? {},
+    action: payload.action ?? {},
+    status: payload.status ?? "active",
+    severity: payload.severity ?? "info",
+    source: payload.source ?? "erp",
+    module: payload.module ?? "automation",
+    metadata: payload.metadata ?? {},
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  });
+
+  const { data, error } = (await supabase
+    .from("automation_rules" as never)
+    .insert(record as never)
+    .select("*")
+    .single()) as unknown as DbResult<AutomationRuleRecord>;
+
+  if (error) return failure("createAutomationRule", error, null);
+  return success(data);
+}
+
+export async function listAutomationExecutions(scope?: EnterpriseQueryScope, limit = 100): Promise<ApiResult<AutomationExecutionRecord[]>> {
+  const enterpriseScope = await resolveEnterpriseScope(scope);
+  let query = supabase
+    .from("automation_executions" as never)
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  query = applyEnterpriseScope(query, enterpriseScope);
+  const { data, error } = (await query) as unknown as DbResult<AutomationExecutionRecord[]>;
+  if (error) return failure("listAutomationExecutions", error, []);
+  return success(data ?? []);
+}
+
+async function createAutomationExecution(payload: Partial<AutomationExecutionRecord> & { rule_key: string; trigger_event: string }, scope: EnterpriseQueryScope) {
+  const record = await withEnterpriseOwnership({
+    rule_id: payload.rule_id ?? null,
+    rule_key: payload.rule_key,
+    trigger_event: payload.trigger_event,
+    status: payload.status ?? "queued",
+    severity: payload.severity ?? "info",
+    source: payload.source ?? "automation_engine",
+    module: payload.module ?? "automation",
+    started_at: payload.started_at ?? null,
+    completed_at: payload.completed_at ?? null,
+    duration_ms: payload.duration_ms ?? null,
+    retry_count: payload.retry_count ?? 0,
+    max_retries: payload.max_retries ?? 2,
+    failure_reason: payload.failure_reason ?? null,
+    event_id: payload.event_id ?? null,
+    alert_id: payload.alert_id ?? null,
+    job_run_id: payload.job_run_id ?? null,
+    audit_log_id: payload.audit_log_id ?? null,
+    metadata: payload.metadata ?? {},
+    company_id: payload.company_id ?? null,
+    branch_id: payload.branch_id ?? null,
+  }, scope);
+
+  const { data, error } = (await supabase
+    .from("automation_executions" as never)
+    .insert(record as never)
+    .select("*")
+    .single()) as unknown as DbResult<AutomationExecutionRecord>;
+
+  if (error) return failure("createAutomationExecution", error, null);
+  return success(data);
+}
+
+async function updateAutomationExecution(id: string, payload: Partial<AutomationExecutionRecord>) {
+  const { data, error } = (await supabase
+    .from("automation_executions" as never)
+    .update({ ...payload, updated_at: new Date().toISOString() } as never)
+    .eq("id", id)
+    .select("*")
+    .single()) as unknown as DbResult<AutomationExecutionRecord>;
+
+  if (error) return failure("updateAutomationExecution", error, null);
+  return success(data);
+}
+
+function conditionMatches(condition: Record<string, unknown>, payload: Record<string, unknown>) {
+  return Object.entries(condition).every(([key, expected]) => {
+    if (expected === undefined || expected === null || expected === "") return true;
+    return payload[key] === expected;
+  });
+}
+
+export async function triggerAutomationEvent(triggerEvent: string, payload: Record<string, unknown> = {}, scope?: EnterpriseQueryScope): Promise<ApiResult<AutomationExecutionRecord[]>> {
+  let executionScope: EnterpriseQueryScope & { companyId: string };
+  try {
+    executionScope = await requireScopedCompany(scope);
+  } catch (error) {
+    return failure("triggerAutomationEvent", error, []);
+  }
+
+  const rules = await listAutomationRules(executionScope, 100);
+  if (rules.error) return failure("triggerAutomationEvent", rules.error, []);
+
+  const matchingRules = rules.data.filter((rule) => rule.status === "active" && rule.trigger_event === triggerEvent && conditionMatches(rule.condition, payload));
+  const executions: AutomationExecutionRecord[] = [];
+
+  for (const rule of matchingRules) {
+    const startedAt = new Date().toISOString();
+    const execution = await createAutomationExecution({
+      rule_id: rule.id,
+      rule_key: rule.rule_key,
+      trigger_event: triggerEvent,
+      status: "running",
+      severity: rule.severity,
+      module: rule.module,
+      started_at: startedAt,
+      metadata: { payload, action: rule.action },
+    }, executionScope);
+    if (!execution.data) continue;
+
+    try {
+      const actionType = String(rule.action.type ?? "");
+      let jobRunId: string | null = null;
+      let alertId: string | null = null;
+
+      if (actionType === "run_job") {
+        const jobType = rule.action.job_type as ScheduledJobRunRecord["job_type"];
+        const job = await executeOperationalJob(jobType, executionScope);
+        jobRunId = job.data?.id ?? null;
+      } else if (actionType === "create_alert") {
+        const alert = await createPlatformAlert({
+          alert_key: String(rule.action.alert_key ?? rule.rule_key),
+          title: String(rule.action.title ?? rule.name),
+          description: String(rule.action.description ?? rule.description ?? "Automation alert."),
+          severity: (rule.action.severity as PlatformAlertRecord["severity"]) ?? "warning",
+          source: "automation_engine",
+          module: rule.module,
+          metadata: { payload, ruleKey: rule.rule_key },
+        }, executionScope);
+        alertId = alert.data?.id ?? null;
+      } else if (actionType === "send_notification") {
+        await createNotification({
+          title: String(rule.action.title ?? rule.name),
+          body: String(rule.action.body ?? rule.description ?? ""),
+          severity: rule.severity === "critical" ? "danger" : rule.severity === "warning" ? "warning" : "info",
+          category: "system",
+          company_id: executionScope.companyId,
+          branch_id: executionScope.branchId ?? null,
+        });
+      }
+
+      const completedAt = new Date().toISOString();
+      const event = await createPlatformEvent({
+        company_id: executionScope.companyId,
+        branch_id: executionScope.branchId ?? null,
+        event_key: `automation-${execution.data.id}-completed`,
+        event_type: "automation_completed",
+        severity: "success",
+        status: "processed",
+        source: "automation_engine",
+        module: rule.module,
+        entity_type: "automation_execution",
+        entity_id: execution.data.id,
+        title: rule.name,
+        description: rule.description,
+        metadata: { triggerEvent, payload, action: rule.action },
+      }, executionScope);
+      const audit = await createAuditLog({
+        company_id: executionScope.companyId,
+        branch_id: executionScope.branchId ?? null,
+        entity_type: "automation_execution",
+        entity_id: execution.data.id,
+        action: "automation_completed",
+        description: rule.name,
+        metadata: { triggerEvent, payload, action: rule.action },
+      });
+
+      const updated = await updateAutomationExecution(execution.data.id, {
+        status: "completed",
+        severity: "success",
+        completed_at: completedAt,
+        duration_ms: durationMs(startedAt, completedAt),
+        event_id: event.data?.id ?? null,
+        alert_id: alertId,
+        job_run_id: jobRunId,
+        audit_log_id: audit.data?.id ?? null,
+      });
+      if (updated.data) executions.push(updated.data);
+    } catch (error) {
+      const completedAt = new Date().toISOString();
+      const audit = await createAuditLog({
+        company_id: executionScope.companyId,
+        branch_id: executionScope.branchId ?? null,
+        entity_type: "automation_execution",
+        entity_id: execution.data.id,
+        action: "automation_failed",
+        description: toErrorMessage(error),
+        metadata: { triggerEvent, payload, ruleKey: rule.rule_key },
+      });
+      const updated = await updateAutomationExecution(execution.data.id, {
+        status: "failed",
+        severity: "critical",
+        completed_at: completedAt,
+        duration_ms: durationMs(startedAt, completedAt),
+        failure_reason: toErrorMessage(error),
+        retry_count: (execution.data.retry_count ?? 0) + 1,
+        audit_log_id: audit.data?.id ?? null,
+      });
+      if (updated.data) executions.push(updated.data);
+    }
+  }
+
+  return success(executions);
+}
+
 export async function listPlatformOperationalSummary(scope?: EnterpriseQueryScope): Promise<ApiResult<PlatformOperationalSummary>> {
-  const [metrics, events, alerts, scheduledJobRuns] = await Promise.all([
+  const [metrics, events, alerts, scheduledJobRuns, automationRules, automationExecutions] = await Promise.all([
     listPlatformMetrics(scope, 100),
     listPlatformEvents(scope, 200),
     listPlatformAlerts(scope, 100),
     listScheduledJobRuns(scope, 100),
+    listAutomationRules(scope, 100),
+    listAutomationExecutions(scope, 100),
   ]);
 
-  const firstError = [metrics, events, alerts, scheduledJobRuns].find((result) => result.error);
+  const firstError = [metrics, events, alerts, scheduledJobRuns, automationRules, automationExecutions].find((result) => result.error);
+  const completedJobs = scheduledJobRuns.data.filter((job) => job.status === "completed" || job.status === "success").length;
+  const failedJobs = scheduledJobRuns.data.filter((job) => job.status === "failed").length;
+  const completedAutomations = automationExecutions.data.filter((execution) => execution.status === "completed").length;
+  const failedAutomations = automationExecutions.data.filter((execution) => execution.status === "failed").length;
   const summary: PlatformOperationalSummary = {
     metrics: metrics.data,
     events: events.data,
     alerts: alerts.data,
     scheduledJobRuns: scheduledJobRuns.data,
+    automationRules: automationRules.data,
+    automationExecutions: automationExecutions.data,
     openAlertCount: alerts.data.filter((alert) => alert.status === "open" || alert.status === "acknowledged").length,
     criticalAlertCount: alerts.data.filter((alert) => alert.severity === "critical" && alert.status !== "resolved").length,
-    failedJobCount: scheduledJobRuns.data.filter((job) => job.status === "failed").length,
+    failedJobCount: failedJobs,
+    jobSuccessRate: successRate(completedJobs, completedJobs + failedJobs),
+    jobFailureRate: successRate(failedJobs, completedJobs + failedJobs),
+    retryCount: scheduledJobRuns.data.reduce((total, job) => total + (job.retry_count ?? 0), 0) + automationExecutions.data.reduce((total, execution) => total + execution.retry_count, 0),
+    automationSuccessRate: successRate(completedAutomations, completedAutomations + failedAutomations),
+    automationFailureRate: successRate(failedAutomations, completedAutomations + failedAutomations),
   };
 
   if (firstError?.error) return { ...success(summary), error: firstError.error, missingTable: firstError.missingTable };

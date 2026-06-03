@@ -12,6 +12,7 @@ import { ERPLayout } from "../layout/ERPLayout";
 import {
   getERPDatabaseStatus,
   acknowledgePlatformAlert,
+  executeOperationalJob,
   listAccountingEntries,
   listAuditLogs,
   listBranches,
@@ -25,6 +26,7 @@ import {
   listPaymentReconciliationLogs,
   listPaymentRefundOperations,
   listPlatformOperationalSummary,
+  listRegisteredOperationalJobs,
   listShopFulfillmentHistory,
   listShopPaymentStatuses,
   listShopReturnRequests,
@@ -48,6 +50,7 @@ import {
   PaymentReconciliationLog,
   PaymentRefundOperation,
   PlatformAlertRecord,
+  ScheduledJobRunRecord,
   ShopFulfillmentHistory,
   ShopPaymentStatusRecord,
   ShopReturnRequest,
@@ -156,6 +159,22 @@ function alertStatusLabel(status: PlatformAlertRecord["status"]) {
   if (status === "acknowledged") return "Onaylandı";
   if (status === "resolved") return "Çözüldü";
   return "Kapatıldı";
+}
+
+function jobStatusLabel(status: ScheduledJobRunRecord["status"]) {
+  if (status === "queued") return "Kuyrukta";
+  if (status === "scheduled") return "Planlandı";
+  if (status === "running") return "Çalışıyor";
+  if (status === "completed" || status === "success") return "Tamamlandı";
+  if (status === "failed") return "Hatalı";
+  return "İptal";
+}
+
+function jobStatusTone(status: ScheduledJobRunRecord["status"]): OperationalTone {
+  if (status === "completed" || status === "success") return "success";
+  if (status === "failed") return "danger";
+  if (status === "running" || status === "queued" || status === "scheduled") return "warning";
+  return "muted";
 }
 
 export default function ERPHealthCenterPage() {
@@ -271,6 +290,16 @@ export default function ERPHealthCenterPage() {
 
   const handleResolveAlert = async (id: string) => {
     const result = await resolvePlatformAlert(id, "Resolved from ERP Health Center.");
+    if (result.error) setError(result.error);
+    await load();
+  };
+
+  const handleExecuteJob = async (jobType: ScheduledJobRunRecord["job_type"]) => {
+    setLoading(true);
+    const result = await executeOperationalJob(jobType, {
+      companyId: filters.companyId === "all" ? undefined : filters.companyId,
+      branchId: filters.branchId === "all" ? undefined : filters.branchId,
+    });
     if (result.error) setError(result.error);
     await load();
   };
@@ -526,6 +555,7 @@ export default function ERPHealthCenterPage() {
           <TabsTrigger value="audit">Audit Explorer</TabsTrigger>
           <TabsTrigger value="timeline">Zaman Çizelgesi</TabsTrigger>
           <TabsTrigger value="alerts">Alarmlar</TabsTrigger>
+          <TabsTrigger value="reliability">Güvenilirlik</TabsTrigger>
           <TabsTrigger value="governance">Yönetişim</TabsTrigger>
         </TabsList>
 
@@ -651,6 +681,80 @@ export default function ERPHealthCenterPage() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="reliability" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <OverviewCard title="İş Başarı Oranı" value={`${data.platformSummary?.jobSuccessRate ?? 0}%`} description="tamamlanan operasyon işleri" tone={(data.platformSummary?.jobFailureRate ?? 0) ? "warning" : "success"} />
+            <OverviewCard title="İş Hata Oranı" value={`${data.platformSummary?.jobFailureRate ?? 0}%`} description="başarısız operasyon işleri" tone={(data.platformSummary?.jobFailureRate ?? 0) ? "danger" : "success"} />
+            <OverviewCard title="Tekrar Sayısı" value={data.platformSummary?.retryCount ?? 0} description="iş ve otomasyon tekrarları" tone={(data.platformSummary?.retryCount ?? 0) ? "warning" : "success"} />
+            <OverviewCard title="Otomasyon Başarı" value={`${data.platformSummary?.automationSuccessRate ?? 0}%`} description="tamamlanan otomasyonlar" tone={(data.platformSummary?.automationFailureRate ?? 0) ? "warning" : "success"} />
+            <OverviewCard title="Otomasyon Hatası" value={`${data.platformSummary?.automationFailureRate ?? 0}%`} description="başarısız otomasyonlar" tone={(data.platformSummary?.automationFailureRate ?? 0) ? "danger" : "success"} />
+          </div>
+
+          <Card className="erp-surface rounded-lg">
+            <CardHeader><CardTitle className="text-base">Operasyon İşleri</CardTitle></CardHeader>
+            <CardContent>
+              <DataTable
+                data={listRegisteredOperationalJobs()}
+                rowKey={(row) => row.key}
+                columns={[
+                  { key: "name", header: "İş", render: (row) => <div><p className="font-medium">{row.name}</p><p className="text-xs text-muted-foreground">{row.description}</p></div> },
+                  { key: "module", header: "Modül", render: (row) => row.module },
+                  { key: "retry", header: "Tekrar", render: (row) => row.maxRetries },
+                  { key: "action", header: "İşlem", render: (row) => <Button size="sm" variant="outline" disabled={loading} onClick={() => handleExecuteJob(row.key)}>Çalıştır</Button> },
+                ]}
+              />
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Card className="erp-surface rounded-lg">
+              <CardHeader><CardTitle className="text-base">İş Geçmişi</CardTitle></CardHeader>
+              <CardContent>
+                <DataTable
+                  data={data.platformSummary?.scheduledJobRuns ?? []}
+                  rowKey={(row) => row.id}
+                  emptyMessage="İş geçmişi bulunamadı"
+                  columns={[
+                    { key: "time", header: "Zaman", render: (row) => dateLabel(row.created_at) },
+                    { key: "name", header: "İş", render: (row) => row.job_name },
+                    { key: "status", header: "Durum", render: (row) => <StatusBadge label={jobStatusLabel(row.status)} tone={jobStatusTone(row.status)} /> },
+                    { key: "retry", header: "Tekrar", render: (row) => row.retry_count ?? 0 },
+                    { key: "duration", header: "Süre", render: (row) => row.duration_ms ? `${row.duration_ms} ms` : "-" },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="erp-surface rounded-lg">
+              <CardHeader><CardTitle className="text-base">Otomasyon Geçmişi</CardTitle></CardHeader>
+              <CardContent>
+                <DataTable
+                  data={data.platformSummary?.automationExecutions ?? []}
+                  rowKey={(row) => row.id}
+                  emptyMessage="Otomasyon geçmişi bulunamadı"
+                  columns={[
+                    { key: "time", header: "Zaman", render: (row) => dateLabel(row.created_at) },
+                    { key: "rule", header: "Kural", render: (row) => row.rule_key },
+                    { key: "trigger", header: "Tetikleyici", render: (row) => row.trigger_event },
+                    { key: "status", header: "Durum", render: (row) => <StatusBadge label={row.status === "completed" ? "Tamamlandı" : row.status === "failed" ? "Hatalı" : row.status === "running" ? "Çalışıyor" : row.status === "queued" ? "Kuyrukta" : "İptal"} tone={row.status === "completed" ? "success" : row.status === "failed" ? "danger" : "warning"} /> },
+                    { key: "retry", header: "Tekrar", render: (row) => row.retry_count },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="erp-surface rounded-lg">
+            <CardHeader><CardTitle className="text-base">SLA Hazırlığı</CardTitle></CardHeader>
+            <CardContent className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-4">
+              <p>Yanıt süreleri alarm onay ve çözüm zamanlarından üretilecek.</p>
+              <p>Çalışma süreleri iş ve otomasyon `duration_ms` alanlarından izlenecek.</p>
+              <p>Hata oranları tamamlanan ve hatalı iş geçmişinden hesaplanıyor.</p>
+              <p>Kurtarma süreleri tekrar ve çözüm kayıtlarıyla raporlanmaya hazır.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="governance" className="space-y-4">

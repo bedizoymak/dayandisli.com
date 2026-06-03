@@ -922,8 +922,10 @@ export type PlatformSeverity = "info" | "success" | "warning" | "critical";
 export type PlatformMetricStatus = "active" | "inactive" | "resolved" | "archived";
 export type PlatformEventStatus = "recorded" | "processing" | "processed" | "failed" | "ignored";
 export type PlatformAlertStatus = "open" | "acknowledged" | "resolved" | "dismissed";
-export type ScheduledJobRunStatus = "scheduled" | "running" | "success" | "failed" | "cancelled";
-export type ScheduledJobType = "reconciliation_check" | "inventory_verification" | "webhook_cleanup" | "backup_verification" | "rls_control_check" | "maintenance";
+export type ScheduledJobRunStatus = "queued" | "scheduled" | "running" | "completed" | "success" | "failed" | "cancelled";
+export type ScheduledJobType = "reconciliation_check" | "inventory_verification" | "webhook_cleanup" | "backup_verification" | "rls_control_check" | "tenant_isolation_verification" | "observability_aggregation" | "maintenance";
+export type AutomationRuleStatus = "active" | "paused" | "archived";
+export type AutomationExecutionStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 
 export interface PlatformMetricRecord {
   id: string;
@@ -998,7 +1000,59 @@ export interface ScheduledJobRunRecord {
   started_at: string | null;
   completed_at: string | null;
   duration_ms: number | null;
+  queued_at?: string | null;
+  retry_count?: number;
+  max_retries?: number;
+  next_retry_at?: string | null;
+  parent_job_run_id?: string | null;
+  audit_log_id?: string | null;
   failure_reason: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface AutomationRuleRecord {
+  id: string;
+  company_id: string;
+  branch_id: string | null;
+  rule_key: string;
+  name: string;
+  description: string | null;
+  trigger_event: string;
+  condition: Record<string, unknown>;
+  action: Record<string, unknown>;
+  status: AutomationRuleStatus;
+  severity: PlatformSeverity;
+  source: string;
+  module: string;
+  last_triggered_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface AutomationExecutionRecord {
+  id: string;
+  company_id: string;
+  branch_id: string | null;
+  rule_id: string | null;
+  rule_key: string;
+  trigger_event: string;
+  status: AutomationExecutionStatus;
+  severity: PlatformSeverity;
+  source: string;
+  module: string;
+  started_at: string | null;
+  completed_at: string | null;
+  duration_ms: number | null;
+  retry_count: number;
+  max_retries: number;
+  failure_reason: string | null;
+  event_id: string | null;
+  alert_id: string | null;
+  job_run_id: string | null;
+  audit_log_id: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at?: string;
