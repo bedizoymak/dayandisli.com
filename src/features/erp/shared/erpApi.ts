@@ -411,6 +411,48 @@ export async function listAuditLogsForEntity(entityType: string, entityId?: stri
   return success(data ?? []);
 }
 
+export async function listAuditLogs(filters: {
+  search?: string;
+  actor?: string;
+  companyId?: string;
+  branchId?: string;
+  entityType?: string;
+  action?: string;
+  limit?: number;
+} = {}): Promise<ApiResult<ERPAuditLog[]>> {
+  let query = supabase
+    .from("erp_audit_logs" as never)
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (filters.actor) query = query.ilike("actor_email" as never, `%${filters.actor}%` as never);
+  if (filters.companyId && filters.companyId !== "all") query = query.eq("company_id" as never, filters.companyId as never);
+  if (filters.branchId && filters.branchId !== "all") query = query.eq("branch_id" as never, filters.branchId as never);
+  if (filters.entityType && filters.entityType !== "all") query = query.eq("entity_type" as never, filters.entityType as never);
+  if (filters.action && filters.action !== "all") query = query.eq("action" as never, filters.action as never);
+
+  const { data, error } = (await query.limit(filters.limit ?? 200)) as unknown as DbResult<ERPAuditLog[]>;
+  if (error) return failure("listAuditLogs", error, []);
+
+  const needle = normalizeSearch(filters.search);
+  const rows = data ?? [];
+  if (!needle) return success(rows);
+  return success(rows.filter((row) => {
+    const haystack = [
+      row.actor_email,
+      row.entity_type,
+      row.entity_id,
+      row.action,
+      row.description,
+      row.old_status,
+      row.new_status,
+      row.company_id,
+      row.branch_id,
+    ].join(" ").toLocaleLowerCase("tr-TR");
+    return haystack.includes(needle.toLocaleLowerCase("tr-TR"));
+  }));
+}
+
 export async function listRecentAuditLogs(limit = 10): Promise<ApiResult<ERPAuditLog[]>> {
   const { data, error } = (await supabase
     .from("erp_audit_logs" as never)

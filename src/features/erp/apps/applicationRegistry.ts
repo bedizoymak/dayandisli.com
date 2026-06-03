@@ -264,6 +264,7 @@ export const erpApplications: ErpApplication[] = [
     permissionKey: "reports.view",
     modules: [
       { title: "Yönetim Paneli", description: "ERP genel KPI ve yönetim görünürlüğünü açın.", route: "/reports", permissionKey: "reports.management" },
+      { title: "Sağlık Merkezi", description: "Operasyon sağlığı, audit kayıtları ve platform olaylarını izleyin.", route: "/health", permissionKey: "reports.view" },
       { title: "Satış Raporları", description: "Teklif, sipariş ve satış tutarlarını analiz edin.", route: "/reports", permissionKey: "reports.sales" },
       { title: "CRM Raporları", description: "Müşteri, aday ve fırsat dağılımlarını görüntüleyin.", route: "/reports", permissionKey: "reports.crm" },
       { title: "Stok Raporları", description: "Stok kartları, kritik stok ve hareket eğilimlerini izleyin.", route: "/reports", permissionKey: "reports.inventory" },

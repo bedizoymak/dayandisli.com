@@ -6,6 +6,7 @@ import {
   FileText,
   Handshake,
   LayoutDashboard,
+  Activity,
   Package,
   Settings,
   ShoppingCart,
@@ -122,6 +123,15 @@ export const erpModules: ErpModuleConfig[] = [
     requiredPermission: "dashboard.view",
   },
   {
+    id: "health",
+    title: "Sağlık Merkezi",
+    description: "Operasyon sağlığı, uyarılar ve platform olayları",
+    path: "/health",
+    icon: Activity,
+    status: "active",
+    requiredPermission: "reports.view",
+  },
+  {
     id: "tasks",
     title: "Görevler",
     description: "Atanan işler ve takip listesi",
@@ -162,6 +172,6 @@ export const erpModules: ErpModuleConfig[] = [
 
 export const visibleErpModules = erpModules.filter((module) => module.visible !== false);
 
-export const dashboardModuleIds = ["customers", "suppliers", "quotations", "calculator", "orders", "cargo", "finance", "notifications"];
+export const dashboardModuleIds = ["customers", "suppliers", "quotations", "calculator", "orders", "cargo", "finance", "notifications", "health"];
 
 export const dashboardModules = visibleErpModules.filter((module) => dashboardModuleIds.includes(module.id));

@@ -27,6 +27,7 @@ const MaintenancePage = lazy(() => import("./maintenance/MaintenancePage"));
 const DocumentsPage = lazy(() => import("./documents/DocumentsPage"));
 const NotificationsPage = lazy(() => import("./notifications/NotificationsPage"));
 const ReportsPage = lazy(() => import("./reports/ReportsPage"));
+const ERPHealthCenterPage = lazy(() => import("./observability/ERPHealthCenterPage"));
 const ERPSettingsPage = lazy(() => import("./settings/ERPSettingsPage"));
 const PurchasingPage = lazy(() => import("./purchasing/PurchasingPage"));
 const PurchaseOrdersPage = lazy(() => import("./purchasing/PurchaseOrdersPage"));
@@ -149,6 +150,7 @@ export function ERPRoutes() {
       <Route path="documents" element={<DocumentsPage />} />
       <Route path="notifications" element={<NotificationsPage />} />
       <Route path="reports" element={<ReportsPage />} />
+      <Route path="health" element={<ERPHealthCenterPage />} />
       <Route path="settings" element={<ERPSettingsPage />} />
       <Route path="*" element={<ErpNotFoundPage />} />
     </Routes>
