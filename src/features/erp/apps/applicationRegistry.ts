@@ -59,7 +59,7 @@ export const erpApplications: ErpApplication[] = [
     id: "website",
     title: "Web Sitesi",
     description: "Site içeriği, ürün görünürlüğü ve yönetim ekranları.",
-    route: "/apps/website",
+    route: "/website",
     icon: Globe2,
     permissionKey: "website.view",
     modules: [
@@ -76,7 +76,7 @@ export const erpApplications: ErpApplication[] = [
     id: "commerce",
     title: "E-Ticaret",
     description: "Mağaza siparişleri, ürün katalogları ve satış akışı.",
-    route: "/apps/commerce",
+    route: "/commerce",
     icon: ShoppingBag,
     permissionKey: "commerce.view",
     modules: [
@@ -93,7 +93,7 @@ export const erpApplications: ErpApplication[] = [
     id: "crm",
     title: "Müşteri İlişkileri",
     description: "Müşteri, tedarikçi ve fason firma kartları.",
-    route: "/apps/crm",
+    route: "/crm",
     icon: HeartHandshake,
     permissionKey: "crm.view",
     modules: [
@@ -109,7 +109,7 @@ export const erpApplications: ErpApplication[] = [
     id: "sales",
     title: "Satış",
     description: "Teklifler, satış siparişleri ve müşteri talepleri.",
-    route: "/apps/sales",
+    route: "/teklifler",
     icon: ShoppingCart,
     permissionKey: "sales.view",
     modules: [
@@ -123,7 +123,7 @@ export const erpApplications: ErpApplication[] = [
     id: "invoicing",
     title: "Faturalama",
     description: "Satış ve alış faturalarının operasyon takibi.",
-    route: "/apps/invoicing",
+    route: "/invoices",
     icon: ReceiptText,
     permissionKey: "invoicing.view",
     modules: [
@@ -136,7 +136,7 @@ export const erpApplications: ErpApplication[] = [
     id: "accounting",
     title: "Muhasebe",
     description: "Finans hareketleri, tahsilat ve ödeme kayıtları.",
-    route: "/apps/accounting",
+    route: "/finans",
     icon: Calculator,
     permissionKey: "accounting.view",
     modules: [
@@ -150,7 +150,7 @@ export const erpApplications: ErpApplication[] = [
     id: "expenses",
     title: "Gider Yönetimi",
     description: "Gider kayıtları ve ödeme çıkışlarının takibi.",
-    route: "/apps/expenses",
+    route: "/payments",
     icon: CreditCard,
     permissionKey: "expenses.view",
     modules: [
@@ -163,7 +163,7 @@ export const erpApplications: ErpApplication[] = [
     id: "inventory",
     title: "Stok Yönetimi",
     description: "Malzeme, ürün ve depo hareketleri.",
-    route: "/apps/inventory",
+    route: "/inventory",
     icon: PackageSearch,
     permissionKey: "inventory.view",
     modules: [
@@ -176,7 +176,7 @@ export const erpApplications: ErpApplication[] = [
     id: "purchasing",
     title: "Satın Alma",
     description: "Satın alma siparişleri ve tedarik akışı.",
-    route: "/apps/purchasing",
+    route: "/purchasing",
     icon: HandCoins,
     permissionKey: "purchasing.view",
     modules: [
@@ -189,7 +189,7 @@ export const erpApplications: ErpApplication[] = [
     id: "production",
     title: "Üretim",
     description: "İş emirleri, rotalar ve üretim operasyonları.",
-    route: "/apps/production",
+    route: "/production",
     icon: Factory,
     permissionKey: "production.view",
     modules: [
@@ -204,7 +204,7 @@ export const erpApplications: ErpApplication[] = [
     id: "quality",
     title: "Kalite Yönetimi",
     description: "Kalite raporları, ölçümler ve kontrol kayıtları.",
-    route: "/apps/quality",
+    route: "/quality",
     icon: ShieldCheck,
     permissionKey: "quality.view",
     modules: [
@@ -216,7 +216,7 @@ export const erpApplications: ErpApplication[] = [
     id: "maintenance",
     title: "Bakım Yönetimi",
     description: "Makine bakım planları ve arıza kayıtları.",
-    route: "/apps/maintenance",
+    route: "/maintenance",
     icon: Wrench,
     permissionKey: "maintenance.view",
     modules: [
@@ -228,7 +228,7 @@ export const erpApplications: ErpApplication[] = [
     id: "repair",
     title: "Tamir Yönetimi",
     description: "Tamir işleri için üretim ve bakım ekranlarına hızlı geçiş.",
-    route: "/apps/repair",
+    route: "/work-orders",
     icon: ClipboardCheck,
     permissionKey: "repair.view",
     modules: [
@@ -241,7 +241,7 @@ export const erpApplications: ErpApplication[] = [
     id: "hr",
     title: "İnsan Kaynakları",
     description: "Personel kayıtları ve çalışma süreleri.",
-    route: "/apps/hr",
+    route: "/hr",
     icon: Users,
     permissionKey: "hr.view",
     modules: [
@@ -259,7 +259,7 @@ export const erpApplications: ErpApplication[] = [
     id: "reports",
     title: "Raporlar",
     description: "Yönetim, finans, üretim ve stok raporları.",
-    route: "/apps/reports",
+    route: "/reports",
     icon: BarChart3,
     permissionKey: "reports.view",
     modules: [
@@ -278,7 +278,7 @@ export const erpApplications: ErpApplication[] = [
     id: "settings",
     title: "Ayarlar",
     description: "Sistem, erişim ve ERP yapılandırması.",
-    route: "/apps/settings",
+    route: "/settings",
     icon: Settings,
     permissionKey: "settings.view",
     modules: [

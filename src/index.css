@@ -142,6 +142,10 @@ All colors MUST be HSL.
     @apply min-h-screen bg-background text-foreground;
   }
 
+  .apps-launcher-shell {
+    @apply min-h-screen bg-background text-foreground;
+  }
+
   .erp-surface {
     @apply border border-border/80 bg-card/90 shadow-lg shadow-black/20 backdrop-blur;
   }
