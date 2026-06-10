@@ -8,10 +8,6 @@ type ProtectedRouteProps = {
   children: React.ReactNode;
 };
 
-interface SettingsRow {
-  auth_enabled: boolean;
-}
-
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,28 +16,17 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkAccess = async () => {
       localStorage.setItem("auth_redirect_path", `${location.pathname}${location.search}`);
+      setLoading(true);
+      setIsAuthenticated(false);
+      setIsAllowed(false);
+      setRedirectTo("/login");
 
       if (!isSupabaseConfigured) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: settingsData, error: settingsError } = (await supabase
-        .from("settings")
-        .select("auth_enabled")
-        .eq("id", "1")
-        .maybeSingle()) as { data: SettingsRow | null; error: unknown };
-
-      if (settingsError) {
-        if (import.meta.env.DEV) console.error("Settings error:", settingsError);
-      }
-
-      if (settingsData && settingsData.auth_enabled === false) {
-        setIsAuthenticated(true);
-        setIsAllowed(true);
-        setLoading(false);
+        if (isMounted) setLoading(false);
         return;
       }
 
@@ -50,9 +35,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       } = await supabase.auth.getSession();
 
       if (!session?.user?.email) {
-        setLoading(false);
+        if (isMounted) setLoading(false);
         return;
       }
+
+      if (isMounted) setIsAuthenticated(true);
 
       const { data: adminUser, error: adminError } = await supabase
         .from("admin_users" as never)
@@ -64,25 +51,30 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       if (adminError) {
         if (import.meta.env.DEV) console.error("Admin yetki kontrol hatası:", adminError);
         await supabase.auth.signOut();
-        setLoading(false);
+        if (isMounted) setLoading(false);
         return;
       }
 
       if (adminUser) {
-        setIsAuthenticated(true);
         const erpUserResult = await getCurrentERPUser();
         const requiredPermission = getRequiredPermissionForPath(location.pathname);
         const allowed = hasPermission(erpUserResult.data, requiredPermission);
-        setIsAllowed(allowed);
-        if (!allowed) setRedirectTo("/apps");
+        if (isMounted) {
+          setIsAllowed(allowed);
+          if (!allowed) setRedirectTo("/apps");
+        }
       } else {
         await supabase.auth.signOut();
       }
 
-      setLoading(false);
+      if (isMounted) setLoading(false);
     };
 
     checkAccess();
+
+    return () => {
+      isMounted = false;
+    };
   }, [location.pathname, location.search]);
 
   if (loading) {
