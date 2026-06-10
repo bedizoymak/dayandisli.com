@@ -4471,8 +4471,9 @@ export async function getERPDashboardActivity(): Promise<ApiResult<ERPDashboardA
         recentAuditLogs: auditLogs.data,
         recentNotifications: notifications.data,
       },
-      error: missingTable ? ERP_MIGRATION_MESSAGE : firstError,
+      error: missingTable ? null : firstError,
       missingTable,
+      demoFallback: missingTable,
     };
   } catch (error) {
     return failure("getERPDashboardActivity", error, empty);
@@ -4608,8 +4609,9 @@ export async function getERPDashboardMetrics(): Promise<ApiResult<DashboardMetri
         upcomingMaintenances: upcomingMaintenances.count,
         todaysShipments: todaysShipments.count,
       },
-      error: missingTable ? ERP_MIGRATION_MESSAGE : stockResult.error,
+      error: missingTable ? null : stockResult.error,
       missingTable,
+      demoFallback: missingTable,
     };
   } catch (error) {
     return failure("getERPDashboardMetrics", error, defaultMetrics);
@@ -4691,7 +4693,7 @@ export async function getERPReportSummary(): Promise<ApiResult<ERPReportSummary>
       pendingQualityReports,
       upcomingMaintenances,
     ].some((item) => item.missingTable) || stock.missingTable;
-    return { data: summary, error: missingTable ? ERP_MIGRATION_MESSAGE : stock.error, missingTable };
+    return { data: summary, error: missingTable ? null : stock.error, missingTable, demoFallback: missingTable };
   } catch (error) {
     return failure("getERPReportSummary", error, empty);
   }

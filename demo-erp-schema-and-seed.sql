@@ -6,6 +6,32 @@ begin;
 
 create extension if not exists pgcrypto;
 
+-- This file matches the ERP readiness check in src/features/erp/shared/erpApi.ts.
+-- The app checks these exact public table names:
+-- admin_users, companies, company_branches, warehouses, company_memberships,
+-- erp_users, stakeholders, erp_quotation_links, quotations, sales_orders,
+-- sales_order_items, machines, production_routes, production_route_steps,
+-- work_orders, work_order_operations, subcontracting_jobs, documents,
+-- inventory_items, inventory_movements, measuring_tools, financial_accounts,
+-- invoices, payments, products, orders, order_items, shop_categories,
+-- shop_campaigns, shop_carts, shop_payment_statuses, website_pages,
+-- website_seo_settings, website_menu_items, website_media_assets,
+-- website_forms, website_form_submissions, website_banners, employees,
+-- hr_departments, hr_positions, employee_time_entries, hr_leave_requests,
+-- hr_recruitment_candidates, hr_onboarding_tasks, employee_assets, shipments,
+-- shipment_items, quality_reports, quality_measurements, maintenance_tasks,
+-- erp_number_sequences, erp_audit_logs, erp_notifications, platform_metrics,
+-- platform_events, platform_alerts, scheduled_job_runs, automation_rules,
+-- automation_executions, purchase_orders, purchase_order_items.
+
+create table if not exists public.admin_users (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  role text not null default 'admin',
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.erp_users (
   id uuid primary key default gen_random_uuid(),
   auth_user_id uuid,
@@ -378,6 +404,451 @@ create table if not exists public.erp_notifications (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.erp_quotation_links (
+  id uuid primary key default gen_random_uuid(),
+  quotation_id uuid,
+  erp_quotation_id uuid,
+  sales_order_id uuid,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.subcontracting_jobs (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid,
+  branch_id uuid,
+  job_no text,
+  supplier_id uuid,
+  work_order_id uuid,
+  title text,
+  status text not null default 'sent',
+  due_date date,
+  cost numeric not null default 0,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.documents (
+  id uuid primary key default gen_random_uuid(),
+  entity_type text not null,
+  entity_id uuid,
+  document_type text not null,
+  file_name text not null,
+  file_path text,
+  version_no integer not null default 1,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.measuring_tools (
+  id uuid primary key default gen_random_uuid(),
+  code text,
+  name text,
+  tool_type text,
+  calibration_due_date date,
+  status text not null default 'active',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.products (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text,
+  sku text,
+  description text,
+  price numeric not null default 0,
+  currency text not null default 'TRY',
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.orders (
+  id uuid primary key default gen_random_uuid(),
+  order_no text,
+  customer_name text,
+  customer_email text,
+  status text not null default 'new',
+  total numeric not null default 0,
+  currency text not null default 'TRY',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid,
+  product_id uuid,
+  product_name text,
+  quantity numeric not null default 1,
+  unit_price numeric not null default 0,
+  total numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.shop_categories (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text,
+  description text,
+  is_active boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.shop_campaigns (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  discount_type text,
+  discount_value numeric not null default 0,
+  status text not null default 'active',
+  starts_at timestamptz,
+  ends_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.shop_carts (
+  id uuid primary key default gen_random_uuid(),
+  customer_email text,
+  status text not null default 'active',
+  total numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.shop_payment_statuses (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid,
+  provider text,
+  status text not null default 'pending',
+  amount numeric not null default 0,
+  currency text not null default 'TRY',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.website_pages (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  title text not null,
+  summary text,
+  content text,
+  status text not null default 'published',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.website_seo_settings (
+  id uuid primary key default gen_random_uuid(),
+  page_slug text not null unique,
+  title text,
+  description text,
+  keywords text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.website_menu_items (
+  id uuid primary key default gen_random_uuid(),
+  label text not null,
+  url text not null,
+  placement text not null default 'header',
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.website_media_assets (
+  id uuid primary key default gen_random_uuid(),
+  file_name text not null,
+  file_path text,
+  media_type text not null default 'image',
+  alt_text text,
+  usage_area text,
+  is_public boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.website_forms (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  form_key text not null unique,
+  target_email text,
+  success_message text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.website_form_submissions (
+  id uuid primary key default gen_random_uuid(),
+  form_id uuid,
+  form_key text,
+  submitter_email text,
+  payload jsonb not null default '{}'::jsonb,
+  status text not null default 'new',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.website_banners (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  subtitle text,
+  image_path text,
+  link_url text,
+  placement text not null default 'home',
+  status text not null default 'published',
+  starts_at timestamptz,
+  ends_at timestamptz,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.hr_departments (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid,
+  name text not null,
+  code text,
+  manager_employee_id uuid,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.hr_positions (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid,
+  department_id uuid,
+  title text not null,
+  code text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.employee_time_entries (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid,
+  entry_date date not null default current_date,
+  check_in timestamptz,
+  check_out timestamptz,
+  status text not null default 'present',
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.hr_leave_requests (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid,
+  leave_type text not null default 'annual',
+  start_date date,
+  end_date date,
+  status text not null default 'pending',
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.hr_recruitment_candidates (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null,
+  email text,
+  phone text,
+  position_id uuid,
+  status text not null default 'new',
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.hr_onboarding_tasks (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid,
+  title text not null,
+  status text not null default 'open',
+  due_date date,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.employee_assets (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid,
+  asset_name text not null,
+  asset_tag text,
+  assigned_at date,
+  status text not null default 'assigned',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.shipments (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid,
+  branch_id uuid,
+  shipment_no text,
+  sales_order_id uuid,
+  stakeholder_id uuid,
+  carrier text,
+  tracking_no text,
+  status text not null default 'planned',
+  shipment_date date,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.shipment_items (
+  id uuid primary key default gen_random_uuid(),
+  shipment_id uuid,
+  description text,
+  quantity numeric not null default 1,
+  unit text not null default 'adet',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.quality_reports (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid,
+  branch_id uuid,
+  report_no text,
+  work_order_id uuid,
+  result text not null default 'pending',
+  inspector_employee_id uuid,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.quality_measurements (
+  id uuid primary key default gen_random_uuid(),
+  quality_report_id uuid,
+  metric_name text not null,
+  measured_value numeric,
+  target_value numeric,
+  tolerance text,
+  result text not null default 'ok',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.maintenance_tasks (
+  id uuid primary key default gen_random_uuid(),
+  machine_id uuid,
+  title text not null,
+  status text not null default 'planned',
+  planned_date date,
+  completed_at timestamptz,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.erp_number_sequences (
+  id uuid primary key default gen_random_uuid(),
+  sequence_key text not null unique,
+  prefix text not null,
+  current_value bigint not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.platform_metrics (
+  id uuid primary key default gen_random_uuid(),
+  metric_key text not null,
+  metric_name text not null,
+  metric_value numeric,
+  metric_unit text,
+  severity text not null default 'info',
+  status text not null default 'active',
+  source text,
+  module text,
+  measured_at timestamptz not null default now(),
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.platform_events (
+  id uuid primary key default gen_random_uuid(),
+  event_key text,
+  title text not null,
+  description text,
+  severity text not null default 'info',
+  status text not null default 'open',
+  module text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.platform_alerts (
+  id uuid primary key default gen_random_uuid(),
+  alert_key text,
+  title text not null,
+  description text,
+  severity text not null default 'warning',
+  status text not null default 'open',
+  module text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.scheduled_job_runs (
+  id uuid primary key default gen_random_uuid(),
+  job_type text not null,
+  status text not null default 'success',
+  severity text not null default 'info',
+  started_at timestamptz not null default now(),
+  completed_at timestamptz,
+  retry_count integer not null default 0,
+  summary text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.automation_rules (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  trigger_type text not null default 'manual',
+  action_type text not null default 'notify',
+  is_active boolean not null default true,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.automation_executions (
+  id uuid primary key default gen_random_uuid(),
+  automation_rule_id uuid,
+  status text not null default 'success',
+  started_at timestamptz not null default now(),
+  completed_at timestamptz,
+  summary text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.purchase_order_items (
+  id uuid primary key default gen_random_uuid(),
+  purchase_order_id uuid,
+  inventory_item_id uuid,
+  description text not null,
+  quantity numeric not null default 1,
+  unit text not null default 'adet',
+  unit_price numeric not null default 0,
+  total numeric not null default 0,
+  received_quantity numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+insert into public.admin_users (email, role, is_active)
+select email, 'admin', true
+from auth.users
+where email is not null
+on conflict (email) do update set is_active = true, role = excluded.role;
+
+insert into public.erp_users (auth_user_id, email, full_name, role, roles, permissions, department, is_active)
+select
+  id,
+  email,
+  coalesce(raw_user_meta_data->>'full_name', email),
+  'admin',
+  array['admin'],
+  array['*'],
+  'Yonetim',
+  true
+from auth.users
+where email is not null
+on conflict (email) do update set
+  auth_user_id = excluded.auth_user_id,
+  role = excluded.role,
+  roles = excluded.roles,
+  permissions = excluded.permissions,
+  is_active = true;
+
 insert into public.companies (id, code, legal_name, trade_name, primary_admin_email)
 values ('00000000-0000-4000-8000-100000000001', 'DAYAN-DEMO', 'Dayan Disli Demo Sirketi', 'Dayan Disli', 'info@dayandisli.com')
 on conflict (id) do update set legal_name = excluded.legal_name, trade_name = excluded.trade_name;
@@ -485,6 +956,161 @@ on conflict (id) do update set amount = excluded.amount;
 insert into public.purchase_orders (id, company_id, branch_id, purchase_order_no, supplier_id, title, status, priority, order_date, expected_date, currency, subtotal, tax_total, grand_total, notes)
 values ('00000000-0000-4000-8000-100000001001', '00000000-0000-4000-8000-100000000001', '00000000-0000-4000-8000-100000000002', 'PO-DEMO-2026-001', '00000000-0000-4000-8000-100000000102', 'C45 hammadde demo satin alma', 'sent', 'normal', current_date, current_date + 3, 'TRY', 51000, 10200, 61200, 'Demo satin alma kaydi.')
 on conflict (id) do update set status = excluded.status;
+
+insert into public.purchase_order_items (id, purchase_order_id, inventory_item_id, description, quantity, unit, unit_price, total, received_quantity)
+values ('00000000-0000-4000-8000-100000001002', '00000000-0000-4000-8000-100000001001', '00000000-0000-4000-8000-100000000701', 'C45 yuvarlak celik 50mm', 120, 'kg', 425, 51000, 0)
+on conflict (id) do update set quantity = excluded.quantity, total = excluded.total;
+
+insert into public.subcontracting_jobs (id, company_id, branch_id, job_no, supplier_id, work_order_id, title, status, due_date, cost, notes)
+values ('00000000-0000-4000-8000-100000001201', '00000000-0000-4000-8000-100000000001', '00000000-0000-4000-8000-100000000002', 'FSN-DEMO-2026-001', '00000000-0000-4000-8000-100000000102', '00000000-0000-4000-8000-100000000601', 'Demo isil islem takibi', 'sent', current_date + 5, 8500, 'Demo fason sureci.')
+on conflict (id) do update set status = excluded.status, cost = excluded.cost;
+
+insert into public.shipments (id, company_id, branch_id, shipment_no, sales_order_id, stakeholder_id, carrier, tracking_no, status, shipment_date, notes)
+values ('00000000-0000-4000-8000-100000001301', '00000000-0000-4000-8000-100000000001', '00000000-0000-4000-8000-100000000002', 'SHP-DEMO-2026-001', '00000000-0000-4000-8000-100000000301', '00000000-0000-4000-8000-100000000101', 'Demo Kargo', 'TRK-DEMO-001', 'planned', current_date, 'Demo sevkiyat kaydi.')
+on conflict (id) do update set status = excluded.status, tracking_no = excluded.tracking_no;
+
+insert into public.shipment_items (id, shipment_id, description, quantity, unit)
+values ('00000000-0000-4000-8000-100000001302', '00000000-0000-4000-8000-100000001301', 'Helis disli seti', 2, 'adet')
+on conflict (id) do update set quantity = excluded.quantity;
+
+insert into public.quality_reports (id, company_id, branch_id, report_no, work_order_id, result, inspector_employee_id, notes)
+values ('00000000-0000-4000-8000-100000001401', '00000000-0000-4000-8000-100000000001', '00000000-0000-4000-8000-100000000002', 'QC-DEMO-2026-001', '00000000-0000-4000-8000-100000000601', 'pending', '00000000-0000-4000-8000-100000000901', 'Demo kalite kontrol raporu.')
+on conflict (id) do update set result = excluded.result;
+
+insert into public.quality_measurements (id, quality_report_id, metric_name, measured_value, target_value, tolerance, result)
+values ('00000000-0000-4000-8000-100000001402', '00000000-0000-4000-8000-100000001401', 'Dis capi', 120.02, 120.00, '+/-0.05', 'ok')
+on conflict (id) do update set measured_value = excluded.measured_value, result = excluded.result;
+
+insert into public.maintenance_tasks (id, machine_id, title, status, planned_date, notes)
+values ('00000000-0000-4000-8000-100000001501', '00000000-0000-4000-8000-100000000401', 'Demo CNC periyodik bakim', 'planned', current_date + 10, 'Demo bakim plani.')
+on conflict (id) do update set status = excluded.status, planned_date = excluded.planned_date;
+
+insert into public.documents (id, entity_type, entity_id, document_type, file_name, file_path, notes)
+values ('00000000-0000-4000-8000-100000001601', 'work_order', '00000000-0000-4000-8000-100000000601', 'technical_drawing', 'demo-teknik-resim.pdf', null, 'Demo dokuman kaydi.')
+on conflict (id) do update set file_name = excluded.file_name;
+
+insert into public.measuring_tools (id, code, name, tool_type, calibration_due_date, status)
+values ('00000000-0000-4000-8000-100000001701', 'OLC-DEMO-001', 'Demo Mikrometre', 'micrometer', current_date + 45, 'active')
+on conflict (id) do update set calibration_due_date = excluded.calibration_due_date, status = excluded.status;
+
+insert into public.hr_departments (id, company_id, name, code, is_active)
+values ('00000000-0000-4000-8000-100000001801', '00000000-0000-4000-8000-100000000001', 'Uretim', 'URT', true)
+on conflict (id) do update set name = excluded.name, is_active = true;
+
+insert into public.hr_positions (id, company_id, department_id, title, code, is_active)
+values ('00000000-0000-4000-8000-100000001802', '00000000-0000-4000-8000-100000000001', '00000000-0000-4000-8000-100000001801', 'CNC Operatoru', 'CNC-OP', true)
+on conflict (id) do update set title = excluded.title, is_active = true;
+
+insert into public.employee_time_entries (id, employee_id, entry_date, check_in, status, notes)
+values ('00000000-0000-4000-8000-100000001803', '00000000-0000-4000-8000-100000000901', current_date, now() - interval '4 hours', 'present', 'Demo devam kaydi.')
+on conflict (id) do update set entry_date = excluded.entry_date, status = excluded.status;
+
+insert into public.hr_leave_requests (id, employee_id, leave_type, start_date, end_date, status, notes)
+values ('00000000-0000-4000-8000-100000001804', '00000000-0000-4000-8000-100000000901', 'annual', current_date + 20, current_date + 22, 'pending', 'Demo izin talebi.')
+on conflict (id) do update set status = excluded.status;
+
+insert into public.hr_recruitment_candidates (id, full_name, email, phone, position_id, status, notes)
+values ('00000000-0000-4000-8000-100000001805', 'Demo Aday', 'aday.demo@example.invalid', '+90 555 000 00 02', '00000000-0000-4000-8000-100000001802', 'interview', 'Demo ise alim adayi.')
+on conflict (id) do update set status = excluded.status;
+
+insert into public.hr_onboarding_tasks (id, employee_id, title, status, due_date)
+values ('00000000-0000-4000-8000-100000001806', '00000000-0000-4000-8000-100000000901', 'Demo is guvenligi egitimi', 'open', current_date + 2)
+on conflict (id) do update set status = excluded.status;
+
+insert into public.employee_assets (id, employee_id, asset_name, asset_tag, assigned_at, status)
+values ('00000000-0000-4000-8000-100000001807', '00000000-0000-4000-8000-100000000901', 'Demo Laptop', 'ASSET-DEMO-001', current_date, 'assigned')
+on conflict (id) do update set status = excluded.status;
+
+insert into public.products (id, name, slug, sku, description, price, currency, is_active)
+values ('00000000-0000-4000-8000-100000001901', 'Demo Helis Disli', 'demo-helis-disli', 'SHOP-DEMO-001', 'Demo e-ticaret urunu.', 18500, 'TRY', true)
+on conflict (id) do update set price = excluded.price, is_active = true;
+
+insert into public.orders (id, order_no, customer_name, customer_email, status, total, currency)
+values ('00000000-0000-4000-8000-100000001902', 'WEB-DEMO-2026-001', 'Demo Web Musteri', 'web.demo@example.invalid', 'paid', 18500, 'TRY')
+on conflict (id) do update set status = excluded.status, total = excluded.total;
+
+insert into public.order_items (id, order_id, product_id, product_name, quantity, unit_price, total)
+values ('00000000-0000-4000-8000-100000001903', '00000000-0000-4000-8000-100000001902', '00000000-0000-4000-8000-100000001901', 'Demo Helis Disli', 1, 18500, 18500)
+on conflict (id) do update set quantity = excluded.quantity, total = excluded.total;
+
+insert into public.shop_categories (id, name, slug, description, is_active, sort_order)
+values ('00000000-0000-4000-8000-100000001904', 'Demo Disliler', 'demo-disliler', 'Demo kategori.', true, 1)
+on conflict (id) do update set name = excluded.name, is_active = true;
+
+insert into public.shop_campaigns (id, name, description, discount_type, discount_value, status, starts_at, ends_at)
+values ('00000000-0000-4000-8000-100000001905', 'Demo Kampanya', 'Demo sunum kampanyasi.', 'percent', 10, 'active', now() - interval '1 day', now() + interval '30 days')
+on conflict (id) do update set status = excluded.status;
+
+insert into public.shop_carts (id, customer_email, status, total)
+values ('00000000-0000-4000-8000-100000001906', 'web.demo@example.invalid', 'active', 18500)
+on conflict (id) do update set total = excluded.total;
+
+insert into public.shop_payment_statuses (id, order_id, provider, status, amount, currency)
+values ('00000000-0000-4000-8000-100000001907', '00000000-0000-4000-8000-100000001902', 'demo', 'paid', 18500, 'TRY')
+on conflict (id) do update set status = excluded.status, amount = excluded.amount;
+
+insert into public.website_pages (id, slug, title, summary, content, status)
+values ('00000000-0000-4000-8000-100000002001', 'demo-erp', 'Demo ERP Sayfasi', 'Demo CMS kaydi.', 'ERP demo icerigi.', 'published')
+on conflict (id) do update set title = excluded.title, status = excluded.status;
+
+insert into public.website_seo_settings (id, page_slug, title, description, keywords)
+values ('00000000-0000-4000-8000-100000002002', 'demo-erp', 'Demo ERP', 'Demo SEO kaydi.', 'demo,erp')
+on conflict (id) do update set title = excluded.title;
+
+insert into public.website_menu_items (id, label, url, placement, sort_order, is_active)
+values ('00000000-0000-4000-8000-100000002003', 'Demo ERP', '/sayfa/demo-erp', 'header', 99, true)
+on conflict (id) do update set label = excluded.label, is_active = true;
+
+insert into public.website_media_assets (id, file_name, file_path, media_type, alt_text, usage_area, is_public)
+values ('00000000-0000-4000-8000-100000002004', 'demo-erp.jpg', null, 'image', 'Demo ERP', 'demo', true)
+on conflict (id) do update set file_name = excluded.file_name;
+
+insert into public.website_forms (id, name, form_key, target_email, success_message, is_active)
+values ('00000000-0000-4000-8000-100000002005', 'Demo Iletisim Formu', 'demo_contact', 'info@dayandisli.com', 'Tesekkurler.', true)
+on conflict (id) do update set name = excluded.name, is_active = true;
+
+insert into public.website_form_submissions (id, form_id, form_key, submitter_email, payload, status)
+values ('00000000-0000-4000-8000-100000002006', '00000000-0000-4000-8000-100000002005', 'demo_contact', 'web.demo@example.invalid', '{"message":"Demo form kaydi"}'::jsonb, 'new')
+on conflict (id) do update set status = excluded.status;
+
+insert into public.website_banners (id, title, subtitle, image_path, link_url, placement, status, sort_order)
+values ('00000000-0000-4000-8000-100000002007', 'Demo Banner', 'ERP demo hazir.', null, '/apps', 'home', 'published', 1)
+on conflict (id) do update set title = excluded.title, status = excluded.status;
+
+insert into public.erp_quotation_links (id, quotation_id, erp_quotation_id, sales_order_id)
+values ('00000000-0000-4000-8000-100000002101', '00000000-0000-4000-8000-100000000201', '00000000-0000-4000-8000-100000000201', '00000000-0000-4000-8000-100000000301')
+on conflict (id) do update set sales_order_id = excluded.sales_order_id;
+
+insert into public.erp_number_sequences (id, sequence_key, prefix, current_value)
+values
+  ('00000000-0000-4000-8000-100000002201', 'SALES_ORDER', 'SO', 1),
+  ('00000000-0000-4000-8000-100000002202', 'WORK_ORDER', 'WO', 1),
+  ('00000000-0000-4000-8000-100000002203', 'PURCHASE_ORDER', 'PO', 1)
+on conflict (id) do update set current_value = excluded.current_value;
+
+insert into public.platform_metrics (id, metric_key, metric_name, metric_value, metric_unit, severity, status, source, module, metadata)
+values ('00000000-0000-4000-8000-100000002301', 'demo_health', 'Demo sistem sagligi', 100, 'percent', 'info', 'active', 'demo_seed', 'operations', '{"demo":true}'::jsonb)
+on conflict (id) do update set metric_value = excluded.metric_value;
+
+insert into public.platform_events (id, event_key, title, description, severity, status, module, metadata)
+values ('00000000-0000-4000-8000-100000002302', 'demo_event', 'Demo olay kaydi', 'Demo operasyon olayi.', 'info', 'open', 'operations', '{"demo":true}'::jsonb)
+on conflict (id) do update set title = excluded.title;
+
+insert into public.platform_alerts (id, alert_key, title, description, severity, status, module)
+values ('00000000-0000-4000-8000-100000002303', 'demo_alert', 'Demo uyari', 'Demo izleme uyarisi.', 'warning', 'open', 'operations')
+on conflict (id) do update set status = excluded.status;
+
+insert into public.scheduled_job_runs (id, job_type, status, severity, completed_at, retry_count, summary, metadata)
+values ('00000000-0000-4000-8000-100000002304', 'demo_smoke_check', 'success', 'info', now(), 0, 'Demo smoke check basarili.', '{"demo":true}'::jsonb)
+on conflict (id) do update set status = excluded.status, completed_at = now();
+
+insert into public.automation_rules (id, name, trigger_type, action_type, is_active, metadata)
+values ('00000000-0000-4000-8000-100000002305', 'Demo bildirim otomasyonu', 'manual', 'notify', true, '{"demo":true}'::jsonb)
+on conflict (id) do update set is_active = true;
+
+insert into public.automation_executions (id, automation_rule_id, status, completed_at, summary, metadata)
+values ('00000000-0000-4000-8000-100000002306', '00000000-0000-4000-8000-100000002305', 'success', now(), 'Demo otomasyon calisti.', '{"demo":true}'::jsonb)
+on conflict (id) do update set status = excluded.status, completed_at = now();
 
 insert into public.erp_audit_logs (id, actor_email, company_id, branch_id, entity_type, entity_id, action, description, metadata)
 values ('00000000-0000-4000-8000-100000001101', 'demo-seed@dayandisli.com', '00000000-0000-4000-8000-100000000001', '00000000-0000-4000-8000-100000000002', 'demo', '00000000-0000-4000-8000-100000000301', 'demo_seed_applied', 'Demo ERP seed verisi uygulandi.', '{"source":"demo-erp-schema-and-seed.sql"}'::jsonb)
