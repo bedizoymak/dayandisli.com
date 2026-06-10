@@ -1332,4 +1332,5 @@ export interface ApiResult<T> {
   data: T;
   error: string | null;
   missingTable?: boolean;
+  demoFallback?: boolean;
 }

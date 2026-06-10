@@ -13,6 +13,15 @@ import { classifySupabaseError, getFriendlySupabaseError } from "./supabaseError
 function fail<T>(scope: string, error: unknown, fallback: T): ServiceResult<T> {
   if (import.meta.env.DEV) console.error(`[Finance] ${scope}:`, error);
   const errorKind = classifySupabaseError(error);
+  if (errorKind === "missing_table") {
+    return {
+      data: fallback,
+      error: null,
+      missingTable: true,
+      errorKind,
+    };
+  }
+
   return {
     data: fallback,
     error: getFriendlySupabaseError(error),

@@ -92,6 +92,7 @@ import {
   WebsiteSEOSetting,
   Warehouse,
 } from "./types";
+import { demoFallbackForScope, getDemoDatabaseStatus } from "./demoFallback";
 
 export const ERP_MIGRATION_MESSAGE =
   "ERP veritabanı tabloları henüz oluşturulmamış. Supabase SQL geçiş dosyasını çalıştırın.";
@@ -139,9 +140,18 @@ function logError(scope: string, error: unknown) {
 function failure<T>(scope: string, error: unknown, fallback: T): ApiResult<T> {
   logError(scope, error);
   const missingTable = isMissingTableError(error);
+  if (missingTable) {
+    return {
+      data: demoFallbackForScope(scope, fallback),
+      error: null,
+      missingTable: true,
+      demoFallback: true,
+    };
+  }
+
   return {
     data: fallback,
-    error: missingTable ? ERP_MIGRATION_MESSAGE : toErrorMessage(error),
+    error: toErrorMessage(error),
     missingTable,
   };
 }
@@ -313,6 +323,15 @@ export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatu
 
   const hasMissing = checks.some((check) => check.status === "missing");
   const hasRestricted = checks.some((check) => check.status === "restricted");
+  if (hasMissing) {
+    return {
+      data: getDemoDatabaseStatus(),
+      error: null,
+      missingTable: true,
+      demoFallback: true,
+    };
+  }
+
   const data: ERPDatabaseStatus = {
     overall: hasMissing ? "missing_migration" : hasRestricted ? "rls_check_required" : "ready",
     label: hasMissing ? "Eksik Migration" : hasRestricted ? "Erişim/RLS Kontrolü Gerekli" : "Hazır",

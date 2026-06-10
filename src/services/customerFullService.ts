@@ -53,6 +53,15 @@ function ok<T>(data: T): ServiceResult<T> {
 function fail<T>(scope: string, error: unknown, fallback: T): ServiceResult<T> {
   if (import.meta.env.DEV) console.error(`[CustomerFull] ${scope}:`, error);
   const errorKind = classifySupabaseError(error);
+  if (errorKind === "missing_table") {
+    return {
+      data: fallback,
+      error: null,
+      missingTable: true,
+      errorKind,
+    };
+  }
+
   return {
     data: fallback,
     error: getFriendlySupabaseError(error),
@@ -111,7 +120,7 @@ export async function getCustomerFullRows(): Promise<CustomerFullRowsResult> {
 
   return {
     data: [],
-    error: "customer_full tablosundan müşteri okunamadı.",
+    error: null,
     missingTable: true,
     errorKind: "missing_table",
     tables,
