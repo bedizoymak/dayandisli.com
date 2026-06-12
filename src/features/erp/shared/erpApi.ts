@@ -4,15 +4,6 @@ import {
   AccountingEntry,
   AutomationExecutionRecord,
   AutomationRuleRecord,
-  CRMActivity,
-  CRMActivityType,
-  CRMLead,
-  CRMLeadStatus,
-  CRMOpportunity,
-  CRMOpportunityStatus,
-  CRMRelatedType,
-  CRMTask,
-  CRMTaskStatus,
   Company,
   CompanyBranch,
   CompanyMembership,
@@ -77,7 +68,6 @@ import {
   ShopReturnRequest,
   ShopShipment,
   Stakeholder,
-  StakeholderType,
   SubcontractingJob,
   WorkOrder,
   WorkOrderOperation,
@@ -92,73 +82,48 @@ import {
   WebsiteSEOSetting,
   Warehouse,
 } from "./types";
-import { demoFallbackForScope, getDemoDatabaseStatus } from "./demoFallback";
+import { getDemoDatabaseStatus } from "./demoFallback";
+import {
+  applyEnterpriseScope,
+  createAuditLog,
+  DbResult,
+  EnterpriseQueryScope,
+  failure,
+  getNextERPNumber,
+  isMissingTableError,
+  logError,
+  normalizeSearch,
+  resolveEnterpriseScope,
+  success,
+  toErrorMessage,
+  withEnterpriseOwnership,
+} from "./api/internal";
+import { createStakeholder, listStakeholders } from "./api/crmApi";
+
+export { createAuditLog, getNextERPNumber } from "./api/internal";
+export {
+  convertLeadToOpportunity,
+  createCRMActivity,
+  createCRMLead,
+  createCRMOpportunity,
+  createCRMTask,
+  createStakeholder,
+  getStakeholderById,
+  listCRMActivities,
+  listCRMLeads,
+  listCRMOpportunities,
+  listCRMTasks,
+  listStakeholders,
+  updateCRMLead,
+  updateCRMOpportunity,
+  updateCRMTask,
+  updateStakeholder,
+} from "./api/crmApi";
 
 export const ERP_MIGRATION_MESSAGE =
   "ERP veritabanı tabloları henüz oluşturulmamış. Supabase SQL geçiş dosyasını çalıştırın.";
 
-type DbResult<T> = { data: T | null; error: unknown; count?: number | null };
-export type EnterpriseQueryScope = {
-  companyId?: string | null;
-  branchId?: string | null;
-  consolidated?: boolean;
-};
-
-function toErrorMessage(error: unknown) {
-  if (!error) return "Bilinmeyen hata";
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  if (typeof error === "object" && error && "message" in error) {
-    return String((error as { message: unknown }).message);
-  }
-
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return "Bilinmeyen hata";
-  }
-}
-
-function isMissingTableError(error: unknown) {
-  if (!error || typeof error !== "object") return false;
-  const err = error as { code?: string; message?: string; details?: string };
-  const message = `${err.message ?? ""} ${err.details ?? ""}`.toLowerCase();
-
-  return (
-    err.code === "42P01" ||
-    err.code === "PGRST205" ||
-    message.includes("does not exist") ||
-    message.includes("could not find the table") ||
-    message.includes("schema cache")
-  );
-}
-
-function logError(scope: string, error: unknown) {
-  console.error(`[ERP API] ${scope}:`, error);
-}
-
-function failure<T>(scope: string, error: unknown, fallback: T): ApiResult<T> {
-  logError(scope, error);
-  const missingTable = isMissingTableError(error);
-  if (missingTable) {
-    return {
-      data: demoFallbackForScope(scope, fallback),
-      error: null,
-      missingTable: true,
-      demoFallback: true,
-    };
-  }
-
-  return {
-    data: fallback,
-    error: toErrorMessage(error),
-    missingTable,
-  };
-}
-
-function success<T>(data: T): ApiResult<T> {
-  return { data, error: null };
-}
+export type { EnterpriseQueryScope } from "./api/internal";
 
 function validationFailure<T>(error: string, fallback: T): ApiResult<T> {
   return { data: fallback, error, missingTable: false };
@@ -171,10 +136,6 @@ async function safeCount(scope: string, queryPromise: Promise<unknown>) {
     return { count: 0, missingTable: isMissingTableError(error), error: toErrorMessage(error) };
   }
   return { count: count ?? 0, missingTable: false, error: null };
-}
-
-function normalizeSearch(value: string) {
-  return value.trim().replaceAll(",", " ");
 }
 
 function numberValue(value: unknown, fallback = 0) {
@@ -205,39 +166,6 @@ function uniqueBy<T>(items: T[], keyGetter: (item: T) => string) {
     seen.add(key);
     return true;
   });
-}
-
-function sequencePrefix(sequenceKey: string) {
-  const prefixes: Record<string, string> = {
-    SALES_ORDER: "SO",
-    WORK_ORDER: "WO",
-    SHIPMENT: "SHP",
-    QUALITY_REPORT: "QC",
-    SUBCONTRACTING: "FSN",
-    PURCHASE_ORDER: "PO",
-  };
-
-  return prefixes[sequenceKey] ?? "ERP";
-}
-
-export async function getNextERPNumber(sequenceKey: string): Promise<ApiResult<string>> {
-  const prefix = sequencePrefix(sequenceKey);
-
-  try {
-    const { data, error } = (await supabase.rpc("next_erp_number" as never, {
-      p_sequence_key: sequenceKey,
-    } as never)) as unknown as DbResult<string>;
-
-    if (error || !data) {
-      const fallbackNo = `${prefix}-TEMP-${Date.now()}`;
-      return { data: fallbackNo, error: error ? toErrorMessage(error) : null, missingTable: isMissingTableError(error) };
-    }
-
-    return success(data);
-  } catch (error) {
-    logError("getNextERPNumber", error);
-    return { data: `${prefix}-TEMP-${Date.now()}`, error: toErrorMessage(error), missingTable: isMissingTableError(error) };
-  }
 }
 
 export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatus>> {
@@ -392,40 +320,6 @@ export async function getCurrentERPUser(): Promise<ApiResult<ERPUser | null>> {
     is_active: true,
     created_at: authData.user.created_at ?? new Date().toISOString(),
   });
-}
-
-export async function createAuditLog(payload: {
-  company_id?: string | null;
-  branch_id?: string | null;
-  entity_type: string;
-  entity_id?: string | null;
-  action: string;
-  old_status?: string | null;
-  new_status?: string | null;
-  description?: string | null;
-  metadata?: Record<string, unknown> | null;
-}) {
-  const { data: authData } = await supabase.auth.getUser();
-  const { data, error } = (await supabase
-    .from("erp_audit_logs" as never)
-    .insert({
-      actor_user_id: authData.user?.id ?? null,
-      actor_email: authData.user?.email ?? null,
-      company_id: payload.company_id ?? null,
-      branch_id: payload.branch_id ?? null,
-      entity_type: payload.entity_type,
-      entity_id: payload.entity_id ?? null,
-      action: payload.action,
-      old_status: payload.old_status ?? null,
-      new_status: payload.new_status ?? null,
-      description: payload.description ?? null,
-      metadata: payload.metadata ?? null,
-    } as never)
-    .select("*")
-    .single()) as unknown as DbResult<ERPAuditLog>;
-
-  if (error) return failure("createAuditLog", error, null);
-  return success(data);
 }
 
 export async function listAuditLogsForEntity(entityType: string, entityId?: string | null): Promise<ApiResult<ERPAuditLog[]>> {
@@ -1367,124 +1261,6 @@ export async function markAllNotificationsRead() {
   return success(true);
 }
 
-export async function listStakeholders(search = "", type?: StakeholderType | "all", scope?: EnterpriseQueryScope): Promise<ApiResult<Stakeholder[]>> {
-  const enterpriseScope = await resolveEnterpriseScope(scope);
-  let query = applyEnterpriseScope(supabase
-    .from("stakeholders" as never)
-    .select("*")
-    .order("company_name", { ascending: true }), enterpriseScope);
-
-  const q = normalizeSearch(search);
-  if (q) {
-    query = query.or(`company_name.ilike.%${q}%,contact_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`);
-  }
-
-  if (type && type !== "all") {
-    query = query.eq("type", type);
-  }
-
-  const { data, error } = (await query) as unknown as DbResult<Stakeholder[]>;
-  if (error) return failure("listStakeholders", error, []);
-  return success(data ?? []);
-}
-
-export async function createStakeholder(payload: Partial<Stakeholder> & { type: StakeholderType; company_name: string }) {
-  const record = await withEnterpriseOwnership({
-    type: payload.type,
-    company_name: payload.company_name,
-    contact_name: payload.contact_name ?? null,
-    phone: payload.phone ?? null,
-    email: payload.email ?? null,
-    tax_office: payload.tax_office ?? null,
-    tax_number: payload.tax_number ?? null,
-    address: payload.address ?? null,
-    city: payload.city ?? null,
-    country: payload.country ?? "Türkiye",
-    risk_limit: payload.risk_limit ?? 0,
-    current_balance: payload.current_balance ?? 0,
-    notes: payload.notes ?? null,
-    is_active: payload.is_active ?? true,
-    company_id: payload.company_id ?? null,
-    branch_id: payload.branch_id ?? null,
-  });
-  const { data, error } = (await supabase
-    .from("stakeholders" as never)
-    .insert(record as never)
-    .select("*")
-    .single()) as unknown as DbResult<Stakeholder>;
-
-  if (error) return failure("createStakeholder", error, null);
-  return success(data);
-}
-
-export async function updateStakeholder(id: string, payload: Partial<Stakeholder>) {
-  const { data, error } = (await supabase
-    .from("stakeholders" as never)
-    .update(payload as never)
-    .eq("id", id)
-    .select("*")
-    .single()) as unknown as DbResult<Stakeholder>;
-
-  if (error) return failure("updateStakeholder", error, null);
-  return success(data);
-}
-
-export async function getStakeholderById(id: string) {
-  const { data, error } = (await supabase
-    .from("stakeholders" as never)
-    .select("*")
-    .eq("id", id)
-    .single()) as unknown as DbResult<Stakeholder>;
-
-  if (error) return failure("getStakeholderById", error, null);
-  return success(data);
-}
-
-async function getDefaultEnterpriseScope(): Promise<EnterpriseQueryScope> {
-  const { data: authData } = await supabase.auth.getUser();
-  const email = authData.user?.email;
-  if (!email) return { consolidated: true };
-
-  const { data, error } = (await supabase
-    .from("erp_users" as never)
-    .select("default_company_id, default_branch_id, role")
-    .eq("email", email)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle()) as unknown as DbResult<Pick<ERPUser, "default_company_id" | "default_branch_id" | "role">>;
-
-  if (error || !data) return { consolidated: true };
-  if (data.role === "admin" && !data.default_company_id) return { consolidated: true };
-  return {
-    companyId: data.default_company_id ?? null,
-    branchId: data.default_branch_id ?? null,
-    consolidated: !data.default_company_id,
-  };
-}
-
-async function resolveEnterpriseScope(scope?: EnterpriseQueryScope): Promise<EnterpriseQueryScope> {
-  if (scope?.consolidated) return scope;
-  if (scope?.companyId || scope?.branchId) return scope;
-  return getDefaultEnterpriseScope();
-}
-
-function applyEnterpriseScope<T>(query: T, scope: EnterpriseQueryScope): T {
-  if (scope.consolidated) return query;
-  let scopedQuery = query as { eq: (column: string, value: string) => unknown };
-  if (scope.companyId) scopedQuery = scopedQuery.eq("company_id", scope.companyId) as typeof scopedQuery;
-  if (scope.branchId) scopedQuery = scopedQuery.eq("branch_id", scope.branchId) as typeof scopedQuery;
-  return scopedQuery as T;
-}
-
-async function withEnterpriseOwnership<T extends { company_id?: string | null; branch_id?: string | null }>(payload: T, scope?: EnterpriseQueryScope): Promise<T> {
-  const enterpriseScope = await resolveEnterpriseScope(scope);
-  return {
-    ...payload,
-    company_id: payload.company_id ?? enterpriseScope.companyId ?? null,
-    branch_id: payload.branch_id ?? enterpriseScope.branchId ?? null,
-  };
-}
-
 export async function listCompanies(): Promise<ApiResult<Company[]>> {
   const { data, error } = (await supabase
     .from("companies" as never)
@@ -1777,118 +1553,6 @@ export async function updateERPUser(id: string, payload: Partial<ERPUser>) {
       },
     });
   }
-  return success(data);
-}
-
-export async function listCRMLeads(search = "", status: CRMLeadStatus | "all" = "all", scope?: EnterpriseQueryScope): Promise<ApiResult<CRMLead[]>> {
-  const enterpriseScope = await resolveEnterpriseScope(scope);
-  let query = applyEnterpriseScope(supabase.from("crm_leads" as never).select("*").order("created_at", { ascending: false }), enterpriseScope);
-  if (status !== "all") query = query.eq("status" as never, status as never);
-  const q = normalizeSearch(search);
-  if (q) query = query.or(`company_name.ilike.%${q}%,contact_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,lead_no.ilike.%${q}%` as never);
-  const { data, error } = (await query) as unknown as DbResult<CRMLead[]>;
-  if (error) return failure("listCRMLeads", error, []);
-  return success(data ?? []);
-}
-
-export async function createCRMLead(payload: Partial<CRMLead> & { company_name: string }) {
-  const leadNo = await getNextERPNumber("CRM_LEAD");
-  const record = await withEnterpriseOwnership({ ...payload, lead_no: leadNo.data });
-  const { data, error } = (await supabase.from("crm_leads" as never).insert(record as never).select("*").single()) as unknown as DbResult<CRMLead>;
-  if (error) return failure<CRMLead | null>("createCRMLead", error, null);
-  await createAuditLog({ entity_type: "lead", entity_id: data?.id, action: "created", description: `${data?.lead_no} potansiyel müşteri oluşturuldu.` });
-  return success(data);
-}
-
-export async function updateCRMLead(id: string, payload: Partial<CRMLead>) {
-  const previous = (await supabase.from("crm_leads" as never).select("status").eq("id", id).maybeSingle()) as unknown as DbResult<{ status: CRMLeadStatus }>;
-  const { data, error } = (await supabase.from("crm_leads" as never).update(payload as never).eq("id" as never, id as never).select("*").single()) as unknown as DbResult<CRMLead>;
-  if (error) return failure<CRMLead | null>("updateCRMLead", error, null);
-  if (payload.status && previous.data?.status !== payload.status) {
-    await createAuditLog({ entity_type: "lead", entity_id: id, action: "status_changed", old_status: previous.data?.status, new_status: payload.status, description: "Potansiyel müşteri durumu güncellendi." });
-  }
-  return success(data);
-}
-
-export async function listCRMOpportunities(search = "", status: CRMOpportunityStatus | "all" = "all", scope?: EnterpriseQueryScope): Promise<ApiResult<CRMOpportunity[]>> {
-  const enterpriseScope = await resolveEnterpriseScope(scope);
-  let query = applyEnterpriseScope(supabase.from("crm_opportunities" as never).select("*").order("created_at", { ascending: false }), enterpriseScope);
-  if (status !== "all") query = query.eq("status" as never, status as never);
-  const q = normalizeSearch(search);
-  if (q) query = query.or(`title.ilike.%${q}%,opportunity_no.ilike.%${q}%` as never);
-  const { data, error } = (await query) as unknown as DbResult<CRMOpportunity[]>;
-  if (error) return failure("listCRMOpportunities", error, []);
-  return success(data ?? []);
-}
-
-export async function createCRMOpportunity(payload: Partial<CRMOpportunity> & { title: string }) {
-  const opportunityNo = await getNextERPNumber("CRM_OPPORTUNITY");
-  const record = await withEnterpriseOwnership({ ...payload, opportunity_no: opportunityNo.data });
-  const { data, error } = (await supabase.from("crm_opportunities" as never).insert(record as never).select("*").single()) as unknown as DbResult<CRMOpportunity>;
-  if (error) return failure<CRMOpportunity | null>("createCRMOpportunity", error, null);
-  await createAuditLog({ entity_type: "opportunity", entity_id: data?.id, action: "created", description: `${data?.opportunity_no} fırsat oluşturuldu.` });
-  return success(data);
-}
-
-export async function updateCRMOpportunity(id: string, payload: Partial<CRMOpportunity>) {
-  const previous = (await supabase.from("crm_opportunities" as never).select("status").eq("id", id).maybeSingle()) as unknown as DbResult<{ status: CRMOpportunityStatus }>;
-  const { data, error } = (await supabase.from("crm_opportunities" as never).update(payload as never).eq("id" as never, id as never).select("*").single()) as unknown as DbResult<CRMOpportunity>;
-  if (error) return failure<CRMOpportunity | null>("updateCRMOpportunity", error, null);
-  if (payload.status && previous.data?.status !== payload.status) {
-    await createAuditLog({ entity_type: "opportunity", entity_id: id, action: "status_changed", old_status: previous.data?.status, new_status: payload.status, description: "Fırsat durumu güncellendi." });
-  }
-  return success(data);
-}
-
-export async function convertLeadToOpportunity(lead: CRMLead) {
-  const opportunity = await createCRMOpportunity({
-    title: `${lead.company_name} fırsatı`,
-    lead_id: lead.id,
-    stakeholder_id: lead.stakeholder_id,
-    notes: lead.notes,
-  });
-  if (opportunity.data) await updateCRMLead(lead.id, { status: "converted" });
-  return opportunity;
-}
-
-export async function listCRMTasks(search = "", status: CRMTaskStatus | "all" = "all", scope?: EnterpriseQueryScope): Promise<ApiResult<CRMTask[]>> {
-  const enterpriseScope = await resolveEnterpriseScope(scope);
-  let query = applyEnterpriseScope(supabase.from("crm_tasks" as never).select("*").order("created_at", { ascending: false }), enterpriseScope);
-  if (status !== "all") query = query.eq("status" as never, status as never);
-  const q = normalizeSearch(search);
-  if (q) query = query.ilike("title" as never, `%${q}%` as never);
-  const { data, error } = (await query) as unknown as DbResult<CRMTask[]>;
-  if (error) return failure("listCRMTasks", error, []);
-  return success(data ?? []);
-}
-
-export async function createCRMTask(payload: Partial<CRMTask> & { title: string }) {
-  const record = await withEnterpriseOwnership(payload);
-  const { data, error } = (await supabase.from("crm_tasks" as never).insert(record as never).select("*").single()) as unknown as DbResult<CRMTask>;
-  if (error) return failure<CRMTask | null>("createCRMTask", error, null);
-  return success(data);
-}
-
-export async function updateCRMTask(id: string, payload: Partial<CRMTask>) {
-  const { data, error } = (await supabase.from("crm_tasks" as never).update(payload as never).eq("id" as never, id as never).select("*").single()) as unknown as DbResult<CRMTask>;
-  if (error) return failure<CRMTask | null>("updateCRMTask", error, null);
-  return success(data);
-}
-
-export async function listCRMActivities(search = "", relatedType?: CRMRelatedType, relatedId?: string): Promise<ApiResult<CRMActivity[]>> {
-  let query = supabase.from("crm_activities" as never).select("*").order("activity_date", { ascending: false }).limit(200);
-  if (relatedType) query = query.eq("related_type" as never, relatedType as never);
-  if (relatedId) query = query.eq("related_id" as never, relatedId as never);
-  const q = normalizeSearch(search);
-  if (q) query = query.or(`subject.ilike.%${q}%,notes.ilike.%${q}%` as never);
-  const { data, error } = (await query) as unknown as DbResult<CRMActivity[]>;
-  if (error) return failure("listCRMActivities", error, []);
-  return success(data ?? []);
-}
-
-export async function createCRMActivity(payload: Partial<CRMActivity> & { subject: string; activity_type?: CRMActivityType }) {
-  const { data, error } = (await supabase.from("crm_activities" as never).insert({ activity_type: "note", ...payload } as never).select("*").single()) as unknown as DbResult<CRMActivity>;
-  if (error) return failure<CRMActivity | null>("createCRMActivity", error, null);
   return success(data);
 }
 
