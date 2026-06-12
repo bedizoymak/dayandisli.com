@@ -83,20 +83,20 @@ create index if not exists idx_hr_onboarding_tasks_status on public.hr_onboardin
 
 drop trigger if exists trg_hr_departments_updated_at on public.hr_departments;
 create trigger trg_hr_departments_updated_at before update on public.hr_departments
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();
 
 drop trigger if exists trg_hr_positions_updated_at on public.hr_positions;
 create trigger trg_hr_positions_updated_at before update on public.hr_positions
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();
 
 drop trigger if exists trg_hr_leave_requests_updated_at on public.hr_leave_requests;
 create trigger trg_hr_leave_requests_updated_at before update on public.hr_leave_requests
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();
 
 drop trigger if exists trg_hr_recruitment_candidates_updated_at on public.hr_recruitment_candidates;
 create trigger trg_hr_recruitment_candidates_updated_at before update on public.hr_recruitment_candidates
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();
 
 drop trigger if exists trg_hr_onboarding_tasks_updated_at on public.hr_onboarding_tasks;
 create trigger trg_hr_onboarding_tasks_updated_at before update on public.hr_onboarding_tasks
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();

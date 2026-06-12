@@ -244,4 +244,4 @@ revoke all on function internal.release_shop_order_reservations(uuid, text) from
 
 drop trigger if exists trg_shop_customer_profiles_updated_at on public.shop_customer_profiles;
 create trigger trg_shop_customer_profiles_updated_at before update on public.shop_customer_profiles
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();

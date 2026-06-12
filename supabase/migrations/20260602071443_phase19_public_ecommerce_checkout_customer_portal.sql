@@ -171,7 +171,7 @@ with check (
 
 drop trigger if exists trg_shop_shipping_methods_updated_at on public.shop_shipping_methods;
 create trigger trg_shop_shipping_methods_updated_at before update on public.shop_shipping_methods
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();
 
 create schema if not exists internal;
 

@@ -155,16 +155,16 @@ with check (true);
 
 drop trigger if exists trg_shop_categories_updated_at on public.shop_categories;
 create trigger trg_shop_categories_updated_at before update on public.shop_categories
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();
 
 drop trigger if exists trg_shop_campaigns_updated_at on public.shop_campaigns;
 create trigger trg_shop_campaigns_updated_at before update on public.shop_campaigns
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();
 
 drop trigger if exists trg_shop_carts_updated_at on public.shop_carts;
 create trigger trg_shop_carts_updated_at before update on public.shop_carts
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();
 
 drop trigger if exists trg_shop_payment_statuses_updated_at on public.shop_payment_statuses;
 create trigger trg_shop_payment_statuses_updated_at before update on public.shop_payment_statuses
-for each row execute function public.set_updated_at();
+for each row execute function public.erp_set_updated_at();

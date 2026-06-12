@@ -52,7 +52,7 @@ create table if not exists public.stakeholders (
   tax_number text null,
   address text null,
   city text null,
-  country text not null default 'Türkiye',
+  country text not null default 'TÃ¼rkiye',
   risk_limit numeric(14,2) not null default 0,
   current_balance numeric(14,2) not null default 0,
   notes text null,
