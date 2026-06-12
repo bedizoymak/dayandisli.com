@@ -836,7 +836,7 @@ async function runOperationalJobHandler(jobType: ScheduledJobRunRecord["job_type
   }
 
   if (jobType === "inventory_verification") {
-    const items = await listInventoryItems(scope);
+    const items = await listInventoryItems("", scope);
     const lowStock = items.data.filter((row) => row.current_stock <= row.min_stock).length;
     return {
       severity: lowStock ? "warning" : "success",

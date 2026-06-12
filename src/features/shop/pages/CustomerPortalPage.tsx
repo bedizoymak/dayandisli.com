@@ -92,6 +92,7 @@ export function CustomerPortalPage() {
         billingAddress: profile.billingAddress || '',
         shippingAddress: profile.shippingAddress || '',
         shippingMethod: 'company_shipping',
+        paymentProvider: 'iyzico',
         notes: '',
       });
       toast({ title: 'Profil Kaydedildi', description: 'Müşteri bilgileriniz güncellendi.' });

@@ -16,6 +16,7 @@ import {
   convertLeadToOpportunity,
   createCRMActivity,
   createCRMLead,
+  createCRMOpportunity,
   createCRMTask,
   createStakeholder,
   listCRMActivities,

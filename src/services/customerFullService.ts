@@ -65,7 +65,7 @@ function fail<T>(scope: string, error: unknown, fallback: T): ServiceResult<T> {
   return {
     data: fallback,
     error: getFriendlySupabaseError(error),
-    missingTable: errorKind === "missing_table",
+    missingTable: false,
     errorKind,
   };
 }

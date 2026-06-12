@@ -54,31 +54,37 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          inventory_item_id: string | null
           line_total: number
           order_id: string
           product_id: string | null
           product_name: string
           quantity: number
+          reservation_status: string
           unit_price: number
         }
         Insert: {
           created_at?: string
           id?: string
+          inventory_item_id?: string | null
           line_total: number
           order_id: string
           product_id?: string | null
           product_name: string
           quantity: number
+          reservation_status?: string
           unit_price: number
         }
         Update: {
           created_at?: string
           id?: string
+          inventory_item_id?: string | null
           line_total?: number
           order_id?: string
           product_id?: string | null
           product_name?: string
           quantity?: number
+          reservation_status?: string
           unit_price?: number
         }
         Relationships: [
@@ -101,54 +107,126 @@ export type Database = {
       orders: {
         Row: {
           address: string
+          billing_address: string | null
+          campaign_id: string | null
+          carrier_name: string | null
+          checkout_source: string
           company_name: string | null
           created_at: string
           currency: string
+          customer_reference: string | null
+          customer_user_id: string | null
           customer_name: string
           email: string
+          fulfillment_status: string
           grand_total: number
           id: string
+          inventory_reservation_status: string
+          invoice_id: string | null
           notes: string | null
           order_number: string
+          paid_at: string | null
           payment_method: string
+          payment_id: string | null
+          payment_provider: string | null
+          payment_reconciliation_status: string
+          payment_status: string
           phone: string
+          provider_payment_id: string | null
+          provider_payment_url: string | null
+          refund_status: string
+          refunded_at: string | null
+          sales_order_id: string | null
+          shipping_address: string | null
+          shipping_method: string | null
+          shipping_status: string
+          stakeholder_id: string | null
           status: string
           subtotal: number
           tax_total: number
+          tracking_number: string | null
         }
         Insert: {
           address: string
+          billing_address?: string | null
+          campaign_id?: string | null
+          carrier_name?: string | null
+          checkout_source?: string
           company_name?: string | null
           created_at?: string
           currency?: string
+          customer_reference?: string | null
+          customer_user_id?: string | null
           customer_name: string
           email: string
+          fulfillment_status?: string
           grand_total: number
           id?: string
+          inventory_reservation_status?: string
+          invoice_id?: string | null
           notes?: string | null
           order_number: string
+          paid_at?: string | null
           payment_method?: string
+          payment_id?: string | null
+          payment_provider?: string | null
+          payment_reconciliation_status?: string
+          payment_status?: string
           phone: string
+          provider_payment_id?: string | null
+          provider_payment_url?: string | null
+          refund_status?: string
+          refunded_at?: string | null
+          sales_order_id?: string | null
+          shipping_address?: string | null
+          shipping_method?: string | null
+          shipping_status?: string
+          stakeholder_id?: string | null
           status?: string
           subtotal: number
           tax_total: number
+          tracking_number?: string | null
         }
         Update: {
           address?: string
+          billing_address?: string | null
+          campaign_id?: string | null
+          carrier_name?: string | null
+          checkout_source?: string
           company_name?: string | null
           created_at?: string
           currency?: string
+          customer_reference?: string | null
+          customer_user_id?: string | null
           customer_name?: string
           email?: string
+          fulfillment_status?: string
           grand_total?: number
           id?: string
+          inventory_reservation_status?: string
+          invoice_id?: string | null
           notes?: string | null
           order_number?: string
+          paid_at?: string | null
           payment_method?: string
+          payment_id?: string | null
+          payment_provider?: string | null
+          payment_reconciliation_status?: string
+          payment_status?: string
           phone?: string
+          provider_payment_id?: string | null
+          provider_payment_url?: string | null
+          refund_status?: string
+          refunded_at?: string | null
+          sales_order_id?: string | null
+          shipping_address?: string | null
+          shipping_method?: string | null
+          shipping_status?: string
+          stakeholder_id?: string | null
           status?: string
           subtotal?: number
           tax_total?: number
+          tracking_number?: string | null
         }
         Relationships: []
       }
@@ -193,8 +271,11 @@ export type Database = {
           description: string | null
           id: string
           in_stock: boolean
+          inventory_item_id: string | null
+          is_shop_visible: boolean
           name: string
           price: number
+          shop_category_id: string | null
           sku: string | null
           slug: string
           stock_quantity: number
@@ -208,8 +289,11 @@ export type Database = {
           description?: string | null
           id?: string
           in_stock?: boolean
+          inventory_item_id?: string | null
+          is_shop_visible?: boolean
           name: string
           price: number
+          shop_category_id?: string | null
           sku?: string | null
           slug: string
           stock_quantity?: number
@@ -223,8 +307,11 @@ export type Database = {
           description?: string | null
           id?: string
           in_stock?: boolean
+          inventory_item_id?: string | null
+          is_shop_visible?: boolean
           name?: string
           price?: number
+          shop_category_id?: string | null
           sku?: string | null
           slug?: string
           stock_quantity?: number

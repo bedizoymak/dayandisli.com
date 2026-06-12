@@ -101,9 +101,11 @@ export function AdminFinancePage() {
   }, []);
 
   const summary = data?.reports.data;
+  const invoiceTotal = data?.invoices.data.reduce((total, invoice) => total + Number(invoice.grand_total || 0), 0) ?? 0;
+  const paymentTotal = data?.payments.data.reduce((total, payment) => total + Number(payment.amount || 0), 0) ?? 0;
   const metrics = [
-    { label: "Fatura Toplamı", value: formatAdminValue(summary?.invoiceTotal ?? 0, "currency") },
-    { label: "Tahsilat/Ödeme", value: formatAdminValue(summary?.paymentTotal ?? 0, "currency") },
+    { label: "Fatura Toplamı", value: formatAdminValue(invoiceTotal, "currency") },
+    { label: "Tahsilat/Ödeme", value: formatAdminValue(paymentTotal, "currency") },
     { label: "Fatura Sayısı", value: String(data?.invoices.data.length ?? 0) },
     { label: "Hareket Sayısı", value: String(data?.payments.data.length ?? 0) },
   ];
@@ -153,12 +155,15 @@ export function AdminReportsPage() {
     getAdminFinanceSummary().then(setData);
   }, []);
 
+  const customerBalance = data?.customers.data.reduce((total, customer) => total + Number(customer.current_balance || 0), 0) ?? 0;
+  const supplierBalance = data?.suppliers.data.reduce((total, supplier) => total + Number(supplier.current_balance || 0), 0) ?? 0;
+
   return (
     <AdminLayout title="Raporlar" description="Yönetim raporları ve ERP özetleri">
       <AdminMetricGrid
         metrics={[
-          { label: "Müşteri Bakiyesi", value: formatAdminValue(data?.reports.data.customerBalance ?? 0, "currency") },
-          { label: "Tedarikçi Bakiyesi", value: formatAdminValue(data?.reports.data.supplierBalance ?? 0, "currency") },
+          { label: "Müşteri Bakiyesi", value: formatAdminValue(customerBalance, "currency") },
+          { label: "Tedarikçi Bakiyesi", value: formatAdminValue(supplierBalance, "currency") },
           { label: "Müşteri Sayısı", value: String(data?.customers.data.length ?? 0) },
           { label: "Tedarikçi Sayısı", value: String(data?.suppliers.data.length ?? 0) },
         ]}

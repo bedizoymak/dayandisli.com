@@ -381,7 +381,7 @@ export const demoPurchaseOrders: PurchaseOrder[] = [
     status: "sent",
     priority: "normal",
     order_date: today,
-    expected_date: "2026-06-14",
+    expected_delivery_date: "2026-06-14",
     currency: "TRY",
     subtotal: 51000,
     tax_total: 10200,
@@ -412,7 +412,8 @@ export const demoAuditLogs: ERPAuditLog[] = [
 export const demoNotifications: ERPNotification[] = [
   {
     id: demoIds.notification,
-    user_id: null,
+    recipient_user_id: null,
+    recipient_email: null,
     title: "Demo modu hazir",
     body: "Supabase tablo eksigi varsa ekranlar yerel demo verisiyle acilir.",
     severity: "info",
