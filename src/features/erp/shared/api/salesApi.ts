@@ -286,10 +286,17 @@ export async function convertQuotationToSalesOrder(quotation: ERPQuotation) {
   const products = parseQuotationProducts(quotation.products);
   for (const product of products) {
     const item = quotationProductToItem(product, currency);
-    await createSalesOrderItem({ ...item, sales_order_id: orderResult.data.id });
+    const itemResult = await createSalesOrderItem({ ...item, sales_order_id: orderResult.data.id });
+    if (itemResult.error || !itemResult.data) {
+      return failure<SalesOrder | null>("convertQuotationToSalesOrder item", itemResult.error ?? "Satış siparişi kalemi oluşturulamadı.", null);
+    }
   }
 
-  await linkQuotationToStakeholder(quotation.id, stakeholderResult.data.id, "converted_to_order");
+  const linkResult = await linkQuotationToStakeholder(quotation.id, stakeholderResult.data.id, "converted_to_order");
+  if (linkResult.error || !linkResult.data) {
+    return failure<SalesOrder | null>("convertQuotationToSalesOrder link", linkResult.error ?? "Teklif dönüşüm bağlantısı oluşturulamadı.", null);
+  }
+
   await createAuditLog({
     entity_type: "quotation",
     entity_id: quotation.id,
