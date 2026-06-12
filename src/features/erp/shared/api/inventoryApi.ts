@@ -201,7 +201,10 @@ export async function createInventoryMovement(payload: {
   if (error) return failure("createInventoryMovement", error, null);
 
   if (payload.movement_type !== "reservation") {
-    await updateInventoryItem(payload.inventory_item_id, { current_stock: nextStock });
+    const stockResult = await updateInventoryItem(payload.inventory_item_id, { current_stock: nextStock });
+    if (stockResult.error || !stockResult.data) {
+      return failure<InventoryMovement | null>("createInventoryMovement stock update", stockResult.error ?? "Stok bakiyesi güncellenemedi.", null);
+    }
   }
 
   if (data) {
