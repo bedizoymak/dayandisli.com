@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "supabase:crud-check": "node scripts/supabase-crud-health-check.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
