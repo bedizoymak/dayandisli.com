@@ -47,7 +47,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/musteriler",
     icon: Users,
     status: "active",
-    requiredPermission: "crm.customers",
+    requiredPermission: "crm.view",
   },
   {
     id: "suppliers",
@@ -56,7 +56,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/tedarikciler",
     icon: Handshake,
     status: "active",
-    requiredPermission: "crm.suppliers",
+    requiredPermission: "crm.view",
   },
   {
     id: "erp",
@@ -75,7 +75,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/teklifler",
     icon: FileText,
     status: "active",
-    requiredPermission: "sales.quotations",
+    requiredPermission: "sales.view",
   },
   {
     id: "orders",
@@ -84,7 +84,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/siparisler",
     icon: ShoppingCart,
     status: "active",
-    requiredPermission: "sales.orders",
+    requiredPermission: "sales.view",
   },
   {
     id: "finance",
@@ -111,7 +111,7 @@ export const erpModules: ErpModuleConfig[] = [
     path: "/calculator",
     icon: Calculator,
     status: "active",
-    requiredPermission: "production.calculator",
+    requiredPermission: "production.view",
   },
   {
     id: "notifications",

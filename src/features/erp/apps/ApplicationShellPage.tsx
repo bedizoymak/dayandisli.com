@@ -14,13 +14,35 @@ export default function ApplicationShellPage() {
   const navigate = useNavigate();
   const app = getErpApplication(appId);
   const [user, setUser] = useState<ERPUser | null>(null);
+  const [isResolvingUser, setIsResolvingUser] = useState(true);
 
   useEffect(() => {
-    getCurrentERPUserSafe().then(setUser);
+    let isMounted = true;
+
+    getCurrentERPUserSafe()
+      .then((resolvedUser) => {
+        if (isMounted) setUser(resolvedUser);
+      })
+      .finally(() => {
+        if (isMounted) setIsResolvingUser(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (!app) return <Navigate to="/apps" replace />;
-  if (user && !hasPermission(user, app.permissionKey)) return <Navigate to="/apps" replace />;
+  if (isResolvingUser) {
+    return (
+      <main className="erp-theme erp-shell flex min-h-screen items-center justify-center p-6">
+        <div className="erp-surface rounded-lg px-6 py-5 text-sm font-medium text-muted-foreground">
+          Yetkiler yükleniyor...
+        </div>
+      </main>
+    );
+  }
+  if (!hasPermission(user, app.permissionKey)) return <Navigate to="/apps" replace />;
 
   const modules = app.modules.filter((module) => hasPermission(user, module.permissionKey));
 

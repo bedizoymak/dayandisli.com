@@ -67,7 +67,7 @@ export default function Apps() {
 
       {isResolvingUser ? (
         <div className="erp-surface flex min-h-40 items-center justify-center rounded-lg p-6 text-sm font-medium text-muted-foreground">
-          Yükleniyor...
+          Uygulamalar yükleniyor...
         </div>
       ) : applications.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">

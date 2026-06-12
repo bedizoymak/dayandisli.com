@@ -106,11 +106,11 @@ const AppRoutes = () => {
       {exposeErpRoutes ? (
           <>
             <Route path="/apps" element={protectedElement(<Apps />)} />
+            <Route path="/apps/calculator/*" element={protectedElement(<LegacyCalculatorRedirect />)} />
+            <Route path="/apps/shop-orders" element={protectedElement(<Navigate to="/commerce/siparisler" replace />)} />
             <Route path="/apps/:appId" element={protectedElement(<ApplicationShellPage />)} />
             <Route path="/admin/*" element={protectedElement(<AdminRoutes />)} />
             <Route path="/dashboard" element={protectedElement(<ERPHomePage />)} />
-            <Route path="/apps/calculator/*" element={protectedElement(<LegacyCalculatorRedirect />)} />
-            <Route path="/apps/shop-orders" element={protectedElement(<Navigate to="/commerce/siparisler" replace />)} />
             <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/teklifler/yeni" replace />)} />
             <Route path="/erp/*" element={protectedElement(<LegacyErpRedirect />)} />
             <Route path="/*" element={protectedElement(<ERPRoutes />)} />
