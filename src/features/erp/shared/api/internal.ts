@@ -66,6 +66,10 @@ export function success<T>(data: T): ApiResult<T> {
   return { data, error: null };
 }
 
+export function validationFailure<T>(error: string, fallback: T): ApiResult<T> {
+  return { data: fallback, error, missingTable: false };
+}
+
 export function normalizeSearch(value: string) {
   return value.trim().replaceAll(",", " ");
 }
