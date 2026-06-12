@@ -13,8 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationCenter } from "@/components/erp/NotificationCenter";
 import { QuickActionMenu } from "@/components/erp/QuickActionMenu";
-import { supabase } from "@/integrations/supabase/client";
-import { createAuditLog } from "../shared/erpApi";
+import { useERPAuth } from "@/contexts/ERPAuthContext";
 
 type ERPTopBarProps = {
   title: string;
@@ -23,24 +22,8 @@ type ERPTopBarProps = {
 
 export function ERPTopBar({ title, onMenuToggle }: ERPTopBarProps) {
   const navigate = useNavigate();
-  const [email, setEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setEmail(data.session?.user.email ?? null);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setEmail(session?.user.email ?? null);
-    });
-
-    return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
+  const { erpUser, signOut, supabaseUser } = useERPAuth();
+  const email = erpUser?.email ?? supabaseUser?.email ?? null;
 
   const initials = useMemo(() => {
     if (!email) return "DD";
@@ -54,14 +37,7 @@ export function ERPTopBar({ title, onMenuToggle }: ERPTopBarProps) {
   }, [email]);
 
   const handleLogout = async () => {
-    await createAuditLog({
-      entity_type: "auth_session",
-      action: "logout",
-      description: `${email ?? "Bilinmeyen kullanıcı"} ERP oturumunu kapattı.`,
-      metadata: { email },
-    });
-    await supabase.auth.signOut();
-    localStorage.removeItem("auth_redirect_path");
+    await signOut();
     navigate("/login", { replace: true });
   };
 

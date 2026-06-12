@@ -1,11 +1,9 @@
-import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { visibleErpModules } from "@/config/erpModules";
+import { useERPAuth } from "@/contexts/ERPAuthContext";
 import { cn } from "@/lib/utils";
-import { getCurrentERPUserSafe, hasPermission } from "../shared/permissions";
-import { ERPUser } from "../shared/types";
 
 type ERPSidebarProps = {
   mobileOpen: boolean;
@@ -14,13 +12,8 @@ type ERPSidebarProps = {
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation();
-  const [user, setUser] = useState<ERPUser | null>(null);
-
-  useEffect(() => {
-    getCurrentERPUserSafe().then(setUser);
-  }, []);
-
-  const modules = visibleErpModules.filter((item) => hasPermission(user, item.requiredPermission));
+  const { hasPermission } = useERPAuth();
+  const modules = visibleErpModules.filter((item) => hasPermission(item.requiredPermission));
 
   return (
     <div className="flex h-full flex-col">

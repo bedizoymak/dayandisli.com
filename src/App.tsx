@@ -9,6 +9,7 @@ import { CartProvider } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
 import { buildErpUrl, shouldExposeErpRoutes, shouldExposePublicRoutes } from "@/lib/domains";
 import { ERPErrorBoundary } from "@/components/ERPErrorBoundary";
+import { ERPAuthProvider } from "@/contexts/ERPAuthContext";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -127,11 +128,13 @@ const AppContent = () => (
     <Toaster />
     <Sonner />
     <BrowserRouter>
-      <ERPErrorBoundary>
-      <Suspense fallback={<div className="min-h-screen bg-background p-6 text-sm text-muted-foreground">Sayfa yükleniyor...</div>}>
-        <AppRoutes />
-      </Suspense>
-      </ERPErrorBoundary>
+      <ERPAuthProvider enabled={shouldExposeErpRoutes()}>
+        <ERPErrorBoundary>
+          <Suspense fallback={<div className="min-h-screen bg-background p-6 text-sm text-muted-foreground">Sayfa yükleniyor...</div>}>
+            <AppRoutes />
+          </Suspense>
+        </ERPErrorBoundary>
+      </ERPAuthProvider>
     </BrowserRouter>
   </TooltipProvider>
 );

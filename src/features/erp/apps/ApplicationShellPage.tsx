@@ -1,54 +1,24 @@
-import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ChevronRight, LockKeyhole, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
-import { getCurrentERPUserSafe, hasPermission } from "../shared/permissions";
-import { ERPUser } from "../shared/types";
+import { useERPAuth } from "@/contexts/ERPAuthContext";
 import { getErpApplication } from "./applicationRegistry";
 
 export default function ApplicationShellPage() {
   const { appId } = useParams();
   const navigate = useNavigate();
   const app = getErpApplication(appId);
-  const [user, setUser] = useState<ERPUser | null>(null);
-  const [isResolvingUser, setIsResolvingUser] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    getCurrentERPUserSafe()
-      .then((resolvedUser) => {
-        if (isMounted) setUser(resolvedUser);
-      })
-      .finally(() => {
-        if (isMounted) setIsResolvingUser(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const { hasPermission, signOut } = useERPAuth();
 
   if (!app) return <Navigate to="/apps" replace />;
-  if (isResolvingUser) {
-    return (
-      <main className="erp-theme erp-shell flex min-h-screen items-center justify-center p-6">
-        <div className="erp-surface rounded-lg px-6 py-5 text-sm font-medium text-muted-foreground">
-          Yetkiler yükleniyor...
-        </div>
-      </main>
-    );
-  }
-  if (!hasPermission(user, app.permissionKey)) return <Navigate to="/apps" replace />;
+  if (!hasPermission(app.permissionKey)) return <Navigate to="/apps" replace />;
 
-  const modules = app.modules.filter((module) => hasPermission(user, module.permissionKey));
+  const modules = app.modules.filter((module) => hasPermission(module.permissionKey));
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem("auth_redirect_path");
+    await signOut();
     navigate("/login", { replace: true });
   };
 

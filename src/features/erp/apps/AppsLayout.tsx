@@ -2,28 +2,19 @@ import { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { createAuditLog } from "../shared/erpApi";
-import { ERPUser } from "../shared/types";
+import { useERPAuth } from "@/contexts/ERPAuthContext";
 
 type AppsLayoutProps = {
   title: string;
-  user?: ERPUser | null;
   children: ReactNode;
 };
 
-export function AppsLayout({ title, user, children }: AppsLayoutProps) {
+export function AppsLayout({ title, children }: AppsLayoutProps) {
   const navigate = useNavigate();
+  const { erpUser: user, signOut } = useERPAuth();
 
   const handleLogout = async () => {
-    await createAuditLog({
-      entity_type: "auth_session",
-      action: "logout",
-      description: `${user?.email ?? "Bilinmeyen kullanıcı"} ERP oturumunu kapattı.`,
-      metadata: { email: user?.email ?? null },
-    });
-    await supabase.auth.signOut();
-    localStorage.removeItem("auth_redirect_path");
+    await signOut();
     navigate("/login", { replace: true });
   };
 

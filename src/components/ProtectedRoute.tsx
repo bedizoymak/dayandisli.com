@@ -1,16 +1,9 @@
-﻿import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
-import { getCurrentERPUser } from "@/features/erp/shared/erpApi";
-import { getRequiredPermissionForPath, hasPermission } from "@/features/erp/shared/permissions";
+import { useERPAuth } from "@/contexts/ERPAuthContext";
+import { getRequiredPermissionForPath } from "@/features/erp/shared/permissions";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
-};
-
-type AuthGateState = {
-  status: "checking" | "allowed" | "login" | "denied";
-  redirectTo: string;
 };
 
 function LoadingScreen() {
@@ -25,67 +18,16 @@ function LoadingScreen() {
 }
 
 export function RequireAuth({ children }: ProtectedRouteProps) {
-  const [gate, setGate] = useState<AuthGateState>({ status: "checking", redirectTo: "/login" });
   const location = useLocation();
+  const { hasPermission, isActiveAdmin, isAuthenticated, isLoading } = useERPAuth();
 
-  useEffect(() => {
-    let isMounted = true;
+  localStorage.setItem("auth_redirect_path", `${location.pathname}${location.search}`);
 
-    const checkAccess = async () => {
-      localStorage.setItem("auth_redirect_path", `${location.pathname}${location.search}`);
-      setGate({ status: "checking", redirectTo: "/login" });
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated || !isActiveAdmin) return <Navigate to="/login" replace state={{ from: location }} />;
 
-      if (!isSupabaseConfigured) {
-        if (isMounted) setGate({ status: "login", redirectTo: "/login" });
-        return;
-      }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.user?.email) {
-        if (isMounted) setGate({ status: "login", redirectTo: "/login" });
-        return;
-      }
-
-      const { data: adminUser, error: adminError } = await supabase
-        .from("admin_users" as never)
-        .select("email, is_active")
-        .eq("email", session.user.email)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (adminError) {
-        if (import.meta.env.DEV) console.error("Admin yetki kontrol hatası:", adminError);
-        await supabase.auth.signOut();
-        if (isMounted) setGate({ status: "login", redirectTo: "/login" });
-        return;
-      }
-
-      if (!adminUser) {
-        await supabase.auth.signOut();
-        if (isMounted) setGate({ status: "login", redirectTo: "/login" });
-        return;
-      }
-
-      const erpUserResult = await getCurrentERPUser();
-      const requiredPermission = getRequiredPermissionForPath(location.pathname);
-      const allowed = hasPermission(erpUserResult.data, requiredPermission);
-
-      if (isMounted) setGate(allowed ? { status: "allowed", redirectTo: "" } : { status: "denied", redirectTo: "/apps" });
-    };
-
-    checkAccess();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [location.pathname, location.search]);
-
-  if (gate.status === "checking") return <LoadingScreen />;
-
-  if (gate.status !== "allowed") return <Navigate to={gate.redirectTo} replace state={{ from: location }} />;
+  const requiredPermission = getRequiredPermissionForPath(location.pathname);
+  if (!hasPermission(requiredPermission)) return <Navigate to="/apps" replace state={{ from: location }} />;
 
   return <>{children}</>;
 }

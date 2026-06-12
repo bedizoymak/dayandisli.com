@@ -1,63 +1,14 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useERPAuth } from "@/contexts/ERPAuthContext";
 import { AppsLayout } from "@/features/erp/apps/AppsLayout";
-import { erpApplications } from "@/features/erp/apps/applicationRegistry";
-import {
-  filterApplicationsByPermission,
-  getCurrentERPUserSafe,
-  getUserPermissions,
-  getUserRoles,
-} from "@/features/erp/shared/permissions";
-import { ERPUser } from "@/features/erp/shared/types";
+import { filterApplicationsByPermission } from "@/features/erp/shared/permissions";
 
 export default function Apps() {
-  const [user, setUser] = useState<ERPUser | null>(null);
-  const [isResolvingUser, setIsResolvingUser] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    getCurrentERPUserSafe()
-      .then((resolvedUser) => {
-        if (!isMounted) return;
-        setUser(resolvedUser);
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setIsResolvingUser(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
+  const { erpUser: user, permissions: resolvedPermissions, roles: resolvedRoles } = useERPAuth();
   const applications = filterApplicationsByPermission(user);
-  const resolvedRoles = getUserRoles(user);
-  const resolvedPermissions = getUserPermissions(user);
-  const missingApplicationPermissions = erpApplications
-    .map((app) => app.permissionKey)
-    .filter((permissionKey): permissionKey is string => Boolean(permissionKey))
-    .filter((permissionKey) => !resolvedPermissions.includes(permissionKey));
-
-  useEffect(() => {
-    if (isResolvingUser) return;
-
-    console.info("[Apps] ERP user resolved", {
-      user,
-      roles: resolvedRoles,
-      permissions: resolvedPermissions,
-      visibleApplicationsCount: applications.length,
-      requiredApplicationPermissions: erpApplications.map((app) => ({
-        id: app.id,
-        permissionKey: app.permissionKey,
-      })),
-      missingApplicationPermissions,
-    });
-  }, [applications.length, isResolvingUser, missingApplicationPermissions, resolvedPermissions, resolvedRoles, user]);
 
   return (
-    <AppsLayout title="Uygulamalar" user={user}>
+    <AppsLayout title="Uygulamalar">
       <div className="mb-6">
         <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">ERP Uygulamaları</h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -65,11 +16,7 @@ export default function Apps() {
         </p>
       </div>
 
-      {isResolvingUser ? (
-        <div className="erp-surface flex min-h-40 items-center justify-center rounded-lg p-6 text-sm font-medium text-muted-foreground">
-          Uygulamalar yükleniyor...
-        </div>
-      ) : applications.length > 0 ? (
+      {applications.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
           {applications.map((app) => (
             <Link
