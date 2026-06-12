@@ -70,6 +70,11 @@ export function normalizeSearch(value: string) {
   return value.trim().replaceAll(",", " ");
 }
 
+export function numberValue(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function sequencePrefix(sequenceKey: string) {
   const prefixes: Record<string, string> = {
     SALES_ORDER: "SO",
