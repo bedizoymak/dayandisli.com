@@ -232,6 +232,10 @@ export async function createWorkOrderFromSalesOrder(order: SalesOrder) {
   if (existing.data) return { data: existing.data, error: "Bu sipariş için zaten iş emri var." };
 
   const items = await listSalesOrderItems(order.id);
+  if (items.error) {
+    return failure<WorkOrder | null>("createWorkOrderFromSalesOrder items", items.error, null);
+  }
+
   const firstItem = items.data[0];
   const workOrderResult = await createWorkOrder({
     sales_order_id: order.id,
@@ -243,16 +247,30 @@ export async function createWorkOrderFromSalesOrder(order: SalesOrder) {
     priority: order.priority,
   });
 
-  if (!workOrderResult.error && workOrderResult.data) {
-    await updateSalesOrder(order.id, { status: "in_production" });
-    await createAuditLog({
-      entity_type: "sales_order",
-      entity_id: order.id,
-      action: "sales_order_converted",
-      description: `${order.order_no} numaralı sipariş iş emrine dönüştürüldü.`,
-      metadata: { work_order_id: workOrderResult.data.id, work_order_no: workOrderResult.data.work_order_no },
-    });
+  if (workOrderResult.error || !workOrderResult.data) {
+    return failure<WorkOrder | null>(
+      "createWorkOrderFromSalesOrder work order",
+      workOrderResult.error ?? "İş emri oluşturulamadı.",
+      null,
+    );
   }
+
+  const statusResult = await updateSalesOrder(order.id, { status: "in_production" });
+  if (statusResult.error || !statusResult.data) {
+    return {
+      data: workOrderResult.data,
+      error: `İş emri oluşturuldu ancak satış siparişi durumu güncellenemedi: ${statusResult.error ?? "Bilinmeyen hata"}`,
+      missingTable: statusResult.missingTable,
+    };
+  }
+
+  await createAuditLog({
+    entity_type: "sales_order",
+    entity_id: order.id,
+    action: "sales_order_converted",
+    description: `${order.order_no} numaralı sipariş iş emrine dönüştürüldü.`,
+    metadata: { work_order_id: workOrderResult.data.id, work_order_no: workOrderResult.data.work_order_no },
+  });
 
   return workOrderResult;
 }
@@ -353,7 +371,14 @@ export async function createOperationsFromRoute(workOrderId: string, routeId: st
       planned_minutes: step.estimated_minutes,
       notes: step.notes,
     });
-    if (result.data) created.push(result.data);
+    if (result.error || !result.data) {
+      return {
+        data: created,
+        error: `Operasyon oluşturulamadı: ${result.error ?? "Bilinmeyen hata"}`,
+        missingTable: result.missingTable,
+      };
+    }
+    created.push(result.data);
   }
 
   return success(created);
