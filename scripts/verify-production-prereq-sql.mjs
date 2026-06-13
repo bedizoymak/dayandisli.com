@@ -8,6 +8,10 @@ const drafts = {
   predicates: "supabase/manual/tenant_policy_predicate_corrections_draft.sql",
   uniqueness: "supabase/manual/work_orders_sales_order_unique_draft.sql",
 };
+const migrationPath =
+  "supabase/migrations/20260613052204_production_rpc_rls_prerequisites.sql";
+const manualIndexPath =
+  "supabase/manual/work_orders_sales_order_unique_concurrent_index.sql";
 
 const failures = [];
 const contents = {};
@@ -60,6 +64,64 @@ if (!/where\s+sales_order_id\s+is\s+not\s+null/i.test(
   indexPosition >= 0 ? uniqueness.slice(indexPosition) : "",
 )) {
   failures.push("uniqueness index must be partial for non-null sales_order_id");
+}
+
+let migration = "";
+let manualIndex = "";
+try {
+  migration = await readFile(path.join(root, migrationPath), "utf8");
+} catch (error) {
+  failures.push(`${migrationPath}: ${error.message}`);
+}
+try {
+  manualIndex = await readFile(path.join(root, manualIndexPath), "utf8");
+} catch (error) {
+  failures.push(`${manualIndexPath}: ${error.message}`);
+}
+
+if (/\bconcurrently\b/i.test(migration)) {
+  failures.push(`${migrationPath}: normal migration must not contain concurrently`);
+}
+if (/security\s+definer/i.test(migration)) {
+  failures.push(`${migrationPath}: elevated function execution is forbidden`);
+}
+if (/\bgrant\b[\s\S]*?\bto\s+anon\b/i.test(migration)) {
+  failures.push(`${migrationPath}: grants to anon are forbidden`);
+}
+for (const table of [
+  "work_order_operations",
+  "sales_orders",
+  "work_orders",
+  "erp_audit_logs",
+]) {
+  if (!migration.includes(table)) {
+    failures.push(`${migrationPath}: missing scoped table ${table}`);
+  }
+}
+if (/\bcm\.company_id\s*=\s*cm\.company_id\b/i.test(migration)) {
+  failures.push(`${migrationPath}: contains the known ambiguous predicate`);
+}
+
+if (!manualIndex.includes(
+  "-- MANUAL PRODUCTION STEP. RUN ONLY AFTER DUPLICATE CHECK PASSES.",
+)) {
+  failures.push(`${manualIndexPath}: missing manual production warning`);
+}
+const manualDuplicatePosition = manualIndex.search(/having\s+count\(\*\)\s*>\s*1/i);
+const manualIndexPosition = manualIndex.search(
+  /create\s+unique\s+index\s+concurrently/i,
+);
+if (
+  manualDuplicatePosition < 0 ||
+  manualIndexPosition < 0 ||
+  manualDuplicatePosition > manualIndexPosition
+) {
+  failures.push(`${manualIndexPath}: duplicate check must precede concurrent index`);
+}
+if (!/where\s+sales_order_id\s+is\s+not\s+null/i.test(
+  manualIndexPosition >= 0 ? manualIndex.slice(manualIndexPosition) : "",
+)) {
+  failures.push(`${manualIndexPath}: index must be partial for non-null sales_order_id`);
 }
 
 if (failures.length > 0) {
