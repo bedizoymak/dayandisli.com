@@ -1,0 +1,587 @@
+{
+  "data": [
+    {
+      "id": "1007583701",
+      "type": "purchase_bills",
+      "attributes": {
+        "created_at": "2023-12-21T14:06:15.376Z",
+        "updated_at": "2024-01-23T15:55:33.420Z",
+        "net_total": "123000.0",
+        "remaining": "0.0",
+        "remaining_in_trl": "0.0",
+        "total_paid": "123000.0",
+        "issue_date": "2023-12-15",
+        "due_date": "2023-12-15",
+        "days_overdue": 0,
+        "days_till_due_date": -911,
+        "description": null,
+        "archived": false,
+        "currency": "TRL",
+        "exchange_rate": "1.0",
+        "item_type": "purchase_bill",
+        "item_type_before_cancellation": null,
+        "gross_total": "102500.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_vat": "20500.0",
+        "withholding": "0.0",
+        "withholding_rate": "0.0",
+        "vat_withholding": "0.0",
+        "total_vat_withholding": "0.0",
+        "total_excise_duty": "0.0",
+        "total_accommodation_tax": "[REDACTED]",
+        "total_communications_tax": "[REDACTED]",
+        "sharings_count": 0,
+        "remaining_reimbursement": "0.0",
+        "remaining_reimbursement_in_trl": "0.0",
+        "invoice_no": "ERD2023000002652",
+        "is_detailed": true,
+        "total_discount": "0.0",
+        "e_invoices_count": 0,
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "amount",
+        "total_invoice_discount": "0.0",
+        "payment_status": "paid",
+        "net_total_in_trl": "123000.0",
+        "shipment_included": true,
+        "is_recurred_item": false,
+        "non_standard_fields": null,
+        "total_stamp_tax": "[REDACTED]",
+        "rounding_amount": "0.0",
+        "other_taxes": null,
+        "vat_withholding_rate": "0.0",
+        "photo": {
+          "url": null,
+          "is_processing": false
+        },
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1011100902/fis-faturalar/1007583701",
+        "sharing_preview_path": "/666034/portal/preview/1011100902/fis-faturalar/1007583701"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "reimbursement_payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "spender": {
+          "data": null
+        },
+        "supplier": {
+          "meta": {}
+        },
+        "pay_to": {
+          "meta": {}
+        },
+        "reimbursement_tx": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-21T14:06:15.376Z",
+        "updated_at": "2024-01-23T15:55:33.420Z"
+      }
+    },
+    {
+      "id": "1007684564",
+      "type": "purchase_bills",
+      "attributes": {
+        "created_at": "2023-12-26T09:34:15.914Z",
+        "updated_at": "2024-01-23T15:55:57.079Z",
+        "net_total": "28069.8",
+        "remaining": "0.0",
+        "remaining_in_trl": "0.0",
+        "total_paid": "28069.8",
+        "issue_date": "2023-12-26",
+        "due_date": null,
+        "days_overdue": 0,
+        "days_till_due_date": null,
+        "description": null,
+        "archived": false,
+        "currency": "TRL",
+        "exchange_rate": "1.0",
+        "item_type": "purchase_bill",
+        "item_type_before_cancellation": null,
+        "gross_total": "25518.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_vat": "5103.6",
+        "withholding": "0.0",
+        "withholding_rate": "0.0",
+        "vat_withholding": "2551.8",
+        "total_vat_withholding": "2551.8",
+        "total_excise_duty": "0.0",
+        "total_accommodation_tax": "[REDACTED]",
+        "total_communications_tax": "[REDACTED]",
+        "sharings_count": 0,
+        "remaining_reimbursement": "0.0",
+        "remaining_reimbursement_in_trl": "0.0",
+        "invoice_no": "SOY2023000000387",
+        "is_detailed": true,
+        "total_discount": "0.0",
+        "e_invoices_count": 0,
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "amount",
+        "total_invoice_discount": "0.0",
+        "payment_status": "paid",
+        "net_total_in_trl": "28069.8",
+        "shipment_included": true,
+        "is_recurred_item": false,
+        "non_standard_fields": null,
+        "total_stamp_tax": "[REDACTED]",
+        "rounding_amount": "0.0",
+        "other_taxes": null,
+        "vat_withholding_rate": "50.0",
+        "photo": {
+          "url": null,
+          "is_processing": false
+        },
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1011009634/fis-faturalar/1007684564",
+        "sharing_preview_path": "/666034/portal/preview/1011009634/fis-faturalar/1007684564"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "reimbursement_payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "spender": {
+          "data": null
+        },
+        "supplier": {
+          "meta": {}
+        },
+        "pay_to": {
+          "meta": {}
+        },
+        "reimbursement_tx": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-26T09:34:15.914Z",
+        "updated_at": "2024-01-23T15:55:57.079Z"
+      }
+    },
+    {
+      "id": "1007881809",
+      "type": "purchase_bills",
+      "attributes": {
+        "created_at": "2024-01-03T09:32:11.921Z",
+        "updated_at": "2024-05-17T09:33:13.085Z",
+        "net_total": "120000.0",
+        "remaining": "0.0",
+        "remaining_in_trl": "0.0",
+        "total_paid": "120000.0",
+        "issue_date": "2023-12-18",
+        "due_date": "2023-12-18",
+        "days_overdue": 0,
+        "days_till_due_date": -908,
+        "description": null,
+        "archived": false,
+        "currency": "TRL",
+        "exchange_rate": "1.0",
+        "item_type": "purchase_bill",
+        "item_type_before_cancellation": null,
+        "gross_total": "100000.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_vat": "20000.0",
+        "withholding": "0.0",
+        "withholding_rate": "0.0",
+        "vat_withholding": "0.0",
+        "total_vat_withholding": "0.0",
+        "total_excise_duty": "0.0",
+        "total_accommodation_tax": "[REDACTED]",
+        "total_communications_tax": "[REDACTED]",
+        "sharings_count": 0,
+        "remaining_reimbursement": "0.0",
+        "remaining_reimbursement_in_trl": "0.0",
+        "invoice_no": "ERD2023000002668",
+        "is_detailed": true,
+        "total_discount": "0.0",
+        "e_invoices_count": 0,
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "amount",
+        "total_invoice_discount": "0.0",
+        "payment_status": "paid",
+        "net_total_in_trl": "120000.0",
+        "shipment_included": true,
+        "is_recurred_item": false,
+        "non_standard_fields": null,
+        "total_stamp_tax": "[REDACTED]",
+        "rounding_amount": "0.0",
+        "other_taxes": null,
+        "vat_withholding_rate": "0.0",
+        "photo": {
+          "url": null,
+          "is_processing": false
+        },
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1011100902/fis-faturalar/1007881809",
+        "sharing_preview_path": "/666034/portal/preview/1011100902/fis-faturalar/1007881809"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "reimbursement_payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "spender": {
+          "data": null
+        },
+        "supplier": {
+          "meta": {}
+        },
+        "pay_to": {
+          "meta": {}
+        },
+        "reimbursement_tx": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2024-01-03T09:32:11.921Z",
+        "updated_at": "2024-05-17T09:33:13.085Z"
+      }
+    },
+    {
+      "id": "1008041958",
+      "type": "purchase_bills",
+      "attributes": {
+        "created_at": "2024-01-09T16:09:32.975Z",
+        "updated_at": "2024-01-23T15:54:48.884Z",
+        "net_total": "162000.0",
+        "remaining": "0.0",
+        "remaining_in_trl": "0.0",
+        "total_paid": "162000.0",
+        "issue_date": "2024-01-06",
+        "due_date": null,
+        "days_overdue": 0,
+        "days_till_due_date": null,
+        "description": null,
+        "archived": false,
+        "currency": "TRL",
+        "exchange_rate": "1.0",
+        "item_type": "purchase_bill",
+        "item_type_before_cancellation": null,
+        "gross_total": "135000.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_vat": "27000.0",
+        "withholding": "0.0",
+        "withholding_rate": "0.0",
+        "vat_withholding": "0.0",
+        "total_vat_withholding": "0.0",
+        "total_excise_duty": "0.0",
+        "total_accommodation_tax": "[REDACTED]",
+        "total_communications_tax": "[REDACTED]",
+        "sharings_count": 0,
+        "remaining_reimbursement": "0.0",
+        "remaining_reimbursement_in_trl": "0.0",
+        "invoice_no": "ON02024000000001",
+        "is_detailed": true,
+        "total_discount": "0.0",
+        "e_invoices_count": 0,
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "amount",
+        "total_invoice_discount": "0.0",
+        "payment_status": "paid",
+        "net_total_in_trl": "162000.0",
+        "shipment_included": true,
+        "is_recurred_item": false,
+        "non_standard_fields": null,
+        "total_stamp_tax": "[REDACTED]",
+        "rounding_amount": "0.0",
+        "other_taxes": null,
+        "vat_withholding_rate": "0.0",
+        "photo": {
+          "url": null,
+          "is_processing": false
+        },
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1010814464/fis-faturalar/1008041958",
+        "sharing_preview_path": "/666034/portal/preview/1010814464/fis-faturalar/1008041958"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "reimbursement_payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "spender": {
+          "data": null
+        },
+        "supplier": {
+          "meta": {}
+        },
+        "pay_to": {
+          "meta": {}
+        },
+        "reimbursement_tx": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2024-01-09T16:09:32.975Z",
+        "updated_at": "2024-01-23T15:54:48.884Z"
+      }
+    },
+    {
+      "id": "1008041965",
+      "type": "purchase_bills",
+      "attributes": {
+        "created_at": "2024-01-09T16:10:36.055Z",
+        "updated_at": "2024-02-09T11:35:23.934Z",
+        "net_total": "4662.0",
+        "remaining": "0.0",
+        "remaining_in_trl": "0.0",
+        "total_paid": "4662.0",
+        "issue_date": "2024-01-09",
+        "due_date": null,
+        "days_overdue": 0,
+        "days_till_due_date": null,
+        "description": null,
+        "archived": false,
+        "currency": "TRL",
+        "exchange_rate": "1.0",
+        "item_type": "purchase_bill",
+        "item_type_before_cancellation": null,
+        "gross_total": "3885.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_vat": "777.0",
+        "withholding": "0.0",
+        "withholding_rate": "0.0",
+        "vat_withholding": "0.0",
+        "total_vat_withholding": "0.0",
+        "total_excise_duty": "0.0",
+        "total_accommodation_tax": "[REDACTED]",
+        "total_communications_tax": "[REDACTED]",
+        "sharings_count": 0,
+        "remaining_reimbursement": "0.0",
+        "remaining_reimbursement_in_trl": "0.0",
+        "invoice_no": "ISI2024000000052",
+        "is_detailed": true,
+        "total_discount": "0.0",
+        "e_invoices_count": 0,
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "amount",
+        "total_invoice_discount": "0.0",
+        "payment_status": "paid",
+        "net_total_in_trl": "4662.0",
+        "shipment_included": true,
+        "is_recurred_item": false,
+        "non_standard_fields": null,
+        "total_stamp_tax": "[REDACTED]",
+        "rounding_amount": "0.0",
+        "other_taxes": null,
+        "vat_withholding_rate": "0.0",
+        "photo": {
+          "url": null,
+          "is_processing": false
+        },
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1012020943/fis-faturalar/1008041965",
+        "sharing_preview_path": "/666034/portal/preview/1012020943/fis-faturalar/1008041965"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "reimbursement_payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "spender": {
+          "data": null
+        },
+        "supplier": {
+          "meta": {}
+        },
+        "pay_to": {
+          "meta": {}
+        },
+        "reimbursement_tx": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2024-01-09T16:10:36.055Z",
+        "updated_at": "2024-02-09T11:35:23.934Z"
+      }
+    }
+  ],
+  "links": {
+    "self": "https://api.parasut.com/v4/666034/purchase_bills?include=spender&page%5Bnumber%5D=1&page%5Bsize%5D=5",
+    "first": "https://api.parasut.com/v4/666034/purchase_bills?include=spender&page%5Bnumber%5D=1&page%5Bsize%5D=5",
+    "prev": null,
+    "next": "https://api.parasut.com/v4/666034/purchase_bills?include=spender&page%5Bnumber%5D=2&page%5Bsize%5D=5",
+    "last": "https://api.parasut.com/v4/666034/purchase_bills?include=spender&page%5Bnumber%5D=142&page%5Bsize%5D=5"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 142,
+    "total_count": 707,
+    "per_page": 5
+  }
+}

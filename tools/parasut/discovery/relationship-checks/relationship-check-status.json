@@ -1,0 +1,161 @@
+{
+  "authentication": "success",
+  "company_id": "666034",
+  "read_only": true,
+  "source_ids": "selected from prior sanitized samples",
+  "checks": [
+    {
+      "name": "contact_detail",
+      "status": 200,
+      "ok": true,
+      "included_count": 0,
+      "relationship_names": [
+        "activities",
+        "category",
+        "comments",
+        "contact_people",
+        "contact_portal",
+        "e_invoice_inboxes",
+        "last_sales_invoice",
+        "operated_by",
+        "price_list",
+        "sharings",
+        "tags"
+      ]
+    },
+    {
+      "name": "sales_invoice_detail",
+      "status": 200,
+      "ok": true,
+      "included_count": 0,
+      "relationship_names": [
+        "active_e_document",
+        "activities",
+        "category",
+        "contact",
+        "custom_requirement_infos",
+        "details",
+        "e_document_note_accounts",
+        "failed_e_invoice",
+        "operated_by",
+        "payments",
+        "price_list",
+        "recurrence_of",
+        "refund_of",
+        "refunds",
+        "sales_offer",
+        "sharings",
+        "shipment_documents",
+        "tags"
+      ]
+    },
+    {
+      "name": "sales_invoice_include_contact",
+      "status": 200,
+      "ok": true,
+      "included_count": 1,
+      "relationship_names": [
+        "active_e_document",
+        "activities",
+        "category",
+        "contact",
+        "custom_requirement_infos",
+        "details",
+        "e_document_note_accounts",
+        "failed_e_invoice",
+        "operated_by",
+        "payments",
+        "price_list",
+        "recurrence_of",
+        "refund_of",
+        "refunds",
+        "sales_offer",
+        "sharings",
+        "shipment_documents",
+        "tags"
+      ]
+    },
+    {
+      "name": "sales_invoice_include_details",
+      "status": 200,
+      "ok": true,
+      "included_count": 1,
+      "relationship_names": [
+        "active_e_document",
+        "activities",
+        "category",
+        "contact",
+        "custom_requirement_infos",
+        "details",
+        "e_document_note_accounts",
+        "failed_e_invoice",
+        "operated_by",
+        "payments",
+        "price_list",
+        "recurrence_of",
+        "refund_of",
+        "refunds",
+        "sales_offer",
+        "sharings",
+        "shipment_documents",
+        "tags"
+      ]
+    },
+    {
+      "name": "sales_invoice_include_payments",
+      "status": 200,
+      "ok": true,
+      "included_count": 1,
+      "relationship_names": [
+        "active_e_document",
+        "activities",
+        "category",
+        "contact",
+        "custom_requirement_infos",
+        "details",
+        "e_document_note_accounts",
+        "failed_e_invoice",
+        "operated_by",
+        "payments",
+        "price_list",
+        "recurrence_of",
+        "refund_of",
+        "refunds",
+        "sales_offer",
+        "sharings",
+        "shipment_documents",
+        "tags"
+      ]
+    },
+    {
+      "name": "sales_invoice_include_all",
+      "status": 200,
+      "ok": true,
+      "included_count": 3,
+      "relationship_names": [
+        "active_e_document",
+        "activities",
+        "category",
+        "contact",
+        "custom_requirement_infos",
+        "details",
+        "e_document_note_accounts",
+        "failed_e_invoice",
+        "operated_by",
+        "payments",
+        "price_list",
+        "recurrence_of",
+        "refund_of",
+        "refunds",
+        "sales_offer",
+        "sharings",
+        "shipment_documents",
+        "tags"
+      ]
+    }
+  ],
+  "local_purchase_terms": [
+    "purchase",
+    "purchase_invoices"
+  ]
+}

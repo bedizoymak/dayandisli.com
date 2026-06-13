@@ -1,0 +1,368 @@
+{
+  "data": [
+    {
+      "id": "1014836407",
+      "type": "products",
+      "attributes": {
+        "created_at": "2023-12-11T11:30:55.866Z",
+        "updated_at": "2024-01-16T09:56:13.148Z",
+        "code": null,
+        "name": "[REDACTED]",
+        "vat_rate": "20.0",
+        "sales_excise_duty_type": "percentage",
+        "sales_excise_duty_code": null,
+        "sales_excise_duty": "0.0",
+        "purchase_excise_duty_type": "percentage",
+        "purchase_excise_duty": "0.0",
+        "communications_tax_rate": "[REDACTED]",
+        "unit": "Adet",
+        "accommodation_tax_rate": "[REDACTED]",
+        "archived": false,
+        "sales_invoice_details_count": 3,
+        "purchase_invoice_details_count": 0,
+        "list_price": "1400.0",
+        "list_price_in_trl": "1400.0",
+        "currency": "TRL",
+        "buying_price": "0.0",
+        "buying_price_in_trl": "0.0",
+        "buying_currency": "TRL",
+        "inventory_tracking": true,
+        "stock_count": "-16.0",
+        "initial_stock_count": "0.0",
+        "critical_stock_count": null,
+        "barcode": null,
+        "gtip": null,
+        "gtin": null,
+        "uno": null,
+        "has_stock_movements": true,
+        "photo": {
+          "url": null,
+          "thumb_url": null,
+          "icon_url": null,
+          "is_processing": false
+        }
+      },
+      "relationships": {
+        "tags": {
+          "meta": {}
+        },
+        "comments": {
+          "meta": {}
+        },
+        "inventory_levels": {
+          "meta": {}
+        },
+        "warehouses": {
+          "meta": {}
+        },
+        "stock_updates": {
+          "meta": {}
+        },
+        "category": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-11T11:30:55.866Z",
+        "updated_at": "2024-01-16T09:56:13.148Z"
+      }
+    },
+    {
+      "id": "1014886618",
+      "type": "products",
+      "attributes": {
+        "created_at": "2023-12-12T10:45:08.334Z",
+        "updated_at": "2023-12-12T12:52:24.906Z",
+        "code": "",
+        "name": "[REDACTED]",
+        "vat_rate": "0.0",
+        "sales_excise_duty_type": "amount",
+        "sales_excise_duty_code": null,
+        "sales_excise_duty": "0.0",
+        "purchase_excise_duty_type": "amount",
+        "purchase_excise_duty": "0.0",
+        "communications_tax_rate": "[REDACTED]",
+        "unit": "ADET",
+        "accommodation_tax_rate": "[REDACTED]",
+        "archived": false,
+        "sales_invoice_details_count": 0,
+        "purchase_invoice_details_count": 0,
+        "list_price": "2500.0",
+        "list_price_in_trl": "2500.0",
+        "currency": "TRL",
+        "buying_price": null,
+        "buying_price_in_trl": "0.0",
+        "buying_currency": "TRL",
+        "inventory_tracking": true,
+        "stock_count": "0.0",
+        "initial_stock_count": "0.0",
+        "critical_stock_count": null,
+        "barcode": null,
+        "gtip": null,
+        "gtin": null,
+        "uno": null,
+        "has_stock_movements": false,
+        "photo": {
+          "url": null,
+          "thumb_url": null,
+          "icon_url": null,
+          "is_processing": false
+        }
+      },
+      "relationships": {
+        "tags": {
+          "meta": {}
+        },
+        "comments": {
+          "meta": {}
+        },
+        "inventory_levels": {
+          "meta": {}
+        },
+        "warehouses": {
+          "meta": {}
+        },
+        "stock_updates": {
+          "meta": {}
+        },
+        "category": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-12T10:45:08.334Z",
+        "updated_at": "2023-12-12T12:52:24.906Z"
+      }
+    },
+    {
+      "id": "1014893405",
+      "type": "products",
+      "attributes": {
+        "created_at": "2023-12-12T12:36:56.924Z",
+        "updated_at": "2023-12-12T12:52:24.906Z",
+        "code": null,
+        "name": "[REDACTED]",
+        "vat_rate": "20.0",
+        "sales_excise_duty_type": "percentage",
+        "sales_excise_duty_code": null,
+        "sales_excise_duty": "0.0",
+        "purchase_excise_duty_type": "percentage",
+        "purchase_excise_duty": "0.0",
+        "communications_tax_rate": "[REDACTED]",
+        "unit": "Adet",
+        "accommodation_tax_rate": "[REDACTED]",
+        "archived": false,
+        "sales_invoice_details_count": 0,
+        "purchase_invoice_details_count": 0,
+        "list_price": "900.0",
+        "list_price_in_trl": "900.0",
+        "currency": "TRL",
+        "buying_price": "0.0",
+        "buying_price_in_trl": "0.0",
+        "buying_currency": "TRL",
+        "inventory_tracking": true,
+        "stock_count": "0.0",
+        "initial_stock_count": "0.0",
+        "critical_stock_count": null,
+        "barcode": null,
+        "gtip": null,
+        "gtin": null,
+        "uno": null,
+        "has_stock_movements": false,
+        "photo": {
+          "url": null,
+          "thumb_url": null,
+          "icon_url": null,
+          "is_processing": false
+        }
+      },
+      "relationships": {
+        "tags": {
+          "meta": {}
+        },
+        "comments": {
+          "meta": {}
+        },
+        "inventory_levels": {
+          "meta": {}
+        },
+        "warehouses": {
+          "meta": {}
+        },
+        "stock_updates": {
+          "meta": {}
+        },
+        "category": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-12T12:36:56.924Z",
+        "updated_at": "2023-12-12T12:52:24.906Z"
+      }
+    },
+    {
+      "id": "1014896129",
+      "type": "products",
+      "attributes": {
+        "created_at": "2023-12-12T12:58:33.889Z",
+        "updated_at": "2023-12-12T12:58:33.856Z",
+        "code": null,
+        "name": "[REDACTED]",
+        "vat_rate": "20.0",
+        "sales_excise_duty_type": "percentage",
+        "sales_excise_duty_code": null,
+        "sales_excise_duty": "0.0",
+        "purchase_excise_duty_type": "percentage",
+        "purchase_excise_duty": "0.0",
+        "communications_tax_rate": "[REDACTED]",
+        "unit": "Adet",
+        "accommodation_tax_rate": "[REDACTED]",
+        "archived": false,
+        "sales_invoice_details_count": 1,
+        "purchase_invoice_details_count": 0,
+        "list_price": "2500.0",
+        "list_price_in_trl": "2500.0",
+        "currency": "TRL",
+        "buying_price": "0.0",
+        "buying_price_in_trl": "0.0",
+        "buying_currency": "TRL",
+        "inventory_tracking": true,
+        "stock_count": "-6.0",
+        "initial_stock_count": "0.0",
+        "critical_stock_count": null,
+        "barcode": null,
+        "gtip": null,
+        "gtin": null,
+        "uno": null,
+        "has_stock_movements": true,
+        "photo": {
+          "url": null,
+          "thumb_url": null,
+          "icon_url": null,
+          "is_processing": false
+        }
+      },
+      "relationships": {
+        "tags": {
+          "meta": {}
+        },
+        "comments": {
+          "meta": {}
+        },
+        "inventory_levels": {
+          "meta": {}
+        },
+        "warehouses": {
+          "meta": {}
+        },
+        "stock_updates": {
+          "meta": {}
+        },
+        "category": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-12T12:58:33.889Z",
+        "updated_at": "2023-12-12T12:58:33.856Z"
+      }
+    },
+    {
+      "id": "1014896130",
+      "type": "products",
+      "attributes": {
+        "created_at": "2023-12-12T12:58:33.903Z",
+        "updated_at": "2023-12-12T12:58:33.856Z",
+        "code": null,
+        "name": "[REDACTED]",
+        "vat_rate": "20.0",
+        "sales_excise_duty_type": "percentage",
+        "sales_excise_duty_code": null,
+        "sales_excise_duty": "0.0",
+        "purchase_excise_duty_type": "percentage",
+        "purchase_excise_duty": "0.0",
+        "communications_tax_rate": "[REDACTED]",
+        "unit": "Adet",
+        "accommodation_tax_rate": "[REDACTED]",
+        "archived": false,
+        "sales_invoice_details_count": 1,
+        "purchase_invoice_details_count": 0,
+        "list_price": "225.0",
+        "list_price_in_trl": "225.0",
+        "currency": "TRL",
+        "buying_price": "0.0",
+        "buying_price_in_trl": "0.0",
+        "buying_currency": "TRL",
+        "inventory_tracking": true,
+        "stock_count": "-100.0",
+        "initial_stock_count": "0.0",
+        "critical_stock_count": null,
+        "barcode": null,
+        "gtip": null,
+        "gtin": null,
+        "uno": null,
+        "has_stock_movements": true,
+        "photo": {
+          "url": null,
+          "thumb_url": null,
+          "icon_url": null,
+          "is_processing": false
+        }
+      },
+      "relationships": {
+        "tags": {
+          "meta": {}
+        },
+        "comments": {
+          "meta": {}
+        },
+        "inventory_levels": {
+          "meta": {}
+        },
+        "warehouses": {
+          "meta": {}
+        },
+        "stock_updates": {
+          "meta": {}
+        },
+        "category": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-12T12:58:33.903Z",
+        "updated_at": "2023-12-12T12:58:33.856Z"
+      }
+    }
+  ],
+  "links": {
+    "self": "https://api.parasut.com/v4/666034/products?page%5Bnumber%5D=1&page%5Bsize%5D=5",
+    "first": "https://api.parasut.com/v4/666034/products?page%5Bnumber%5D=1&page%5Bsize%5D=5",
+    "prev": null,
+    "next": "https://api.parasut.com/v4/666034/products?page%5Bnumber%5D=2&page%5Bsize%5D=5",
+    "last": "https://api.parasut.com/v4/666034/products?page%5Bnumber%5D=476&page%5Bsize%5D=5"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 476,
+    "total_count": 2378,
+    "per_page": 5,
+    "export_url": "https://api.parasut.com/v4/666034/products/export"
+  }
+}

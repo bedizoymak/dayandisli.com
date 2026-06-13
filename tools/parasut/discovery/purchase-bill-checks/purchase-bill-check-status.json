@@ -1,0 +1,63 @@
+{
+  "authentication": "success",
+  "company_id": "666034",
+  "read_only": true,
+  "official_collection_endpoint": "/v4/{company_id}/purchase_bills",
+  "documented_includes_tested": [
+    "spender",
+    "details",
+    "payments"
+  ],
+  "checks": [
+    {
+      "name": "purchase_bills_collection",
+      "status": 200,
+      "ok": true,
+      "count": 5,
+      "included_count": 0
+    },
+    {
+      "name": "purchase_bills_collection_include_spender",
+      "status": 200,
+      "ok": true,
+      "count": 5,
+      "included_count": 0
+    },
+    {
+      "name": "purchase_bill_detail",
+      "status": 200,
+      "ok": true,
+      "count": 1,
+      "included_count": 0
+    },
+    {
+      "name": "purchase_bill_include_spender",
+      "status": 200,
+      "ok": true,
+      "count": 1,
+      "included_count": 0
+    },
+    {
+      "name": "purchase_bill_include_details",
+      "status": 200,
+      "ok": true,
+      "count": 1,
+      "included_count": 1
+    },
+    {
+      "name": "purchase_bill_include_payments",
+      "status": 200,
+      "ok": true,
+      "count": 1,
+      "included_count": 1
+    },
+    {
+      "name": "purchase_bill_include_all",
+      "status": 200,
+      "ok": true,
+      "count": 1,
+      "included_count": 2
+    }
+  ],
+  "detail_skipped": false
+}

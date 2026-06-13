@@ -1,0 +1,246 @@
+{
+  "data": {
+    "id": "800086",
+    "type": "users",
+    "attributes": {
+      "created_at": "2023-11-29T06:22:30.182Z",
+      "updated_at": "2026-05-22T12:28:18.051Z",
+      "email": "[REDACTED]",
+      "unconfirmed_email": null,
+      "name": "[REDACTED]",
+      "approved_contracts": true,
+      "approved_new_contracts": true,
+      "integration_contract_statuses": {
+        "ai_supported_modules": true
+      },
+      "keycloak_tfa_enabled": false,
+      "is_confirmed": true
+    },
+    "relationships": {
+      "user_roles": {
+        "data": [
+          {
+            "id": "875199",
+            "type": "user_roles"
+          }
+        ]
+      },
+      "profile": {
+        "data": {
+          "id": "801196",
+          "type": "profiles"
+        }
+      }
+    },
+    "meta": {
+      "created_at": "2023-11-29T06:22:30.182Z",
+      "updated_at": "2026-05-22T12:28:18.051Z"
+    }
+  },
+  "included": [
+    {
+      "id": "875199",
+      "type": "user_roles",
+      "attributes": {
+        "created_at": "2023-11-29T06:22:30.485Z",
+        "updated_at": "2023-11-29T06:22:30.485Z",
+        "sales_invoices": "rw",
+        "expenditures": "rw",
+        "own_expenditures": "na",
+        "employees": "rw",
+        "accounts": "rw",
+        "settings": "rw",
+        "user_role_type": null
+      },
+      "relationships": {
+        "company": {
+          "data": {
+            "id": "666034",
+            "type": "companies"
+          }
+        },
+        "user": {
+          "meta": {}
+        },
+        "managed_employee": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-11-29T06:22:30.485Z",
+        "updated_at": "2023-11-29T06:22:30.485Z"
+      }
+    },
+    {
+      "id": "666034",
+      "type": "companies",
+      "attributes": {
+        "created_at": "2023-11-29T06:22:30.476Z",
+        "updated_at": "2026-05-13T19:06:00.208Z",
+        "owner_id": 800086,
+        "name": "[REDACTED]",
+        "allowed_inspection_at": null,
+        "app_url": "https://uygulama.parasut.com/666034",
+        "legal_name": "[REDACTED]",
+        "occupation_field": "Üretim",
+        "district": "[REDACTED]",
+        "city": "[REDACTED]",
+        "tax_office": "[REDACTED]",
+        "tax_number": "[REDACTED]",
+        "e_invoice_vkn": "43675880102",
+        "mersis_no": null,
+        "trade_registry_number": null,
+        "credit_balance": 210,
+        "last_consumption_date": "2026-06-12T14:54:57.833Z",
+        "display_exchange_rate_in_offer_pdf": false,
+        "used_app": null,
+        "primary_job": "Yok",
+        "e_invoicing_activated_at": "2023-12-12",
+        "e_archiving_activated_at": "2023-12-12",
+        "e_smm_activated_at": null,
+        "e_archiving_only_activated_at": null,
+        "e_despatch_activated_at": "2023-12-14",
+        "new_subscription_status": "active",
+        "employee_id": null,
+        "payment_with_akbank_enabled": false,
+        "can_upload_signature": true,
+        "operator_id": null,
+        "invoicing_preferences": {},
+        "logo_url": "https://parasut-dosyalar.s3.amazonaws.com/production/Company/logo/666034/2023_11_29__06_29_20--logo.png",
+        "default_warehouse_id": 1000122982,
+        "valid_until": "2027-05-13",
+        "accessible": true,
+        "inspectable": false,
+        "inventory_enabled": true,
+        "e_commerce_enabled": true,
+        "e_invoicing_enabled": true,
+        "e_archiving_enabled": true,
+        "e_archiving_only_enabled": false,
+        "e_smm_enabled": false,
+        "e_despatch_enabled": true,
+        "sales_offer_enabled": true,
+        "export_invoice_enabled": true,
+        "using_sales_receipt": false,
+        "using_multiple_warehouses": false,
+        "using_variant": false,
+        "using_emikro_einvoice": true,
+        "e_invoicing_waiting": false,
+        "e_archiving_only_waiting": false,
+        "uses_credit_service": true,
+        "credit_service_enabled": true,
+        "can_use_ai_reporting": true,
+        "can_use_ai_support": true,
+        "has_iyzico_integration": false,
+        "logo": {
+          "url": "https://parasut-dosyalar.s3.amazonaws.com/production/Company/logo/666034/2023_11_29__06_29_20--logo.png",
+          "is_processing": false
+        },
+        "signature": {
+          "url": null,
+          "is_processing": null
+        },
+        "e_invoicing_order_details_enabled": false,
+        "email_tx_import_enabled": "[REDACTED]",
+        "bank_sync_setup_is_bankasi_enabled": true,
+        "bank_sync_setup_ing_bank_enabled": false,
+        "bank_sync_setup_akbank_enabled": true,
+        "bank_sync_setup_denizbank_enabled": false,
+        "bank_sync_setup_kuveytturk_enabled": false,
+        "bank_sync_setup_teb_enabled": true,
+        "bank_sync_setup_finansbank_enabled": true,
+        "bank_sync_setup_fibabanka_enabled": true,
+        "bank_sync_setup_albaraka_enabled": true,
+        "bank_sync_setup_ornekbank_enabled": false,
+        "bank_sync_setup_yapikredi_enabled": true,
+        "bank_sync_setup_vakifbank_enabled": true,
+        "bank_sync_setup_enpara_enabled": true,
+        "bank_sync_setup_garanti_enabled": true,
+        "bank_sync_setup_ziraat_bankasi_enabled": true,
+        "bank_sync_setup_halkbank_enabled": true,
+        "multiple_bank_integration_enabled": false,
+        "e_commerce_integration_enabled": true,
+        "fibabanka_credit_application_enabled": false,
+        "using_emikro_services": true,
+        "inbound_edocument_page_enabled": true,
+        "batch_updated_vat_rates": false,
+        "invoice_note_enabled": "[REDACTED]",
+        "has_odeal_integration": false,
+        "has_507_and_509": false,
+        "footer_aggregate_enabled": true,
+        "contact_transfer_enabled": true,
+        "pending_qr_code_migration": false,
+        "ai_support_rag": false,
+        "ai_features_enabled": false
+      },
+      "relationships": {
+        "owner": {
+          "data": {
+            "id": "800086",
+            "type": "users"
+          }
+        },
+        "operator": {
+          "data": null
+        },
+        "address": {
+          "data": {
+            "id": "[REDACTED]",
+            "type": "[REDACTED]"
+          }
+        },
+        "default_warehouse": {
+          "meta": {}
+        },
+        "pos": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-11-29T06:22:30.476Z",
+        "updated_at": "2026-05-13T19:06:00.208Z"
+      }
+    },
+    {
+      "id": "295028",
+      "type": "addresses",
+      "attributes": {
+        "created_at": "2023-11-29T06:45:51.135Z",
+        "updated_at": "2025-12-30T18:07:08.528Z",
+        "name": null,
+        "address": "[REDACTED]",
+        "phone": "[REDACTED]",
+        "fax": null
+      },
+      "meta": {
+        "created_at": "2023-11-29T06:45:51.135Z",
+        "updated_at": "2025-12-30T18:07:08.528Z"
+      }
+    },
+    {
+      "id": "801196",
+      "type": "profiles",
+      "attributes": {
+        "created_at": "2023-11-29T06:22:30.187Z",
+        "updated_at": "2026-05-01T04:41:22.567Z",
+        "phone": "[REDACTED]",
+        "job_title": null,
+        "settings": {
+          "is_app_navigation_collapsed": true
+        },
+        "avatar": {
+          "url": null,
+          "is_processing": false
+        }
+      },
+      "relationships": {
+        "user": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-11-29T06:22:30.187Z",
+        "updated_at": "2026-05-01T04:41:22.567Z"
+      }
+    }
+  ]
+}

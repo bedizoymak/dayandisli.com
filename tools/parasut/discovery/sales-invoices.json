@@ -1,0 +1,720 @@
+{
+  "data": [
+    {
+      "id": "1014063257",
+      "type": "sales_invoices",
+      "attributes": {
+        "created_at": "2023-12-12T09:36:49.907Z",
+        "updated_at": "2024-03-08T09:08:00.286Z",
+        "description": "[REDACTED]",
+        "issue_date": "2023-12-12",
+        "invoice_id": null,
+        "invoice_series": null,
+        "invoice_no": "HD02023000000001",
+        "net_total": "8400.0",
+        "currency": "TRL",
+        "gross_total": "7000.0",
+        "withholding_rate": "0.0",
+        "withholding": "0.0",
+        "total_excise_duty": "0.0",
+        "total_communications_tax": "[REDACTED]",
+        "total_vat": "1400.0",
+        "vat_withholding": "0.0",
+        "total_vat_withholding": "0.0",
+        "total_discount": "0.0",
+        "total_invoice_discount": "0.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_accommodation_tax": "[REDACTED]",
+        "remaining": "0.0",
+        "total_paid": "8400.0",
+        "remaining_in_trl": "0.0",
+        "due_date": "2023-12-12",
+        "payment_status": "paid",
+        "archived": false,
+        "item_type": "invoice",
+        "item_type_before_cancellation": null,
+        "is_recurred_item": false,
+        "sharings_count": 1,
+        "printed_at": null,
+        "days_overdue": 0,
+        "days_till_due_date": -914,
+        "city": "[REDACTED]",
+        "district": "[REDACTED]",
+        "tax_office": "[REDACTED]",
+        "tax_number": "[REDACTED]",
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "percentage",
+        "net_total_in_trl": "8400.0",
+        "shipment_document_no": null,
+        "shipment_date": null,
+        "shipment_address": null,
+        "exchange_rate": "1.0",
+        "print_note": "[REDACTED]",
+        "print_url": "https://uygulama.parasut.com/666034/sales_invoices/1014063257/print",
+        "billing_address": "[REDACTED]",
+        "billing_phone": "[REDACTED]",
+        "billing_fax": null,
+        "billing_postal_code": "",
+        "contact_type": "company",
+        "order_no": null,
+        "order_date": null,
+        "accommodation_tax_exemption_reason_code": null,
+        "shipment_included": true,
+        "is_abroad": false,
+        "cash_sale": false,
+        "country": null,
+        "payer_tax_numbers": null,
+        "license_plate": null,
+        "esu_report_id": null,
+        "esu_report_id_date": null,
+        "start_date_time": null,
+        "end_date_time": null,
+        "invoice_note": null,
+        "append_contact_balance": false,
+        "e_document_accounts": [],
+        "refund_document_no": null,
+        "aselsan_data": {},
+        "vat_withholding_rate": "0.0",
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1010689160/satislar/1014063257",
+        "sharing_preview_path": "/666034/portal/preview/1010689160/satislar/1014063257"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "contact": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sales_offer": {
+          "meta": {}
+        },
+        "price_list": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        },
+        "e_document_note_accounts": {
+          "meta": {}
+        },
+        "custom_requirement_infos": {
+          "meta": {}
+        },
+        "failed_e_invoice": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-12T09:36:49.907Z",
+        "updated_at": "2024-03-08T09:08:00.286Z"
+      }
+    },
+    {
+      "id": "1014078252",
+      "type": "sales_invoices",
+      "attributes": {
+        "created_at": "2023-12-12T12:58:33.879Z",
+        "updated_at": "2024-02-12T14:17:07.305Z",
+        "description": "[REDACTED]",
+        "issue_date": "2023-12-12",
+        "invoice_id": null,
+        "invoice_series": null,
+        "invoice_no": "CH02023000000001",
+        "net_total": "57960.0",
+        "currency": "TRL",
+        "gross_total": "48300.0",
+        "withholding_rate": "0.0",
+        "withholding": "0.0",
+        "total_excise_duty": "0.0",
+        "total_communications_tax": "[REDACTED]",
+        "total_vat": "9660.0",
+        "vat_withholding": "0.0",
+        "total_vat_withholding": "0.0",
+        "total_discount": "0.0",
+        "total_invoice_discount": "0.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_accommodation_tax": "[REDACTED]",
+        "remaining": "0.0",
+        "total_paid": "57960.0",
+        "remaining_in_trl": "0.0",
+        "due_date": "2023-12-12",
+        "payment_status": "paid",
+        "archived": false,
+        "item_type": "invoice",
+        "item_type_before_cancellation": null,
+        "is_recurred_item": false,
+        "sharings_count": 0,
+        "printed_at": null,
+        "days_overdue": 0,
+        "days_till_due_date": -914,
+        "city": "[REDACTED]",
+        "district": "[REDACTED]",
+        "tax_office": "[REDACTED]",
+        "tax_number": "[REDACTED]",
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "percentage",
+        "net_total_in_trl": "57960.0",
+        "shipment_document_no": null,
+        "shipment_date": null,
+        "shipment_address": null,
+        "exchange_rate": "1.0",
+        "print_note": "[REDACTED]",
+        "print_url": "https://uygulama.parasut.com/666034/sales_invoices/1014078252/print",
+        "billing_address": "[REDACTED]",
+        "billing_phone": "[REDACTED]",
+        "billing_fax": null,
+        "billing_postal_code": "16600",
+        "contact_type": "company",
+        "order_no": null,
+        "order_date": null,
+        "accommodation_tax_exemption_reason_code": null,
+        "shipment_included": true,
+        "is_abroad": false,
+        "cash_sale": false,
+        "country": null,
+        "payer_tax_numbers": null,
+        "license_plate": null,
+        "esu_report_id": null,
+        "esu_report_id_date": null,
+        "start_date_time": null,
+        "end_date_time": null,
+        "invoice_note": null,
+        "append_contact_balance": false,
+        "e_document_accounts": [],
+        "refund_document_no": null,
+        "aselsan_data": {},
+        "vat_withholding_rate": "0.0",
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1010743830/satislar/1014078252",
+        "sharing_preview_path": "/666034/portal/preview/1010743830/satislar/1014078252"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "contact": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sales_offer": {
+          "meta": {}
+        },
+        "price_list": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        },
+        "e_document_note_accounts": {
+          "meta": {}
+        },
+        "custom_requirement_infos": {
+          "meta": {}
+        },
+        "failed_e_invoice": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-12T12:58:33.879Z",
+        "updated_at": "2024-02-12T14:17:07.305Z"
+      }
+    },
+    {
+      "id": "1014140446",
+      "type": "sales_invoices",
+      "attributes": {
+        "created_at": "2023-12-13T15:00:49.825Z",
+        "updated_at": "2024-01-05T15:47:01.017Z",
+        "description": null,
+        "issue_date": "2023-12-13",
+        "invoice_id": null,
+        "invoice_series": null,
+        "invoice_no": "HD02023000000002",
+        "net_total": "21240.0",
+        "currency": "TRL",
+        "gross_total": "17700.0",
+        "withholding_rate": "0.0",
+        "withholding": "0.0",
+        "total_excise_duty": "0.0",
+        "total_communications_tax": "[REDACTED]",
+        "total_vat": "3540.0",
+        "vat_withholding": "0.0",
+        "total_vat_withholding": "0.0",
+        "total_discount": "0.0",
+        "total_invoice_discount": "0.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_accommodation_tax": "[REDACTED]",
+        "remaining": "0.0",
+        "total_paid": "21240.0",
+        "remaining_in_trl": "0.0",
+        "due_date": "2023-12-13",
+        "payment_status": "paid",
+        "archived": false,
+        "item_type": "invoice",
+        "item_type_before_cancellation": null,
+        "is_recurred_item": false,
+        "sharings_count": 1,
+        "printed_at": null,
+        "days_overdue": 0,
+        "days_till_due_date": -913,
+        "city": "[REDACTED]",
+        "district": "[REDACTED]",
+        "tax_office": "[REDACTED]",
+        "tax_number": "[REDACTED]",
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "percentage",
+        "net_total_in_trl": "21240.0",
+        "shipment_document_no": null,
+        "shipment_date": null,
+        "shipment_address": null,
+        "exchange_rate": "1.0",
+        "print_note": "[REDACTED]",
+        "print_url": "https://uygulama.parasut.com/666034/sales_invoices/1014140446/print",
+        "billing_address": "[REDACTED]",
+        "billing_phone": "[REDACTED]",
+        "billing_fax": null,
+        "billing_postal_code": "27600",
+        "contact_type": "company",
+        "order_no": null,
+        "order_date": null,
+        "accommodation_tax_exemption_reason_code": null,
+        "shipment_included": true,
+        "is_abroad": false,
+        "cash_sale": false,
+        "country": null,
+        "payer_tax_numbers": null,
+        "license_plate": null,
+        "esu_report_id": null,
+        "esu_report_id_date": null,
+        "start_date_time": null,
+        "end_date_time": null,
+        "invoice_note": null,
+        "append_contact_balance": false,
+        "e_document_accounts": [],
+        "refund_document_no": null,
+        "aselsan_data": {},
+        "vat_withholding_rate": "0.0",
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1010725864/satislar/1014140446",
+        "sharing_preview_path": "/666034/portal/preview/1010725864/satislar/1014140446"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "contact": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sales_offer": {
+          "meta": {}
+        },
+        "price_list": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        },
+        "e_document_note_accounts": {
+          "meta": {}
+        },
+        "custom_requirement_infos": {
+          "meta": {}
+        },
+        "failed_e_invoice": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-13T15:00:49.825Z",
+        "updated_at": "2024-01-05T15:47:01.017Z"
+      }
+    },
+    {
+      "id": "1014144655",
+      "type": "sales_invoices",
+      "attributes": {
+        "created_at": "2023-12-13T16:43:04.897Z",
+        "updated_at": "2024-01-05T15:53:44.454Z",
+        "description": "[REDACTED]",
+        "issue_date": "2023-12-13",
+        "invoice_id": null,
+        "invoice_series": null,
+        "invoice_no": "HD02023000000003",
+        "net_total": "3000.0",
+        "currency": "TRL",
+        "gross_total": "2500.0",
+        "withholding_rate": "0.0",
+        "withholding": "0.0",
+        "total_excise_duty": "0.0",
+        "total_communications_tax": "[REDACTED]",
+        "total_vat": "500.0",
+        "vat_withholding": "0.0",
+        "total_vat_withholding": "0.0",
+        "total_discount": "0.0",
+        "total_invoice_discount": "0.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_accommodation_tax": "[REDACTED]",
+        "remaining": "0.0",
+        "total_paid": "3000.0",
+        "remaining_in_trl": "0.0",
+        "due_date": "2023-12-13",
+        "payment_status": "paid",
+        "archived": false,
+        "item_type": "invoice",
+        "item_type_before_cancellation": null,
+        "is_recurred_item": false,
+        "sharings_count": 0,
+        "printed_at": null,
+        "days_overdue": 0,
+        "days_till_due_date": -913,
+        "city": "[REDACTED]",
+        "district": "[REDACTED]",
+        "tax_office": "[REDACTED]",
+        "tax_number": "[REDACTED]",
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "percentage",
+        "net_total_in_trl": "3000.0",
+        "shipment_document_no": null,
+        "shipment_date": null,
+        "shipment_address": null,
+        "exchange_rate": "1.0",
+        "print_note": "[REDACTED]",
+        "print_url": "https://uygulama.parasut.com/666034/sales_invoices/1014144655/print",
+        "billing_address": "[REDACTED]",
+        "billing_phone": "[REDACTED]",
+        "billing_fax": null,
+        "billing_postal_code": "34306",
+        "contact_type": "company",
+        "order_no": null,
+        "order_date": null,
+        "accommodation_tax_exemption_reason_code": null,
+        "shipment_included": true,
+        "is_abroad": false,
+        "cash_sale": false,
+        "country": null,
+        "payer_tax_numbers": null,
+        "license_plate": null,
+        "esu_report_id": null,
+        "esu_report_id_date": null,
+        "start_date_time": null,
+        "end_date_time": null,
+        "invoice_note": null,
+        "append_contact_balance": false,
+        "e_document_accounts": [],
+        "refund_document_no": null,
+        "aselsan_data": {},
+        "vat_withholding_rate": "0.0",
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1010803161/satislar/1014144655",
+        "sharing_preview_path": "/666034/portal/preview/1010803161/satislar/1014144655"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "contact": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sales_offer": {
+          "meta": {}
+        },
+        "price_list": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        },
+        "e_document_note_accounts": {
+          "meta": {}
+        },
+        "custom_requirement_infos": {
+          "meta": {}
+        },
+        "failed_e_invoice": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-13T16:43:04.897Z",
+        "updated_at": "2024-01-05T15:53:44.454Z"
+      }
+    },
+    {
+      "id": "1014158228",
+      "type": "sales_invoices",
+      "attributes": {
+        "created_at": "2023-12-14T06:26:34.322Z",
+        "updated_at": "2023-12-14T11:00:37.738Z",
+        "description": "[REDACTED]",
+        "issue_date": "2023-12-14",
+        "invoice_id": null,
+        "invoice_series": null,
+        "invoice_no": "HD02023000000004",
+        "net_total": "1200.0",
+        "currency": "TRL",
+        "gross_total": "1000.0",
+        "withholding_rate": "0.0",
+        "withholding": "0.0",
+        "total_excise_duty": "0.0",
+        "total_communications_tax": "[REDACTED]",
+        "total_vat": "200.0",
+        "vat_withholding": "0.0",
+        "total_vat_withholding": "0.0",
+        "total_discount": "0.0",
+        "total_invoice_discount": "0.0",
+        "before_taxes_total": "[REDACTED]",
+        "total_accommodation_tax": "[REDACTED]",
+        "remaining": "0.0",
+        "total_paid": "1200.0",
+        "remaining_in_trl": "0.0",
+        "due_date": "2023-12-14",
+        "payment_status": "paid",
+        "archived": false,
+        "item_type": "invoice",
+        "item_type_before_cancellation": null,
+        "is_recurred_item": false,
+        "sharings_count": 0,
+        "printed_at": null,
+        "days_overdue": 0,
+        "days_till_due_date": -912,
+        "city": "[REDACTED]",
+        "district": "[REDACTED]",
+        "tax_office": "[REDACTED]",
+        "tax_number": "[REDACTED]",
+        "invoice_discount": "0.0",
+        "invoice_discount_type": "percentage",
+        "net_total_in_trl": "1200.0",
+        "shipment_document_no": null,
+        "shipment_date": null,
+        "shipment_address": null,
+        "exchange_rate": "1.0",
+        "print_note": "[REDACTED]",
+        "print_url": "https://uygulama.parasut.com/666034/sales_invoices/1014158228/print",
+        "billing_address": "[REDACTED]",
+        "billing_phone": "[REDACTED]",
+        "billing_fax": null,
+        "billing_postal_code": "34791",
+        "contact_type": "company",
+        "order_no": null,
+        "order_date": null,
+        "accommodation_tax_exemption_reason_code": null,
+        "shipment_included": true,
+        "is_abroad": false,
+        "cash_sale": false,
+        "country": null,
+        "payer_tax_numbers": null,
+        "license_plate": null,
+        "esu_report_id": null,
+        "esu_report_id_date": null,
+        "start_date_time": null,
+        "end_date_time": null,
+        "invoice_note": null,
+        "append_contact_balance": false,
+        "e_document_accounts": [],
+        "refund_document_no": null,
+        "aselsan_data": {},
+        "vat_withholding_rate": "0.0",
+        "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1010814464/satislar/1014158228",
+        "sharing_preview_path": "/666034/portal/preview/1010814464/satislar/1014158228"
+      },
+      "relationships": {
+        "category": {
+          "meta": {}
+        },
+        "contact": {
+          "meta": {}
+        },
+        "details": {
+          "meta": {}
+        },
+        "payments": {
+          "meta": {}
+        },
+        "tags": {
+          "meta": {}
+        },
+        "activities": {
+          "meta": {}
+        },
+        "refund_of": {
+          "meta": {}
+        },
+        "refunds": {
+          "meta": {}
+        },
+        "sharings": {
+          "meta": {}
+        },
+        "active_e_document": {
+          "meta": {}
+        },
+        "recurrence_of": {
+          "meta": {}
+        },
+        "shipment_documents": {
+          "meta": {}
+        },
+        "sales_offer": {
+          "meta": {}
+        },
+        "price_list": {
+          "meta": {}
+        },
+        "operated_by": {
+          "meta": {}
+        },
+        "e_document_note_accounts": {
+          "meta": {}
+        },
+        "custom_requirement_infos": {
+          "meta": {}
+        },
+        "failed_e_invoice": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-14T06:26:34.322Z",
+        "updated_at": "2023-12-14T11:00:37.738Z"
+      }
+    }
+  ],
+  "links": {
+    "self": "https://api.parasut.com/v4/666034/sales_invoices?page%5Bnumber%5D=1&page%5Bsize%5D=5",
+    "first": "https://api.parasut.com/v4/666034/sales_invoices?page%5Bnumber%5D=1&page%5Bsize%5D=5",
+    "prev": null,
+    "next": "https://api.parasut.com/v4/666034/sales_invoices?page%5Bnumber%5D=2&page%5Bsize%5D=5",
+    "last": "https://api.parasut.com/v4/666034/sales_invoices?page%5Bnumber%5D=84&page%5Bsize%5D=5"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 84,
+    "total_count": 420,
+    "per_page": 5,
+    "outstanding_total": "2947326.98",
+    "net_total": "30340284.35",
+    "export_url": "https://api.parasut.com/v4/666034/sales_invoices/export",
+    "export_luca_url": "https://api.parasut.com/v4/666034/sales_invoices/export?export_luca=true",
+    "e_documents_download_url": "https://api.parasut.com/v4/666034/sales_invoices/download_e_documents",
+    "e_documents_raw_download_url": "https://api.parasut.com/v4/666034/sales_invoices/download_e_documents?download_raw_ubls=true",
+    "pos_e_documents_download_url": "https://api.parasut.com/v4/666034/sales_invoices/download_e_documents?pos_pdf=true",
+    "pos_e_documents_raw_download_url": "https://api.parasut.com/v4/666034/sales_invoices/download_e_documents?pos_ubl=true"
+  }
+}

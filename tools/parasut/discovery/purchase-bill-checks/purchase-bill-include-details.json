@@ -1,0 +1,170 @@
+{
+  "data": {
+    "id": "1007583701",
+    "type": "purchase_bills",
+    "attributes": {
+      "created_at": "2023-12-21T14:06:15.376Z",
+      "updated_at": "2024-01-23T15:55:33.420Z",
+      "net_total": "123000.0",
+      "remaining": "0.0",
+      "remaining_in_trl": "0.0",
+      "total_paid": "123000.0",
+      "issue_date": "2023-12-15",
+      "due_date": "2023-12-15",
+      "days_overdue": 0,
+      "days_till_due_date": -911,
+      "description": null,
+      "archived": false,
+      "currency": "TRL",
+      "exchange_rate": "1.0",
+      "item_type": "purchase_bill",
+      "item_type_before_cancellation": null,
+      "gross_total": "102500.0",
+      "before_taxes_total": "[REDACTED]",
+      "total_vat": "20500.0",
+      "withholding": "0.0",
+      "withholding_rate": "0.0",
+      "vat_withholding": "0.0",
+      "total_vat_withholding": "0.0",
+      "total_excise_duty": "0.0",
+      "total_accommodation_tax": "[REDACTED]",
+      "total_communications_tax": "[REDACTED]",
+      "sharings_count": 0,
+      "remaining_reimbursement": "0.0",
+      "remaining_reimbursement_in_trl": "0.0",
+      "invoice_no": "ERD2023000002652",
+      "is_detailed": true,
+      "total_discount": "0.0",
+      "e_invoices_count": 0,
+      "invoice_discount": "0.0",
+      "invoice_discount_type": "amount",
+      "total_invoice_discount": "0.0",
+      "payment_status": "paid",
+      "net_total_in_trl": "123000.0",
+      "shipment_included": true,
+      "is_recurred_item": false,
+      "non_standard_fields": null,
+      "total_stamp_tax": "[REDACTED]",
+      "rounding_amount": "0.0",
+      "other_taxes": null,
+      "vat_withholding_rate": "0.0",
+      "photo": {
+        "url": null,
+        "is_processing": false
+      },
+      "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1011100902/fis-faturalar/1007583701",
+      "sharing_preview_path": "/666034/portal/preview/1011100902/fis-faturalar/1007583701"
+    },
+    "relationships": {
+      "category": {
+        "meta": {}
+      },
+      "details": {
+        "data": [
+          {
+            "id": "1013593266",
+            "type": "purchase_bill_details"
+          }
+        ]
+      },
+      "payments": {
+        "meta": {}
+      },
+      "reimbursement_payments": {
+        "meta": {}
+      },
+      "tags": {
+        "meta": {}
+      },
+      "activities": {
+        "meta": {}
+      },
+      "spender": {
+        "meta": {}
+      },
+      "supplier": {
+        "meta": {}
+      },
+      "pay_to": {
+        "meta": {}
+      },
+      "reimbursement_tx": {
+        "meta": {}
+      },
+      "refund_of": {
+        "meta": {}
+      },
+      "refunds": {
+        "meta": {}
+      },
+      "active_e_document": {
+        "meta": {}
+      },
+      "recurrence_of": {
+        "meta": {}
+      },
+      "shipment_documents": {
+        "meta": {}
+      },
+      "sharings": {
+        "meta": {}
+      },
+      "operated_by": {
+        "meta": {}
+      }
+    },
+    "meta": {
+      "created_at": "2023-12-21T14:06:15.376Z",
+      "updated_at": "2024-01-23T15:55:33.420Z"
+    }
+  },
+  "included": [
+    {
+      "id": "1013593266",
+      "type": "purchase_bill_details",
+      "attributes": {
+        "created_at": "2023-12-21T14:06:15.399Z",
+        "updated_at": "2023-12-21T14:06:15.450Z",
+        "description": "[REDACTED]",
+        "net_total": "123000.0",
+        "unit_price": "2050.0",
+        "vat_rate": "20.0",
+        "quantity": "50.0",
+        "discount_type": "amount",
+        "discount_value": null,
+        "communications_tax_rate": "[REDACTED]",
+        "excise_duty_type": "amount",
+        "excise_duty_value": null,
+        "invoice_discount": "0.0",
+        "excise_duty": "0.0",
+        "discount": "0.0",
+        "communications_tax": "[REDACTED]",
+        "detail_no": 1,
+        "unrefunded_quantity": "50.0",
+        "net_total_without_invoice_discount": "123000.0",
+        "vat": "20500.0",
+        "excise_duty_rate": null,
+        "vat_withholding_rate": "0.0",
+        "vat_withholding": "0.0",
+        "accommodation_tax_rate": "[REDACTED]",
+        "accommodation_tax": "[REDACTED]",
+        "accommodation_tax_exempt": "[REDACTED]"
+      },
+      "relationships": {
+        "invoice": {
+          "meta": {}
+        },
+        "product": {
+          "meta": {}
+        },
+        "warehouse": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-21T14:06:15.399Z",
+        "updated_at": "2023-12-21T14:06:15.450Z"
+      }
+    }
+  ]
+}

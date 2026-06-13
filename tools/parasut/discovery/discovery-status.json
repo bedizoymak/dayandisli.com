@@ -1,0 +1,51 @@
+{
+  "authentication": "success",
+  "company_id": "666034",
+  "page_number": 1,
+  "page_size": 5,
+  "read_only": true,
+  "resources": [
+    {
+      "name": "me",
+      "status": 200,
+      "ok": true,
+      "count": 1
+    },
+    {
+      "name": "contacts",
+      "status": 200,
+      "ok": true,
+      "count": 5
+    },
+    {
+      "name": "products",
+      "status": 200,
+      "ok": true,
+      "count": 5
+    },
+    {
+      "name": "sales_invoices",
+      "status": 200,
+      "ok": true,
+      "count": 5
+    },
+    {
+      "name": "purchase_invoices",
+      "status": 404,
+      "ok": false,
+      "count": 0
+    },
+    {
+      "name": "payments",
+      "status": 404,
+      "ok": false,
+      "count": 0
+    },
+    {
+      "name": "accounts",
+      "status": 200,
+      "ok": true,
+      "count": 3
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "data": [
+    {
+      "id": "1000215424",
+      "type": "accounts",
+      "attributes": {
+        "created_at": "2023-12-05T14:24:20.909Z",
+        "updated_at": "2025-04-11T12:27:26.243Z",
+        "name": "[REDACTED]",
+        "currency": "TRL",
+        "used_for": null,
+        "last_used_at": "2025-04-11T12:27:26.243Z",
+        "account_type": "cash",
+        "iban": null,
+        "balance": "6235457.75",
+        "bank_name": null,
+        "bank_branch": null,
+        "bank_account_no": null,
+        "bank_branch_code": null,
+        "archived": false,
+        "last_adjustment_date": null,
+        "associate_email": null,
+        "bank_integration_type": null,
+        "bank_identifier": null,
+        "bank_integration_status": null,
+        "overdraft_limit": 0,
+        "show_in_extract": null
+      },
+      "relationships": {
+        "company": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2023-12-05T14:24:20.909Z",
+        "updated_at": "2025-04-11T12:27:26.243Z"
+      }
+    },
+    {
+      "id": "1000340089",
+      "type": "accounts",
+      "attributes": {
+        "created_at": "2024-09-10T13:08:42.679Z",
+        "updated_at": "2026-06-12T15:30:43.620Z",
+        "name": "[REDACTED]",
+        "currency": "TRL",
+        "used_for": null,
+        "last_used_at": "2026-06-12T15:30:43.620Z",
+        "account_type": "bank",
+        "iban": "[REDACTED]",
+        "balance": "2423162.56",
+        "bank_name": null,
+        "bank_branch": "",
+        "bank_account_no": null,
+        "bank_branch_code": null,
+        "archived": false,
+        "last_adjustment_date": null,
+        "associate_email": null,
+        "bank_integration_type": null,
+        "bank_identifier": "ISBANK",
+        "bank_integration_status": null,
+        "overdraft_limit": 0,
+        "show_in_extract": false
+      },
+      "relationships": {
+        "company": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2024-09-10T13:08:42.679Z",
+        "updated_at": "2026-06-12T15:30:43.620Z"
+      }
+    },
+    {
+      "id": "1000340091",
+      "type": "accounts",
+      "attributes": {
+        "created_at": "2024-09-10T13:10:10.478Z",
+        "updated_at": "2024-09-10T13:10:10.478Z",
+        "name": "[REDACTED]",
+        "currency": "TRL",
+        "used_for": null,
+        "last_used_at": null,
+        "account_type": "bank",
+        "iban": "[REDACTED]",
+        "balance": "0.0",
+        "bank_name": null,
+        "bank_branch": null,
+        "bank_account_no": null,
+        "bank_branch_code": null,
+        "archived": false,
+        "last_adjustment_date": null,
+        "associate_email": null,
+        "bank_integration_type": null,
+        "bank_identifier": "KUVEYTTURK",
+        "bank_integration_status": null,
+        "overdraft_limit": 0,
+        "show_in_extract": false
+      },
+      "relationships": {
+        "company": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2024-09-10T13:10:10.478Z",
+        "updated_at": "2024-09-10T13:10:10.478Z"
+      }
+    }
+  ],
+  "links": {
+    "self": "https://api.parasut.com/v4/666034/accounts?page%5Bnumber%5D=1&page%5Bsize%5D=5",
+    "first": "https://api.parasut.com/v4/666034/accounts?page%5Bnumber%5D=1&page%5Bsize%5D=5",
+    "prev": null,
+    "next": null,
+    "last": "https://api.parasut.com/v4/666034/accounts?page%5Bnumber%5D=1&page%5Bsize%5D=5"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 1,
+    "total_count": 3,
+    "per_page": 5,
+    "net_total": "8658620.31"
+  }
+}

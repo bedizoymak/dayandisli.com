@@ -1,0 +1,86 @@
+{
+  "data": {
+    "id": "1010689160",
+    "type": "contacts",
+    "attributes": {
+      "created_at": "2023-12-11T11:23:56.572Z",
+      "updated_at": "2025-08-25T15:53:44.401Z",
+      "contact_type": "company",
+      "name": "[REDACTED]",
+      "email": "[REDACTED]",
+      "short_name": null,
+      "balance": "0.0",
+      "trl_balance": "0.0",
+      "usd_balance": "0.0",
+      "eur_balance": "0.0",
+      "gbp_balance": "0.0",
+      "tax_number": "[REDACTED]",
+      "tax_office": "[REDACTED]",
+      "archived": false,
+      "account_type": "customer",
+      "city": "[REDACTED]",
+      "district": "[REDACTED]",
+      "address": "[REDACTED]",
+      "phone": "[REDACTED]",
+      "fax": null,
+      "is_abroad": false,
+      "term_days": 0,
+      "invoicing_preferences": {
+        "e_invoice_scenario": "commercial",
+        "e_invoice_send_to": "[REDACTED]",
+        "e_document_note": null,
+        "e_document_append_contact_balance": null
+      },
+      "sharings_count": 1,
+      "ibans": [],
+      "exchange_rate_type": "buying",
+      "opening_balance": {},
+      "untrackable": false,
+      "country": null,
+      "postal_code": "",
+      "iban": null,
+      "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1010689160",
+      "sharing_preview_path": "/666034/portal/preview/1010689160",
+      "payment_reminder_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1010689160/odeme-hatirlat"
+    },
+    "relationships": {
+      "category": {
+        "meta": {}
+      },
+      "price_list": {
+        "meta": {}
+      },
+      "contact_portal": {
+        "meta": {}
+      },
+      "last_sales_invoice": {
+        "meta": {}
+      },
+      "contact_people": {
+        "meta": {}
+      },
+      "activities": {
+        "meta": {}
+      },
+      "e_invoice_inboxes": {
+        "meta": {}
+      },
+      "sharings": {
+        "meta": {}
+      },
+      "tags": {
+        "meta": {}
+      },
+      "comments": {
+        "meta": {}
+      },
+      "operated_by": {
+        "meta": {}
+      }
+    },
+    "meta": {
+      "created_at": "2023-12-11T11:23:56.572Z",
+      "updated_at": "2025-08-25T15:53:44.401Z"
+    }
+  }
+}

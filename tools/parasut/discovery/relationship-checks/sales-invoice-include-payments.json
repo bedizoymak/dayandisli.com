@@ -1,0 +1,179 @@
+{
+  "data": {
+    "id": "1014063257",
+    "type": "sales_invoices",
+    "attributes": {
+      "created_at": "2023-12-12T09:36:49.907Z",
+      "updated_at": "2024-03-08T09:08:00.286Z",
+      "description": "[REDACTED]",
+      "issue_date": "2023-12-12",
+      "invoice_id": null,
+      "invoice_series": null,
+      "invoice_no": "HD02023000000001",
+      "net_total": "8400.0",
+      "currency": "TRL",
+      "gross_total": "7000.0",
+      "withholding_rate": "0.0",
+      "withholding": "0.0",
+      "total_excise_duty": "0.0",
+      "total_communications_tax": "[REDACTED]",
+      "total_vat": "1400.0",
+      "vat_withholding": "0.0",
+      "total_vat_withholding": "0.0",
+      "total_discount": "0.0",
+      "total_invoice_discount": "0.0",
+      "before_taxes_total": "[REDACTED]",
+      "total_accommodation_tax": "[REDACTED]",
+      "remaining": "0.0",
+      "total_paid": "8400.0",
+      "remaining_in_trl": "0.0",
+      "due_date": "2023-12-12",
+      "payment_status": "paid",
+      "archived": false,
+      "item_type": "invoice",
+      "item_type_before_cancellation": null,
+      "is_recurred_item": false,
+      "sharings_count": 1,
+      "printed_at": null,
+      "days_overdue": 0,
+      "days_till_due_date": -914,
+      "city": "[REDACTED]",
+      "district": "[REDACTED]",
+      "tax_office": "[REDACTED]",
+      "tax_number": "[REDACTED]",
+      "invoice_discount": "0.0",
+      "invoice_discount_type": "percentage",
+      "net_total_in_trl": "8400.0",
+      "shipment_document_no": null,
+      "shipment_date": null,
+      "shipment_address": null,
+      "exchange_rate": "1.0",
+      "print_note": "[REDACTED]",
+      "print_url": "https://uygulama.parasut.com/666034/sales_invoices/1014063257/print",
+      "billing_address": "[REDACTED]",
+      "billing_phone": "[REDACTED]",
+      "billing_fax": null,
+      "billing_postal_code": "",
+      "contact_type": "company",
+      "order_no": null,
+      "order_date": null,
+      "accommodation_tax_exemption_reason_code": null,
+      "shipment_included": true,
+      "is_abroad": false,
+      "cash_sale": false,
+      "country": null,
+      "payer_tax_numbers": null,
+      "license_plate": null,
+      "esu_report_id": null,
+      "esu_report_id_date": null,
+      "start_date_time": null,
+      "end_date_time": null,
+      "invoice_note": null,
+      "append_contact_balance": false,
+      "e_document_accounts": [],
+      "refund_document_no": null,
+      "aselsan_data": {},
+      "vat_withholding_rate": "0.0",
+      "sharing_preview_url": "https://uygulama.parasut.com/666034/portal/preview/1010689160/satislar/1014063257",
+      "sharing_preview_path": "/666034/portal/preview/1010689160/satislar/1014063257"
+    },
+    "relationships": {
+      "category": {
+        "meta": {}
+      },
+      "contact": {
+        "meta": {}
+      },
+      "details": {
+        "meta": {}
+      },
+      "payments": {
+        "data": [
+          {
+            "id": "1023815467",
+            "type": "payments"
+          }
+        ]
+      },
+      "tags": {
+        "meta": {}
+      },
+      "activities": {
+        "meta": {}
+      },
+      "refund_of": {
+        "meta": {}
+      },
+      "refunds": {
+        "meta": {}
+      },
+      "sharings": {
+        "meta": {}
+      },
+      "active_e_document": {
+        "meta": {}
+      },
+      "recurrence_of": {
+        "meta": {}
+      },
+      "shipment_documents": {
+        "meta": {}
+      },
+      "sales_offer": {
+        "meta": {}
+      },
+      "price_list": {
+        "meta": {}
+      },
+      "operated_by": {
+        "meta": {}
+      },
+      "e_document_note_accounts": {
+        "meta": {}
+      },
+      "custom_requirement_infos": {
+        "meta": {}
+      },
+      "failed_e_invoice": {
+        "meta": {}
+      }
+    },
+    "meta": {
+      "created_at": "2023-12-12T09:36:49.907Z",
+      "updated_at": "2024-03-08T09:08:00.286Z"
+    }
+  },
+  "included": [
+    {
+      "id": "1023815467",
+      "type": "payments",
+      "attributes": {
+        "created_at": "2024-03-08T09:08:00.254Z",
+        "updated_at": "2024-03-08T09:08:00.254Z",
+        "date": "2024-03-08",
+        "due_date": null,
+        "amount": "8400.0",
+        "matched_amount": "8400.0",
+        "amount_in_trl": "8400.0",
+        "currency": "TRL",
+        "paid_in_currency": "TRL",
+        "notes": null
+      },
+      "relationships": {
+        "payable": {
+          "meta": {}
+        },
+        "reimbursement_purchase_bill": {
+          "meta": {}
+        },
+        "transaction": {
+          "meta": {}
+        }
+      },
+      "meta": {
+        "created_at": "2024-03-08T09:08:00.254Z",
+        "updated_at": "2024-03-08T09:08:00.254Z"
+      }
+    }
+  ]
+}
