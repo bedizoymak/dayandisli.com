@@ -161,6 +161,24 @@ export async function createInventoryMovement(payload: {
   source_id?: string | null;
   notes?: string | null;
 }) {
+  if (import.meta.env.VITE_ENABLE_INVENTORY_RPC === "true") {
+    const { data, error } = (await supabase.rpc("erp_create_inventory_movement" as never, {
+      p_item_id: payload.inventory_item_id,
+      p_movement_type: payload.movement_type,
+      p_quantity: payload.quantity,
+      p_source_type: payload.source_type ?? "manual",
+      p_source_id: payload.source_id ?? null,
+      p_notes: payload.notes ?? null,
+      p_warehouse_id: null,
+    } as never)) as unknown as DbResult<InventoryMovement>;
+
+    if (error) {
+      return failure<InventoryMovement | null>("createInventoryMovement RPC", error, null);
+    }
+
+    return success(data);
+  }
+
   const itemResult = (await supabase
     .from("inventory_items" as never)
     .select("*")

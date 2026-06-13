@@ -1,18 +1,17 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-const sqlUrl = new URL(
-  "../supabase/manual/inventory_movement_rpc_draft.sql",
-  import.meta.url,
-);
+const migrationsUrl = new URL("../supabase/migrations/", import.meta.url);
+const migrationFiles = (await readdir(migrationsUrl))
+  .filter((name) => /^\d+_inventory_movement_rpc\.sql$/.test(name))
+  .sort();
+const sqlUrl = migrationFiles.length > 0
+  ? new URL(migrationFiles.at(-1), migrationsUrl)
+  : new URL("../supabase/manual/inventory_movement_rpc_draft.sql", import.meta.url);
 const sqlPath = fileURLToPath(sqlUrl);
 const sql = await readFile(sqlUrl, "utf8");
 
 const checks = [
-  {
-    name: "draft-only warning",
-    passes: /DRAFT ONLY/i.test(sql),
-  },
   {
     name: "SECURITY INVOKER",
     passes: /\bSECURITY\s+INVOKER\b/i.test(sql),
@@ -25,6 +24,13 @@ const checks = [
     name: "no EXECUTE grant to anon",
     passes:
       !/\bgrant\s+execute\s+on\s+function[\s\S]*?\bto\s+[^;]*\banon\b[^;]*;/i.test(
+        sql,
+      ),
+  },
+  {
+    name: "revokes execution from PUBLIC",
+    passes:
+      /\brevoke\s+all\s+on\s+function[\s\S]*?\bfrom\s+[^;]*\bpublic\b[^;]*;/i.test(
         sql,
       ),
   },

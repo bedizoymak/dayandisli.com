@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InventoryItem, InventoryMovement, InventoryMovementType } from "../types";
 
-const { fromMock, createAuditLogMock } = vi.hoisted(() => ({
+const { fromMock, rpcMock, createAuditLogMock } = vi.hoisted(() => ({
   fromMock: vi.fn(),
+  rpcMock: vi.fn(),
   createAuditLogMock: vi.fn(),
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: fromMock,
+    rpc: rpcMock,
   },
 }));
 
@@ -79,8 +81,96 @@ function successfulStockUpdate(currentStock: number) {
 describe("Inventory API", () => {
   beforeEach(() => {
     fromMock.mockReset();
+    rpcMock.mockReset();
     createAuditLogMock.mockReset();
     createAuditLogMock.mockResolvedValue({ data: { id: "audit-1" }, error: null });
+    vi.stubEnv("VITE_ENABLE_INVENTORY_RPC", "false");
+  });
+
+  it("uses the legacy workflow by default", async () => {
+    queueFrom(
+      query({ data: inventoryItem, error: null }),
+      query({ data: movement("in", 1), error: null }),
+      successfulStockUpdate(11),
+    );
+
+    await createInventoryMovement({
+      inventory_item_id: inventoryItem.id,
+      movement_type: "in",
+      quantity: 1,
+    });
+
+    expect(fromMock).toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("calls the RPC when the feature flag is enabled", async () => {
+    vi.stubEnv("VITE_ENABLE_INVENTORY_RPC", "true");
+    const insertedMovement = movement("in", 4);
+    rpcMock.mockResolvedValue({ data: insertedMovement, error: null });
+
+    const result = await createInventoryMovement({
+      inventory_item_id: inventoryItem.id,
+      movement_type: "in",
+      quantity: 4,
+      source_type: "manual",
+    });
+
+    expect(rpcMock).toHaveBeenCalledWith("erp_create_inventory_movement", {
+      p_item_id: inventoryItem.id,
+      p_movement_type: "in",
+      p_quantity: 4,
+      p_source_type: "manual",
+      p_source_id: null,
+      p_notes: null,
+      p_warehouse_id: null,
+    });
+    expect(result).toEqual({ data: insertedMovement, error: null });
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("normalizes RPC errors and preserves Turkish stock messages", async () => {
+    vi.stubEnv("VITE_ENABLE_INVENTORY_RPC", "true");
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: "Stok eksiye düşemez." },
+    });
+
+    const result = await createInventoryMovement({
+      inventory_item_id: inventoryItem.id,
+      movement_type: "out",
+      quantity: 11,
+    });
+
+    expect(result).toEqual({
+      data: null,
+      error: "Stok eksiye düşemez.",
+      missingTable: false,
+    });
+  });
+
+  it("maps reservation movements to the RPC without legacy writes", async () => {
+    vi.stubEnv("VITE_ENABLE_INVENTORY_RPC", "true");
+    const reservation = movement("reservation", 2);
+    rpcMock.mockResolvedValue({ data: reservation, error: null });
+
+    const result = await createInventoryMovement({
+      inventory_item_id: inventoryItem.id,
+      movement_type: "reservation",
+      quantity: 2,
+      notes: "Ayırma",
+    });
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      "erp_create_inventory_movement",
+      expect.objectContaining({
+        p_movement_type: "reservation",
+        p_quantity: 2,
+        p_notes: "Ayırma",
+      }),
+    );
+    expect(result.data).toBe(reservation);
+    expect(fromMock).not.toHaveBeenCalled();
   });
 
   it("increases stock for an incoming movement", async () => {
