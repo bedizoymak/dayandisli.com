@@ -8,27 +8,29 @@ Collect safe execution evidence for the inventory movement RPC without applying 
 
 - The RPC remains a reviewed draft under `supabase/manual/`.
 - Static safety verification passes.
-- No active RPC migration exists.
+- No active RPC migration exists in the repository.
+- A local Supabase stack became available on loopback after the first Phase 13 run.
 - The repository began clean and synchronized with `origin/main`.
 
 ## Environment Target
 
-No safe execution target was available. Supabase CLI identified the linked remote project as:
+The execution target was the local Supabase stack only:
 
 ```text
-Reference: meauutjsnnggzcigyvfp
-Name: dayandisli.com
-Status: ACTIVE_HEALTHY
+API: http://127.0.0.1:54321
+Database: postgresql://postgres:***@127.0.0.1:54322/postgres
+Studio: http://127.0.0.1:54323
 ```
 
-This is treated as production. The other visible project is unrelated and was not treated as staging.
+The CLI still identified the linked remote project as production `dayandisli.com`. No command in this rerun used `--linked`, `db push`, or the remote database URL.
 
 ## Safety Gate
 
-- `supabase status` reported that the local database container does not exist.
-- `supabase projects list` identified the linked remote as `dayandisli.com`.
-- `supabase migration list` connected to that remote and showed local and remote migrations aligned through `20260603150000`.
-- Because local Supabase was unavailable and the linked project is production, no reset, push, SQL execution, or test-data write was attempted.
+- `supabase status -o json` confirmed local API and database URLs on `127.0.0.1`.
+- `supabase projects list --output json` continued to identify the linked remote as production `dayandisli.com`.
+- `supabase migration list --local` connected to the local database and showed migrations through `20260603150000`.
+- The SQL was sent only to the named local Postgres Docker container.
+- Local credentials were read from `supabase status` into process environment variables and were not written to files or printed by the integration script.
 
 ## Files Inspected
 
@@ -42,41 +44,78 @@ This is treated as production. The other visible project is unrelated and was no
 
 ## SQL Applied Where
 
-Nowhere. No active migration was created because there was no confirmed local or staging target.
+The reviewed draft was applied as temporary SQL to the local Postgres container:
+
+```powershell
+Get-Content -Raw supabase/manual/inventory_movement_rpc_draft.sql |
+  docker exec -i supabase_db_avspgczfqsazarwzhpau `
+    psql -v ON_ERROR_STOP=1 -U postgres -d postgres
+```
+
+No migration file or migration-history entry was created. The production project was not modified.
+
+Local catalog verification reported:
+
+```text
+prosecdef: false
+execute: postgres, authenticated, service_role
+anon/PUBLIC execute: absent
+```
 
 ## Test Data Created
 
-None. The production safety gate stopped execution before any database client or write was created.
+The harness created uniquely named local-only fixtures:
+
+- Two companies
+- One branch
+- Two warehouses in different companies
+- One authenticated test user and tenant membership
+- One inventory item starting with stock `10`
+
+Cleanup ran in `finally`. Direct database checks found zero leftover Phase 13 movements, inventory items, or companies.
 
 ## RPC Execution Results
 
-Not executed. PostgreSQL syntax and behavioral evidence remain pending a disposable local or dedicated staging environment.
+- Incoming quantity `5` increased stock from `10` to `15`.
+- Outgoing quantity `3` decreased stock from `15` to `12`.
+- Excessive outgoing quantity failed with `Stok eksiye düşemez.`.
+- Reservation quantity `2` left stock at `12`.
+- Invalid movement type failed with `Geçersiz stok hareketi türü.`.
+- A warehouse from another company was rejected.
+
+All prepared RPC behavior cases passed.
 
 ## RLS Results
 
-Not executed. The integration harness added in this phase includes authenticated and anonymous execution checks, but they require the RPC to be installed on a safe target.
+- The tenant member could execute the RPC for the scoped item and warehouse.
+- The cross-company warehouse call failed.
+- The anonymous client could not execute the RPC.
+- Catalog inspection confirmed `SECURITY INVOKER` and no `anon` or `PUBLIC` execute grant.
 
 ## Rollback Results
 
-Not executed. Excessive outgoing stock and invalid movement cases are prepared as failure assertions. Full rollback inspection remains required in the safe environment.
+- Failed excessive-outgoing and invalid-type calls did not change the observed stock balance.
+- Cleanup found no persisted test movement rows after the suite.
+- A forced audit-insert failure was not executed, so that rollback path remains unverified.
 
 ## Concurrency Results
 
-Not executed and not automated in this phase. A future test must run two authenticated outgoing calls against the same item and verify serialized balances and no negative stock.
+Not executed. A future local test must run two authenticated outgoing calls against the same item and verify row-lock serialization, no lost update, and no negative stock.
 
 ## Type Generation Notes
 
-Types were not regenerated because the RPC was not installed. After safe migration execution, generate types from the local or staging target and review the diff before replacing repository types.
+Types were not regenerated because the function was installed as temporary local SQL and the runtime client is not changing in this phase. Type generation should follow a reviewed migration, with the generated diff inspected before integration.
 
 ## Production Readiness Decision
 
-Not ready. Static checks pass, but there is still no database-engine, RLS, rollback, or concurrency evidence.
+Not ready for production integration. Local PostgreSQL syntax, primary behavior, tenant execution, anonymous denial, warehouse isolation, and basic failure atomicity now have evidence. Concurrency and forced audit-failure rollback remain required before production migration review.
 
 ## Changes Made
 
-- Added this environment and safety-gate record.
-- Added an explicit-opt-in integration script that rejects known production identifiers, creates isolated fixtures, exercises RPC behavior, and attempts cleanup.
-- Did not create an active migration, apply SQL, regenerate types, or change `createInventoryMovement`.
+- Applied the reviewed draft only to the local database as temporary SQL.
+- Executed the existing explicit-opt-in integration harness against loopback.
+- Updated this document with local execution evidence.
+- Did not create an active migration, touch production, regenerate types, or change `createInventoryMovement`.
 
 ## Validation Results
 
@@ -84,19 +123,20 @@ Not ready. Static checks pass, but there is still no database-engine, RLS, rollb
 - `npm run test`: passed with 122 tests across 4 files.
 - `npm run build`: passed with existing Browserslist, PDF.js eval, and large-chunk warnings.
 - `node scripts/verify-inventory-rpc-sql.mjs`: passed all 8 static checks.
-- Integration script refusal path: passed; it exited non-zero without explicit opt-in.
+- Local integration harness: passed all 7 prepared cases.
+- Local fixture cleanup verification: passed with zero remaining test rows.
 - Focused ESLint for both inventory RPC scripts: passed.
 - `npm run lint`: failed with the known backlog of 72 findings (32 errors and 40 warnings).
 - `git diff --check`: passed.
 
 ## Remaining Risks
 
-- The draft has not been parsed or executed by PostgreSQL.
-- RLS behavior for tenant members and audit insertion is unproven.
-- Rollback and row-lock behavior are unproven.
-- The integration harness itself requires its first successful run against a disposable target.
-- Service-role credentials are required only for backend fixture setup and must never enter frontend configuration or logs.
+- Concurrent calls have not been tested.
+- Forced audit-insert failure rollback has not been tested.
+- The function has not been packaged as a reviewed migration.
+- Local evidence does not replace staging verification against production-equivalent RLS and data shape.
+- Service-role credentials remain backend test-fixture credentials only and must never enter frontend configuration or logs.
 
 ## Next Recommended Phase
 
-Provision a disposable local Supabase stack or a dedicated staging project, relink explicitly, rerun the safety gate, create the migration with `supabase migration new`, apply it only there, execute the integration harness, and record database evidence before production review.
+Add local concurrency and forced audit-failure rollback tests. If they pass, create a reviewed migration with `supabase migration new`, apply it to dedicated staging, regenerate types from that safe target, and review production deployment separately.
