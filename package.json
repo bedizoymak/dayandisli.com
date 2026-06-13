@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "preview": "vite preview",
-    "supabase:crud-check": "node scripts/supabase-crud-health-check.mjs"
+    "supabase:crud-check": "node scripts/supabase-crud-health-check.mjs",
+    "supabase:target-check": "node scripts/check-supabase-target-safety.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
