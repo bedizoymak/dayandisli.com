@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 
 const PRODUCTION_REFS = new Set(["meauutjsnnggzcigyvfp"]);
@@ -30,6 +31,30 @@ function safeError(error) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function runLocalSql(sql) {
+  const container = process.env.INVENTORY_RPC_TEST_DB_CONTAINER;
+  if (!container) {
+    throw new Error("INVENTORY_RPC_TEST_DB_CONTAINER is required for local rollback testing");
+  }
+
+  execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      container,
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+    ],
+    { input: sql, stdio: ["pipe", "ignore", "pipe"] },
+  );
 }
 
 async function run() {
@@ -66,6 +91,11 @@ async function run() {
 
   if (target === "local" && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(url)) {
     fail("local target must use localhost or 127.0.0.1");
+    return;
+  }
+
+  if (target === "local" && !process.env.INVENTORY_RPC_TEST_DB_CONTAINER) {
+    fail("INVENTORY_RPC_TEST_DB_CONTAINER is required for local rollback testing");
     return;
   }
 
@@ -186,6 +216,42 @@ async function run() {
     if (itemError) throw new Error(`inventory item creation failed: ${safeError(itemError)}`);
     created.itemId = item.id;
 
+    const { data: concurrencyItem, error: concurrencyItemError } = await admin
+      .from("inventory_items")
+      .insert({
+        item_type: "raw_material",
+        code: `CON${code}`,
+        name: "RPC Concurrency Item",
+        current_stock: 10,
+        company_id: company.id,
+        branch_id: branch.id,
+        default_warehouse_id: warehouse.id,
+      })
+      .select("id")
+      .single();
+    if (concurrencyItemError) {
+      throw new Error(`concurrency item creation failed: ${safeError(concurrencyItemError)}`);
+    }
+    created.concurrencyItemId = concurrencyItem.id;
+
+    const { data: rollbackItem, error: rollbackItemError } = await admin
+      .from("inventory_items")
+      .insert({
+        item_type: "raw_material",
+        code: `RBK${code}`,
+        name: "RPC Rollback Item",
+        current_stock: 10,
+        company_id: company.id,
+        branch_id: branch.id,
+        default_warehouse_id: warehouse.id,
+      })
+      .select("id")
+      .single();
+    if (rollbackItemError) {
+      throw new Error(`rollback item creation failed: ${safeError(rollbackItemError)}`);
+    }
+    created.rollbackItemId = rollbackItem.id;
+
     const { error: signInError } = await authenticated.auth.signInWithPassword({
       email,
       password,
@@ -240,14 +306,128 @@ async function run() {
     });
     assert(anonResult.error, "anonymous RPC execution must fail");
     console.log("PASS: anon cannot execute RPC");
+
+    const concurrencySource = `phase14_concurrency_${runId}`;
+    const callConcurrentOutgoing = () =>
+      authenticated.rpc("erp_create_inventory_movement", {
+        p_item_id: concurrencyItem.id,
+        p_movement_type: "out",
+        p_quantity: 6,
+        p_source_type: concurrencySource,
+        p_source_id: null,
+        p_notes: `Phase 14 concurrency ${runId}`,
+        p_warehouse_id: warehouse.id,
+      });
+    const concurrentResults = await Promise.all([
+      callConcurrentOutgoing(),
+      callConcurrentOutgoing(),
+    ]);
+    const successes = concurrentResults.filter(({ error }) => !error);
+    const failures = concurrentResults.filter(({ error }) => error);
+    assert(successes.length === 1, "exactly one concurrent outgoing call must succeed");
+    assert(failures.length === 1, "exactly one concurrent outgoing call must fail");
+    assert(
+      failures[0].error.message.includes("Stok eksiye düşemez."),
+      "concurrent failure must use the Turkish insufficient-stock message",
+    );
+    const concurrencyStock = await authenticated
+      .from("inventory_items")
+      .select("current_stock")
+      .eq("id", concurrencyItem.id)
+      .single();
+    assert(
+      !concurrencyStock.error && Number(concurrencyStock.data.current_stock) === 4,
+      "concurrency item final stock must be 4",
+    );
+    const concurrencyMovements = await authenticated
+      .from("inventory_movements")
+      .select("id", { count: "exact", head: true })
+      .eq("inventory_item_id", concurrencyItem.id)
+      .eq("source_type", concurrencySource);
+    assert(
+      !concurrencyMovements.error && concurrencyMovements.count === 1,
+      "exactly one concurrent movement row must persist",
+    );
+    console.log("PASS: concurrent outgoing movements serialize correctly");
+
+    const rollbackSource = `phase14_audit_failure_${runId}`;
+    runLocalSql(`
+      create or replace function public.phase14_force_inventory_audit_failure()
+      returns trigger
+      language plpgsql
+      as $$
+      begin
+        if new.metadata ->> 'source_type' = '${rollbackSource}' then
+          raise exception using
+            errcode = 'P0001',
+            message = 'Phase 14 zorunlu denetim kaydı hatası.';
+        end if;
+        return new;
+      end;
+      $$;
+
+      create trigger phase14_force_inventory_audit_failure
+      before insert on public.erp_audit_logs
+      for each row execute function public.phase14_force_inventory_audit_failure();
+    `);
+    created.auditFailureTrigger = true;
+
+    const rollbackResult = await authenticated.rpc("erp_create_inventory_movement", {
+      p_item_id: rollbackItem.id,
+      p_movement_type: "in",
+      p_quantity: 5,
+      p_source_type: rollbackSource,
+      p_source_id: null,
+      p_notes: `Phase 14 rollback ${runId}`,
+      p_warehouse_id: warehouse.id,
+    });
+    assert(
+      rollbackResult.error?.message?.includes("Phase 14 zorunlu denetim kaydı hatası."),
+      "forced audit failure must surface deterministically",
+    );
+    const rollbackStock = await authenticated
+      .from("inventory_items")
+      .select("current_stock")
+      .eq("id", rollbackItem.id)
+      .single();
+    assert(
+      !rollbackStock.error && Number(rollbackStock.data.current_stock) === 10,
+      "audit failure must roll back the stock update",
+    );
+    const rollbackMovements = await authenticated
+      .from("inventory_movements")
+      .select("id", { count: "exact", head: true })
+      .eq("inventory_item_id", rollbackItem.id)
+      .eq("source_type", rollbackSource);
+    assert(
+      !rollbackMovements.error && rollbackMovements.count === 0,
+      "audit failure must roll back the movement insert",
+    );
+    console.log("PASS: forced audit failure rolls back movement and stock");
   } catch (error) {
     fail(error instanceof Error ? error.message : "unexpected integration failure");
   } finally {
     await authenticated.auth.signOut();
-    if (created.itemId) {
-      await admin.from("erp_audit_logs").delete().eq("entity_id", created.itemId);
-      await admin.from("inventory_movements").delete().eq("inventory_item_id", created.itemId);
-      await admin.from("inventory_items").delete().eq("id", created.itemId);
+    if (created.auditFailureTrigger) {
+      try {
+        runLocalSql(`
+          drop trigger if exists phase14_force_inventory_audit_failure
+          on public.erp_audit_logs;
+          drop function if exists public.phase14_force_inventory_audit_failure();
+        `);
+      } catch {
+        fail("failed to remove the local audit-failure trigger");
+      }
+    }
+    const itemIds = [
+      created.itemId,
+      created.concurrencyItemId,
+      created.rollbackItemId,
+    ].filter(Boolean);
+    for (const itemId of itemIds) {
+      await admin.from("erp_audit_logs").delete().eq("entity_id", itemId);
+      await admin.from("inventory_movements").delete().eq("inventory_item_id", itemId);
+      await admin.from("inventory_items").delete().eq("id", itemId);
     }
     if (created.companyId) {
       await admin.from("company_memberships").delete().eq("company_id", created.companyId);
