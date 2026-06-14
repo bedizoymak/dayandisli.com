@@ -5,15 +5,9 @@ import { createAuditLog, getCurrentERPUser } from "@/features/erp/shared/erpApi"
 import { getUserPermissions, getUserRoles } from "@/features/erp/shared/permissions";
 import type { ERPUser } from "@/features/erp/shared/types";
 
-type ActiveAdminUser = {
-  email: string;
-  is_active: boolean;
-};
-
 type ERPAuthState = {
   session: Session | null;
   supabaseUser: User | null;
-  adminUser: ActiveAdminUser | null;
   erpUser: ERPUser | null;
   permissions: string[];
   roles: string[];
@@ -22,7 +16,7 @@ type ERPAuthState = {
 
 type ERPAuthContextValue = ERPAuthState & {
   isAuthenticated: boolean;
-  isActiveAdmin: boolean;
+  isAuthorizedERPUser: boolean;
   refreshAuth: () => Promise<void>;
   signOut: () => Promise<void>;
   hasPermission: (permission?: string | null) => boolean;
@@ -31,7 +25,6 @@ type ERPAuthContextValue = ERPAuthState & {
 const EMPTY_AUTH_STATE: ERPAuthState = {
   session: null,
   supabaseUser: null,
-  adminUser: null,
   erpUser: null,
   permissions: [],
   roles: [],
@@ -57,30 +50,20 @@ export function ERPAuthProvider({ children, enabled = true }: { children: ReactN
 
     setState((current) => ({ ...current, session, supabaseUser: session.user, isLoading: true }));
 
-    const { data: adminUser, error: adminError } = await supabase
-      .from("admin_users" as never)
-      .select("email, is_active")
-      .eq("email", session.user.email)
-      .eq("is_active", true)
-      .maybeSingle();
-
+    const erpUserResult = await getCurrentERPUser();
     if (requestId !== requestIdRef.current) return;
 
-    if (adminError || !adminUser) {
-      if (adminError && import.meta.env.DEV) console.error("Admin yetki kontrol hatası:", adminError);
+    const erpUser = erpUserResult.data;
+    if (erpUserResult.error || !erpUser?.is_active) {
+      if (erpUserResult.error && import.meta.env.DEV) console.error("ERP yetki kontrol hatası:", erpUserResult.error);
       await supabase.auth.signOut();
       if (requestId === requestIdRef.current) setState({ ...EMPTY_AUTH_STATE, isLoading: false });
       return;
     }
 
-    const erpUserResult = await getCurrentERPUser();
-    if (requestId !== requestIdRef.current) return;
-
-    const erpUser = erpUserResult.data;
     setState({
       session,
       supabaseUser: session.user,
-      adminUser: adminUser as ActiveAdminUser,
       erpUser,
       permissions: getUserPermissions(erpUser),
       roles: getUserRoles(erpUser),
@@ -139,7 +122,7 @@ export function ERPAuthProvider({ children, enabled = true }: { children: ReactN
     () => ({
       ...state,
       isAuthenticated: Boolean(state.session),
-      isActiveAdmin: Boolean(state.adminUser?.is_active),
+      isAuthorizedERPUser: Boolean(state.erpUser?.is_active),
       refreshAuth,
       signOut,
       hasPermission: (permission) => {

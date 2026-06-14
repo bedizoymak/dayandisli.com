@@ -14,6 +14,9 @@ import { syncSalesInvoices } from "../server/parasut/sync-sales-invoices.ts";
 import { createLocalObservabilitySink } from "../server/parasut/local-observability-sink.ts";
 import { sanitizeObservabilityText } from "../server/parasut/sync-observability.ts";
 import { createExecutionPlan } from "../server/parasut/sync-execution-plan.ts";
+import { composeExecutionResults } from "../server/parasut/execution-result-composition.ts";
+import { consumeExecutionResult } from "../server/parasut/execution-result-consumer.ts";
+import { createExecutionEnvelopeDiagnostic } from "../server/parasut/execution-envelope-diagnostic.ts";
 
 const PRODUCTION_REF = "meauutjsnnggzcigyvfp";
 const PRODUCTION_NAME = "dayandisli.com";
@@ -53,12 +56,14 @@ export async function writeAggregateReport(report, reportWriter) {
 export async function orchestrateLocalExecution(requested, dependencies) {
   const plan = createExecutionPlan(requested);
   const setup = await dependencies.setup(plan);
-  const reports = [];
-
-  for (const resource of plan.resources) {
-    const report = await dependencies.executeResource(resource, setup);
-    reports.push(report);
-  }
+  const composition = await composeExecutionResults(plan, (resource) =>
+    dependencies.executeResource(resource, setup),
+  );
+  const diagnostic = createExecutionEnvelopeDiagnostic({
+    env: dependencies.env ?? {},
+    diagnosticWriter: setup?.output?.diagnosticWriter,
+  });
+  const reports = await consumeExecutionResult(composition, diagnostic);
 
   return { plan, setup, reports };
 }
@@ -145,6 +150,7 @@ async function run() {
   }
 
   const execution = await orchestrateLocalExecution(process.argv.slice(2), {
+    env: process.env,
     async setup() {
       await loadEnvironment();
       const status = localStatus();

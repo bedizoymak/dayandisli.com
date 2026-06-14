@@ -137,48 +137,6 @@ export type Database = {
           },
         ]
       }
-      admin_users: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          is_active: boolean
-          role: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          is_active?: boolean
-          role?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          is_active?: boolean
-          role?: string
-        }
-        Relationships: []
-      }
-      allowed_emails: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-        }
-        Relationships: []
-      }
       automation_executions: {
         Row: {
           alert_id: string | null
@@ -6002,7 +5960,6 @@ export type Database = {
         Returns: string
       }
       generate_order_number: { Args: never; Returns: string }
-      is_email_allowed: { Args: { check_email: string }; Returns: boolean }
       next_erp_number: { Args: { p_sequence_key: string }; Returns: string }
       record_payment_reconciliation: {
         Args: {

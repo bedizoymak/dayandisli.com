@@ -37,8 +37,32 @@ serve(async (req) => {
   const email = userData.user?.email;
   if (!email) return json({ error: "Yetkili kullanıcı gerekli." }, 401);
 
-  const { data: admin } = await adminClient.from("admin_users").select("id").eq("email", email).eq("is_active", true).maybeSingle();
-  if (!admin) return json({ error: "Bu işlem için ERP yetkisi gerekli." }, 403);
+  const linkedResult = await adminClient
+    .from("erp_users")
+    .select("id, role, roles, permissions")
+    .eq("auth_user_id", userData.user.id)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+  const bootstrapResult = linkedResult.data
+    ? { data: null }
+    : await adminClient
+        .from("erp_users")
+        .select("id, role, roles, permissions")
+        .is("auth_user_id", null)
+        .ilike("email", email)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+  const erpUser = linkedResult.data ?? bootstrapResult.data;
+  const roles = new Set([erpUser?.role, ...(erpUser?.roles ?? [])].filter(Boolean));
+  const permissions = new Set(erpUser?.permissions ?? []);
+  const canReviewRefund =
+    roles.has("admin") ||
+    roles.has("finance") ||
+    permissions.has("finance.edit") ||
+    permissions.has("system.manage");
+  if (!erpUser || !canReviewRefund) return json({ error: "Bu işlem için ERP yetkisi gerekli." }, 403);
 
   const body = await req.json();
   if (!isProvider(body.provider)) return json({ error: "Geçersiz ödeme sağlayıcısı." }, 400);

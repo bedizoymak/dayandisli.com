@@ -13,7 +13,7 @@ vi.mock("@/contexts/ERPAuthContext", () => ({
 type AuthOverrides = Partial<{
   isLoading: boolean;
   isAuthenticated: boolean;
-  isActiveAdmin: boolean;
+  isAuthorizedERPUser: boolean;
   hasPermission: (permission?: string | null) => boolean;
 }>;
 
@@ -21,7 +21,7 @@ function setAuthState(overrides: AuthOverrides = {}) {
   useERPAuthMock.mockReturnValue({
     isLoading: false,
     isAuthenticated: true,
-    isActiveAdmin: true,
+    isAuthorizedERPUser: true,
     hasPermission: () => true,
     ...overrides,
   });
@@ -57,15 +57,15 @@ describe("ProtectedRoute", () => {
   });
 
   it("redirects logged-out users to login", () => {
-    setAuthState({ isAuthenticated: false, isActiveAdmin: false });
+    setAuthState({ isAuthenticated: false, isAuthorizedERPUser: false });
 
     renderRoute("/finans");
 
     expect(screen.getByText("Giriş sayfası")).toBeInTheDocument();
   });
 
-  it("redirects inactive admins to login", () => {
-    setAuthState({ isActiveAdmin: false });
+  it("redirects inactive ERP users to login", () => {
+    setAuthState({ isAuthorizedERPUser: false });
 
     renderRoute("/finans");
 
@@ -82,7 +82,7 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText("Uygulamalar sayfası")).toBeInTheDocument();
   });
 
-  it("renders protected content for an active admin with permission", () => {
+  it("renders protected content for an active ERP user with permission", () => {
     const hasPermission = vi.fn(() => true);
     setAuthState({ hasPermission });
 

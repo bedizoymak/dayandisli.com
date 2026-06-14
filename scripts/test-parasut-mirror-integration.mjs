@@ -149,7 +149,7 @@ async function run() {
     userIds: [],
     companyIds: [],
     membershipIds: [],
-    adminUserIds: [],
+    erpUserIds: [],
     contactIds: [],
   };
   const clients = [];
@@ -222,10 +222,14 @@ async function run() {
     created.membershipIds.push(...memberships.map(({ id }) => id));
 
     const { data: repositoryAdmin, error: repositoryAdminError } = await admin
-      .from("admin_users")
+      .from("erp_users")
       .insert({
+        auth_user_id: repositoryAdminUser.id,
         email: repositoryAdminUser.email,
+        full_name: "Synthetic Repository Administrator",
         role: "admin",
+        roles: ["admin"],
+        permissions: ["system.manage"],
         is_active: true,
       })
       .select("id")
@@ -233,7 +237,7 @@ async function run() {
     if (repositoryAdminError) {
       throw new Error(`repository admin creation failed: ${safeError(repositoryAdminError)}`);
     }
-    created.adminUserIds.push(repositoryAdmin.id);
+    created.erpUserIds.push(repositoryAdmin.id);
 
     const baseContact = {
       company_id: company.id,
@@ -347,8 +351,8 @@ async function run() {
     if (created.membershipIds.length > 0) {
       await admin.from("company_memberships").delete().in("id", created.membershipIds);
     }
-    if (created.adminUserIds.length > 0) {
-      await admin.from("admin_users").delete().in("id", created.adminUserIds);
+    if (created.erpUserIds.length > 0) {
+      await admin.from("erp_users").delete().in("id", created.erpUserIds);
     }
     if (created.companyIds.length > 0) {
       await admin.from("companies").delete().in("id", created.companyIds);

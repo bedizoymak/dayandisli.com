@@ -331,4 +331,151 @@ describe("local execution-plan orchestration", () => {
     stdout.mockRestore();
     stderr.mockRestore();
   });
+
+  it("keeps execution envelope diagnostics disabled by default", async () => {
+    const diagnosticWriter = vi.fn();
+    const reportWriter = vi.fn();
+
+    const result = await orchestrateLocalExecution(["contacts"], {
+      env: {},
+      setup: async () => ({
+        output: createCliOutputChannels({
+          diagnosticWriter,
+          reportWriter,
+        }),
+      }),
+      executeResource: async (resource) => ({ resource }),
+    });
+
+    await writeAggregateReport(result.reports, result.setup.output.reportWriter);
+
+    expect(diagnosticWriter).not.toHaveBeenCalled();
+    expect(reportWriter).toHaveBeenCalledWith(formatAggregateReport(result.reports));
+  });
+
+  it("writes a completed envelope before the byte-compatible aggregate report", async () => {
+    const events: Array<{ channel: "diagnostic" | "report"; value: string }> = [];
+    const reports = [{ resource: "contacts", status: "completed" }];
+
+    const result = await orchestrateLocalExecution(["contacts"], {
+      env: { PARASUT_EXECUTION_ENVELOPE_DIAGNOSTICS: "1" },
+      setup: async () => ({
+        output: createCliOutputChannels({
+          diagnosticWriter: (value) =>
+            events.push({ channel: "diagnostic", value }),
+          reportWriter: (value) => events.push({ channel: "report", value }),
+        }),
+      }),
+      executeResource: async () => reports[0],
+    });
+
+    await writeAggregateReport(result.reports, result.setup.output.reportWriter);
+
+    expect(events).toEqual([
+      {
+        channel: "diagnostic",
+        value:
+          '{"status":"completed","mode":"custom","planned_count":1,"completed_count":1,"completed_resources":["contacts"]}\n',
+      },
+      {
+        channel: "report",
+        value: formatAggregateReport(reports),
+      },
+    ]);
+  });
+
+  it("writes a sanitized failed envelope before preserving the original failure", async () => {
+    const events: string[] = [];
+    const originalError = Object.assign(
+      new Error(
+        "access_token=secret user@example.com request_metadata=private raw_payload=hidden",
+      ),
+      { code: "api_key=secret" },
+    );
+
+    let caughtError: unknown;
+    try {
+      await orchestrateLocalExecution(["contacts", "products"], {
+        env: { PARASUT_EXECUTION_ENVELOPE_DIAGNOSTICS: "1" },
+        setup: async () => ({
+          output: createCliOutputChannels({
+            diagnosticWriter: (value) =>
+              events.push(`diagnostic:${value}`),
+            reportWriter: (value) => events.push(`report:${value}`),
+          }),
+        }),
+        executeResource: async (resource) => {
+          if (resource === "products") {
+            throw originalError;
+          }
+          return { resource };
+        },
+      });
+    } catch (error) {
+      caughtError = error;
+      events.push(`failure:${formatCliFailure(error)}`);
+    }
+
+    expect(caughtError).toBe(originalError);
+    expect(events).toHaveLength(2);
+    expect(events[0]).toMatch(/^diagnostic:\{"status":"failed"/);
+    expect(events[1]).toMatch(/^failure:/);
+
+    const envelope = JSON.parse(events[0]!.slice("diagnostic:".length));
+    expect(Object.keys(envelope)).toEqual([
+      "status",
+      "mode",
+      "planned_count",
+      "completed_count",
+      "completed_resources",
+      "failed_resource",
+      "remaining_resources",
+      "error",
+    ]);
+    expect(envelope.completed_resources).toEqual(["contacts"]);
+    expect(envelope.failed_resource).toBe("products");
+    expect(JSON.stringify(envelope)).not.toMatch(
+      /secret|user@example\.com|request_metadata|raw_payload/i,
+    );
+  });
+
+  it("isolates execution envelope diagnostic writer failures", async () => {
+    const report = { resource: "contacts", status: "completed" };
+
+    await expect(
+      orchestrateLocalExecution(["contacts"], {
+        env: { PARASUT_EXECUTION_ENVELOPE_DIAGNOSTICS: "1" },
+        setup: async () => ({
+          output: createCliOutputChannels({
+            diagnosticWriter: () => {
+              throw new Error("writer failed");
+            },
+            reportWriter: () => undefined,
+          }),
+        }),
+        executeResource: async () => report,
+      }),
+    ).resolves.toMatchObject({ reports: [report] });
+  });
+
+  it("does not mutate the diagnostic environment input", async () => {
+    const env = Object.freeze({
+      PARASUT_EXECUTION_ENVELOPE_DIAGNOSTICS: "1",
+    });
+
+    await orchestrateLocalExecution(["contacts"], {
+      env,
+      setup: async () => ({
+        output: createCliOutputChannels({
+          diagnosticWriter: () => undefined,
+          reportWriter: () => undefined,
+        }),
+      }),
+      executeResource: async (resource) => ({ resource }),
+    });
+
+    expect(env).toEqual({
+      PARASUT_EXECUTION_ENVELOPE_DIAGNOSTICS: "1",
+    });
+  });
 });

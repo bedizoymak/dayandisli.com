@@ -19,12 +19,12 @@ function LoadingScreen() {
 
 export function RequireAuth({ children }: ProtectedRouteProps) {
   const location = useLocation();
-  const { hasPermission, isActiveAdmin, isAuthenticated, isLoading } = useERPAuth();
+  const { hasPermission, isAuthorizedERPUser, isAuthenticated, isLoading } = useERPAuth();
 
   localStorage.setItem("auth_redirect_path", `${location.pathname}${location.search}`);
 
   if (isLoading) return <LoadingScreen />;
-  if (!isAuthenticated || !isActiveAdmin) return <Navigate to="/login" replace state={{ from: location }} />;
+  if (!isAuthenticated || !isAuthorizedERPUser) return <Navigate to="/login" replace state={{ from: location }} />;
 
   const requiredPermission = getRequiredPermissionForPath(location.pathname);
   if (!hasPermission(requiredPermission)) return <Navigate to="/apps" replace state={{ from: location }} />;

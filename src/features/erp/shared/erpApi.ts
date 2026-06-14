@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { resolveERPUserForAuthUser } from "./auth";
 import {
   ApiResult,
   AccountingEntry,
@@ -215,7 +216,6 @@ function uniqueBy<T>(items: T[], keyGetter: (item: T) => string) {
 
 export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatus>> {
   const keyTables = [
-    "admin_users",
     "companies",
     "company_branches",
     "warehouses",
@@ -320,51 +320,11 @@ export async function getERPDatabaseStatus(): Promise<ApiResult<ERPDatabaseStatu
 
 export async function getCurrentERPUser(): Promise<ApiResult<ERPUser | null>> {
   const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError || !authData.user?.email) return success(null);
+  if (authError || !authData.user) return success(null);
 
-  const { data, error } = (await supabase
-    .from("erp_users" as never)
-    .select("*")
-    .eq("email", authData.user.email)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle()) as unknown as DbResult<ERPUser>;
-
+  const { data, error } = await resolveERPUserForAuthUser(authData.user);
   if (error && !isMissingTableError(error)) return failure("getCurrentERPUser", error, null);
-  if (data) return success(data);
-
-  const adminResult = (await supabase
-    .from("admin_users" as never)
-    .select("id, email, role, is_active, created_at")
-    .eq("email", authData.user.email)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle()) as unknown as DbResult<{ id: string; email: string; role?: string; is_active: boolean; created_at: string }>;
-
-  if (adminResult.error && !isMissingTableError(adminResult.error)) return failure("getCurrentERPUser admin_users", adminResult.error, null);
-  if (adminResult.data) {
-    return success({
-      id: adminResult.data.id,
-      auth_user_id: authData.user.id,
-      email: adminResult.data.email,
-      full_name: null,
-      role: "admin",
-      department: null,
-      is_active: adminResult.data.is_active,
-      created_at: adminResult.data.created_at,
-    });
-  }
-
-  return success({
-    id: authData.user.id,
-    auth_user_id: authData.user.id,
-    email: authData.user.email,
-    full_name: authData.user.user_metadata?.full_name ? String(authData.user.user_metadata.full_name) : null,
-    role: "viewer",
-    department: null,
-    is_active: true,
-    created_at: authData.user.created_at ?? new Date().toISOString(),
-  });
+  return success(data);
 }
 
 export async function listAuditLogsForEntity(entityType: string, entityId?: string | null): Promise<ApiResult<ERPAuditLog[]>> {

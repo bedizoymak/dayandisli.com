@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { getPublicLoginRedirectUrl } from "@/lib/domains";
 import { createAuditLog } from "@/features/erp/shared/erpApi";
+import { resolveERPUserForAuthUser } from "@/features/erp/shared/auth";
 
 const SUPABASE_SETUP_MESSAGE =
   "ERP giriş sistemi yapılandırılmamış. Lütfen VITE_SUPABASE_URL ve VITE_SUPABASE_PUBLISHABLE_KEY değerleriyle yeniden build alın.";
@@ -63,14 +64,9 @@ export default function Login() {
         return;
       }
 
-      const { data: adminUser, error: adminError } = await supabase
-        .from("admin_users" as never)
-        .select("email, is_active")
-        .eq("email", userEmail)
-        .eq("is_active", true)
-        .maybeSingle();
+      const { data: erpUser, error: erpUserError } = await resolveERPUserForAuthUser(data.user);
 
-      if (adminError || !adminUser) {
+      if (erpUserError || !erpUser) {
         await supabase.auth.signOut();
         toast({
           title: "Yetkisiz Giriş",
