@@ -1,12 +1,12 @@
 # DAYAN DISLI ERP — ENGINEERING CONSTITUTION
 
-Version: 1.1
+Version: 2.0
 
 This document defines the permanent engineering rules for DAYAN DISLI ERP.
 
-All developers, AI agents, Codex sessions, and automation tools MUST strictly follow this constitution.
+All developers, AI agents, Codex sessions, automation tools, and future integrations MUST strictly follow this constitution.
 
-Violation of this document is considered an architectural defect.
+Violation of this constitution is considered an architectural defect.
 
 ---
 
@@ -14,7 +14,7 @@ Violation of this document is considered an architectural defect.
 
 DAYAN DISLI ERP is a long-term industrial ERP platform for gear manufacturing and machining operations.
 
-The primary goals are:
+Primary goals:
 
 * Stability
 * Scalability
@@ -24,7 +24,15 @@ The primary goals are:
 * Zero duplicate business records
 * Educational architecture clarity
 
-The project must also teach how frontend, backend, database tables, APIs, migrations, and integrations work together.
+The project must teach:
+
+* Frontend architecture
+* Backend architecture
+* Database design
+* API design
+* Integration patterns
+* Testing strategies
+* Deployment strategies
 
 ---
 
@@ -32,7 +40,7 @@ The project must also teach how frontend, backend, database tables, APIs, migrat
 
 NEVER start with frontend.
 
-Every feature MUST follow this order:
+Every feature MUST follow:
 
 1. Business Analysis
 2. Domain Selection
@@ -52,13 +60,13 @@ Frontend-first development is forbidden.
 
 Database is the single source of truth.
 
-Schema changes MUST be implemented through migrations.
+Schema changes MUST use migrations.
 
-Never modify production schema manually from dashboard.
+Never manually edit production schema.
 
-Always use:
+Always follow:
 
-migration → commit → deploy
+migration → validate → commit → deploy
 
 Migration-first development is mandatory.
 
@@ -66,19 +74,19 @@ Migration-first development is mandatory.
 
 # 4. PRODUCTION MODEL
 
-The current environment is considered:
+Current environment:
 
 LIVE DEVELOPMENT ENVIRONMENT
 
 Production modifications are allowed.
 
-However destructive operations require explicit approval.
+Destructive operations require owner approval.
 
 ---
 
 # 5. DESTRUCTIVE OPERATIONS
 
-The following actions REQUIRE owner approval:
+Require explicit owner approval:
 
 * DROP TABLE
 * DROP COLUMN
@@ -88,17 +96,13 @@ The following actions REQUIRE owner approval:
 * Irreversible migrations
 * Large data migrations
 
-Default behavior:
-
-Prefer additive changes over destructive changes.
+Prefer additive changes.
 
 ---
 
 # 6. ZERO DOWNTIME PRINCIPLE
 
-Schema changes should be backward compatible whenever possible.
-
-Preferred sequence:
+Prefer:
 
 nullable
 → backfill
@@ -119,40 +123,54 @@ Allowed:
 * GET requests
 * Read-only discovery
 * Read-only mirror import
-* Sanitized sample generation
-* Local analysis
+* Sanitized analysis
 
-Forbidden unless the owner explicitly changes this constitution:
+Forbidden:
 
-* POST to Paraşüt
-* PUT to Paraşüt
-* PATCH to Paraşüt
-* DELETE to Paraşüt
-* Creating contacts in Paraşüt
-* Updating contacts in Paraşüt
-* Creating invoices in Paraşüt
-* Updating invoices in Paraşüt
-* Creating payments in Paraşüt
-* Updating payments in Paraşüt
+* POST
+* PUT
+* PATCH
+* DELETE
+* Contact creation
+* Contact update
+* Invoice creation
+* Invoice update
+* Payment creation
+* Payment update
 * Any Paraşüt write operation
-
-Paraşüt is the official accounting source.
-
-DAYAN DISLI ERP is the operational, analytical, and extended business system.
 
 Sync direction:
 
-Paraşüt → DAYAN ERP only.
+Paraşüt → DAYAN ERP only
+
+DAYAN ERP is the superset.
+
+Paraşüt is one official subset.
 
 ---
 
-# 8. PARASUT MIRROR LAYER
+# 8. MIRROR-FIRST ARCHITECTURE
 
-Paraşüt data MUST first be stored in mirror tables.
+External systems MUST be mirrored first.
 
-Mirror tables must preserve Paraşüt structure as closely as possible.
+ERP domains come later.
 
-Examples:
+Rule:
+
+Mirror first.
+ERP later.
+
+Never design ERP around external APIs.
+
+---
+
+# 9. PARASUT MIRROR LAYER
+
+Mirror tables preserve Paraşüt structure.
+
+Mirror tables are NOT ERP domain tables.
+
+Mirror examples:
 
 * parasut_contacts
 * parasut_products
@@ -162,55 +180,16 @@ Examples:
 * parasut_purchase_bill_details
 * parasut_payments
 * parasut_accounts
-* parasut_warehouses
-* parasut_categories
-* parasut_tags
 
-Mirror tables are not ERP business-domain tables.
-
-Mirror tables represent external source data.
-
-ERP business logic must not be forced into Paraşüt mirror tables.
-
-Each mirror table should generally contain:
-
-* id
-* parasut_id
-* parasut_company_id
-* resource_type
-* attributes jsonb
-* relationships jsonb
-* included jsonb
-* raw_payload jsonb
-* source_created_at
-* source_updated_at
-* synced_at
-* payload_hash
-* created_at
-* updated_at
-
-The exact columns may be adjusted after inspecting official Paraşüt resource structures.
+Mirror tables own raw snapshots only.
 
 ---
 
-# 9. ERP DOMAIN LAYER
+# 10. ERP DOMAIN LAYER
 
-ERP domain tables are separate from Paraşüt mirror tables.
+ERP domain tables represent business reality.
 
-ERP domain tables represent DAYAN DISLI business reality.
-
-ERP may contain:
-
-* official records from Paraşüt
-* unofficial customer records
-* internal operational records
-* manufacturing records
-* production records
-* non-accounting financial analysis
-* custom reports
-* ERP-only metadata
-
-ERP domain examples:
+Examples:
 
 * stakeholders
 * sales_orders
@@ -220,157 +199,96 @@ ERP domain examples:
 * quality_records
 * subcontracting_records
 
-External system mirror tables preserve external system structure.
+ERP may contain:
 
-ERP domain tables preserve ERP business structure.
-
----
-
-# 10. OFFICIAL AND UNOFFICIAL DATA RULE
-
-Paraşüt records are official records.
-
-ERP may also contain unofficial records.
-
-Official Paraşüt records should be marked as:
-
-* source_system = parasut
-* official_record = true
-* external_id = Paraşüt resource ID
-
-ERP-created internal records may be marked as:
-
-* source_system = internal
-* official_record = false
-* external_id = null
-
-ERP is the superset.
-
-Paraşüt is only one official subset.
+* official records
+* unofficial records
+* analytics
+* custom metadata
 
 ---
 
-# 11. DOMAIN API ARCHITECTURE
+# 11. OFFICIAL / UNOFFICIAL DATA
 
-The following architecture MUST be preserved:
+Official records:
+
+source_system = parasut
+official_record = true
+
+Internal records:
+
+source_system = internal
+official_record = false
+
+ERP is always the superset.
+
+---
+
+# 12. DOMAIN API ARCHITECTURE
+
+Preserve:
 
 * crmApi.ts
 * salesApi.ts
 * inventoryApi.ts
 * productionApi.ts
 
-erpApi.ts exists only as a compatibility facade.
-
-New business logic SHOULD NOT be added to erpApi.ts.
-
-Paraşüt HTTP operations must live in a dedicated server-side integration adapter.
-
-Browser code must never access Paraşüt credentials.
+erpApi.ts is compatibility only.
 
 ---
 
-# 12. AUTHENTICATION ARCHITECTURE
+# 13. AUTHENTICATION FLOW
 
-The authentication flow MUST remain:
+Required flow:
 
 ERPAuthProvider
 → ProtectedRoute
 → Domain APIs
 → Supabase
 
-Do not bypass authentication.
+Never bypass authentication.
 
-Do not bypass permission checks.
+Never bypass permissions.
 
 ---
 
-# 13. TYPESCRIPT QUALITY
+# 14. TYPESCRIPT QUALITY
 
-TypeScript errors allowed:
+Allowed TypeScript errors:
 
 0
 
-Build status:
+CI must remain passing.
 
-PASSING
-
-CI status:
-
-PASSING
-
-No feature may degrade system quality.
+Build must remain passing.
 
 ---
 
-# 14. TESTING RULES
+# 15. TESTING RULES
 
-Every feature SHOULD include:
+Every feature should include:
 
 * Unit tests
-* Integration tests when required
-* Regression tests when required
+* Integration tests
+* Regression tests
 
 Existing tests must not break.
 
 ---
 
-# 15. CRM MASTER DATA RULES
+# 16. CRM RULES
 
-Partner records are the master data of CRM.
-
-A company may simultaneously be:
+A company may be:
 
 * Customer
 * Supplier
 * Subcontractor
 
-Duplicate company records are forbidden.
-
-Example:
-
-ABC Steel Ltd.
-
-is_customer = true
-is_supplier = true
-
-This must remain a single company record.
+Duplicate companies are forbidden.
 
 ---
 
-# 16. CRM NAVIGATION
-
-CRM consists of three primary categories:
-
-1. Partners
-2. Customers
-3. Suppliers
-
-Turkish UI labels:
-
-1. Paydaşlar
-2. Müşteriler
-3. Tedarikçiler
-
-Definitions:
-
-Partners:
-All companies.
-
-Customers:
-Partners where is_customer = true.
-
-Suppliers:
-Partners where is_supplier = true.
-
-A company may belong to multiple categories.
-
----
-
-# 17. ERP DATA OWNERSHIP
-
-Every module must define ownership clearly.
-
-Examples:
+# 17. DATA OWNERSHIP
 
 CRM owns partners.
 
@@ -380,9 +298,9 @@ Production references Sales.
 
 Inventory references Production.
 
-Paraşüt mirror tables own raw external snapshots only.
+Mirror tables own external snapshots.
 
-ERP domain tables own operational business meaning.
+ERP tables own business meaning.
 
 Cross-domain duplication is forbidden.
 
@@ -390,91 +308,246 @@ Cross-domain duplication is forbidden.
 
 # 18. UI RULES
 
-All user-facing UI MUST be Turkish.
+ALL user-facing UI MUST be Turkish.
 
-Examples:
+Includes:
 
-* Buttons
-* Labels
 * Menus
-* Validation messages
-* Notifications
-* Table headers
+* Buttons
 * Forms
+* Notifications
+* Errors
+* Tables
 * Empty states
-* Error messages
 
-Internal code, comments, migrations, documentation, and prompts MUST be English.
+Only frontend UI may be Turkish.
 
 ---
 
 # 19. LANGUAGE RULES
 
-Developer prompts:
-English only.
+English only:
 
-Database naming:
-English only.
+* Prompts
+* Code
+* Comments
+* Documentation
+* Result files
+* Reports
+* QA outputs
+* Manifest files
+* Console summaries
+* AI outputs
 
-API naming:
-English only.
+Turkish allowed ONLY for:
 
-Source code:
-English only.
+User-facing frontend UI.
 
-Technical documentation:
-English only.
-
-End-user UI:
-Turkish only.
-
----
-
-# 20. CODING STYLE
-
-Prefer:
-
-* Explicit naming
-* Small functions
-* Reusable components
-* Domain separation
-* Educational clarity
-
-Avoid:
-
-* Monolithic files
-* Hidden side effects
-* Duplicate code
-* Undocumented assumptions
+Any Turkish outside UI is a constitution violation.
 
 ---
 
-# 21. AI AGENT AUTHORITY
+# 20. AI COMMUNICATION MODE
 
-AI agents and Codex are authorized as:
+AI responses should be concise.
 
-Senior Full Stack Developer
-Senior Database Engineer
-System Architect
-DevOps Engineer
+Avoid unnecessary explanations.
 
-AI agents may:
+During phase execution:
 
-* Create migrations
-* Modify schema
-* Create RPCs
-* Modify RLS
-* Refactor code
-* Add tests
-* Deploy changes
+Review quickly.
+Advance quickly.
+
+---
+
+# 21. MICRO-PHASE STRATEGY
+
+Prefer micro-phases.
+
+Target:
+
+* 5–10 files
+* Single architectural goal
+* 5–15 minutes runtime
+
+Large phases should be split:
+
+Phase 4A
+Phase 4B
+Phase 4C
+
+etc.
+
+---
+
+# 22. PHASE GOVERNANCE
+
+Every phase must have:
+
+* Objective
+* Scope
+* Validation
+* Result file
+* Export folder
+* Manifest
+
+---
+
+# 23. PHASE COMPLETION CRITERIA
+
+A phase is incomplete if:
+
+* Documentation missing
+* Result file missing
+* Validation missing
+* Export missing
+* Manifest missing
+
+---
+
+# 24. PHASE RESULT FILES
+
+Each phase MUST create:
+
+docs/phase-results/PHASE_X_RESULT.md
+
+Without result file:
+
+Phase is incomplete.
+
+---
+
+# 25. FLAT EXPORT RULE
+
+Export folder must be flat.
+
+No subdirectories allowed.
+
+Repository paths become filenames:
+
+docs/file.md
+
+becomes
+
+docs__file.md
+
+---
+
+# 26. CURRENT PHASE DELTA EXPORT
+
+Export ONLY files created or modified during the current phase.
+
+Repository-wide git diff export is forbidden.
+
+Previous phase files must not be exported unless modified again.
+
+---
+
+# 27. EXPORT LOCATION
+
+Default export path:
+
+C:\Users\Bediz\Desktop\dayandisli_diff_files_all\phase_X
+
+Each phase gets its own folder.
+
+---
+
+# 28. MANIFEST RULES
+
+Each export folder must contain:
+
+_MANIFEST.md
+
+Must include:
+
+* Phase name
+* Export path
+* Exported files
+* Original paths
+* Reasons
+* Validation results
+* Safety confirmation
+
+---
+
+# 29. SECRET SAFETY
+
+Never export:
+
+* .env
+* tokens
+* passwords
+* API keys
+* service-role keys
+
+Never print secrets.
+
+---
+
+# 30. LOCAL-FIRST VALIDATION
+
+Always validate locally first.
+
+Never validate against production first.
+
+Reject production automatically when required.
+
+---
+
+# 31. PRODUCTION SAFETY
+
+Production reference:
+
+meauutjsnnggzcigyvfp
+
+Production name:
+
+dayandisli.com
+
+When local validation is required:
+
+Production access must be rejected.
+
+---
+
+# 32. HUMAN APPROVAL GATES
+
+Owner approval required for:
+
+* destructive operations
+* production-impacting changes
+* external write integrations
+
+---
+
+# 33. PHASE AUTOMATION READINESS
+
+Future automation should support:
+
+* phase runner
+* result generation
+* QA generation
+* export generation
+
+Automation must preserve this constitution.
+
+---
+
+# 34. AI AGENT AUTHORITY
+
+AI agents act as:
+
+* Senior Full Stack Developer
+* Senior Database Engineer
+* System Architect
+* DevOps Engineer
 
 Subject to this constitution.
 
-Paraşüt write operations remain forbidden.
-
 ---
 
-# 22. FINAL RULE
+# 35. FINAL RULE
 
 When uncertain:
 
