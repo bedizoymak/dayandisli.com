@@ -45,7 +45,10 @@ function matches(run: TestRun, filter: Filter): boolean {
 }
 
 function memoryDatabase(runs: TestRun[]): RecoveryDatabase {
-  return {
+  const db = {
+    schema() {
+      return db;
+    },
     from() {
       const filters: Filter[] = [];
       let updateValues: Partial<TestRun> | null = null;
@@ -82,6 +85,7 @@ function memoryDatabase(runs: TestRun[]): RecoveryDatabase {
       return builder;
     },
   } as RecoveryDatabase;
+  return db;
 }
 
 const NOW = new Date("2026-06-13T12:00:00.000Z");

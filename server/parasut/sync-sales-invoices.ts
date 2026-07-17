@@ -4,7 +4,7 @@ import type { SyncContext, SyncResult } from "./types.ts";
 export function syncSalesInvoices(context: SyncContext): Promise<SyncResult> {
   return syncCollection(context, {
     resourceType: "sales_invoices",
-    table: "parasut_sales_invoices",
+    table: "sales_invoices",
     endpoint: `/v4/${encodeURIComponent(context.parasutCompanyId)}/sales_invoices`,
     include: ["contact", "details", "payments"],
   });

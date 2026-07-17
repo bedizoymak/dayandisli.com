@@ -40,15 +40,20 @@ export interface ParaşütClientOptions {
   maxPages?: number;
 }
 
+export const PARASUT_MIRROR_SCHEMA = "parasut";
+export const PARASUT_INTEGRATION_SCHEMA = "parasut";
+
 export type MirrorTable =
-  | "parasut_contacts"
-  | "parasut_products"
-  | "parasut_sales_invoices"
-  | "parasut_sales_invoice_details"
-  | "parasut_purchase_bills"
-  | "parasut_purchase_bill_details"
-  | "parasut_payments"
-  | "parasut_accounts";
+  | "contacts"
+  | "products"
+  | "sales_invoices"
+  | "sales_invoice_details"
+  | "purchase_bills"
+  | "purchase_bill_details"
+  | "payments"
+  | "accounts";
+
+export type IntegrationTable = "sync_runs" | "sync_errors";
 
 export interface MirrorResourceDefinition {
   resourceType: string;
@@ -86,6 +91,7 @@ export interface QueryBuilder<T = unknown> extends PromiseLike<DatabaseResult<T>
 }
 
 export interface MirrorDatabase {
+  schema(name: string): MirrorDatabase;
   from<T = unknown>(table: string): {
     insert(values: unknown): QueryBuilder<T>;
     update(values: unknown): QueryBuilder<T>;

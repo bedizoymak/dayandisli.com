@@ -81,9 +81,9 @@ describe("verifyDatabaseCleanup", () => {
   it("passes when no synthetic rows remain", () => {
     expect(() =>
       verifyDatabaseCleanup({
-        parasut_sync_runs: 0,
-        parasut_contacts: 0,
-        parasut_sync_errors: 0,
+        "parasut.sync_runs": 0,
+        "parasut.contacts": 0,
+        "parasut.sync_errors": 0,
       }),
     ).not.toThrow();
   });
@@ -91,12 +91,12 @@ describe("verifyDatabaseCleanup", () => {
   it("fails with the remaining synthetic row counts", () => {
     expect(() =>
       verifyDatabaseCleanup({
-        parasut_sync_runs: 1,
-        parasut_contacts: 0,
-        parasut_sync_errors: 2,
+        "parasut.sync_runs": 1,
+        "parasut.contacts": 0,
+        "parasut.sync_errors": 2,
       }),
     ).toThrow(
-      "Synthetic database cleanup is incomplete: parasut_sync_runs=1, parasut_sync_errors=2",
+      "Synthetic database cleanup is incomplete: parasut.sync_runs=1, parasut.sync_errors=2",
     );
   });
 });

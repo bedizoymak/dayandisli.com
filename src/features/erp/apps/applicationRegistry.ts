@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Banknote,
   Calculator,
   ClipboardCheck,
   CreditCard,
@@ -19,6 +20,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 export type ErpApplicationId =
+  | "parasut"
   | "website"
   | "commerce"
   | "crm"
@@ -55,6 +57,17 @@ export type ErpApplicationModule = {
 };
 
 export const erpApplications: ErpApplication[] = [
+  {
+    id: "parasut",
+    title: "Paraşüt",
+    description: "Paraşüt finans, fatura, tahsilat ve gider verileri.",
+    route: "/apps/parasut",
+    icon: Banknote,
+    permissionKey: "parasut.view",
+    // Paraşüt uses a dedicated module shell (see features/erp/parasut) instead of
+    // the generic ApplicationShellPage module-card layout, so this stays empty.
+    modules: [],
+  },
   {
     id: "website",
     title: "Web Sitesi",

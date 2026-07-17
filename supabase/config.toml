@@ -47,3 +47,13 @@ entrypoint = "./functions/payment-refund/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/notification-dispatch/index.ts"
+
+[functions.parasut-api]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/parasut-api/index.ts"
+
+[functions.parasut-write-api]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/parasut-write-api/index.ts"

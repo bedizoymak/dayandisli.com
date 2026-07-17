@@ -7,6 +7,7 @@ import type {
   MirrorResourceRow,
   UpsertResult,
 } from "./types.ts";
+import { PARASUT_MIRROR_SCHEMA } from "./types.ts";
 
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -63,8 +64,9 @@ export async function upsertResource(
   const attributes = resource.attributes ?? {};
   const relationships = resource.relationships ?? {};
   const included = context.included ?? [];
+  const mirrorDb = database.schema(PARASUT_MIRROR_SCHEMA);
 
-  const existing = await database
+  const existing = await mirrorDb
     .from<{ id: string; payload_hash: string }>(definition.table)
     .select("id,payload_hash")
     .eq("parasut_company_id", context.parasutCompanyId)
@@ -74,7 +76,7 @@ export async function upsertResource(
   if (existing.error) throw new Error(existing.error.message ?? "Mirror lookup failed");
 
   if (existing.data?.payload_hash === payloadHash) {
-    const result = await database
+    const result = await mirrorDb
       .from(definition.table)
       .update({ last_seen_at: now })
       .eq("id", existing.data.id);
@@ -101,7 +103,7 @@ export async function upsertResource(
   };
 
   if (existing.data) {
-    const result = await database
+    const result = await mirrorDb
       .from(definition.table)
       .update(row)
       .eq("id", existing.data.id);
@@ -109,7 +111,7 @@ export async function upsertResource(
     return { outcome: "updated", payloadHash };
   }
 
-  const result = await database.from(definition.table).insert(row);
+  const result = await mirrorDb.from(definition.table).insert(row);
   if (result.error) throw new Error(result.error.message ?? "Mirror insert failed");
   return { outcome: "inserted", payloadHash };
 }

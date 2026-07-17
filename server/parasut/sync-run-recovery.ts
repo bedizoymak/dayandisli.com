@@ -27,8 +27,11 @@ interface RecoveryQuery<T> extends PromiseLike<DatabaseResult<T>> {
 }
 
 export interface RecoveryDatabase {
-  from<T = unknown>(table: "parasut_sync_runs"): RecoveryQuery<T>;
+  schema(name: string): RecoveryDatabase;
+  from<T = unknown>(table: "sync_runs"): RecoveryQuery<T>;
 }
+
+const INTEGRATION_SCHEMA = "parasut";
 
 export interface RecoverStaleRunsOptions {
   thresholdMinutes?: number;
@@ -85,8 +88,10 @@ export async function recoverStaleRuns(
     now.getTime() - thresholdMinutes * 60 * 1000,
   ).toISOString();
 
-  let query = database
-    .from<RecoveryRun[]>("parasut_sync_runs")
+  const scoped = database.schema(INTEGRATION_SCHEMA);
+
+  let query = scoped
+    .from<RecoveryRun[]>("sync_runs")
     .select(
       "id,company_id,parasut_company_id,resource_type,status,completed_at,page_count,request_metadata,created_at",
     )
@@ -109,8 +114,8 @@ export async function recoverStaleRuns(
   const skippedRunIds: string[] = [];
 
   for (const run of runs) {
-    const update = await database
-      .from<RecoveryRun[]>("parasut_sync_runs")
+    const update = await scoped
+      .from<RecoveryRun[]>("sync_runs")
       .update({
         status: "failed",
         completed_at: recoveredAt,

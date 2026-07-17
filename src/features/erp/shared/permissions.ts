@@ -75,11 +75,31 @@ export const PERMISSION_CATALOG = Array.from(
     "hr.manage",
     "quality.edit",
     "reports.export",
+    "parasut.sync.view",
+    "accounting.contacts.create",
+    "accounting.outbound.view",
   ])
 ).sort();
 
+// Reserved for admin or an explicit per-user grant only — see
+// DAYANDISLI_PHASE_SYSTEM_V3.md §8.8 "Default safest policy: admin allowed,
+// explicit permission allowed, finance role alone: denied". Both permissions
+// gate the bidirectional write path (server/erp/commands/create-customer-command.ts)
+// and must never be silently inherited through a role's wildcard match.
+const OUTBOUND_WRITE_ONLY_PERMISSIONS = ["accounting.contacts.create", "accounting.outbound.view"];
+
 const salesPermissions = PERMISSION_CATALOG.filter((permission) => permission.startsWith("sales.") || permission.startsWith("crm.") || permission === "dashboard.view");
-const financePermissions = PERMISSION_CATALOG.filter((permission) => permission.startsWith("finance.") || permission.startsWith("accounting.") || permission.startsWith("invoicing.") || permission.startsWith("expenses.") || permission === "dashboard.view");
+// Finance gets base Paraşüt access ("parasut.view") only — NOT "parasut.sync.view".
+// Do not widen this to `permission.startsWith("parasut.")`: that would also match
+// "parasut.sync.view" and grant finance a permission reserved for admin/system.manage
+// or an explicit per-user grant (see resolveAccess in supabase/functions/parasut-api).
+// Also excludes OUTBOUND_WRITE_ONLY_PERMISSIONS despite matching "accounting." —
+// see that constant's own doc comment.
+const financePermissions = PERMISSION_CATALOG.filter(
+  (permission) =>
+    (permission.startsWith("finance.") || permission.startsWith("accounting.") || permission.startsWith("invoicing.") || permission.startsWith("expenses.") || permission === "parasut.view" || permission === "dashboard.view") &&
+    !OUTBOUND_WRITE_ONLY_PERMISSIONS.includes(permission),
+);
 const productionPermissions = PERMISSION_CATALOG.filter((permission) => permission.startsWith("production.") || permission.startsWith("maintenance.") || permission.startsWith("repair.") || permission === "dashboard.view");
 const purchasingPermissions = PERMISSION_CATALOG.filter((permission) => permission.startsWith("purchasing.") || permission.startsWith("inventory.purchasing") || permission === "dashboard.view");
 const inventoryPermissions = PERMISSION_CATALOG.filter((permission) => permission.startsWith("inventory.") || permission === "dashboard.view");
@@ -192,6 +212,8 @@ export function filterModulesByPermission<T extends { requiredPermission?: strin
 export function getRequiredPermissionForPath(pathname: string) {
   const normalized = pathname.replace(/^\/erp/, "") || "/";
   const routePermissions: Array<[RegExp, string]> = [
+    [/^\/apps\/parasut\/senkronizasyon/, "parasut.sync.view"],
+    [/^\/apps\/parasut/, "parasut.view"],
     [/^\/apps\/calculator(?:\/|$)/, "production.view"],
     [/^\/apps\/shop-orders(?:\/|$)/, "commerce.view"],
     [/^\/apps\/settings/, "settings.view"],

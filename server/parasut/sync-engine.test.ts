@@ -108,6 +108,9 @@ describe("Paraşüt sync engine", () => {
     const payloadHash = hashResource(resource);
     const updates: unknown[] = [];
     const database = {
+      schema() {
+        return this;
+      },
       from() {
         return {
           select() {
@@ -136,7 +139,7 @@ describe("Paraşüt sync engine", () => {
 
     const result = await upsertResource(
       database,
-      { resourceType: "contacts", table: "parasut_contacts" },
+      { resourceType: "contacts", table: "contacts" },
       resource,
       {
         companyId: "company",
@@ -161,6 +164,9 @@ describe("Paraşüt sync engine", () => {
     };
     const updates: unknown[] = [];
     const database = {
+      schema() {
+        return this;
+      },
       from() {
         return {
           select() {
@@ -189,7 +195,7 @@ describe("Paraşüt sync engine", () => {
 
     const result = await upsertResource(
       database,
-      { resourceType: "contacts", table: "parasut_contacts" },
+      { resourceType: "contacts", table: "contacts" },
       resource,
       {
         companyId: "company",
@@ -213,17 +219,20 @@ describe("Paraşüt sync engine", () => {
     const insertedRuns: Record<string, unknown>[] = [];
     const runUpdates: Record<string, unknown>[] = [];
     const database = {
+      schema() {
+        return this;
+      },
       from(table: string) {
         const state = {
           value: null as Record<string, unknown> | null,
           insert(value: Record<string, unknown>) {
             this.value = value;
-            if (table === "parasut_sync_runs") insertedRuns.push(value);
+            if (table === "sync_runs") insertedRuns.push(value);
             return this;
           },
           update(value: Record<string, unknown>) {
             this.value = value;
-            if (table === "parasut_sync_runs") runUpdates.push(value);
+            if (table === "sync_runs") runUpdates.push(value);
             return this;
           },
           select() {
@@ -261,7 +270,7 @@ describe("Paraşüt sync engine", () => {
     await syncCollection(context, {
       resourceType: "contacts",
       endpoint: "/v4/666034/contacts",
-      table: "parasut_contacts",
+      table: "contacts",
       include: ["payments", "details"],
     });
 
@@ -288,6 +297,9 @@ describe("Paraşüt sync engine", () => {
   it("does not advance a checkpoint when parent persistence fails", async () => {
     const runUpdates: Record<string, unknown>[] = [];
     const database = {
+      schema() {
+        return this;
+      },
       from(table: string) {
         const state = {
           value: null as Record<string, unknown> | null,
@@ -297,7 +309,7 @@ describe("Paraşüt sync engine", () => {
           },
           update(value: Record<string, unknown>) {
             this.value = value;
-            if (table === "parasut_sync_runs") runUpdates.push(value);
+            if (table === "sync_runs") runUpdates.push(value);
             return this;
           },
           select() {
@@ -313,7 +325,7 @@ describe("Paraşüt sync engine", () => {
           maybeSingle: async () => ({ data: null, error: null }),
           then(resolve: (value: unknown) => unknown) {
             const error =
-              table === "parasut_contacts"
+              table === "contacts"
                 ? { message: "Mirror insert failed" }
                 : null;
             return Promise.resolve(resolve({ data: null, error }));
@@ -341,7 +353,7 @@ describe("Paraşüt sync engine", () => {
     await syncCollection(context, {
       resourceType: "contacts",
       endpoint: "/v4/666034/contacts",
-      table: "parasut_contacts",
+      table: "contacts",
     });
 
     expect(
@@ -353,17 +365,20 @@ describe("Paraşüt sync engine", () => {
     const checkpoints: number[] = [];
     let contactInsert = 0;
     const database = {
+      schema() {
+        return this;
+      },
       from(table: string) {
         const state = {
           value: null as Record<string, unknown> | null,
           insert(value: Record<string, unknown>) {
             this.value = value;
-            if (table === "parasut_contacts") contactInsert++;
+            if (table === "contacts") contactInsert++;
             return this;
           },
           update(value: Record<string, unknown>) {
             this.value = value;
-            if (table === "parasut_sync_runs" && value.request_metadata) {
+            if (table === "sync_runs" && value.request_metadata) {
               const resume = (value.request_metadata as Record<string, unknown>)
                 .resume as Record<string, unknown>;
               checkpoints.push(resume.last_completed_page as number);
@@ -383,7 +398,7 @@ describe("Paraşüt sync engine", () => {
           maybeSingle: async () => ({ data: null, error: null }),
           then(resolve: (value: unknown) => unknown) {
             const error =
-              table === "parasut_contacts" && contactInsert === 1
+              table === "contacts" && contactInsert === 1
                 ? { message: "Page one persistence failed" }
                 : null;
             return Promise.resolve(resolve({ data: null, error }));
@@ -414,7 +429,7 @@ describe("Paraşüt sync engine", () => {
       {
         resourceType: "contacts",
         endpoint: "/v4/666034/contacts",
-        table: "parasut_contacts",
+        table: "contacts",
       },
     );
 
@@ -426,17 +441,20 @@ describe("Paraşüt sync engine", () => {
     const checkpoints: number[] = [];
     let contactInsert = 0;
     const database = {
+      schema() {
+        return this;
+      },
       from(table: string) {
         const state = {
           value: null as Record<string, unknown> | null,
           insert(value: Record<string, unknown>) {
             this.value = value;
-            if (table === "parasut_contacts") contactInsert++;
+            if (table === "contacts") contactInsert++;
             return this;
           },
           update(value: Record<string, unknown>) {
             this.value = value;
-            if (table === "parasut_sync_runs" && value.request_metadata) {
+            if (table === "sync_runs" && value.request_metadata) {
               const resume = (value.request_metadata as Record<string, unknown>)
                 .resume as Record<string, unknown>;
               checkpoints.push(resume.last_completed_page as number);
@@ -456,7 +474,7 @@ describe("Paraşüt sync engine", () => {
           maybeSingle: async () => ({ data: null, error: null }),
           then(resolve: (value: unknown) => unknown) {
             const error =
-              table === "parasut_contacts" && contactInsert === 2
+              table === "contacts" && contactInsert === 2
                 ? { message: "Page two persistence failed" }
                 : null;
             return Promise.resolve(resolve({ data: null, error }));
@@ -487,7 +505,7 @@ describe("Paraşüt sync engine", () => {
       {
         resourceType: "contacts",
         endpoint: "/v4/666034/contacts",
-        table: "parasut_contacts",
+        table: "contacts",
       },
     );
 
@@ -497,6 +515,9 @@ describe("Paraşüt sync engine", () => {
   it("prevents checkpoint advancement after included-resource failure", async () => {
     const checkpoints: number[] = [];
     const database = {
+      schema() {
+        return this;
+      },
       from(table: string) {
         const state = {
           value: null as Record<string, unknown> | null,
@@ -506,7 +527,7 @@ describe("Paraşüt sync engine", () => {
           },
           update(value: Record<string, unknown>) {
             this.value = value;
-            if (table === "parasut_sync_runs" && value.request_metadata) {
+            if (table === "sync_runs" && value.request_metadata) {
               const resume = (value.request_metadata as Record<string, unknown>)
                 .resume as Record<string, unknown>;
               checkpoints.push(resume.last_completed_page as number);
@@ -526,7 +547,7 @@ describe("Paraşüt sync engine", () => {
           maybeSingle: async () => ({ data: null, error: null }),
           then(resolve: (value: unknown) => unknown) {
             const error =
-              table === "parasut_payments"
+              table === "payments"
                 ? { message: "Included persistence failed" }
                 : null;
             return Promise.resolve(resolve({ data: null, error }));
@@ -556,7 +577,7 @@ describe("Paraşüt sync engine", () => {
       {
         resourceType: "sales_invoices",
         endpoint: "/v4/666034/sales_invoices",
-        table: "parasut_sales_invoices",
+        table: "sales_invoices",
       },
     );
 
@@ -566,6 +587,9 @@ describe("Paraşüt sync engine", () => {
   it("finalizes the run as failed when checkpoint persistence fails", async () => {
     const runUpdates: Record<string, unknown>[] = [];
     const database = {
+      schema() {
+        return this;
+      },
       from(table: string) {
         const state = {
           value: null as Record<string, unknown> | null,
@@ -575,7 +599,7 @@ describe("Paraşüt sync engine", () => {
           },
           update(value: Record<string, unknown>) {
             this.value = value;
-            if (table === "parasut_sync_runs") runUpdates.push(value);
+            if (table === "sync_runs") runUpdates.push(value);
             return this;
           },
           select() {
@@ -591,7 +615,7 @@ describe("Paraşüt sync engine", () => {
           maybeSingle: async () => ({ data: null, error: null }),
           then(resolve: (value: unknown) => unknown) {
             const isCheckpoint =
-              table === "parasut_sync_runs" &&
+              table === "sync_runs" &&
               Boolean(state.value?.request_metadata);
             return Promise.resolve(
               resolve({
@@ -622,7 +646,7 @@ describe("Paraşüt sync engine", () => {
         {
           resourceType: "contacts",
           endpoint: "/v4/666034/contacts",
-          table: "parasut_contacts",
+          table: "contacts",
         },
       ),
     ).rejects.toThrow("Checkpoint persistence failed");
@@ -644,6 +668,9 @@ describe("Paraşüt sync engine", () => {
     const rows = new Map<string, { id: string; payload_hash: string }>();
     let inserts = 0;
     const database = {
+      schema() {
+        return this;
+      },
       from(table: string) {
         const filters = new Map<string, unknown>();
         let operation: "select" | "insert" | "update" = "select";
@@ -669,7 +696,7 @@ describe("Paraşüt sync engine", () => {
           },
           maybeSingle: async () => ({
             data:
-              table === "parasut_contacts"
+              table === "contacts"
                 ? rows.get(filters.get("parasut_id") as string) ?? null
                 : null,
             error: null,
@@ -679,7 +706,7 @@ describe("Paraşüt sync engine", () => {
             error: null,
           }),
           then(resolve: (result: unknown) => unknown) {
-            if (table === "parasut_contacts" && operation === "insert" && value) {
+            if (table === "contacts" && operation === "insert" && value) {
               inserts++;
               rows.set(value.parasut_id as string, {
                 id: `row-${inserts}`,
@@ -707,7 +734,7 @@ describe("Paraşüt sync engine", () => {
         {
           resourceType: "contacts",
           endpoint: "/v4/666034/contacts",
-          table: "parasut_contacts",
+          table: "contacts",
         },
       );
 
@@ -741,7 +768,7 @@ describe("Paraşüt sync engine", () => {
       {
         resourceType: "contacts",
         endpoint: "/v4/666034/contacts",
-        table: "parasut_contacts",
+        table: "contacts",
       },
     );
 
@@ -809,7 +836,7 @@ describe("Paraşüt sync engine", () => {
       {
         resourceType: "contacts",
         endpoint: "/v4/666034/contacts",
-        table: "parasut_contacts",
+        table: "contacts",
       },
     );
 
@@ -854,7 +881,7 @@ describe("Paraşüt sync engine", () => {
         {
           resourceType: "contacts",
           endpoint: "/v4/666034/contacts",
-          table: "parasut_contacts",
+          table: "contacts",
         },
       ),
     ).rejects.toThrow("Checkpoint persistence failed");
@@ -875,6 +902,9 @@ function lifecycleDatabase(options?: {
   checkpointError?: { message: string };
 }): MirrorDatabase {
   return {
+    schema() {
+      return this;
+    },
     from(table: string) {
       const state = {
         value: null as Record<string, unknown> | null,
@@ -899,10 +929,10 @@ function lifecycleDatabase(options?: {
         maybeSingle: async () => ({ data: null, error: null }),
         then(resolve: (value: unknown) => unknown) {
           const checkpoint =
-            table === "parasut_sync_runs" &&
+            table === "sync_runs" &&
             Boolean(state.value?.request_metadata);
           const error =
-            table === "parasut_contacts"
+            table === "contacts"
               ? options?.contactError ?? null
               : checkpoint
                 ? options?.checkpointError ?? null

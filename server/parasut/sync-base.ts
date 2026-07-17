@@ -18,24 +18,29 @@ import type {
   SyncResourceOptions,
   SyncResult,
 } from "./types.ts";
+import { PARASUT_INTEGRATION_SCHEMA } from "./types.ts";
 
 const INCLUDED_DEFINITIONS = new Map<string, MirrorResourceDefinition>([
   [
     "sales_invoice_details",
     {
       resourceType: "sales_invoice_details",
-      table: "parasut_sales_invoice_details",
+      table: "sales_invoice_details",
     },
   ],
   [
     "purchase_bill_details",
     {
       resourceType: "purchase_bill_details",
-      table: "parasut_purchase_bill_details",
+      table: "purchase_bill_details",
     },
   ],
-  ["payments", { resourceType: "payments", table: "parasut_payments" }],
+  ["payments", { resourceType: "payments", table: "payments" }],
 ]);
+
+function integrationDb(context: SyncContext) {
+  return context.database.schema(PARASUT_INTEGRATION_SCHEMA);
+}
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -103,8 +108,8 @@ async function createRun(
       pageSize: DEFAULT_PAGE_SIZE,
     },
   );
-  const result = await context.database
-    .from<{ id: string }>("parasut_sync_runs")
+  const result = await integrationDb(context)
+    .from<{ id: string }>("sync_runs")
     .insert({
       id: runId,
       company_id: context.companyId,
@@ -127,8 +132,8 @@ async function persistCheckpoint(
   runId: string,
   requestMetadata: Record<string, unknown>,
 ): Promise<void> {
-  const result = await context.database
-    .from("parasut_sync_runs")
+  const result = await integrationDb(context)
+    .from("sync_runs")
     .update({ request_metadata: requestMetadata })
     .eq("id", runId)
     .eq("status", "running");
@@ -145,7 +150,7 @@ async function recordError(
   parasutId: string | null = null,
 ): Promise<void> {
   const safe = safeError(error);
-  const result = await context.database.from("parasut_sync_errors").insert({
+  const result = await integrationDb(context).from("sync_errors").insert({
     sync_run_id: runId,
     company_id: context.companyId,
     parasut_company_id: context.parasutCompanyId,
@@ -168,8 +173,8 @@ async function completeRun(
   status: SyncResult["status"],
 ): Promise<void> {
   const completedAt = (context.now?.() ?? new Date()).toISOString();
-  const result = await context.database
-    .from("parasut_sync_runs")
+  const result = await integrationDb(context)
+    .from("sync_runs")
     .update({
       status,
       completed_at: completedAt,
