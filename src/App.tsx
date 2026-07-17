@@ -3,13 +3,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
 import { buildErpUrl, shouldExposeErpRoutes, shouldExposePublicRoutes } from "@/lib/domains";
 import { ERPErrorBoundary } from "@/components/ERPErrorBoundary";
 import { ERPAuthProvider } from "@/contexts/ERPAuthContext";
+import { getErpApplication } from "@/features/erp/apps/applicationRegistry";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -23,10 +24,8 @@ const Hakkimizda = lazy(() => import("./pages/Hakkimizda"));
 const Referanslar = lazy(() => import("./pages/Referanslar"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const Apps = lazy(() => import("./pages/Apps"));
 const EbruPreviewPage = lazy(() => import("./features/ebru-preview/EbruPreviewPage"));
 const AdminRoutes = lazy(() => import("./features/admin").then((module) => ({ default: module.AdminRoutes })));
-const ApplicationShellPage = lazy(() => import("./features/erp/apps/ApplicationShellPage"));
 const ParasutModuleRoutes = lazy(() => import("./features/erp/parasut").then((module) => ({ default: module.ParasutModuleRoutes })));
 const ERPRoutes = lazy(() => import("./features/erp").then((module) => ({ default: module.ERPRoutes })));
 const ERPHomePage = lazy(() => import("./features/erp/dashboard/ERPHomePage"));
@@ -53,6 +52,17 @@ function LegacyErpRedirect() {
   const location = useLocation();
   const suffix = location.pathname.replace(/^\/erp/, "") || "/";
   return <Navigate to={`${suffix}${location.search}`} replace />;
+}
+
+// The old /apps/:appId application-launcher card grid has been retired in favor of
+// the unified ERP shell (ERPLayout + ERPSidebar). This keeps every legacy
+// /apps/<id> deep link working by sending it straight to that module's first
+// real page instead of an intermediate card screen.
+function LegacyAppShellRedirect() {
+  const { appId } = useParams();
+  const app = getErpApplication(appId);
+  const target = app?.modules[0]?.route ?? "/dashboard";
+  return <Navigate to={target} replace />;
 }
 
 const protectedElement = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
@@ -108,12 +118,12 @@ const AppRoutes = () => {
 
       {exposeErpRoutes ? (
           <>
-            <Route path="/apps" element={protectedElement(<Apps />)} />
+            <Route path="/apps" element={protectedElement(<Navigate to="/dashboard" replace />)} />
             <Route path="/apps/ebru-preview/*" element={protectedElement(<EbruPreviewPage />)} />
             <Route path="/apps/calculator/*" element={protectedElement(<LegacyCalculatorRedirect />)} />
             <Route path="/apps/shop-orders" element={protectedElement(<Navigate to="/commerce/siparisler" replace />)} />
             <Route path="/apps/parasut/*" element={protectedElement(<ParasutModuleRoutes />)} />
-            <Route path="/apps/:appId" element={protectedElement(<ApplicationShellPage />)} />
+            <Route path="/apps/:appId" element={protectedElement(<LegacyAppShellRedirect />)} />
             <Route path="/admin/*" element={protectedElement(<AdminRoutes />)} />
             <Route path="/dashboard" element={protectedElement(<ERPHomePage />)} />
             <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/teklifler/yeni" replace />)} />
