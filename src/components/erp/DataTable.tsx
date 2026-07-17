@@ -13,9 +13,10 @@ type DataTableProps<T> = {
   data: T[];
   rowKey: (row: T, index: number) => string;
   emptyMessage?: string;
+  onRowClick?: (row: T) => void;
 };
 
-export function DataTable<T>({ columns, data, rowKey, emptyMessage = "Kayıt bulunamadı." }: DataTableProps<T>) {
+export function DataTable<T>({ columns, data, rowKey, emptyMessage = "Kayıt bulunamadı.", onRowClick }: DataTableProps<T>) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border/80 bg-card/80 shadow-lg shadow-black/10">
     <Table>
@@ -37,7 +38,11 @@ export function DataTable<T>({ columns, data, rowKey, emptyMessage = "Kayıt bul
           </TableRow>
         ) : (
           data.map((row, index) => (
-            <TableRow key={rowKey(row, index)} className="border-border/70 hover:bg-muted/40">
+            <TableRow
+              key={rowKey(row, index)}
+              className={onRowClick ? "cursor-pointer border-border/70 hover:bg-muted/40" : "border-border/70 hover:bg-muted/40"}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+            >
               {columns.map((column) => (
                 <TableCell key={column.key} className={column.className}>
                   {column.render(row)}

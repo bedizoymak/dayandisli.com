@@ -24,8 +24,10 @@ const Referanslar = lazy(() => import("./pages/Referanslar"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Apps = lazy(() => import("./pages/Apps"));
+const EbruPreviewPage = lazy(() => import("./features/ebru-preview/EbruPreviewPage"));
 const AdminRoutes = lazy(() => import("./features/admin").then((module) => ({ default: module.AdminRoutes })));
 const ApplicationShellPage = lazy(() => import("./features/erp/apps/ApplicationShellPage"));
+const ParasutModuleRoutes = lazy(() => import("./features/erp/parasut").then((module) => ({ default: module.ParasutModuleRoutes })));
 const ERPRoutes = lazy(() => import("./features/erp").then((module) => ({ default: module.ERPRoutes })));
 const ERPHomePage = lazy(() => import("./features/erp/dashboard/ERPHomePage"));
 const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
@@ -107,8 +109,10 @@ const AppRoutes = () => {
       {exposeErpRoutes ? (
           <>
             <Route path="/apps" element={protectedElement(<Apps />)} />
+            <Route path="/apps/ebru-preview/*" element={protectedElement(<EbruPreviewPage />)} />
             <Route path="/apps/calculator/*" element={protectedElement(<LegacyCalculatorRedirect />)} />
             <Route path="/apps/shop-orders" element={protectedElement(<Navigate to="/commerce/siparisler" replace />)} />
+            <Route path="/apps/parasut/*" element={protectedElement(<ParasutModuleRoutes />)} />
             <Route path="/apps/:appId" element={protectedElement(<ApplicationShellPage />)} />
             <Route path="/admin/*" element={protectedElement(<AdminRoutes />)} />
             <Route path="/dashboard" element={protectedElement(<ERPHomePage />)} />
