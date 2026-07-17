@@ -26,40 +26,25 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
-      - name: Build project (Ebru preview base path)
+      - name: Build project
         env:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_BASE_PATH: /ebru-preview/
         run: npm run build
 
-      - name: Set SPA rewrite base for preview directory
-        run: |
-          cat > dist/erp/.htaccess <<'EOF'
-          <IfModule mod_rewrite.c>
-            RewriteEngine On
-            RewriteBase /ebru-preview/
-
-            RewriteCond %{REQUEST_FILENAME} -f [OR]
-            RewriteCond %{REQUEST_FILENAME} -d
-            RewriteRule ^ - [L]
-
-            RewriteRule ^ index.html [L]
-          </IfModule>
-          EOF
-
-      - name: Deploy to FTP (Ebru preview directory only)
+      - name: Deploy to FTP (Incremental)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/erp/
-          server-dir: /ebru-preview/
-          # Incremental deploy - never wipes the preview or production root
+          local-dir: ./dist/
+          server-dir: /
+          # Incremental deploy aktif
           dangerous-clean-slate: false
+          # Gereksiz dosyaları yükleme
           exclude: |
             **/*.map
             **/node_modules/**
