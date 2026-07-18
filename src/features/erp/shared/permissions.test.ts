@@ -42,4 +42,34 @@ describe("ERP permission contracts", () => {
       expect(getRequiredPermissionForPath(sidebar?.path ?? "")).toBe(expectedPermission);
     },
   );
+
+  // Real ERP pages now mount under the unified /apps/* shell (e.g. bare
+  // "/finans" is reachable as "/apps/finans"). Every such nested route must
+  // resolve to exactly the same permission as its pre-migration bare path —
+  // never silently fall back to the permissive generic "/apps" -> dashboard.view.
+  it.each([
+    ["/apps/finans", "finance.view"],
+    ["/apps/finans/hareketler/yeni", "finance.view"],
+    ["/apps/musteriler", "crm.view"],
+    ["/apps/tedarikciler", "crm.view"],
+    ["/apps/teklifler", "sales.view"],
+    ["/apps/siparisler", "sales.view"],
+    ["/apps/quotations", "sales.view"],
+    ["/apps/ayarlar", "settings.view"],
+    ["/apps/work-orders", "production.view"],
+    ["/apps/subcontracting", "production.view"],
+    ["/apps/purchase-orders", "purchasing.view"],
+    ["/apps/logistics", "production.view"],
+    ["/apps/kargo", "inventory.view"],
+    ["/apps/documents", "production.view"],
+    ["/apps/health", "reports.view"],
+    ["/apps/time-entries", "hr.view"],
+  ] as const)("resolves the canonical nested route %s to %s, not the generic /apps fallback", (route, expectedPermission) => {
+    expect(getRequiredPermissionForPath(route)).toBe(expectedPermission);
+  });
+
+  it("still resolves bare /apps and /apps/dashboard to the permissive generic permission, unchanged", () => {
+    expect(getRequiredPermissionForPath("/apps")).toBe("dashboard.view");
+    expect(getRequiredPermissionForPath("/apps/dashboard")).toBe("dashboard.view");
+  });
 });
