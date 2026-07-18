@@ -356,6 +356,204 @@
 .crm-history {
   margin-top: 18px;
 }
+.crm-customer-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  gap: 16px;
+  align-items: start;
+}
+.crm-customer-main {
+  min-width: 0;
+}
+.crm-customer-aside {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+.collection-success {
+  margin-bottom: 14px;
+  padding: 11px 14px;
+  border: 1px solid #277c64;
+  border-radius: 9px;
+  background: #123c32;
+  color: #83dfbd;
+  font-size: 11px;
+}
+.collection-panel {
+  padding: 16px;
+}
+.collection-panel h2,
+.customer-activity-panel h2 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+.collection-panel form {
+  display: grid;
+  gap: 11px;
+}
+.collection-method {
+  padding: 3px;
+  border: 1px solid #29415b;
+  border-radius: 9px;
+  background: #091827;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.collection-method button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #8297ac;
+  font-size: 10px;
+}
+.collection-method button.active {
+  background: #155486;
+  color: #fff;
+}
+.collection-fields.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.collection-field {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  color: #92a7bb;
+  font-size: 9px;
+}
+.collection-field input,
+.collection-field select,
+.collection-field textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #29415b;
+  border-radius: 7px;
+  background: #091827;
+  color: #e5edf6;
+  padding: 9px;
+  font: inherit;
+}
+.collection-field textarea {
+  min-height: 62px;
+  resize: vertical;
+}
+.collection-field small {
+  color: #ff8d99;
+}
+.collection-account-selector {
+  margin: 0;
+  padding: 11px;
+  border: 1px solid #32618b;
+  border-radius: 9px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.collection-account-selector legend {
+  padding: 0 5px;
+  color: #80bff4;
+  font-size: 9px;
+}
+.collection-account-selector label {
+  display: flex;
+  gap: 6px;
+  color: #c3d2e1;
+  font-size: 9px;
+}
+.collection-account-note {
+  margin: 0;
+  padding: 8px 9px;
+  border-radius: 7px;
+  background: #12392f;
+  color: #78cfad;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.collection-account-note.unofficial {
+  background: #3b3019;
+  color: #e8bd68;
+}
+.collection-cheque-fields {
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+.collection-actions {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 8px;
+}
+.collection-actions button,
+.collection-panel-summary > button {
+  min-height: 38px;
+  border: 1px solid #29415b;
+  border-radius: 8px;
+  background: #0d2033;
+  color: #b9cbdd;
+}
+.collection-actions button:last-child {
+  border-color: #2879b8;
+  background: #1767a2;
+  color: #fff;
+}
+.collection-panel-summary {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid #29415b;
+}
+.collection-panel-summary > span {
+  color: #65b1ef;
+  font-size: 9px;
+}
+.collection-panel-summary p {
+  display: flex;
+  justify-content: space-between;
+  color: #91a5b9;
+  font-size: 9px;
+}
+.collection-panel-summary > button {
+  width: 100%;
+}
+.collection-account-badge {
+  display: inline-flex;
+  padding: 4px 7px;
+  border-radius: 99px;
+  background: #153d34;
+  color: #70d5ae;
+  font-size: 8px;
+  white-space: nowrap;
+}
+.collection-account-badge.unofficial {
+  background: #443719;
+  color: #edc46f;
+}
+.collection-row-actions {
+  white-space: nowrap;
+}
+.collection-row-actions button:last-child {
+  color: #ff8d99;
+  font-size: 9px;
+}
+.customer-activity-panel {
+  padding: 16px;
+}
+.customer-activity-panel > div {
+  padding: 10px 0;
+  border-top: 1px solid #20364d;
+}
+.customer-activity-panel p {
+  margin: 7px 0 4px;
+  color: #bdccdc;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.customer-activity-panel small {
+  color: #71869d;
+  font-size: 8px;
+}
 .crm-status {
   padding: 4px 7px;
   border-radius: 99px;
@@ -372,6 +570,9 @@
   color: #ff8d99;
 }
 @media (max-width: 1050px) {
+  .crm-customer-workspace {
+    grid-template-columns: 1fr;
+  }
   .crm-kpis.detail {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -403,6 +604,10 @@
     align-items: flex-start;
   }
   .crm-info-card > div:last-child {
+    grid-template-columns: 1fr;
+  }
+  .collection-fields.two,
+  .collection-account-selector {
     grid-template-columns: 1fr;
   }
 }

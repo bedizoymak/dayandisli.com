@@ -22,6 +22,15 @@ import {
   flowTransactions,
 } from "./cashReportData";
 import "./finance-reports.css";
+import { crmCustomers } from "../crm-preview/crmCustomerData";
+import { useCollectionTransactions } from "../shared/collectionTransactions";
+import {
+  accountLabel,
+  formatPreviewDate,
+  formatTry,
+  getCashAccountCollections,
+  getIncomingCheques,
+} from "../shared/collectionSelectors";
 
 function Header<T>({
   breadcrumb,
@@ -110,9 +119,22 @@ function Table<T>({
         <tbody>
           {rows.map((row, index) => (
             <tr key={index}>
-              {columns.map((column) => (
-                <td key={column.header}>{column.value(row)}</td>
-              ))}
+              {columns.map((column) => {
+                const value = column.value(row);
+                return (
+                  <td key={column.header}>
+                    {column.header === "Hesap" ? (
+                      <span
+                        className={`collection-account-badge${value === "Gayri Resmi" ? " unofficial" : ""}`}
+                      >
+                        {value}
+                      </span>
+                    ) : (
+                      value
+                    )}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -296,19 +318,20 @@ const accountColumns: ExportColumn<(typeof cashAccounts)[number]>[] = [
   { header: "Döviz Cinsi", value: (r) => r.currency },
   { header: "Bakiye", value: (r) => r.balance },
 ];
-const checkColumns: ExportColumn<(typeof checks)[number]>[] = [
-  { header: "Düzenleyen", value: (r) => r.issuer },
-  { header: "Çek Bilgileri", value: (r) => r.info },
-  { header: "Vade Tarihi", value: (r) => r.due },
-  { header: "Kalan Meblağ", value: (r) => r.amount },
-  { header: "Durum / Tür", value: (r) => r.status },
-];
-const movementColumns: ExportColumn<(typeof cashMovements)[number]>[] = [
+type CashMovementRow = (typeof cashMovements)[number] & {
+  destination?: string;
+  accountLabel?: string;
+  project?: string;
+};
+const movementColumns: ExportColumn<CashMovementRow>[] = [
   { header: "İşlem Türü", value: (r) => r.type },
   { header: "İşlem Tarihi", value: (r) => r.date },
   { header: "Müşteri / Tedarikçi / Çalışan", value: (r) => r.party },
+  { header: "Hedef Hesap", value: (r) => r.destination || "—" },
   { header: "Kayıt İsmi", value: (r) => r.name },
   { header: "Meblağ", value: (r) => r.amount },
+  { header: "Hesap", value: (r) => r.accountLabel || "—" },
+  { header: "Proje", value: (r) => r.project || "—" },
 ];
 const flowColumns: ExportColumn<(typeof flowTransactions)[number]>[] = [
   { header: "İşlem Türü", value: (r) => r.type },
@@ -320,12 +343,57 @@ const flowColumns: ExportColumn<(typeof flowTransactions)[number]>[] = [
 ];
 
 export function CashAccountsPage() {
+  const transactions = useCollectionTransactions();
+  const collections = getCashAccountCollections(transactions);
+  const canonicalAccounts = [
+    { ...cashAccounts[0], id: "cash-main", name: "Kasa Nakit" },
+    { ...cashAccounts[1], id: "garanti-try", name: "Garanti BBVA TL" },
+    {
+      name: "Türkiye İş Bankası TL",
+      id: "isbank-try",
+      iban: "—",
+      currency: "TRY",
+      balance: "₺0",
+    },
+    {
+      name: "Yapı Kredi TL",
+      id: "yapikredi-try",
+      iban: "—",
+      currency: "TRY",
+      balance: "₺0",
+    },
+    { ...cashAccounts[2], id: "akbank-legacy" },
+  ].map((account) => {
+    const base = Number(
+      account.balance
+        .replace(/[^\d,-]/g, "")
+        .replace(/\./g, "")
+        .replace(",", "."),
+    );
+    const added = getCashAccountCollections(transactions, account.id).reduce(
+      (sum, transaction) => sum + transaction.amount,
+      0,
+    );
+    return { ...account, balance: formatTry(base + added) };
+  });
+  const collectionRows: CashMovementRow[] = collections.map((transaction) => ({
+    type: "Müşteriden Tahsilat",
+    date: formatPreviewDate(transaction.transactionDate),
+    party:
+      crmCustomers.find((customer) => customer.id === transaction.customerId)
+        ?.name || transaction.customerId,
+    destination: transaction.destinationAccountName,
+    name: transaction.description || "Müşteri tahsilatı",
+    amount: `+${formatTry(transaction.amount)}`,
+    accountLabel: accountLabel(transaction.accountType),
+    project: transaction.relatedProjectId || "—",
+  }));
   return (
     <div className="report-page">
       <Header
         breadcrumb="Muhasebe ve Finans / Kasa / Kasa ve Bankalar"
         title="Kasa ve Bankalar"
-        rows={cashAccounts}
+        rows={canonicalAccounts}
         columns={accountColumns}
         filename="kasa-ve-bankalar"
         actions={
@@ -350,18 +418,75 @@ export function CashAccountsPage() {
           <Filter /> Filtrele
         </button>
       </div>
-      <Table rows={cashAccounts} columns={accountColumns} />
+      <Table rows={canonicalAccounts} columns={accountColumns} />
+      <h2 className="report-section-title">Tahsilat Hareketleri</h2>
+      <Table
+        rows={[...collectionRows, ...cashMovements]}
+        columns={movementColumns}
+      />
     </div>
   );
 }
 export function ChecksPage() {
+  const transactions = useCollectionTransactions();
+  const incoming = getIncomingCheques(transactions).map((transaction) => ({
+    issuer:
+      transaction.drawerName ||
+      crmCustomers.find((customer) => customer.id === transaction.customerId)
+        ?.name ||
+      transaction.customerId,
+    info: `Çek #${transaction.chequeNumber || "—"}`,
+    due: transaction.dueDate ? formatPreviewDate(transaction.dueDate) : "—",
+    amount: formatTry(transaction.amount),
+    status: `${transaction.status === "cleared" ? "Tahsil Edildi" : transaction.status === "bounced" ? "Karşılıksız" : "Portföyde"} · Alınan Çek`,
+    bank:
+      [transaction.chequeBank, transaction.chequeBranch]
+        .filter(Boolean)
+        .join(" / ") || "—",
+    accountLabel: accountLabel(transaction.accountType),
+  }));
+  const chequeRows = [
+    ...incoming,
+    ...checks.map((cheque) => ({
+      ...cheque,
+      bank: "—",
+      accountLabel: "Resmi",
+    })),
+  ];
+  const chequeColumns = [
+    {
+      header: "Müşteri / Keşideci",
+      value: (row: (typeof chequeRows)[number]) => row.issuer,
+    },
+    {
+      header: "Çek Bilgileri",
+      value: (row: (typeof chequeRows)[number]) => row.info,
+    },
+    { header: "Banka", value: (row: (typeof chequeRows)[number]) => row.bank },
+    {
+      header: "Vade Tarihi",
+      value: (row: (typeof chequeRows)[number]) => row.due,
+    },
+    {
+      header: "Meblağ",
+      value: (row: (typeof chequeRows)[number]) => row.amount,
+    },
+    {
+      header: "Durum / Tür",
+      value: (row: (typeof chequeRows)[number]) => row.status,
+    },
+    {
+      header: "Hesap",
+      value: (row: (typeof chequeRows)[number]) => row.accountLabel,
+    },
+  ];
   return (
     <div className="report-page">
       <Header
         breadcrumb="Muhasebe ve Finans / Kasa / Çekler"
         title="Çekler"
-        rows={checks}
-        columns={checkColumns}
+        rows={chequeRows}
+        columns={chequeColumns}
         filename="cekler"
         actions={
           <Link
@@ -380,7 +505,7 @@ export function ChecksPage() {
           <Filter /> Filtrele
         </button>
       </div>
-      <Table rows={checks} columns={checkColumns} />
+      <Table rows={chequeRows} columns={chequeColumns} />
     </div>
   );
 }
