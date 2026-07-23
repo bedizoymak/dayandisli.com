@@ -2,16 +2,22 @@ import { describe, expect, it } from "vitest";
 import { ParasutContactsOnlySync, type MirrorContactLookup } from "./parasut-contacts-only-sync.ts";
 import type { MirrorDatabase, QueryBuilder, SyncContext } from "../../parasut/types.ts";
 
-/** Minimal fake MirrorDatabase — every chain resolves successfully with no data, enough for syncContacts() to complete a run with zero observed rows (this test only cares that syncAndCheck calls syncContacts and then the lookup, not sync-engine behavior itself — that's covered by server/parasut/sync-engine.test.ts). */
+/** Minimal fake MirrorDatabase — every chain resolves successfully with no data, enough for syncContacts() to complete a run with zero observed rows (this test only cares that syncAndCheck calls syncContacts and then the lookup, not sync-engine behavior itself — that's covered by server/parasut/sync-engine.test.ts and server/parasut/sync-reconciliation.test.ts). */
 function makeFakeDatabase(): MirrorDatabase {
   function chain<T>(): QueryBuilder<T> {
-    const result = { data: { id: "run-1" } as unknown as T, error: null };
+    const singleResult = { data: { id: "run-1" } as unknown as T, error: null };
+    // syncContacts runs with reconcile: true, so its post-run reconciliation
+    // step issues a plain (non-maybeSingle) `.select(...).eq(...)` expecting
+    // an array back — `then` must resolve that shape, while `.single()`/
+    // `.maybeSingle()` (used for sync_runs row creation) still resolve the
+    // single-row shape above.
+    const listResult = { data: [] as unknown as T, error: null };
     const builder: QueryBuilder<T> = {
       select: () => builder,
       eq: () => builder,
-      maybeSingle: async () => result,
-      single: async () => result,
-      then: (onFulfilled) => Promise.resolve(result).then(onFulfilled as never),
+      maybeSingle: async () => singleResult,
+      single: async () => singleResult,
+      then: (onFulfilled) => Promise.resolve(listResult).then(onFulfilled as never),
     } as QueryBuilder<T>;
     return builder;
   }

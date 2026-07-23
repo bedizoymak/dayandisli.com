@@ -97,8 +97,10 @@ class FakeQuery<T extends FakeRow> implements ScopedQuery<T> {
     });
     this.orGroups.push((row) =>
       conditions.some(({ column, op, pattern }) => {
-        const value = String(getPath(row, column) ?? "").toLowerCase();
-        if (op === "ilike") return value.includes(pattern.replace(/%/g, "").toLowerCase());
+        const raw = getPath(row, column);
+        if (op === "ilike") return String(raw ?? "").toLowerCase().includes(pattern.replace(/%/g, "").toLowerCase());
+        if (op === "is") return pattern === "null" ? raw == null : raw === (pattern === "true");
+        if (op === "eq") return String(raw ?? "") === pattern;
         return false;
       }),
     );

@@ -16,7 +16,8 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { resolveCompanyScope, type ErpUserAuthzRow } from "../_shared/company-scope.ts";
 import { SupabaseAttemptRepository, SupabaseAuditRepository, SupabaseCommandRepository, SupabaseProviderLinkRepository, type OutboundAdminLike } from "../_shared/accounting-outbound-repository.ts";
-import { computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer } from "./handlers.ts";
+import { computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResyncContacts } from "./handlers.ts";
+import { syncContacts } from "../../../server/parasut/sync-contacts.ts";
 import { CreateCustomerCommandHandler } from "../../../server/erp/commands/create-customer-command.ts";
 import { ParasutCustomerWriteProvider } from "../../../server/erp/providers/parasut-customer-write-provider.ts";
 import { ParasutContactVerifier, type MinimalParasutReadClient } from "../../../server/erp/providers/parasut-contact-verifier.ts";
@@ -149,9 +150,31 @@ serve(async (req) => {
     );
   }
 
-  if (action !== "create-customer") return json({ error: "Bilinmeyen işlem." }, 400);
-
   const parasutCompanyId = env("PARASUT_COMPANY_ID");
+
+  // Read+mirror-reconcile only — never a Paraşüt write, so deliberately not
+  // gated by ACCOUNTING_WRITE_ENABLED. See handlers.ts's handleResyncContacts
+  // doc comment for why this exists.
+  if (action === "resync-contacts") {
+    try {
+      const tokens = new TokenManager({
+        clientId: env("PARASUT_CLIENT_ID"),
+        clientSecret: env("PARASUT_CLIENT_SECRET"),
+        username: env("PARASUT_USERNAME"),
+        password: env("PARASUT_PASSWORD"),
+      });
+      const database = admin as unknown as MirrorDatabase;
+      const context: SyncContext = { companyId: activeCompanyId, parasutCompanyId, database, client: new ParaşütClient(tokens) };
+      const response = await handleResyncContacts(access.hasCreatePermission, () => syncContacts(context));
+      return json(response);
+    } catch (error) {
+      if (error instanceof CreateCustomerRejectedError) return json({ error: error.message }, error.httpStatus);
+      const message = error instanceof Error ? error.message : "Beklenmeyen hata";
+      return json({ error: message }, 500);
+    }
+  }
+
+  if (action !== "create-customer") return json({ error: "Bilinmeyen işlem." }, 400);
 
   try {
     // Composition root — everything below is real, tested code (see each

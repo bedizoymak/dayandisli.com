@@ -300,6 +300,23 @@ export async function handleList(admin: SupabaseAdminLike, params: ListParams, a
         "attributes->>account_type",
         params.resource === "customers" ? "customer" : "supplier",
       );
+      // Deletion-reconciliation default: a contact deleted in Paraşüt is
+      // marked source_archived = true by the mirror sync (see
+      // server/parasut/reconciliation.ts), never physically removed. Normal
+      // customer/supplier lists must exclude those by default — only an
+      // EXPLICIT filters.archived === true opts into seeing them (e.g. a
+      // future "show archived" toggle). This differs from every other
+      // resource below, whose existing default (show everything unless the
+      // caller explicitly passes archived: false) is left untouched.
+      //
+      // Matches "false OR null" rather than eq("source_archived", false):
+      // rows synced before this feature existed (or any contact Paraşüt
+      // never reported an `archived` attribute for) have source_archived =
+      // NULL, not false — an eq(..., false) filter would wrongly exclude
+      // every one of those under normal SQL NULL semantics.
+      if ((params.filters ?? {}).archived !== true) {
+        table = table.or("source_archived.eq.false,source_archived.is.null");
+      }
       searchColumns = ["attributes->>name", "attributes->>email", "attributes->>tax_number"];
       break;
     }

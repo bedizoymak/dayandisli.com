@@ -300,3 +300,46 @@ describe("handleSyncStatus — sync runs and errors are exact-company scoped", (
     expect((status.runs[0] as FakeRow).status).toBe("failed");
   });
 });
+
+describe("handleList (customers/suppliers) — deletion-reconciliation default visibility", () => {
+  function seedWithArchivedCustomer(): Record<string, FakeRow[]> {
+    const seed = seedTwoCompanies();
+    seed["parasut.contacts"] = [
+      ...seed["parasut.contacts"],
+      {
+        parasut_id: "999",
+        company_id: COMPANY_A,
+        attributes: { name: "Deleted Test Customer", account_type: "customer", trl_balance: "0" },
+        relationships: {},
+        source_archived: true,
+      },
+    ];
+    return seed;
+  }
+
+  it("excludes an archived (deleted-from-Paraşüt) contact from the default customers list", async () => {
+    const admin = createFakeSupabaseAdmin(seedWithArchivedCustomer());
+    const result = await handleList(admin, { resource: "customers" }, COMPANY_A);
+    const names = result.rows.map((row) => ((row as FakeRow).attributes as FakeRow).name);
+    expect(names).not.toContain("Deleted Test Customer");
+  });
+
+  it("still includes the archived contact when filters.archived === true is passed explicitly", async () => {
+    const admin = createFakeSupabaseAdmin(seedWithArchivedCustomer());
+    const result = await handleList(admin, { resource: "customers", filters: { archived: true } }, COMPANY_A);
+    const names = result.rows.map((row) => ((row as FakeRow).attributes as FakeRow).name);
+    expect(names).toContain("Deleted Test Customer");
+  });
+
+  it("does not exclude archived rows for an unrelated resource (payments) by default — this default is scoped to customers/suppliers only", async () => {
+    const seed = seedTwoCompanies();
+    seed["parasut.payments"] = [
+      ...seed["parasut.payments"],
+      { parasut_id: "801", company_id: COMPANY_A, attributes: { amount: "1", currency: "TRY", date: "2026-07-01", notes: "old archived payment" }, relationships: {}, source_archived: true },
+    ];
+    const admin = createFakeSupabaseAdmin(seed);
+    const result = await handleList(admin, { resource: "payments" }, COMPANY_A);
+    const notes = result.rows.map((row) => ((row as FakeRow).attributes as FakeRow).notes);
+    expect(notes).toContain("old archived payment");
+  });
+});

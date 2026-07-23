@@ -150,12 +150,30 @@ export interface SyncResourceOptions {
   endpoint: string;
   table: MirrorTable;
   include?: string[];
+  /**
+   * Opt-in only — enables post-run deletion reconciliation (see
+   * reconciliation.ts) for resources proven to be complete, direct-list
+   * paginated snapshots. Leave unset/false for nested/derived/internal
+   * resources (payments, *_details, sync_runs/sync_errors themselves) or
+   * any resource not yet empirically confirmed as a full-snapshot endpoint —
+   * see resource-registry.ts's `support` classification.
+   */
+  reconcile?: boolean;
+}
+
+export interface ReconciliationOutcome {
+  /** How many previously-active mirror rows were marked source_archived = true this run. Never a DELETE. */
+  archivedCount: number;
+  /** Non-null only when reconciliation was intentionally skipped (see reconciliation.ts) — archivedCount is always 0 in that case. */
+  skippedReason: string | null;
 }
 
 export interface SyncResult extends SyncCounters {
   runId: string;
   resourceType: string;
   status: "completed" | "partial" | "failed";
+  /** Only present when `options.reconcile` was true for this run. */
+  reconciliation?: ReconciliationOutcome;
 }
 
 export interface PaginatedPage {

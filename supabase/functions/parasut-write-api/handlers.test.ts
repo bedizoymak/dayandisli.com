@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertCreateCustomerAllowed, computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, parseCreateCustomerRequestBody, toSafeResponse } from "./handlers.ts";
+import { assertCreateCustomerAllowed, computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResyncContacts, parseCreateCustomerRequestBody, toSafeResponse } from "./handlers.ts";
 import { CreateCustomerCommandHandler } from "../../../server/erp/commands/create-customer-command.ts";
 import type { CreateCustomerCommandRecord } from "../../../server/erp/commands/create-customer-command.ts";
 import type { ProviderCapabilities } from "../../../server/erp/providers/accounting-provider.ts";
@@ -171,5 +171,36 @@ describe("handleCreateCustomer", () => {
     const response = await handleCreateCustomer(handler, "company-1", "666034", "user-1", { hasPermission: true, featureFlagEnabled: true, capabilities: FULL_CAPABILITIES }, { input: { name: "Acme" }, idempotencyKey: "idem-1", confirmation: true });
     expect(response.status).toBe("mirrored_back");
     expect(response.mirroredParasutId).toBe("1010699999");
+  });
+});
+
+describe("handleResyncContacts", () => {
+  it("rejects when the caller lacks permission, without ever invoking the sync function", async () => {
+    let called = false;
+    await expect(
+      handleResyncContacts(false, async () => {
+        called = true;
+        return { pages: 0, observed: 0, inserted: 0, updated: 0, unchanged: 0, errors: 0, runId: "r", resourceType: "contacts", status: "completed" };
+      }),
+    ).rejects.toThrow(CreateCustomerRejectedError);
+    expect(called).toBe(false);
+  });
+
+  it("returns the sync result's counters and reconciliation outcome on success", async () => {
+    const response = await handleResyncContacts(true, async () => ({
+      pages: 18,
+      observed: 437,
+      inserted: 0,
+      updated: 1,
+      unchanged: 436,
+      errors: 0,
+      runId: "run-1",
+      resourceType: "contacts",
+      status: "completed",
+      reconciliation: { archivedCount: 1, skippedReason: null },
+    }));
+    expect(response.status).toBe("completed");
+    expect(response.reconciliation).toEqual({ archivedCount: 1, skippedReason: null });
+    expect(response.observed).toBe(437);
   });
 });

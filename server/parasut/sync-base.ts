@@ -10,15 +10,17 @@ import {
   type SyncSummary,
 } from "./sync-observability.ts";
 import { upsertResource } from "./upsert-resource.ts";
+import { computeIdsToArchive, evaluateReconciliationEligibility } from "./reconciliation.ts";
 import type {
   JsonApiResource,
   MirrorResourceDefinition,
+  ReconciliationOutcome,
   SyncContext,
   SyncCounters,
   SyncResourceOptions,
   SyncResult,
 } from "./types.ts";
-import { PARASUT_INTEGRATION_SCHEMA } from "./types.ts";
+import { PARASUT_INTEGRATION_SCHEMA, PARASUT_MIRROR_SCHEMA } from "./types.ts";
 
 const INCLUDED_DEFINITIONS = new Map<string, MirrorResourceDefinition>([
   [
@@ -196,6 +198,63 @@ function countOutcome(
   counters[outcome]++;
 }
 
+function mirrorDb(context: SyncContext) {
+  return context.database.schema(PARASUT_MIRROR_SCHEMA);
+}
+
+/**
+ * Deletion reconciliation (see reconciliation.ts for the guard/diff logic
+ * itself) — runs only for resources that opted in via `options.reconcile`,
+ * and only after `syncCollection`'s own page loop finished without error.
+ * Scoped to the exact (company_id, parasut_company_id, resource_type) of
+ * this run — never touches another tenant or another resource's rows.
+ * Archives by UPDATE ... SET source_archived = true only; never DELETE.
+ */
+async function reconcileMissingResources(
+  context: SyncContext,
+  options: SyncResourceOptions,
+  observedIds: Set<string>,
+  counters: SyncCounters,
+): Promise<ReconciliationOutcome> {
+  const existing = await mirrorDb(context)
+    .from<{ parasut_id: string; source_archived: boolean | null }[]>(options.table)
+    .select("parasut_id, source_archived")
+    .eq("company_id", context.companyId)
+    .eq("parasut_company_id", context.parasutCompanyId)
+    .eq("resource_type", options.resourceType);
+  if (existing.error) throw new Error(existing.error.message ?? "Reconciliation lookup failed");
+
+  const previouslyActiveIds = (existing.data ?? [])
+    .filter((row) => row.source_archived !== true)
+    .map((row) => row.parasut_id);
+
+  const decision = evaluateReconciliationEligibility({
+    loopCompletedWithoutError: true,
+    errorCount: counters.errors,
+    pagesFetched: counters.pages,
+    observedCount: observedIds.size,
+    previouslyActiveCount: previouslyActiveIds.length,
+  });
+
+  if (decision.skip) {
+    return { archivedCount: 0, skippedReason: decision.reason };
+  }
+
+  const idsToArchive = computeIdsToArchive(previouslyActiveIds, observedIds);
+  for (const parasutId of idsToArchive) {
+    const result = await mirrorDb(context)
+      .from(options.table)
+      .update({ source_archived: true })
+      .eq("company_id", context.companyId)
+      .eq("parasut_company_id", context.parasutCompanyId)
+      .eq("resource_type", options.resourceType)
+      .eq("parasut_id", parasutId);
+    if (result.error) throw new Error(result.error.message ?? "Reconciliation archive-update failed");
+  }
+
+  return { archivedCount: idsToArchive.length, skippedReason: null };
+}
+
 async function storeIncluded(
   context: SyncContext,
   resources: JsonApiResource[],
@@ -236,6 +295,11 @@ export async function syncCollection(
     resourceType: options.resourceType,
     table: options.table,
   };
+  // Only populated/used when options.reconcile is true — tracks every
+  // top-level (non-included) parasut_id actually observed this run, so a
+  // genuinely complete run can be diffed against what the mirror already
+  // has. See reconcileMissingResources().
+  const observedIds = new Set<string>();
 
   try {
     for await (const page of context.client.getPaginated(
@@ -251,6 +315,7 @@ export async function syncCollection(
 
       for (const resource of parentResources) {
         counters.observed++;
+        if (options.reconcile) observedIds.add(resource.id);
         try {
           const result = await upsertResource(
             context.database,
@@ -308,7 +373,20 @@ export async function syncCollection(
             : 0,
       }),
     );
-    return { ...counters, runId, resourceType: options.resourceType, status };
+
+    // Reconciliation only ever runs for a run that finished as "completed"
+    // (never "partial") — a resource opting in via options.reconcile but
+    // whose run had any error must never have rows archived on its behalf.
+    let reconciliation: ReconciliationOutcome | undefined;
+    if (options.reconcile) {
+      if (status === "completed") {
+        reconciliation = await reconcileMissingResources(context, options, observedIds, counters);
+      } else {
+        reconciliation = { archivedCount: 0, skippedReason: "sync_run_had_errors" };
+      }
+    }
+
+    return { ...counters, runId, resourceType: options.resourceType, status, ...(reconciliation ? { reconciliation } : {}) };
   } catch (error) {
     counters.errors++;
     await recordError(context, runId, options.resourceType, error);

@@ -9,6 +9,7 @@
 // convention as supabase/functions/parasut-api/handlers.ts.
 import { CreateCustomerCommandHandler, type CreateCustomerCommandInput, type CreateCustomerCommandRecord } from "../../../server/erp/commands/create-customer-command.ts";
 import type { ProviderCapabilities } from "../../../server/erp/providers/accounting-provider.ts";
+import type { ReconciliationOutcome, SyncResult } from "../../../server/parasut/types.ts";
 
 export interface CreateCustomerRequestBody {
   input: CreateCustomerCommandInput;
@@ -107,6 +108,48 @@ export function assertCreateCustomerAllowed(guard: CreateCustomerGuardInput): vo
   if (!guard.hasPermission) throw new CreateCustomerRejectedError("Bu işlem için 'accounting.contacts.create' yetkisi gereklidir.", 403);
   if (!guard.featureFlagEnabled) throw new CreateCustomerRejectedError("Müşteri yazma özelliği şu anda devre dışı (ACCOUNTING_WRITE_ENABLED=false).", 403);
   if (!guard.capabilities.contacts.create) throw new CreateCustomerRejectedError("Aktif sağlayıcı müşteri oluşturmayı desteklemiyor.", 403);
+}
+
+export interface ResyncContactsResponse {
+  status: SyncResult["status"];
+  pages: number;
+  observed: number;
+  inserted: number;
+  updated: number;
+  unchanged: number;
+  errors: number;
+  reconciliation?: ReconciliationOutcome;
+}
+
+/**
+ * Runs ONLY the existing GET contacts synchronization (server/parasut/sync-contacts.ts,
+ * reconcile: true) and returns its outcome. Never sends anything to
+ * Paraşüt, never touches any other resource, never bypasses
+ * ACCOUNTING_WRITE_ENABLED-gated write logic (there is none here) — this is
+ * a read+mirror-reconcile operation, not a provider write, so it is
+ * deliberately NOT gated by the accounting-write feature flag, only by the
+ * same admin/'accounting.contacts.create' permission already required for
+ * customer creation (see index.ts's `resolveAccess`). Exists specifically
+ * so deletion reconciliation (see server/parasut/reconciliation.ts) can be
+ * triggered and verified without needing to create another test customer
+ * just to reach the post-write contacts-only sync step.
+ */
+export async function handleResyncContacts(
+  hasPermission: boolean,
+  runSync: () => Promise<SyncResult>,
+): Promise<ResyncContactsResponse> {
+  if (!hasPermission) throw new CreateCustomerRejectedError("Bu işlem için 'accounting.contacts.create' yetkisi gereklidir.", 403);
+  const result = await runSync();
+  return {
+    status: result.status,
+    pages: result.pages,
+    observed: result.observed,
+    inserted: result.inserted,
+    updated: result.updated,
+    unchanged: result.unchanged,
+    errors: result.errors,
+    reconciliation: result.reconciliation,
+  };
 }
 
 export async function handleCreateCustomer(
