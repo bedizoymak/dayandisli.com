@@ -40,63 +40,28 @@ import {
   upcomingItems,
 } from "./previewData";
 import { FinanceOverview } from "./finance-preview/FinanceOverview";
+import {
+  CanonicalFinanceReportPage,
+  CanonicalParasutListPage,
+  canonicalParasutPages,
+} from "./finance-preview/CanonicalParasutPages";
 import { financeNavigation } from "./finance-preview/financePreviewData";
-import { SalesInvoiceForm } from "./finance-preview/FinanceInvoicePages";
-import {
-  CollectionReportPage,
-  CustomerFormPage,
-  CustomerListPage,
-  InvoiceListPage,
-} from "./finance-preview/FinanceIncomePages";
-import {
-  ExpenseInvoicePage,
-  ExpenseListPage,
-  IncomingInvoicesPage,
-  SimpleExpenseForm,
-} from "./finance-preview/FinanceExpensePages";
-import {
-  CashAccountsPage,
-  CashBankReportPage,
-  CashFlowReportPage,
-  ChecksPage,
-  IncomeExpenseReportPage,
-  PaymentsReportPage,
-  VatReportPage,
-} from "./finance-preview/FinanceReportPages";
-import {
-  CheckFormPage,
-  DispatchFormPage,
-  DispatchesPage,
-  OrderFormPage,
-  OrdersPage,
-  ProductFormPage,
-  ProductsPage,
-  StockHistoryPage,
-  StockReportPage,
-  SupplierFormPage,
-  SuppliersPage,
-} from "./finance-preview/OperationsPages";
-import { CustomerListPage as CrmCustomerListPage } from "./crm-preview/CustomerListPage";
-import { CustomerFormPage as CrmCustomerFormPage } from "./crm-preview/CustomerFormPage";
-import { CustomerDetailPage } from "./crm-preview/CustomerDetailPage";
-import { crmSubmenu } from "./crm-preview/crmCustomerData";
 import "./crm-preview/crm-preview.css";
-import { salesSubmenu } from "./sales-preview/salesData";
-import {
-  QuotesPage,
-  SalesActivitiesPage,
-  SalesOrdersPage,
-} from "./sales-preview/SalesListPages";
-import {
-  QuoteDetailPage,
-  QuoteFormPage,
-  SalesOrderFormPage,
-} from "./sales-preview/QuotePages";
 import "./sales-preview/sales-preview.css";
-import { QuotePrintPage } from "./sales-preview/pdf/QuotePrintPage";
-import { reportsNavigation } from "./reports-preview/reportsPreviewData";
-import { ProductionReportPage } from "./reports-preview/ProductionReportPage";
 import "./ebru-preview.css";
+
+const crmSubmenu = [{ id: "customers", label: "Müşteriler", route: "/apps/crm/customers" }];
+const salesSubmenu = [
+  { id: "quotes", label: "Teklifler", route: "/apps/sales/quotes" },
+  { id: "orders", label: "Siparişler", route: "/apps/sales/orders" },
+  { id: "activities", label: "Satış Faaliyetleri", route: "/apps/sales/activities" },
+];
+const reportsNavigation = [
+  { id: "collections", label: "Tahsilat Raporu", route: "/apps/reports/collections" },
+  { id: "income-expense", label: "Gelir-Gider Raporu", route: "/apps/reports/income-expense" },
+  { id: "cash-bank", label: "Kasa-Banka Raporu", route: "/apps/reports/cash-bank" },
+  { id: "production", label: "Üretim Raporu", route: "/apps/reports/production" },
+];
 
 const navIcons = [
   Gauge,
@@ -123,6 +88,10 @@ function initials(value: string) {
       .map((part) => part[0]?.toLocaleUpperCase("tr-TR"))
       .join("") || "DD"
   );
+}
+
+function UnavailablePage({ title = "Bu iş akışı henüz kullanıma açık değil" }: { title?: string }) {
+  return <div className="income-page"><section className="ebru-card income-state"><h1>{title}</h1><p>Bu ekran için güvenilir, salt okunur bir Paraşüt veri kaynağı bulunmuyor.</p></section></div>;
 }
 
 export default function EbruPreviewPage() {
@@ -334,6 +303,32 @@ export default function EbruPreviewPage() {
     event.preventDefault();
     if (matches[0]) navigate(matches[0].route);
   };
+
+  const canonicalPage =
+    location.pathname.endsWith("/finance/income/invoices") ? canonicalParasutPages.invoices
+      : location.pathname.endsWith("/finance/income/customers") ? canonicalParasutPages.customers
+      : location.pathname.endsWith("/finance/expense/list") ? canonicalParasutPages.expenses
+      : location.pathname.endsWith("/finance/expense/incoming-invoices") ? canonicalParasutPages.purchaseBills
+      : location.pathname.endsWith("/finance/purchasing/orders") ? canonicalParasutPages.purchaseBills
+      : location.pathname.endsWith("/finance/purchasing/suppliers") ? canonicalParasutPages.suppliers
+      : location.pathname.endsWith("/finance/cash/accounts") ? canonicalParasutPages.accounts
+      : location.pathname.endsWith("/finance/inventory/products") ? canonicalParasutPages.products
+      : location.pathname.endsWith("/finance/inventory/history") ? canonicalParasutPages.stockHistory
+      : location.pathname.endsWith("/finance/inventory/report") ? canonicalParasutPages.inventory
+      : location.pathname.includes("/finance/inventory/outgoing-dispatches") || location.pathname.includes("/finance/inventory/incoming-dispatches") ? canonicalParasutPages.shipments
+      : location.pathname.endsWith("/sales/quotes") ? canonicalParasutPages.offers
+      : location.pathname.endsWith("/crm/customers") ? canonicalParasutPages.customers
+      : location.pathname.endsWith("/hr") || location.pathname.endsWith("/hr/employees") ? canonicalParasutPages.employees
+      : location.pathname.endsWith("/hr/salaries") ? canonicalParasutPages.salaries
+      : location.pathname.endsWith("/e-documents") || location.pathname.endsWith("/e-documents/invoices") ? canonicalParasutPages.eInvoices
+      : null;
+  const canonicalReport =
+    location.pathname.endsWith("/finance/income/collection-report") || location.pathname.endsWith("/reports/collections") ? "collections"
+      : location.pathname.endsWith("/finance/expense/payments-report") ? "payments"
+      : location.pathname.endsWith("/finance/expense/income-expense-report") || location.pathname.endsWith("/reports/income-expense") ? "incomeExpense"
+      : location.pathname.endsWith("/finance/expense/vat-report") ? "vat"
+      : location.pathname.endsWith("/finance/cash/cash-bank-report") || location.pathname.endsWith("/finance/cash/cash-flow-report") || location.pathname.endsWith("/reports/cash-bank") ? "cash"
+      : null;
 
   return (
     <div className="ebru-dashboard">
@@ -724,140 +719,19 @@ export default function EbruPreviewPage() {
             </div>
           </header>
 
-          {activeView === "reports" ? (
-            location.pathname.endsWith("/reports/collections") ? (
-              <CollectionReportPage />
-            ) : location.pathname.endsWith("/reports/income-expense") ? (
-              <IncomeExpenseReportPage />
-            ) : location.pathname.endsWith("/reports/cash-bank") ? (
-              <CashBankReportPage />
-            ) : (
-              <ProductionReportPage />
-            )
+          {canonicalPage ? (
+            <CanonicalParasutListPage config={canonicalPage} />
+          ) : canonicalReport ? (
+            <CanonicalFinanceReportPage kind={canonicalReport} />
+          ) : activeView === "reports" ? (
+            <UnavailablePage title="Bu rapor için doğrulanmış Paraşüt kaynağı bulunmuyor" />
           ) : activeView === "sales" ? (
-            location.pathname.endsWith("/print") ? (
-              <QuotePrintPage />
-            ) : location.pathname.endsWith("/sales/quotes/new") ||
-              location.pathname.endsWith("/edit") ? (
-              <QuoteFormPage />
-            ) : location.pathname.endsWith("/sales/quotes") ? (
-              <QuotesPage />
-            ) : location.pathname.includes("/sales/quotes/") ? (
-              <QuoteDetailPage />
-            ) : location.pathname.endsWith("/sales/orders/new") ? (
-              <SalesOrderFormPage />
-            ) : location.pathname.endsWith("/sales/orders") ? (
-              <SalesOrdersPage />
-            ) : (
-              <SalesActivitiesPage />
-            )
+            <UnavailablePage />
           ) : activeView === "crm" ? (
-            location.pathname.endsWith("/crm/customers/new") ? (
-              <CrmCustomerFormPage />
-            ) : location.pathname.endsWith("/edit") ? (
-              <CrmCustomerFormPage edit />
-            ) : location.pathname.endsWith("/crm/customers") ? (
-              <CrmCustomerListPage />
-            ) : (
-              <CustomerDetailPage />
-            )
+            <UnavailablePage />
           ) : activeView === "finance" ? (
-            location.pathname.endsWith("/finance/income/invoices/new") ? (
-              <SalesInvoiceForm />
-            ) : location.pathname.endsWith(
-                "/finance/expense/list/new/invoice",
-              ) ? (
-              <ExpenseInvoicePage />
-            ) : location.pathname.endsWith(
-                "/finance/expense/list/new/payroll",
-              ) ? (
-              <SimpleExpenseForm type="payroll" />
-            ) : location.pathname.endsWith("/finance/expense/list/new/tax") ? (
-              <SimpleExpenseForm type="tax" />
-            ) : location.pathname.endsWith(
-                "/finance/expense/list/new/bank-expense",
-              ) ? (
-              <SimpleExpenseForm type="bank" />
-            ) : location.pathname.endsWith(
-                "/finance/expense/list/new/other",
-              ) ? (
-              <SimpleExpenseForm type="other" />
-            ) : location.pathname.endsWith(
-                "/finance/expense/list/new/accommodation",
-              ) ? (
-              <ExpenseInvoicePage accommodation />
-            ) : location.pathname.endsWith("/finance/income/invoices") ? (
-              <InvoiceListPage />
-            ) : location.pathname.endsWith("/finance/income/customers/new") ? (
-              <CustomerFormPage />
-            ) : location.pathname.endsWith("/finance/income/customers") ? (
-              <CustomerListPage />
-            ) : location.pathname.endsWith(
-                "/finance/income/collection-report",
-              ) ? (
-              <CollectionReportPage />
-            ) : location.pathname.endsWith("/finance/expense/list") ? (
-              <ExpenseListPage />
-            ) : location.pathname.endsWith(
-                "/finance/expense/incoming-invoices",
-              ) ? (
-              <IncomingInvoicesPage />
-            ) : location.pathname.endsWith(
-                "/finance/expense/income-expense-report",
-              ) ? (
-              <IncomeExpenseReportPage />
-            ) : location.pathname.endsWith(
-                "/finance/expense/payments-report",
-              ) ? (
-              <PaymentsReportPage />
-            ) : location.pathname.endsWith("/finance/expense/vat-report") ? (
-              <VatReportPage />
-            ) : location.pathname.endsWith("/finance/cash/checks/new") ? (
-              <CheckFormPage />
-            ) : location.pathname.endsWith(
-                "/finance/inventory/products/new",
-              ) ? (
-              <ProductFormPage />
-            ) : location.pathname.endsWith("/finance/inventory/products") ? (
-              <ProductsPage />
-            ) : location.pathname.endsWith(
-                "/finance/inventory/outgoing-dispatches/new",
-              ) ? (
-              <DispatchFormPage type="outgoing" />
-            ) : location.pathname.endsWith(
-                "/finance/inventory/outgoing-dispatches",
-              ) ? (
-              <DispatchesPage type="outgoing" />
-            ) : location.pathname.endsWith(
-                "/finance/inventory/incoming-dispatches/new",
-              ) ? (
-              <DispatchFormPage type="incoming" />
-            ) : location.pathname.endsWith(
-                "/finance/inventory/incoming-dispatches",
-              ) ? (
-              <DispatchesPage type="incoming" />
-            ) : location.pathname.endsWith("/finance/inventory/history") ? (
-              <StockHistoryPage />
-            ) : location.pathname.endsWith("/finance/inventory/report") ? (
-              <StockReportPage />
-            ) : location.pathname.endsWith(
-                "/finance/purchasing/suppliers/new",
-              ) ? (
-              <SupplierFormPage />
-            ) : location.pathname.endsWith("/finance/purchasing/suppliers") ? (
-              <SuppliersPage />
-            ) : location.pathname.endsWith("/finance/purchasing/orders/new") ? (
-              <OrderFormPage />
-            ) : location.pathname.endsWith("/finance/purchasing/orders") ? (
-              <OrdersPage />
-            ) : location.pathname.endsWith("/finance/cash/accounts") ? (
-              <CashAccountsPage />
-            ) : location.pathname.endsWith("/finance/cash/checks") ? (
-              <ChecksPage />
-            ) : location.pathname.endsWith("/finance/cash/cash-bank-report") ? (
-              <CashBankReportPage />
-            ) : location.pathname.endsWith("/finance/cash/cash-flow-report") ? (
-              <CashFlowReportPage />
+            location.pathname.includes("/new") || location.pathname.includes("/edit") || location.pathname.endsWith("/finance/cash/checks") ? (
+              <UnavailablePage />
             ) : (
               <FinanceOverview />
             )

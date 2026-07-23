@@ -75,6 +75,7 @@ export const PERMISSION_CATALOG = Array.from(
     "hr.manage",
     "quality.edit",
     "reports.export",
+    "parasut.view",
     "parasut.sync.view",
     "accounting.contacts.create",
     "accounting.outbound.view",

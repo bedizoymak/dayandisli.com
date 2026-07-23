@@ -1,5 +1,4 @@
 import {
-  Banknote,
   BarChart3,
   Bell,
   Boxes,
@@ -249,15 +248,6 @@ export const erpModules: ErpModuleConfig[] = [
     icon: ShoppingBag,
     status: "active",
     requiredPermission: "commerce.view",
-  },
-  {
-    id: "parasut-module",
-    title: "Paraşüt",
-    description: "Paraşüt finans, fatura, tahsilat ve gider verileri",
-    path: "/apps/parasut",
-    icon: Banknote,
-    status: "active",
-    requiredPermission: "parasut.view",
   },
   {
     id: "reports-module",

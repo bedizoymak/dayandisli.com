@@ -18,7 +18,6 @@ describe("unified ERP sidebar navigation", () => {
       "/hr",
       "/website",
       "/commerce",
-      "/apps/parasut",
       "/reports",
       "/documents",
       "/ayarlar",

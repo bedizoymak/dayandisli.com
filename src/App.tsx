@@ -24,7 +24,6 @@ const Referanslar = lazy(() => import("./pages/Referanslar"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const EbruPreviewPage = lazy(() => import("./features/ebru-preview/EbruPreviewPage"));
-const ParasutModuleRoutes = lazy(() => import("./features/erp/parasut").then((module) => ({ default: module.ParasutModuleRoutes })));
 const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CartPage })));
@@ -50,6 +49,33 @@ function LegacyErpRedirect() {
 function LegacyRootToAppsRedirect() {
   const location = useLocation();
   return <Navigate to={`/apps${location.pathname}${location.search}${location.hash}`} replace />;
+}
+
+const LEGACY_PARASUT_ROUTES: Array<[RegExp, string]> = [
+  [/\/satislar\/faturalar|\/sales-invoices|\/invoices/, "/apps/finance/income/invoices"],
+  [/\/satislar\/musteriler|\/customers/, "/apps/finance/income/customers"],
+  [/\/alislar\/faturalar|\/purchase-bills/, "/apps/finance/expense/incoming-invoices"],
+  [/\/alislar\/tedarikciler|\/suppliers/, "/apps/finance/purchasing/suppliers"],
+  [/\/kasa-banka|\/accounts/, "/apps/finance/cash/accounts"],
+  [/\/urunler|\/products/, "/apps/finance/inventory/products"],
+  [/\/stok\/hareketler/, "/apps/finance/inventory/history"],
+  [/\/stok\/mevcut/, "/apps/finance/inventory/report"],
+  [/\/ik\/calisanlar|\/employees/, "/apps/hr/employees"],
+  [/\/ik\/maaslar|\/salaries/, "/apps/hr/salaries"],
+  [/\/satislar\/teklifler/, "/apps/sales/quotes"],
+  [/\/raporlar\/tahsilat|\/tahsilatlar/, "/apps/finance/income/collection-report"],
+  [/\/raporlar\/gelir-gider|\/raporlar/, "/apps/finance/expense/income-expense-report"],
+];
+
+export function resolveLegacyParasutRoute(pathname: string) {
+  const suffix = pathname.replace(/^\/apps\/parasut/, "") || "/";
+  return LEGACY_PARASUT_ROUTES.find(([pattern]) => pattern.test(suffix))?.[1] ?? "/apps";
+}
+
+function LegacyParasutRedirect() {
+  const location = useLocation();
+  const target = resolveLegacyParasutRoute(location.pathname);
+  return <Navigate to={`${target}${location.search}${location.hash}`} replace />;
 }
 
 const protectedElement = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
@@ -105,8 +131,9 @@ const AppRoutes = () => {
 
       {exposeErpRoutes ? (
           <>
-            <Route path="/apps/parasut/*" element={protectedElement(<ParasutModuleRoutes />)} />
-            {/* Keep the approved Ebru shell as the fallback for every other ERP application. */}
+            <Route path="/apps/ebru-preview/*" element={protectedElement(<Navigate to="/apps" replace />)} />
+            <Route path="/apps/parasut/*" element={protectedElement(<LegacyParasutRedirect />)} />
+            {/* The approved Ebru UI is the one canonical ERP shell. */}
             <Route path="/apps/*" element={protectedElement(<EbruPreviewPage />)} />
             <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/apps" replace />)} />
             <Route path="/erp/*" element={protectedElement(<LegacyErpRedirect />)} />
