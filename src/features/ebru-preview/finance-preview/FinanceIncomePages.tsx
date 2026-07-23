@@ -85,11 +85,13 @@ function TableShell({
   children,
   empty = false,
   loading = false,
+  error = null,
 }: {
   headers: string[];
   children: ReactNode;
   empty?: boolean;
   loading?: boolean;
+  error?: string | null;
 }) {
   return (
     <section className="ebru-card income-table-card">
@@ -107,6 +109,12 @@ function TableShell({
               <tr>
                 <td colSpan={headers.length} className="income-state">
                   Yükleniyor…
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={headers.length} className="income-state income-state-error">
+                  Veriler yüklenemedi: {error}
                 </td>
               </tr>
             ) : empty ? (
@@ -151,16 +159,19 @@ const RowActions = () => (
 export function InvoiceListPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     Promise.all([listInvoices(), listStakeholders()]).then(([invoiceResult, stakeholderResult]) => {
       if (cancelled) return;
       setInvoices(invoiceResult.data.filter((invoice) => invoice.invoice_type === "sales"));
       setStakeholders(stakeholderResult.data);
+      setError(invoiceResult.error ?? stakeholderResult.error ?? null);
       setLoading(false);
     });
     return () => {
@@ -231,8 +242,9 @@ export function InvoiceListPage() {
           "Durum",
           "İşlemler",
         ]}
-        empty={!loading && !rows.length}
+        empty={!loading && !error && !rows.length}
         loading={loading}
+        error={error}
       >
         {rows.map((row) => (
           <tr key={row.id}>
@@ -261,14 +273,17 @@ export function InvoiceListPage() {
 export function CustomerListPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Stakeholder[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     listStakeholders(search, "customer").then((result) => {
       if (cancelled) return;
       setCustomers(result.data);
+      setError(result.error ?? null);
       setLoading(false);
     });
     return () => {
@@ -315,8 +330,9 @@ export function CustomerListPage() {
           "Durum",
           "İşlemler",
         ]}
-        empty={!loading && !customers.length}
+        empty={!loading && !error && !customers.length}
         loading={loading}
+        error={error}
       >
         {customers.map((row) => (
           <tr key={row.id}>

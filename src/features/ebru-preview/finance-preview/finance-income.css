@@ -176,6 +176,9 @@ td a {
   padding: 35px;
   color: #8297ad;
 }
+.income-state-error {
+  color: #f87171;
+}
 .income-kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
