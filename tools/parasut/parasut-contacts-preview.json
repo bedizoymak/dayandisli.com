@@ -89,13 +89,13 @@
       "type": "contacts",
       "attributes": {
         "created_at": "2023-12-12T07:59:39.113Z",
-        "updated_at": "2026-06-11T10:36:00.329Z",
+        "updated_at": "2026-06-26T14:21:26.906Z",
         "contact_type": "company",
         "name": "ÖRNEK MAKİNA SAN.TİC.A.Ş.",
         "email": "muhasebe@ornekmakine.com",
         "short_name": "ÖRNEK MAKİNA-ANTEP",
-        "balance": "171840.0",
-        "trl_balance": "171840.0",
+        "balance": "0.0",
+        "trl_balance": "0.0",
         "usd_balance": "0.0",
         "eur_balance": "0.0",
         "gbp_balance": "0.0",
@@ -169,7 +169,7 @@
       },
       "meta": {
         "created_at": "2023-12-12T07:59:39.113Z",
-        "updated_at": "2026-06-11T10:36:00.329Z"
+        "updated_at": "2026-06-26T14:21:26.906Z"
       }
     },
     {
@@ -177,13 +177,13 @@
       "type": "contacts",
       "attributes": {
         "created_at": "2023-12-12T08:08:12.364Z",
-        "updated_at": "2026-06-09T12:29:58.248Z",
+        "updated_at": "2026-07-03T11:16:43.915Z",
         "contact_type": "company",
         "name": "AKKUŞLAR FORKLİFT PARÇALARI SANAYİ VE TİCARET LİMİTED ŞİRKETİ",
         "email": "info@akkuslarforklift.com.tr",
         "short_name": "AKKUŞLAR FORKLİFT",
-        "balance": "30240.0",
-        "trl_balance": "30240.0",
+        "balance": "800.0",
+        "trl_balance": "800.0",
         "usd_balance": "0.0",
         "eur_balance": "0.0",
         "gbp_balance": "0.0",
@@ -257,7 +257,7 @@
       },
       "meta": {
         "created_at": "2023-12-12T08:08:12.364Z",
-        "updated_at": "2026-06-09T12:29:58.248Z"
+        "updated_at": "2026-07-03T11:16:43.915Z"
       }
     },
     {
@@ -265,13 +265,13 @@
       "type": "contacts",
       "attributes": {
         "created_at": "2023-12-12T12:56:13.697Z",
-        "updated_at": "2026-06-10T09:55:38.880Z",
+        "updated_at": "2026-06-19T12:12:16.702Z",
         "contact_type": "company",
         "name": "HİRA PARTS METAL SANAYİ VE TİCARET LİMİTED ŞİRKETİ",
         "email": "alibahadir@hiraparts.com",
         "short_name": "HİRA PARTS",
-        "balance": "438560.0",
-        "trl_balance": "438560.0",
+        "balance": "250000.0",
+        "trl_balance": "250000.0",
         "usd_balance": "0.0",
         "eur_balance": "0.0",
         "gbp_balance": "0.0",
@@ -346,7 +346,7 @@
       },
       "meta": {
         "created_at": "2023-12-12T12:56:13.697Z",
-        "updated_at": "2026-06-10T09:55:38.880Z"
+        "updated_at": "2026-06-19T12:12:16.702Z"
       }
     },
     {
@@ -439,17 +439,17 @@
     "first": "https://api.parasut.com/v4/666034/contacts?page%5Bnumber%5D=1&page%5Bsize%5D=5",
     "prev": null,
     "next": "https://api.parasut.com/v4/666034/contacts?page%5Bnumber%5D=2&page%5Bsize%5D=5",
-    "last": "https://api.parasut.com/v4/666034/contacts?page%5Bnumber%5D=84&page%5Bsize%5D=5"
+    "last": "https://api.parasut.com/v4/666034/contacts?page%5Bnumber%5D=88&page%5Bsize%5D=5"
   },
   "meta": {
     "current_page": 1,
-    "total_pages": 84,
-    "total_count": 417,
+    "total_pages": 88,
+    "total_count": 436,
     "per_page": 5,
-    "payable_total": "1607943.53",
-    "collectible_total": "2950367.59",
-    "supplier_payments_due_in_thirty_days_total": "1375211.53",
-    "customer_payments_due_in_thirty_days_total": "2947326.98",
+    "payable_total": "1295849.03",
+    "collectible_total": "2887428.99",
+    "supplier_payments_due_in_thirty_days_total": "1104255.83",
+    "customer_payments_due_in_thirty_days_total": "2887428.98",
     "export_url": "https://api.parasut.com/v4/666034/contacts/export"
   }
 }
