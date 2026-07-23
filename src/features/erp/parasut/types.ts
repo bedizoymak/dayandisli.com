@@ -149,7 +149,17 @@ export const RESOURCE_TYPE_LABELS: Record<string, string> = {
   accounts: "Kasa/Banka Hesapları",
 };
 
-export type ParasutListResource = "customers" | "suppliers" | "products" | "sales_invoices" | "purchase_bills" | "accounts" | "payments";
+export type ParasutListResource =
+  | "customers" | "suppliers" | "products" | "sales_invoices" | "purchase_bills" | "accounts" | "payments"
+  | "sales_offers" | "bank_fees" | "taxes" | "transactions"
+  | "inventory_levels" | "stock_movements" | "stock_updates" | "shipment_documents" | "item_categories"
+  | "employees" | "salaries"
+  | "e_invoices" | "e_invoice_inboxes" | "e_archives" | "e_smms"
+  | "trackable_jobs";
+
+export type GenericParasutRow = MirrorRowBase & {
+  attributes: Record<string, unknown>;
+};
 
 // ---------------------------------------------------------------------
 // parasut-api edge function response shapes
@@ -264,6 +274,7 @@ export interface ListQueryParams {
     dueTo?: string;
     onlyOpen?: boolean;
     kind?: "collection" | "payment";
+    status?: string;
   };
 }
 

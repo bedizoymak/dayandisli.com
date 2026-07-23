@@ -211,6 +211,7 @@ export function filterModulesByPermission<T extends { requiredPermission?: strin
 
 const ROUTE_PERMISSIONS: Array<[RegExp, string]> = [
   [/^\/apps\/parasut\/senkronizasyon/, "parasut.sync.view"],
+  [/^\/apps\/parasut\/sistem\/isler/, "parasut.sync.view"],
   [/^\/apps\/parasut/, "parasut.view"],
   [/^\/apps\/calculator(?:\/|$)/, "production.view"],
   [/^\/apps\/shop-orders(?:\/|$)/, "commerce.view"],

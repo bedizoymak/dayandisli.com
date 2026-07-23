@@ -2,8 +2,8 @@ import { lazy, Suspense, useMemo } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { ParasutLayout } from "./layout/ParasutLayout";
 import { ParasutLoadingState } from "./components/ParasutStateViews";
-import { MissingResourcePage } from "./pages/MissingResourcePage";
-import { parasutNavigation, PARASUT_MISSING_RESOURCE_MESSAGE } from "./navigation";
+import { parasutNavigation } from "./navigation";
+import { DomainResourcePage, domainResourcePages } from "./pages/DomainResourcePage";
 
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const SalesInvoicesPage = lazy(() => import("./pages/SalesInvoicesPage"));
@@ -54,13 +54,13 @@ export function ParasutModuleRoutes() {
       <Route element={<ParasutRouteShell />}>
         <Route index element={<DashboardPage />} />
 
-        <Route path="satislar/teklifler" element={<MissingResourcePage title="Teklifler" message={PARASUT_MISSING_RESOURCE_MESSAGE} />} />
+        <Route path="satislar/teklifler" element={<DomainResourcePage config={domainResourcePages["satislar/teklifler"]} />} />
         <Route path="satislar/faturalar" element={<SalesInvoicesPage />} />
         <Route path="satislar/faturalar/:parasutId" element={<SalesInvoiceDetailPage />} />
         <Route path="satislar/musteriler" element={<CustomersPage />} />
         <Route path="satislar/musteriler/:parasutId" element={<CustomerDetailPage />} />
 
-        <Route path="alislar/giderler" element={<MissingResourcePage title="Giderler" message={PARASUT_MISSING_RESOURCE_MESSAGE} />} />
+        <Route path="alislar/giderler" element={<DomainResourcePage config={domainResourcePages["finans/giderler"]} />} />
         <Route path="alislar/faturalar" element={<PurchaseBillsPage />} />
         <Route path="alislar/faturalar/:parasutId" element={<PurchaseBillDetailPage />} />
         <Route path="alislar/tedarikciler" element={<SuppliersPage />} />
@@ -74,6 +74,10 @@ export function ParasutModuleRoutes() {
 
         <Route path="tahsilatlar" element={<CollectionsPage />} />
         <Route path="odemeler" element={<PaymentsOutPage />} />
+
+        {Object.entries(domainResourcePages)
+          .filter(([path]) => path !== "satislar/teklifler")
+          .map(([path, config]) => <Route key={path} path={path} element={<DomainResourcePage config={config} />} />)}
 
         <Route path="raporlar" element={<ReportsPage />} />
         {/* Backward-compatible redirects: these two slugs were briefly live and may be bookmarked. */}

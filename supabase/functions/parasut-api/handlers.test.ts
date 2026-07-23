@@ -75,6 +75,10 @@ function seedTwoCompanies(): Record<string, FakeRow[]> {
       { parasut_id: "300", company_id: COMPANY_A, attributes: { name: "A Bank", account_type: "bank", balance: "1000", currency: "TRY" }, relationships: {} },
       { parasut_id: "300", company_id: COMPANY_B, attributes: { name: "B Bank", account_type: "bank", balance: "9999", currency: "TRY" }, relationships: {} },
     ],
+    "parasut.sales_offers": [
+      { id: "offer-a", parasut_id: "400", company_id: COMPANY_A, content: "A Offer", status: "open", gross_total: "120", currency: "TRL", issue_date: "2026-07-01", raw_payload: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z" },
+      { id: "offer-b", parasut_id: "400", company_id: COMPANY_B, content: "B Offer", status: "won", gross_total: "999", currency: "TRL", issue_date: "2026-07-01", raw_payload: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z" },
+    ],
     "parasut.sync_runs": [
       { id: "run-a", company_id: COMPANY_A, resource_type: "contacts", status: "completed", started_at: "2026-07-01T00:00:00Z", completed_at: "2026-07-01T00:01:00Z", records_inserted: 1, records_updated: 0, records_unchanged: 0, error_count: 0, page_count: 1 },
       { id: "run-b", company_id: COMPANY_B, resource_type: "contacts", status: "failed", started_at: "2026-07-01T00:00:00Z", completed_at: "2026-07-01T00:01:00Z", records_inserted: 0, records_updated: 0, records_unchanged: 0, error_count: 1, page_count: 1 },
@@ -153,6 +157,17 @@ describe("handleList — cross-company isolation", () => {
     expect(resultA.rows).toHaveLength(1);
     expect((resultA.rows[0] as FakeRow & { partyName: string }).partyName).toBe("A Supplier");
     expect(resultB.rows).toHaveLength(0);
+  });
+
+  it("list (sales_offers): typed columns are normalized without exposing raw_payload and remain tenant scoped", async () => {
+    const admin = createFakeSupabaseAdmin(seedTwoCompanies());
+    const resultA = await handleList(admin, { resource: "sales_offers", filters: { archived: false } }, COMPANY_A);
+    const resultB = await handleList(admin, { resource: "sales_offers", filters: { archived: false } }, COMPANY_B);
+    expect(resultA.rows).toHaveLength(1);
+    expect(resultB.rows).toHaveLength(1);
+    expect((resultA.rows[0] as FakeRow).attributes).toMatchObject({ content: "A Offer", gross_total: "120" });
+    expect((resultB.rows[0] as FakeRow).attributes).toMatchObject({ content: "B Offer", gross_total: "999" });
+    expect(resultA.rows[0]).not.toHaveProperty("raw_payload");
   });
 });
 

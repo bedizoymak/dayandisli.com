@@ -132,6 +132,13 @@ interface MirrorRecord {
   last_seen_at?: string;
 }
 
+interface TypedMirrorRecord extends Omit<MirrorRecord, "attributes" | "relationships"> {
+  attributes?: Record<string, unknown>;
+  relationships?: Relationships;
+  raw_payload?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 function relationshipId(relationships: Relationships, key: string): string | undefined {
   const ref = relationships[key]?.data;
   if (!ref || Array.isArray(ref)) return undefined;
@@ -155,6 +162,22 @@ export const LIST_RESOURCES = [
   "purchase_bills",
   "accounts",
   "payments",
+  "sales_offers",
+  "bank_fees",
+  "taxes",
+  "transactions",
+  "inventory_levels",
+  "stock_movements",
+  "stock_updates",
+  "shipment_documents",
+  "item_categories",
+  "employees",
+  "salaries",
+  "e_invoices",
+  "e_invoice_inboxes",
+  "e_archives",
+  "e_smms",
+  "trackable_jobs",
 ] as const;
 export type ListResource = (typeof LIST_RESOURCES)[number];
 
@@ -187,16 +210,88 @@ export interface ListParams {
 
 const LIST_SELECT_COLUMNS = "id, parasut_id, company_id, attributes, relationships, source_created_at, source_updated_at, source_archived, synced_at, last_seen_at";
 
+type TypedResourceConfig = {
+  table: string;
+  fields: readonly string[];
+  search: readonly string[];
+  defaultSort?: string;
+  currencyField?: string;
+  dateField?: string;
+  statusField?: string;
+};
+
+const TYPED_RESOURCE_CONFIG: Partial<Record<ListResource, TypedResourceConfig>> = {
+  sales_offers: { table: "sales_offers", fields: ["content", "status", "net_total", "gross_total", "description", "issue_date", "due_date", "currency", "contact_parasut_id"], search: ["content", "description", "status"], defaultSort: "issue_date", currencyField: "currency", dateField: "issue_date", statusField: "status" },
+  bank_fees: { table: "bank_fees", fields: ["description", "currency", "issue_date", "due_date", "net_total", "total_paid", "remaining"], search: ["description"], defaultSort: "issue_date", currencyField: "currency", dateField: "issue_date" },
+  taxes: { table: "taxes", fields: ["description", "issue_date", "due_date", "net_total", "total_paid", "remaining"], search: ["description"], defaultSort: "issue_date", dateField: "issue_date" },
+  transactions: { table: "transactions", fields: ["description", "transaction_type", "date", "amount_in_trl", "debit_amount", "debit_currency", "credit_amount", "credit_currency", "debit_account_parasut_id", "credit_account_parasut_id"], search: ["description", "transaction_type"], defaultSort: "date", dateField: "date" },
+  inventory_levels: { table: "inventory_levels", fields: ["stock_count", "initial_stock_count", "critical_stock_count", "product_parasut_id", "warehouse_parasut_id"], search: ["product_parasut_id", "warehouse_parasut_id"] },
+  stock_movements: { table: "stock_movements", fields: ["detail_no", "date", "quantity", "warehouse_parasut_id", "product_parasut_id", "source_parasut_id", "contact_parasut_id"], search: ["product_parasut_id", "warehouse_parasut_id"], defaultSort: "date", dateField: "date" },
+  stock_updates: { table: "stock_updates", fields: [], search: [] },
+  shipment_documents: { table: "shipment_documents", fields: ["invoice_no", "description", "issue_date", "shipment_date", "inflow", "city", "district", "contact_parasut_id"], search: ["invoice_no", "description", "city"], defaultSort: "issue_date", dateField: "issue_date" },
+  item_categories: { table: "item_categories", fields: ["name", "full_path", "category_type", "parent_category_parasut_id"], search: ["name", "full_path", "category_type"], defaultSort: "name" },
+  employees: { table: "employees", fields: ["name", "email", "iban", "balance", "trl_balance", "usd_balance", "eur_balance", "gbp_balance"], search: ["name", "email", "iban"], defaultSort: "name" },
+  salaries: { table: "salaries", fields: ["description", "currency", "issue_date", "due_date", "net_total", "total_paid", "remaining", "employee_parasut_id"], search: ["description", "employee_parasut_id"], defaultSort: "issue_date", currencyField: "currency", dateField: "issue_date" },
+  e_invoices: { table: "e_invoices", fields: ["external_id", "direction", "contact_name", "status", "response_type", "issue_date", "net_total", "currency", "invoice_parasut_id"], search: ["external_id", "contact_name", "from_vkn", "to_vkn"], defaultSort: "issue_date", currencyField: "currency", dateField: "issue_date", statusField: "status" },
+  e_invoice_inboxes: { table: "e_invoice_inboxes", fields: ["vkn", "e_invoice_address", "name", "inbox_type", "registered_at"], search: ["vkn", "e_invoice_address", "name"], defaultSort: "registered_at" },
+  e_archives: { table: "e_archives", fields: ["vkn", "invoice_number", "note", "status", "printed_at", "is_printed", "is_signed", "sales_invoice_parasut_id"], search: ["vkn", "invoice_number", "note"], defaultSort: "printed_at", statusField: "status" },
+  e_smms: { table: "e_smms", fields: ["printed_at", "vkn", "invoice_number", "is_printed", "sales_invoice_parasut_id"], search: ["vkn"], defaultSort: "printed_at" },
+  trackable_jobs: { table: "trackable_jobs", fields: ["status"], search: ["status"], defaultSort: "last_seen_at", statusField: "status" },
+};
+
+function normalizeTypedRecord(row: TypedMirrorRecord, config: TypedResourceConfig): MirrorRecord {
+  const fallback = row.raw_payload && typeof row.raw_payload === "object"
+    ? ((row.raw_payload.attributes as Record<string, unknown> | undefined) ?? row.raw_payload)
+    : {};
+  const attributes = Object.fromEntries(config.fields.map((field) => [field, row[field] ?? fallback[field] ?? null]));
+  return {
+    id: row.id,
+    parasut_id: row.parasut_id,
+    company_id: row.company_id,
+    attributes,
+    relationships: row.relationships ?? {},
+    source_created_at: row.source_created_at,
+    source_updated_at: row.source_updated_at,
+    source_archived: row.source_archived,
+    synced_at: row.synced_at,
+    last_seen_at: row.last_seen_at,
+  };
+}
+
 export async function handleList(admin: SupabaseAdminLike, params: ListParams, activeCompanyId: string) {
   const page = clampPage(params.page);
   const pageSize = clampPageSize(params.pageSize);
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  let table: ScopedQuery<MirrorRecord>;
+  let table: ScopedQuery<MirrorRecord> | null = null;
   let searchColumns: string[] = [];
   const sortField = params.sort?.field;
   const sortDirection = params.sort?.direction === "asc" ? "asc" : "desc";
+  const typedConfig = TYPED_RESOURCE_CONFIG[params.resource];
+
+  if (typedConfig) {
+    const baseColumns = ["id", "parasut_id", "company_id", "source_created_at", "source_updated_at", "source_archived", "synced_at", "last_seen_at", "raw_payload"];
+    let typedQuery = scopedParasutTable<TypedMirrorRecord>(
+      admin,
+      typedConfig.table,
+      activeCompanyId,
+      [...baseColumns, ...typedConfig.fields].join(", "),
+      { count: "exact" },
+    );
+    const filters = params.filters ?? {};
+    if (filters.archived === false) typedQuery = typedQuery.eq("source_archived", false);
+    if (filters.currency && typedConfig.currencyField) typedQuery = typedQuery.eq(typedConfig.currencyField, filters.currency);
+    if (filters.dueFrom && typedConfig.dateField) typedQuery = typedQuery.gte(typedConfig.dateField, filters.dueFrom);
+    if (filters.dueTo && typedConfig.dateField) typedQuery = typedQuery.lte(typedConfig.dateField, filters.dueTo);
+    if (filters.status && typedConfig.statusField && typeof filters.status === "string") typedQuery = typedQuery.eq(typedConfig.statusField, filters.status);
+    const search = params.search?.trim().replace(/[%,]/g, "");
+    if (search && typedConfig.search.length) typedQuery = typedQuery.or(typedConfig.search.map((column) => `${column}.ilike.%${search}%`).join(","));
+    const allowedSort = sortField && typedConfig.fields.includes(sortField) ? sortField : typedConfig.defaultSort ?? "last_seen_at";
+    const { data, error, count } = await typedQuery.order(allowedSort, { ascending: sortDirection === "asc" }).range(from, to);
+    if (error) throw new Error(error.message);
+    return { rows: (data ?? []).map((row) => normalizeTypedRecord(row, typedConfig)), total: count ?? 0, page, pageSize };
+  }
 
   switch (params.resource) {
     case "customers":
@@ -235,6 +330,7 @@ export async function handleList(admin: SupabaseAdminLike, params: ListParams, a
     }
   }
 
+  if (!table) throw new Error("Desteklenmeyen Paraşüt liste kaynağı.");
   const filters = params.filters ?? {};
   if (filters.archived === false) table = table.eq("source_archived", false);
   if (filters.currency && typeof filters.currency === "string") table = table.eq("attributes->>currency", filters.currency);

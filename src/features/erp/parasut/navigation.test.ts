@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { erpApplications } from "../apps/applicationRegistry";
 import { getRequiredPermissionForPath } from "../shared/permissions";
-import { parasutNavigation, PARASUT_MISSING_RESOURCE_MESSAGE, PARASUT_SYNC_PERMISSION } from "./navigation";
+import { parasutNavigation, PARASUT_SYNC_PERMISSION } from "./navigation";
 import { REPORT_TABS } from "./pages/ReportsPage";
 
 describe("Paraşüt application card", () => {
@@ -52,21 +52,20 @@ describe("Paraşüt application card", () => {
 
   it("blocks the sync sub-route behind a separate, stricter permission", () => {
     expect(getRequiredPermissionForPath("/apps/parasut/senkronizasyon")).toBe(PARASUT_SYNC_PERMISSION);
+    expect(getRequiredPermissionForPath("/apps/parasut/sistem/isler")).toBe(PARASUT_SYNC_PERMISSION);
     expect(getRequiredPermissionForPath("/apps/parasut/senkronizasyon")).not.toBe("parasut.view");
   });
 });
 
 describe("Paraşüt module navigation", () => {
-  it("marks resources with no mirrored table as unavailable with an explanatory message, not hidden or fabricated", () => {
+  it("marks newly confirmed sales and expense mirror resources as available", () => {
     const salesGroup = parasutNavigation.find((group) => group.id === "sales")!;
     const quotesItem = salesGroup.items.find((item) => item.id === "quotes")!;
-    expect(quotesItem.available).toBe(false);
-    expect(quotesItem.unavailableReason).toBe(PARASUT_MISSING_RESOURCE_MESSAGE);
+    expect(quotesItem.available).toBe(true);
 
     const purchasingGroup = parasutNavigation.find((group) => group.id === "purchasing")!;
     const expensesItem = purchasingGroup.items.find((item) => item.id === "expenses")!;
-    expect(expensesItem.available).toBe(false);
-    expect(expensesItem.unavailableReason).toBe(PARASUT_MISSING_RESOURCE_MESSAGE);
+    expect(expensesItem.available).toBe(true);
   });
 
   it("marks every confirmed-mirrored resource as available", () => {
@@ -79,10 +78,12 @@ describe("Paraşüt module navigation", () => {
     expect(purchasingGroup.items.find((item) => item.id === "suppliers")?.available).toBe(true);
   });
 
-  it("requires the sync permission only on the sync group, not on the dashboard or other top-level items", () => {
+  it("requires the stricter sync permission only on integration-monitoring groups", () => {
     const syncGroup = parasutNavigation.find((group) => group.id === "sync")!;
     expect(syncGroup.requiredPermission).toBe(PARASUT_SYNC_PERMISSION);
-    const otherGroups = parasutNavigation.filter((group) => group.id !== "sync");
+    const jobsGroup = parasutNavigation.find((group) => group.id === "jobs")!;
+    expect(jobsGroup.requiredPermission).toBe(PARASUT_SYNC_PERMISSION);
+    const otherGroups = parasutNavigation.filter((group) => !["sync", "jobs"].includes(group.id));
     expect(otherGroups.every((group) => !group.requiredPermission)).toBe(true);
   });
 

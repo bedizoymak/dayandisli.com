@@ -24,6 +24,7 @@ const Referanslar = lazy(() => import("./pages/Referanslar"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const EbruPreviewPage = lazy(() => import("./features/ebru-preview/EbruPreviewPage"));
+const ParasutModuleRoutes = lazy(() => import("./features/erp/parasut").then((module) => ({ default: module.ParasutModuleRoutes })));
 const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CartPage })));
@@ -104,7 +105,8 @@ const AppRoutes = () => {
 
       {exposeErpRoutes ? (
           <>
-            {/* Ebru-preview is now the sole production ERP frontend — every /apps path renders it. */}
+            <Route path="/apps/parasut/*" element={protectedElement(<ParasutModuleRoutes />)} />
+            {/* Keep the approved Ebru shell as the fallback for every other ERP application. */}
             <Route path="/apps/*" element={protectedElement(<EbruPreviewPage />)} />
             <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/apps" replace />)} />
             <Route path="/erp/*" element={protectedElement(<LegacyErpRedirect />)} />

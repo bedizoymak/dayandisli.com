@@ -139,6 +139,7 @@ serve(async (req) => {
 
     if (action === "list") {
       if (!isListResource(body.resource)) return json({ error: "Geçersiz kaynak." }, 400);
+      if (body.resource === "trackable_jobs" && !access.canViewSync) return json({ error: "Bu işlem için senkronizasyon yetkisi gerekli." }, 403);
       const filters = (body.filters as Record<string, unknown> | undefined) ?? {};
       if (body.resource === "payments" && (filters.kind === "collection" || filters.kind === "payment")) {
         return json(await handlePaymentsList(admin, filters.kind, clampPage(body.page), clampPageSize(body.pageSize), activeCompanyId, body.search as string | undefined));
