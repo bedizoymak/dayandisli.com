@@ -1,8 +1,31 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { CrmPageHeader } from "./CrmShared";
-import { customerFormDefaults as d } from "./crmCustomerData";
+import { useParasutContactDetail } from "@/features/erp/parasut/api/queries";
 const parent = "/apps/crm/customers";
 export function CustomerFormPage({ edit = false }: { edit?: boolean }) {
+  const { customerId } = useParams();
+  const detail = useParasutContactDetail("customers", edit ? customerId : undefined);
+  const attributes = detail.data?.contact.attributes;
+  const d = {
+    companyName: attributes?.name ?? "",
+    personType: attributes?.contact_type === "person" ? "Gerçek Kişi" : "Firma",
+    taxNo: attributes?.tax_number ?? "",
+    contact: attributes?.short_name ?? "",
+    taxOffice: attributes?.tax_office ?? "",
+    phone: attributes?.phone ?? "",
+    email: attributes?.email ?? "",
+    city: attributes?.city ?? "",
+    district: attributes?.district ?? "",
+    website: "",
+    address: attributes?.address ?? "",
+    status: attributes?.archived ? "Pasif" : "Aktif",
+    accountType: "Resmi Hesap",
+    riskLimit: "",
+    dueDays: String(attributes?.term_days ?? ""),
+    currency: "TRY",
+    tags: "",
+    notes: "",
+  };
   return (
     <div className="crm-page">
       <CrmPageHeader
@@ -27,9 +50,7 @@ export function CustomerFormPage({ edit = false }: { edit?: boolean }) {
           <div className="crm-fields">
             <label>
               Firma Ünvanı *
-              <input
-                defaultValue={edit ? "Atlas Makine Sanayi A.Ş." : d.companyName}
-              />
+              <input defaultValue={d.companyName} />
             </label>
             <label>
               Kişi Tipi *
@@ -39,11 +60,11 @@ export function CustomerFormPage({ edit = false }: { edit?: boolean }) {
               </select>
             </label>
             <label>
-              TC/VKN *<input defaultValue={edit ? "1234567890" : d.taxNo} />
+              TC/VKN *<input defaultValue={d.taxNo} />
             </label>
             <label>
               İlgili Kişi Adı Soyadı
-              <input defaultValue={edit ? "Mert Aydın" : d.contact} />
+              <input defaultValue={d.contact} />
             </label>
             <label>
               Vergi Dairesi

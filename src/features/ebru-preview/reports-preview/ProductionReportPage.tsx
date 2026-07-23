@@ -2,7 +2,15 @@ import {
   FinanceBreadcrumb,
   FinanceExportMenu,
 } from "../finance-preview/FinanceNavigationTools";
-import { productionReportRows } from "./reportsPreviewData";
+const productionReportRows: {
+  workOrder: string;
+  product: string;
+  planned: string;
+  completed: string;
+  scrap: string;
+  efficiency: string;
+  status: string;
+}[] = [];
 
 const columns = [
   {

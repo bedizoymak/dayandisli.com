@@ -9,13 +9,14 @@ import {
   X,
 } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { crmCustomers } from "../crm-preview/crmCustomerData";
-import { products } from "../finance-preview/operationsData";
-import { salesQuotes } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
-import { customerName, openQuotePreview, printQuote } from "./salesUtils";
+import { openQuotePreview, printQuote } from "./salesUtils";
 import type { QuoteLine, SalesQuote } from "./salesTypes";
 const root = "/apps/sales";
+const crmCustomers = [{ id: "", name: "", contact: "", phone: "", email: "", address: "" }];
+const products = [{ id: "", code: "", name: "", sale: 0 }];
+const salesQuotes: SalesQuote[] = [];
+const customerName = (_id: string) => "Senkronize müşteri seçilmedi";
 const blankLine = (): QuoteLine => ({
   productServiceId: products[0].id,
   code: products[0].code,
@@ -85,7 +86,7 @@ export function QuoteFormPage() {
       </SalesHeader>
       <details className="ebru-card sales-recent">
         <summary>Son Teklifler</summary>
-        <span>TKL-2026-0092 · TKL-2026-0078</span>
+        <span>Senkronize teklif bulunmuyor.</span>
       </details>
       <form className="sales-form" onSubmit={(e) => e.preventDefault()}>
         <section className="ebru-card">
@@ -351,7 +352,8 @@ export function QuoteFormPage() {
 }
 export function QuoteDetailPage() {
   const { quoteId } = useParams();
-  const q = salesQuotes.find((x) => x.id === quoteId) ?? salesQuotes[0];
+  const q = salesQuotes.find((x) => x.id === quoteId);
+  if (!q) return <div className="sales-page"><SalesHeader section="Teklifler" current="Teklif Detayı" title="Teklif bulunamadı"><Link className="sales-back" to={`${root}/quotes`}>← Tekliflere Dön</Link></SalesHeader><div className="ebru-card sales-empty">Bu teklif için senkronize detay verisi bulunmuyor.</div></div>;
   const subtotal = q.lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
   return (
     <div className="sales-page">

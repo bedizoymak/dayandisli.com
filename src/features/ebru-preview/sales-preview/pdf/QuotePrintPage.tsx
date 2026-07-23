@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { salesQuotes } from "../salesData";
 import type { SalesQuote } from "../salesTypes";
 import { adaptQuoteToPdf } from "./quotePdfAdapter";
 import { QuoteDocument } from "./QuoteDocument";
 import { DRAFT_QUOTE_KEY } from "./quotePdfTypes";
+const salesQuotes: SalesQuote[] = [];
 export function QuotePrintPage() {
   const { quoteId } = useParams();
   const [params] = useSearchParams();

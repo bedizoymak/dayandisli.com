@@ -11,17 +11,7 @@ import {
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useERPAuth } from "@/contexts/ERPAuthContext";
-import {
-  crmCustomers,
-  customerInvoiceRefs,
-  officialAccountSummary,
-  officialCollectionMovements,
-  unofficialAccountSummary,
-  unofficialCollectionMovements,
-} from "./crmCustomerData";
 import { CrmPageHeader, StatusBadge } from "./CrmShared";
-import { salesQuotes } from "../sales-preview/salesData";
-import { printQuote } from "../sales-preview/salesUtils";
 import { CollectionEntryPanel } from "./CollectionEntryPanel";
 import {
   cancelCollectionTransaction,
@@ -39,29 +29,49 @@ import type {
   CollectionTransaction,
   CustomerAccountType,
 } from "../shared/collectionTypes";
+import { useParasutContactDetail } from "@/features/erp/parasut/api/queries";
+import { formatParasutCurrency, formatParasutDate } from "@/features/erp/parasut/utils/format";
+import type { CollectionMovement, CrmCustomer, CustomerInvoiceRef } from "./crmCustomerTypes";
 const parent = "/apps/crm/customers";
 export function CustomerDetailPage() {
   const { customerId } = useParams();
   const { erpUser } = useERPAuth();
+  const detail = useParasutContactDetail("customers", customerId);
   const [account, setAccount] = useState<CustomerAccountType>("official");
   const [success, setSuccess] = useState("");
   const [editingTransaction, setEditingTransaction] =
     useState<CollectionTransaction>();
   const transactions = useCollectionTransactions();
-  const customer =
-    crmCustomers.find((c) => c.id === customerId) ?? crmCustomers[0];
-  const baseSummary =
-    account === "official" ? officialAccountSummary : unofficialAccountSummary;
+  const attributes = detail.data?.contact.attributes;
+  const customer: CrmCustomer = {
+    id: detail.data?.contact.parasut_id ?? customerId ?? "",
+    name: attributes?.name ?? "Müşteri",
+    type: attributes?.contact_type === "person" ? "Gerçek Kişi" : "Tüzel Kişi",
+    taxNo: attributes?.tax_number ?? "—",
+    phone: attributes?.phone ?? "—",
+    email: attributes?.email ?? "—",
+    projects: [],
+    planned: formatParasutCurrency(attributes?.trl_balance, "TRY"),
+    collected: "₺0",
+    balance: formatParasutCurrency(attributes?.trl_balance, "TRY"),
+    contact: attributes?.short_name ?? "—",
+    address: [attributes?.address, attributes?.district, attributes?.city].filter(Boolean).join(", ") || "—",
+  };
+  const baseSummary = {
+    planned: formatParasutCurrency(attributes?.trl_balance, "TRY"),
+    collected: "₺0",
+    balance: formatParasutCurrency(attributes?.trl_balance, "TRY"),
+    overdue: "₺0",
+    upcoming: "₺0",
+    shares: [0, 0, 100] as [number, number, number],
+  };
   const summary = calculateCustomerAccountSummary(
     transactions,
     customer.id,
     account,
     baseSummary,
   );
-  const legacyMovements =
-    account === "official"
-      ? officialCollectionMovements
-      : unofficialCollectionMovements;
+  const legacyMovements: CollectionMovement[] = [];
   const collections = getCustomerCollections(
     transactions,
     customer.id,
@@ -69,13 +79,20 @@ export function CustomerDetailPage() {
   );
   const actor =
     erpUser?.email?.split("@")[0]?.replace(/[._-]+/g, " ") || "Ekip Üyesi";
-  const customerQuotes = salesQuotes.filter(
-    (quote) => quote.customerId === customer.id,
-  );
+  const customerInvoices: CustomerInvoiceRef[] = (detail.data?.recentDocuments ?? []).map((document) => ({
+    type: "Fatura",
+    no: document.attributes.invoice_no ?? document.parasut_id,
+    date: formatParasutDate(document.attributes.issue_date),
+    due: formatParasutDate(document.attributes.due_date),
+    amount: formatParasutCurrency(document.attributes.gross_total, document.attributes.currency),
+    status: document.attributes.payment_status ?? "—",
+  }));
   const donutStyle = {
     "--paid": `${summary.shares[0]}%`,
     "--overdue": `${summary.shares[0] + summary.shares[1]}%`,
   } as CSSProperties;
+  if (detail.isLoading) return <div className="crm-page"><div className="ebru-card crm-empty">Müşteri bilgileri yükleniyor…</div></div>;
+  if (detail.isError || !detail.data) return <div className="crm-page"><div className="ebru-card crm-empty">Müşteri bilgileri yüklenemedi.</div></div>;
   return (
     <div className="crm-page">
       <CrmPageHeader
@@ -297,8 +314,8 @@ export function CustomerDetailPage() {
               </article>
             </div>
           </section>
-          {account === "official" && <InvoiceHistory />}
-          <QuoteHistory quotes={customerQuotes} />
+          {account === "official" && <InvoiceHistory rows={customerInvoices} />}
+          <QuoteHistory />
         </main>
         <aside className="crm-customer-aside">
           <CollectionEntryPanel
@@ -354,7 +371,7 @@ function CustomerActivityHistory({
     </article>
   );
 }
-function QuoteHistory({ quotes }: { quotes: typeof salesQuotes }) {
+function QuoteHistory() {
   return (
     <section className="crm-history">
       <h2>Teklif Geçmişi</h2>
@@ -374,52 +391,14 @@ function QuoteHistory({ quotes }: { quotes: typeof salesQuotes }) {
               ))}
             </tr>
           </thead>
-          <tbody>
-            {quotes.map((q) => (
-              <tr key={q.id}>
-                <td>{q.no}</td>
-                <td>{q.created}</td>
-                <td>{q.project}</td>
-                <td>
-                  {q.lines
-                    .reduce(
-                      (sum, line) =>
-                        sum +
-                        line.quantity *
-                          line.unitPrice *
-                          (1 - line.discount / 100) *
-                          (1 + line.vat / 100),
-                      0,
-                    )
-                    .toLocaleString("tr-TR")}{" "}
-                  {q.currency}
-                </td>
-                <td>
-                  <StatusBadge>{q.status}</StatusBadge>
-                </td>
-                <td>
-                  <Link
-                    title="Görüntüle"
-                    to={`/apps/sales/quotes/${q.id}`}
-                  >
-                    <Eye />
-                  </Link>
-                  <button title="PDF İndir" onClick={() => printQuote(q)}>
-                    <Download />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <tbody />
         </table>
-        {!quotes.length && (
-          <div className="crm-empty">Bu müşteriye ait teklif bulunamadı.</div>
-        )}
+        <div className="crm-empty">Bu müşteriye ait senkronize teklif bulunamadı.</div>
       </div>
     </section>
   );
 }
-function InvoiceHistory() {
+function InvoiceHistory({ rows }: { rows: CustomerInvoiceRef[] }) {
   return (
     <section className="crm-history">
       <h2>Fatura Geçmişi</h2>
@@ -441,7 +420,7 @@ function InvoiceHistory() {
             </tr>
           </thead>
           <tbody>
-            {customerInvoiceRefs.map((r) => (
+            {rows.map((r) => (
               <tr key={r.no}>
                 <td>{r.type}</td>
                 <td>{r.no}</td>
@@ -463,6 +442,7 @@ function InvoiceHistory() {
             ))}
           </tbody>
         </table>
+        {!rows.length && <div className="crm-empty">Bu müşteriye ait senkronize fatura bulunamadı.</div>}
       </div>
     </section>
   );

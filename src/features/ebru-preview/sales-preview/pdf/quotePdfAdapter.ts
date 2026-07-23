@@ -1,9 +1,6 @@
-import { crmCustomers } from "../../crm-preview/crmCustomerData";
 import type { SalesQuote } from "../salesTypes";
 import type { QuotePdfDocument } from "./quotePdfTypes";
 export function adaptQuoteToPdf(quote: SalesQuote): QuotePdfDocument {
-  const customer =
-    crmCustomers.find((c) => c.id === quote.customerId) ?? crmCustomers[0];
   const lines = quote.lines.map((line) => {
     const base = line.quantity * line.unitPrice;
     const discounted = base * (1 - line.discount / 100);
@@ -53,12 +50,12 @@ export function adaptQuoteToPdf(quote: SalesQuote): QuotePdfDocument {
       taxNo: "Vergi bilgisi frontend yapılandırmasından sağlanacak",
     },
     customer: {
-      name: customer.name,
-      contact: quote.contact || customer.contact,
-      phone: customer.phone,
-      email: customer.email,
-      address: customer.address,
-      taxNo: customer.taxNo,
+      name: quote.contact || "Müşteri",
+      contact: quote.contact,
+      phone: "",
+      email: "",
+      address: quote.deliveryTerms,
+      taxNo: "",
     },
     deliveryLocation: quote.deliveryTerms,
     lines,

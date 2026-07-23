@@ -30,13 +30,9 @@ import {
 } from "lucide-react";
 import { useERPAuth } from "@/contexts/ERPAuthContext";
 import {
-  approvals,
-  calendarEvents,
-  previewMetrics,
   quickActions,
   searchRoutes,
   sidebarItems,
-  systemNotifications,
 } from "./previewData";
 import { useParasutDashboard } from "@/features/erp/parasut/api/queries";
 import { formatParasutCurrency, formatParasutDate } from "@/features/erp/parasut/utils/format";
@@ -318,14 +314,14 @@ export default function EbruPreviewPage() {
     normalPercent: dashboardData.collectionsSummary.overdueCount ? Math.max(0, Math.round(100 * (1 - dashboardData.collectionsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "receivable").length)))) : dashboardData.collectionsSummary.totalDue.length ? 100 : 0,
     overdue: dashboardTotals(dashboardData.collectionsSummary.overdue),
     overduePercent: dashboardData.collectionsSummary.overdueCount ? Math.min(100, Math.round(100 * dashboardData.collectionsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "receivable").length))) : 0,
-  } : previewMetrics.receivables;
+  } : { total: "—", normal: "—", normalPercent: 0, overdue: "—", overduePercent: 0 };
   const dashboardPayables = dashboardData ? {
     total: dashboardTotals(dashboardData.paymentsSummary.totalDue),
     normal: dashboardTotals(dashboardData.paymentsSummary.totalDue),
     normalPercent: dashboardData.paymentsSummary.overdueCount ? Math.max(0, Math.round(100 * (1 - dashboardData.paymentsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "payable").length)))) : dashboardData.paymentsSummary.totalDue.length ? 100 : 0,
     overdue: dashboardTotals(dashboardData.paymentsSummary.overdue),
     overduePercent: dashboardData.paymentsSummary.overdueCount ? Math.min(100, Math.round(100 * dashboardData.paymentsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "payable").length))) : 0,
-  } : previewMetrics.payables;
+  } : { total: "—", normal: "—", normalPercent: 0, overdue: "—", overduePercent: 0 };
   const dashboardUpcoming = dashboardData?.timeline.slice(0, 4).map((item) => {
     const date = new Date(`${item.dueDate}T12:00:00`);
     return {
@@ -352,9 +348,9 @@ export default function EbruPreviewPage() {
   const visualUpcoming = dashboardUpcoming;
   const visualKpis = dashboardKpis;
   const visualExchange = dashboardExchange;
-  const visualApprovals = approvals;
-  const visualNotifications = systemNotifications;
-  const visualCalendar = calendarEvents;
+  const visualApprovals: { label: string; count: number }[] = [];
+  const visualNotifications: { title: string; description: string; relativeTime: string }[] = [];
+  const visualCalendar: Record<number, string> = {};
 
   return (
     <div className="ebru-dashboard">
@@ -768,8 +764,8 @@ export default function EbruPreviewPage() {
                       <div className="ebru-weather">
                         <Sun color="#ffd33d" />
                         <div>
-                          <strong>{previewMetrics.weather.temperature}</strong>
-                          <small>{previewMetrics.weather.location}</small>
+                          <strong>—</strong>
+                          <small>Hava durumu verisi yok</small>
                         </div>
                       </div>
                     </div>

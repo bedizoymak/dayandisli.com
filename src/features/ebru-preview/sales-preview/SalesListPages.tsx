@@ -11,9 +11,12 @@ import {
   FinanceExportMenu,
   type ExportColumn,
 } from "../finance-preview/FinanceNavigationTools";
-import { salesActivities, salesOrders, salesQuotes } from "./salesData";
+import type { SalesActivity, SalesOrder, SalesQuote } from "./salesTypes";
 import { SalesHeader, SalesStatus } from "./SalesShared";
 import { customerName, printQuote } from "./salesUtils";
+const salesActivities: SalesActivity[] = [];
+const salesOrders: SalesOrder[] = [];
+const salesQuotes: SalesQuote[] = [];
 const root = "/apps/sales";
 const quoteColumns: ExportColumn<(typeof salesQuotes)[number]>[] = [
   { header: "Teklif No", value: (r) => r.no },

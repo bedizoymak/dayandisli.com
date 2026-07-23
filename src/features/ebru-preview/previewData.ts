@@ -31,19 +31,3 @@ export const quickActions: PreviewRoute[] = [
   { label: "Müşteriler", route: "/apps/finance/income/customers" },
   { label: "Gelir/Gider Raporu", route: "/apps/finance/expense/income-expense-report" },
 ];
-
-export const previewMetrics = {
-  weather: { temperature: "29°C", location: "İstanbul · Açık" },
-  exchange: [],
-  kpis: [],
-  receivables: { total: "Kullanılabilir veri yok", normal: "—", normalPercent: 0, overdue: "—", overduePercent: 0 },
-  payables: { total: "Kullanılabilir veri yok", normal: "—", normalPercent: 0, overdue: "—", overduePercent: 0 },
-};
-
-export const upcomingItems: Array<{ day: string; month: string; title: string; note: string; amount: string; kind: string }> = [];
-
-export const approvals: Array<{ label: string; count: number }> = [];
-
-export const systemNotifications: Array<{ title: string; description: string; relativeTime: string }> = [];
-
-export const calendarEvents: Record<number, string> = {};
