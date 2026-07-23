@@ -22,15 +22,6 @@ import {
   flowTransactions,
 } from "./cashReportData";
 import "./finance-reports.css";
-import { crmCustomers } from "../crm-preview/crmCustomerData";
-import { useCollectionTransactions } from "../shared/collectionTransactions";
-import {
-  accountLabel,
-  formatPreviewDate,
-  formatTry,
-  getCashAccountCollections,
-  getIncomingCheques,
-} from "../shared/collectionSelectors";
 
 function Header<T>({
   breadcrumb,
@@ -119,22 +110,9 @@ function Table<T>({
         <tbody>
           {rows.map((row, index) => (
             <tr key={index}>
-              {columns.map((column) => {
-                const value = column.value(row);
-                return (
-                  <td key={column.header}>
-                    {column.header === "Hesap" ? (
-                      <span
-                        className={`collection-account-badge${value === "Gayri Resmi" ? " unofficial" : ""}`}
-                      >
-                        {value}
-                      </span>
-                    ) : (
-                      value
-                    )}
-                  </td>
-                );
-              })}
+              {columns.map((column) => (
+                <td key={column.header}>{column.value(row)}</td>
+              ))}
             </tr>
           ))}
         </tbody>
@@ -244,10 +222,10 @@ export function PaymentsReportPage() {
       <DateFilters />
       <section className="report-kpis">
         {[
-          ["Planlanmamış", "₺199K"],
-          ["Vadesi Geçen", "₺1,30M"],
-          ["Toplam Ödeme", "₺1,62M"],
-          ["Ort. Vade Aşımı", "42 gün"],
+          ["Planlanmamış", "—"],
+          ["Vadesi Geçen", "—"],
+          ["Toplam Ödeme", "—"],
+          ["Ort. Vade Aşımı", "—"],
         ].map((kpi) => (
           <article className="ebru-card" key={kpi[0]}>
             <span>{kpi[0]}</span>
@@ -318,20 +296,19 @@ const accountColumns: ExportColumn<(typeof cashAccounts)[number]>[] = [
   { header: "Döviz Cinsi", value: (r) => r.currency },
   { header: "Bakiye", value: (r) => r.balance },
 ];
-type CashMovementRow = (typeof cashMovements)[number] & {
-  destination?: string;
-  accountLabel?: string;
-  project?: string;
-};
-const movementColumns: ExportColumn<CashMovementRow>[] = [
+const checkColumns: ExportColumn<(typeof checks)[number]>[] = [
+  { header: "Düzenleyen", value: (r) => r.issuer },
+  { header: "Çek Bilgileri", value: (r) => r.info },
+  { header: "Vade Tarihi", value: (r) => r.due },
+  { header: "Kalan Meblağ", value: (r) => r.amount },
+  { header: "Durum / Tür", value: (r) => r.status },
+];
+const movementColumns: ExportColumn<(typeof cashMovements)[number]>[] = [
   { header: "İşlem Türü", value: (r) => r.type },
   { header: "İşlem Tarihi", value: (r) => r.date },
   { header: "Müşteri / Tedarikçi / Çalışan", value: (r) => r.party },
-  { header: "Hedef Hesap", value: (r) => r.destination || "—" },
   { header: "Kayıt İsmi", value: (r) => r.name },
   { header: "Meblağ", value: (r) => r.amount },
-  { header: "Hesap", value: (r) => r.accountLabel || "—" },
-  { header: "Proje", value: (r) => r.project || "—" },
 ];
 const flowColumns: ExportColumn<(typeof flowTransactions)[number]>[] = [
   { header: "İşlem Türü", value: (r) => r.type },
@@ -343,57 +320,12 @@ const flowColumns: ExportColumn<(typeof flowTransactions)[number]>[] = [
 ];
 
 export function CashAccountsPage() {
-  const transactions = useCollectionTransactions();
-  const collections = getCashAccountCollections(transactions);
-  const canonicalAccounts = [
-    { ...cashAccounts[0], id: "cash-main", name: "Kasa Nakit" },
-    { ...cashAccounts[1], id: "garanti-try", name: "Garanti BBVA TL" },
-    {
-      name: "Türkiye İş Bankası TL",
-      id: "isbank-try",
-      iban: "—",
-      currency: "TRY",
-      balance: "₺0",
-    },
-    {
-      name: "Yapı Kredi TL",
-      id: "yapikredi-try",
-      iban: "—",
-      currency: "TRY",
-      balance: "₺0",
-    },
-    { ...cashAccounts[2], id: "akbank-legacy" },
-  ].map((account) => {
-    const base = Number(
-      account.balance
-        .replace(/[^\d,-]/g, "")
-        .replace(/\./g, "")
-        .replace(",", "."),
-    );
-    const added = getCashAccountCollections(transactions, account.id).reduce(
-      (sum, transaction) => sum + transaction.amount,
-      0,
-    );
-    return { ...account, balance: formatTry(base + added) };
-  });
-  const collectionRows: CashMovementRow[] = collections.map((transaction) => ({
-    type: "Müşteriden Tahsilat",
-    date: formatPreviewDate(transaction.transactionDate),
-    party:
-      crmCustomers.find((customer) => customer.id === transaction.customerId)
-        ?.name || transaction.customerId,
-    destination: transaction.destinationAccountName,
-    name: transaction.description || "Müşteri tahsilatı",
-    amount: `+${formatTry(transaction.amount)}`,
-    accountLabel: accountLabel(transaction.accountType),
-    project: transaction.relatedProjectId || "—",
-  }));
   return (
     <div className="report-page">
       <Header
         breadcrumb="Muhasebe ve Finans / Kasa / Kasa ve Bankalar"
         title="Kasa ve Bankalar"
-        rows={canonicalAccounts}
+        rows={cashAccounts}
         columns={accountColumns}
         filename="kasa-ve-bankalar"
         actions={
@@ -418,75 +350,18 @@ export function CashAccountsPage() {
           <Filter /> Filtrele
         </button>
       </div>
-      <Table rows={canonicalAccounts} columns={accountColumns} />
-      <h2 className="report-section-title">Tahsilat Hareketleri</h2>
-      <Table
-        rows={[...collectionRows, ...cashMovements]}
-        columns={movementColumns}
-      />
+      <Table rows={cashAccounts} columns={accountColumns} />
     </div>
   );
 }
 export function ChecksPage() {
-  const transactions = useCollectionTransactions();
-  const incoming = getIncomingCheques(transactions).map((transaction) => ({
-    issuer:
-      transaction.drawerName ||
-      crmCustomers.find((customer) => customer.id === transaction.customerId)
-        ?.name ||
-      transaction.customerId,
-    info: `Çek #${transaction.chequeNumber || "—"}`,
-    due: transaction.dueDate ? formatPreviewDate(transaction.dueDate) : "—",
-    amount: formatTry(transaction.amount),
-    status: `${transaction.status === "cleared" ? "Tahsil Edildi" : transaction.status === "bounced" ? "Karşılıksız" : "Portföyde"} · Alınan Çek`,
-    bank:
-      [transaction.chequeBank, transaction.chequeBranch]
-        .filter(Boolean)
-        .join(" / ") || "—",
-    accountLabel: accountLabel(transaction.accountType),
-  }));
-  const chequeRows = [
-    ...incoming,
-    ...checks.map((cheque) => ({
-      ...cheque,
-      bank: "—",
-      accountLabel: "Resmi",
-    })),
-  ];
-  const chequeColumns = [
-    {
-      header: "Müşteri / Keşideci",
-      value: (row: (typeof chequeRows)[number]) => row.issuer,
-    },
-    {
-      header: "Çek Bilgileri",
-      value: (row: (typeof chequeRows)[number]) => row.info,
-    },
-    { header: "Banka", value: (row: (typeof chequeRows)[number]) => row.bank },
-    {
-      header: "Vade Tarihi",
-      value: (row: (typeof chequeRows)[number]) => row.due,
-    },
-    {
-      header: "Meblağ",
-      value: (row: (typeof chequeRows)[number]) => row.amount,
-    },
-    {
-      header: "Durum / Tür",
-      value: (row: (typeof chequeRows)[number]) => row.status,
-    },
-    {
-      header: "Hesap",
-      value: (row: (typeof chequeRows)[number]) => row.accountLabel,
-    },
-  ];
   return (
     <div className="report-page">
       <Header
         breadcrumb="Muhasebe ve Finans / Kasa / Çekler"
         title="Çekler"
-        rows={chequeRows}
-        columns={chequeColumns}
+        rows={checks}
+        columns={checkColumns}
         filename="cekler"
         actions={
           <Link
@@ -505,7 +380,7 @@ export function ChecksPage() {
           <Filter /> Filtrele
         </button>
       </div>
-      <Table rows={chequeRows} columns={chequeColumns} />
+      <Table rows={checks} columns={checkColumns} />
     </div>
   );
 }
@@ -523,9 +398,9 @@ export function CashBankReportPage() {
       <DateFilters />
       <section className="report-kpis">
         {[
-          ["Toplam Nakit Girişi", "₺1,84M"],
-          ["Toplam Nakit Çıkışı", "₺1,12M"],
-          ["Net Nakit Akışı", "₺720K"],
+          ["Toplam Nakit Girişi", "—"],
+          ["Toplam Nakit Çıkışı", "—"],
+          ["Net Nakit Akışı", "—"],
         ].map((kpi) => (
           <article className="ebru-card" key={kpi[0]}>
             <span>{kpi[0]}</span>
@@ -579,11 +454,11 @@ export function CashFlowReportPage() {
       />
       <section className="report-kpis flow">
         {[
-          ["Bugün toplam bakiye", "₺7,15M"],
-          ["Vadesi geçmiş Tahsilat", "₺3,34M"],
-          ["Vadesi geçmiş Ödeme", "₺1,30M"],
-          ["Planlanmamış Tahsilat", "₺0"],
-          ["Planlanmamış Ödeme", "₺199K"],
+          ["Bugün toplam bakiye", "—"],
+          ["Vadesi geçmiş Tahsilat", "—"],
+          ["Vadesi geçmiş Ödeme", "—"],
+          ["Planlanmamış Tahsilat", "—"],
+          ["Planlanmamış Ödeme", "—"],
         ].map((kpi) => (
           <article className="ebru-card" key={kpi[0]}>
             <span>{kpi[0]}</span>
@@ -609,13 +484,13 @@ export function CashFlowReportPage() {
         <div className="forecast-panel">
           <aside>
             <span>
-              Toplam Tahsilat<strong>₺2,28M</strong>
+              Toplam Tahsilat<strong>—</strong>
             </span>
             <span>
-              Toplam Ödeme<strong>₺1,87M</strong>
+              Toplam Ödeme<strong>—</strong>
             </span>
             <span>
-              Tahmini Dönem Sonu Bakiyesi<strong>₺7,50M</strong>
+              Tahmini Dönem Sonu Bakiyesi<strong>—</strong>
             </span>
           </aside>
           <div className="forecast-chart">

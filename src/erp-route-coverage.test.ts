@@ -3,10 +3,6 @@ import { describe, expect, it } from "vitest";
 
 const routeMap = readFileSync("docs/ERP_FRONTEND_ROUTE_MAP.md", "utf8");
 const routeContent = readFileSync("src/features/ebru-preview/EbruRouteContent.tsx", "utf8");
-const livePresentation = readFileSync(
-  "src/features/ebru-preview/finance-preview/CanonicalParasutPages.tsx",
-  "utf8",
-);
 
 const mappedRoutes = [
   "/apps",
@@ -78,18 +74,42 @@ describe("canonical ERP route coverage", () => {
     expect(routeContent).toContain("<CrmCustomerFormPage edit />");
   });
 
-  it("uses every approved Ebru presentation family with live Paraşüt adapters", () => {
-    for (const className of [
-      "income-page",
-      "ops-page",
-      "crm-page",
-      "sales-page",
-      "report-page",
+  it("routes demo-backed canonical pages through their matching presentation components", () => {
+    for (const component of [
+      "InvoiceListPage",
+      "CustomerListPage",
+      "CollectionReportPage",
+      "ExpenseListPage",
+      "IncomingInvoicesPage",
+      "IncomeExpenseReportPage",
+      "PaymentsReportPage",
+      "VatReportPage",
+      "ProductsPage",
+      "DispatchesPage",
+      "StockHistoryPage",
+      "StockReportPage",
+      "SuppliersPage",
+      "OrdersPage",
+      "CashAccountsPage",
+      "ChecksPage",
+      "CashBankReportPage",
+      "CashFlowReportPage",
+      "CrmCustomerListPage",
+      "QuotesPage",
+      "SalesOrdersPage",
+      "SalesActivitiesPage",
+      "ProductionReportPage",
     ]) {
-      expect(livePresentation).toContain(`className="${className}"`);
+      expect(routeContent).toContain(component);
     }
-    expect(livePresentation).toContain("useParasutList");
-    expect(livePresentation).toContain("useParasutReports");
-    expect(livePresentation).toContain("CreateCustomerDialog");
+  });
+
+  it("uses the generic live adapter only for production-only routes without demo counterparts", () => {
+    expect(routeContent).toContain("canonicalParasutPages.employees");
+    expect(routeContent).toContain("canonicalParasutPages.salaries");
+    expect(routeContent).toContain("canonicalParasutPages.eInvoices");
+    expect(routeContent).not.toContain("canonicalParasutPages.invoices");
+    expect(routeContent).not.toContain("canonicalParasutPages.customers");
+    expect(routeContent).not.toContain("CanonicalFinanceReportPage");
   });
 });

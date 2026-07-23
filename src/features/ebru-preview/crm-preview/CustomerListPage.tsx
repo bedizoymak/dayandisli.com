@@ -53,10 +53,10 @@ export function CustomerListPage() {
       </CrmPageHeader>
       <section className="crm-kpis">
         {[
-          ["Toplam Müşteri", "128"],
-          ["Toplam Tahsilat", "₺8,42M"],
-          ["Bekleyen Tahsilat", "₺3,44M"],
-          ["Bakiyesi Kapanan", "46"],
+          ["Toplam Müşteri", "—"],
+          ["Toplam Tahsilat", "—"],
+          ["Bekleyen Tahsilat", "—"],
+          ["Bakiyesi Kapanan", "—"],
         ].map((item) => (
           <article className="ebru-card" key={item[0]}>
             <span>{item[0]}</span>

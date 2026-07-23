@@ -47,6 +47,17 @@ describe("golden demo and canonical production boundary", () => {
   it("keeps demo modules and fixture imports out of canonical production", () => {
     const production = sourceUnder(productionRoot);
     expect(production).not.toMatch(/from\s+["'][^"']*ebru-demo|import\(["'][^"']*ebru-demo/i);
+    for (const marker of [
+      "Atlas Makine",
+      "Marmara Metal",
+      "TKL-2026-",
+      "UE-2026-",
+      "Redüktör Modernizasyonu",
+      "₺3.340.000",
+      "₺8,42M",
+    ]) {
+      expect(production).not.toContain(marker);
+    }
   });
 
   it("does not route canonical pages into the demo or restore legacy standalone apps", () => {

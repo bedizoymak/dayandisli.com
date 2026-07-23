@@ -426,13 +426,13 @@ export function StockReportPage() {
       />
       <section className="ops-kpis">
         <article className="ebru-card">
-          Toplam Stok Maliyeti<strong>₺226.960</strong>
+          Toplam Stok Maliyeti<strong>—</strong>
         </article>
         <article className="ebru-card">
-          Toplam Satış Değeri<strong>₺350.060</strong>
+          Toplam Satış Değeri<strong>—</strong>
         </article>
         <article className="ebru-card">
-          Tahmini Kâr<strong>₺123.100</strong>
+          Tahmini Kâr<strong>—</strong>
         </article>
       </section>
       <Table

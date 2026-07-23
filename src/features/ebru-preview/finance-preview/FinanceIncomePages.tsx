@@ -203,6 +203,7 @@ export function InvoiceListPage() {
           { header: "Fatura Tarihi", value: (row) => formatDate(row.invoice_date) },
           { header: "Vade Tarihi", value: (row) => formatDate(row.due_date) },
           { header: "Tutar", value: (row) => formatCurrency(row.grand_total, row.currency) },
+          { header: "Tahsilat Durumu", value: () => "—" },
           { header: "Durum", value: (row) => INVOICE_STATUS_LABELS[row.status] },
         ]}
       />
@@ -219,8 +220,16 @@ export function InvoiceListPage() {
           Durum
           <select>
             <option>Tümü</option>
-            <option>Kesildi</option>
-            <option>Ödendi</option>
+            <option>Onaylandı</option>
+            <option>Kapandı</option>
+          </select>
+        </label>
+        <label>
+          Tahsilat Durumu
+          <select>
+            <option>Tümü</option>
+            <option>Tahsil Edilecek</option>
+            <option>Tahsil Edildi</option>
           </select>
         </label>
         <label className="income-search">
@@ -239,6 +248,7 @@ export function InvoiceListPage() {
           "Fatura Tarihi",
           "Vade Tarihi",
           "Tutar",
+          "Tahsilat Durumu",
           "Durum",
           "İşlemler",
         ]}
@@ -257,6 +267,9 @@ export function InvoiceListPage() {
             <td>{formatDate(row.invoice_date)}</td>
             <td>{formatDate(row.due_date)}</td>
             <td>{formatCurrency(row.grand_total, row.currency)}</td>
+            <td>
+              <Status>—</Status>
+            </td>
             <td>
               <Status>{INVOICE_STATUS_LABELS[row.status]}</Status>
             </td>
@@ -303,6 +316,7 @@ export function CustomerListPage() {
         filename="musteriler"
         columns={[
           { header: "Müşteri Adı", value: (row) => row.company_name },
+          { header: "Tür", value: (row) => row.type === "customer" ? "Müşteri" : row.type },
           { header: "VKN / TCKN", value: (row) => row.tax_number ?? "-" },
           { header: "E-posta", value: (row) => row.email ?? "-" },
           { header: "Telefon", value: (row) => row.phone ?? "-" },
@@ -319,10 +333,28 @@ export function CustomerListPage() {
             placeholder="Ad veya VKN / TCKN ara"
           />
         </label>
+        <label>
+          Durum
+          <select>
+            <option>Tümü</option>
+            <option>Aktif</option>
+            <option>Pasif</option>
+          </select>
+        </label>
+        <label>
+          Bakiye Durumu
+          <select>
+            <option>Tümü</option>
+            <option>Borçlu</option>
+            <option>Alacaklı</option>
+            <option>Dengede</option>
+          </select>
+        </label>
       </FilterBar>
       <TableShell
         headers={[
           "Müşteri Adı",
+          "Tür",
           "VKN / TCKN",
           "E-posta",
           "Telefon",
@@ -337,6 +369,7 @@ export function CustomerListPage() {
         {customers.map((row) => (
           <tr key={row.id}>
             <td>{row.company_name}</td>
+            <td>{row.type === "customer" ? "Müşteri" : row.type}</td>
             <td>{row.tax_number ?? "-"}</td>
             <td>{row.email ?? "-"}</td>
             <td>{row.phone ?? "-"}</td>
@@ -503,7 +536,7 @@ export function CustomerFormPage() {
 }
 
 export function CollectionReportPage() {
-  const max = Math.max(...agingBuckets.map((item) => item.value));
+  const max = Math.max(1, ...agingBuckets.map((item) => item.value));
   return (
     <div className="income-page">
       <IncomeHeader

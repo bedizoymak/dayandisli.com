@@ -166,37 +166,33 @@ export const financeNavigation: FinancePreviewGroup[] = [
 
 export const financeOverviewData = {
   receivables: [
-    { label: "Toplam Tahsil Edilecek", value: "₺ 3,44M", tone: "blue" },
-    { label: "Gecikmiş Tahsilat", value: "₺ 3,34M", tone: "red" },
-    { label: "Fatura Yok", value: "₺ 0", tone: "muted" },
+    { label: "Toplam Tahsil Edilecek", value: "—", tone: "blue" },
+    { label: "Gecikmiş Tahsilat", value: "—", tone: "red" },
+    { label: "Planlanmamış", value: "—", tone: "muted" },
   ],
   receivableDetails: [
-    { label: "Yazdırılmamış / Gönderilmemiş", value: "0" },
-    { label: "Tekrarlayan", value: "0" },
+    { label: "Yazdırılmamış / Gönderilmemiş", value: "—" },
+    { label: "Tekrarlayan", value: "—" },
   ],
   payables: [
-    { label: "Toplam Ödenecek", value: "₺ 1,62M", tone: "green" },
-    { label: "Gecikmiş Ödemeler", value: "₺ 1,30M", tone: "red" },
-    { label: "Planlanmamış", value: "₺ 199K", tone: "orange" },
+    { label: "Toplam Ödenecek", value: "—", tone: "green" },
+    { label: "Gecikmiş Ödemeler", value: "—", tone: "red" },
+    { label: "Planlanmamış", value: "—", tone: "orange" },
   ],
   payableDetails: [
-    { label: "Bu Ay Oluşan KDV", value: "₺ 201.009" },
-    { label: "Tekrarlayan", value: "0" },
+    { label: "Bu Ay Oluşan KDV", value: "—" },
+    { label: "Tekrarlayan", value: "—" },
   ],
   accounts: [
-    {
-      name: "GARANTİ BBVA",
-      balance: "₺ 4.820.000",
-      detail: "Vadesiz TL Hesabı",
-    },
-    { name: "AKBANK", balance: "₺ 2.150.000", detail: "Vadesiz TL Hesabı" },
-    { name: "KASA", balance: "₺ 185.300", detail: "Merkez Kasa" },
+    { name: "Banka hesabı", balance: "—", detail: "Kullanılabilir veri yok" },
+    { name: "Banka hesabı ", balance: "—", detail: "Kullanılabilir veri yok" },
+    { name: "Kasa hesabı", balance: "—", detail: "Kullanılabilir veri yok" },
   ],
   cashFlow: [
-    { label: "Toplam Bakiye", value: "₺ 9,83M" },
-    { label: "Toplam Tahsilat", value: "₺ 100K", tone: "cyan" },
-    { label: "Toplam Ödeme", value: "₺ 118,5K", tone: "orange" },
-    { label: "Tahmini Dönem Sonu", value: "₺ 9,81M" },
+    { label: "Toplam Bakiye", value: "—" },
+    { label: "Toplam Tahsilat", value: "—", tone: "cyan" },
+    { label: "Toplam Ödeme", value: "—", tone: "orange" },
+    { label: "Tahmini Dönem Sonu", value: "—" },
   ],
   weeks: [
     "Bugün",
@@ -212,34 +208,5 @@ export const financeOverviewData = {
     "21 Eyl",
     "28 Eyl",
   ],
-  timeline: [
-    { timing: "1 ay sonra", title: "Ödeme: ₺ 540", status: "upcoming" },
-    { timing: "1 ay sonra", title: "Ödeme: ₺ 648", status: "upcoming" },
-    {
-      timing: "15 gün sonra",
-      title: "Çek ödemesi: ₺ 100.000",
-      status: "upcoming",
-    },
-    {
-      timing: "15 gün sonra",
-      title: "Çek tahsilatı: ₺ 100.000",
-      status: "upcoming",
-    },
-    { timing: "248 gün gecikti", title: "Ödeme: ₺ 3.159", status: "overdue" },
-    {
-      timing: "287 gün gecikti",
-      title: "Tahsilat: ₺ 14.920",
-      status: "overdue",
-    },
-    {
-      timing: "370 gün gecikti",
-      title: "Tahsilat: ₺ 160.397",
-      status: "overdue",
-    },
-    {
-      timing: "577 gün gecikti",
-      title: "Tahsilat: ₺ 4.820",
-      status: "overdue",
-    },
-  ],
+  timeline: [] as { timing: string; title: string; status: string }[],
 };
