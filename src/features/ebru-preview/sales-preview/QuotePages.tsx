@@ -15,7 +15,7 @@ import { salesQuotes } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
 import { customerName, openQuotePreview, printQuote } from "./salesUtils";
 import type { QuoteLine, SalesQuote } from "./salesTypes";
-const root = "/apps/ebru-preview/sales";
+const root = "/apps/sales";
 const blankLine = (): QuoteLine => ({
   productServiceId: products[0].id,
   code: products[0].code,
@@ -94,7 +94,7 @@ export function QuoteFormPage() {
             <button type="button" onClick={() => setSelector(true)}>
               Müşteri Seç
             </button>
-            <Link to="/apps/ebru-preview/crm/customers/new?returnTo=/apps/ebru-preview/sales/quotes/new">
+            <Link to="/apps/crm/customers/new?returnTo=/apps/sales/quotes/new">
               Yeni Müşteri Oluştur
             </Link>
           </div>
@@ -392,7 +392,7 @@ export function QuoteDetailPage() {
             <span>Müşteri</span>
             <Link
               className="sales-customer-link"
-              to={`/apps/ebru-preview/crm/customers/${q.customerId}`}
+              to={`/apps/crm/customers/${q.customerId}`}
             >
               {customerName(q.customerId)}
             </Link>

@@ -30,7 +30,7 @@ import {
 } from "./financeExpenseData";
 import "./finance-expense.css";
 
-const base = "/apps/ebru-preview/finance/expense/list";
+const base = "/apps/finance/expense/list";
 
 function PageHeader({
   breadcrumb,

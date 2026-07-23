@@ -36,11 +36,11 @@ describe("Paraşüt application card", () => {
 
   it("never surfaces the ebru-preview registry entry as a production navigation item", () => {
     // The application-registry entry still exists for permission-path bookkeeping
-    // (getRequiredPermissionForPath("/apps/ebru-preview")), but the unified shell's
+    // (getRequiredPermissionForPath("/apps")), but the unified shell's
     // sidebar is built from src/config/erpModules.ts, which has no such entry —
     // so the retired launcher card can never resurface in production navigation.
     const previewModule = erpApplications.find((app) => app.id === "ebru-preview");
-    expect(previewModule?.route).toBe("/apps/ebru-preview");
+    expect(previewModule?.route).toBe("/apps");
   });
 
   it("routes to /apps/parasut and requires the parasut.view permission at the route level", () => {

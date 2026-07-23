@@ -39,7 +39,7 @@ import type {
   CollectionTransaction,
   CustomerAccountType,
 } from "../shared/collectionTypes";
-const parent = "/apps/ebru-preview/crm/customers";
+const parent = "/apps/crm/customers";
 export function CustomerDetailPage() {
   const { customerId } = useParams();
   const { erpUser } = useERPAuth();
@@ -400,7 +400,7 @@ function QuoteHistory({ quotes }: { quotes: typeof salesQuotes }) {
                 <td>
                   <Link
                     title="Görüntüle"
-                    to={`/apps/ebru-preview/sales/quotes/${q.id}`}
+                    to={`/apps/sales/quotes/${q.id}`}
                   >
                     <Eye />
                   </Link>

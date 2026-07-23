@@ -1,8 +1,8 @@
 export type PreviewRoute = { label: string; route: string; keywords?: string };
 
 export const sidebarItems: PreviewRoute[] = [
-  { label: "Dashboard", route: "/apps/ebru-preview" },
-  { label: "Favoriler", route: "/apps/ebru-preview" },
+  { label: "Dashboard", route: "/apps" },
+  { label: "Favoriler", route: "/apps" },
   { label: "Muhasebe ve Finans", route: "/finans" },
   { label: "Müşteri İlişkileri", route: "/crm" },
   { label: "Raporlar", route: "/reports" },

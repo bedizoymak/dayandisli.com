@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { CrmPageHeader } from "./CrmShared";
 import { customerFormDefaults as d } from "./crmCustomerData";
-const parent = "/apps/ebru-preview/crm/customers";
+const parent = "/apps/crm/customers";
 export function CustomerFormPage({ edit = false }: { edit?: boolean }) {
   return (
     <div className="crm-page">

@@ -17,7 +17,7 @@ import {
 } from "./operationsData";
 import "./operations-pages.css";
 
-const root = "/apps/ebru-preview/finance";
+const root = "/apps/finance";
 function Header({
   breadcrumb,
   title,

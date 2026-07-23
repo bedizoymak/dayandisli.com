@@ -24,8 +24,8 @@ function SummaryPanel({
 }) {
   const target =
     kind === "receivable"
-      ? "/apps/ebru-preview/finance/income/invoices"
-      : "/apps/ebru-preview/finance/expense/incoming-invoices";
+      ? "/apps/finance/income/invoices"
+      : "/apps/finance/expense/incoming-invoices";
   return (
     <article className={`ebru-card finance-summary ${kind}`}>
       <div className="finance-panel-head">
@@ -88,10 +88,10 @@ export function FinanceOverview() {
           <p>Şirketin tahsilat, ödeme, banka ve nakit akışı görünümü.</p>
         </div>
         <div className="finance-heading-actions">
-          <Link to="/apps/ebru-preview/finance/income/invoices/new">
+          <Link to="/apps/finance/income/invoices/new">
             ＋ Tahsilat Ekle
           </Link>
-          <Link to="/apps/ebru-preview/finance/expense/list/new/invoice">
+          <Link to="/apps/finance/expense/list/new/invoice">
             − Ödeme Ekle
           </Link>
           <button className="primary">＋ Gelir / Gider Ekle</button>

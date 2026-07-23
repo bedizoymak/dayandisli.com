@@ -47,7 +47,7 @@ export function CustomerListPage() {
           rows={rows}
           columns={columns}
         />
-        <Link className="crm-primary" to="/apps/ebru-preview/crm/customers/new">
+        <Link className="crm-primary" to="/apps/crm/customers/new">
           Yeni Müşteri
         </Link>
       </CrmPageHeader>
@@ -113,7 +113,7 @@ export function CustomerListPage() {
                       {c.type === "Tüzel Kişi" ? <Building2 /> : <UserRound />}
                     </i>
                     <span>
-                      <Link to={`/apps/ebru-preview/crm/customers/${c.id}`}>
+                      <Link to={`/apps/crm/customers/${c.id}`}>
                         {c.name}
                       </Link>
                       <small>
@@ -136,13 +136,13 @@ export function CustomerListPage() {
                   <div className="crm-row-actions">
                     <Link
                       title="Görüntüle"
-                      to={`/apps/ebru-preview/crm/customers/${c.id}`}
+                      to={`/apps/crm/customers/${c.id}`}
                     >
                       <Eye />
                     </Link>
                     <Link
                       title="Düzenle"
-                      to={`/apps/ebru-preview/crm/customers/${c.id}/edit`}
+                      to={`/apps/crm/customers/${c.id}/edit`}
                     >
                       <Pencil />
                     </Link>

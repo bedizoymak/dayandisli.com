@@ -2,22 +2,22 @@ export const reportsNavigation = [
   {
     id: "collections",
     label: "Tahsilat Raporu",
-    route: "/apps/ebru-preview/reports/collections",
+    route: "/apps/reports/collections",
   },
   {
     id: "income-expense",
     label: "Gelir-Gider Raporu",
-    route: "/apps/ebru-preview/reports/income-expense",
+    route: "/apps/reports/income-expense",
   },
   {
     id: "cash-bank",
     label: "Kasa-Banka Raporu",
-    route: "/apps/ebru-preview/reports/cash-bank",
+    route: "/apps/reports/cash-bank",
   },
   {
     id: "production",
     label: "Üretim Raporu",
-    route: "/apps/ebru-preview/reports/production",
+    route: "/apps/reports/production",
   },
 ] as const;
 

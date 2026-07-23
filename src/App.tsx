@@ -24,7 +24,6 @@ const Referanslar = lazy(() => import("./pages/Referanslar"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const EbruPreviewPage = lazy(() => import("./features/ebru-preview/EbruPreviewPage"));
-const AdminRoutes = lazy(() => import("./features/admin").then((module) => ({ default: module.AdminRoutes })));
 const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CartPage })));
@@ -107,8 +106,7 @@ const AppRoutes = () => {
           <>
             {/* Ebru-preview is now the sole production ERP frontend — every /apps path renders it. */}
             <Route path="/apps/*" element={protectedElement(<EbruPreviewPage />)} />
-            <Route path="/admin/*" element={protectedElement(<AdminRoutes />)} />
-            <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/apps/ebru-preview" replace />)} />
+            <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/apps" replace />)} />
             <Route path="/erp/*" element={protectedElement(<LegacyErpRedirect />)} />
             {/* Every other pre-migration ERP path redirects to its /apps/... equivalent. */}
             <Route path="/*" element={protectedElement(<LegacyRootToAppsRedirect />)} />

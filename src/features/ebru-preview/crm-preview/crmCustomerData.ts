@@ -166,6 +166,6 @@ export const crmSubmenu = [
   {
     id: "customers",
     label: "Müşteriler",
-    route: "/apps/ebru-preview/crm/customers",
+    route: "/apps/crm/customers",
   },
 ];

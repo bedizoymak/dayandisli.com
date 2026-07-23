@@ -491,7 +491,7 @@ export function ChecksPage() {
         actions={
           <Link
             className="report-primary-link"
-            to="/apps/ebru-preview/finance/cash/checks/new"
+            to="/apps/finance/cash/checks/new"
           >
             <Plus /> Çek Ekle
           </Link>

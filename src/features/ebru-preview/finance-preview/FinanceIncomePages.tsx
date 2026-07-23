@@ -159,7 +159,7 @@ export function InvoiceListPage() {
         breadcrumb="Muhasebe ve Finans / Gelir Yönetimi / Faturalar"
         title="Faturalar"
         subtitle="Satış faturalarını görüntüleyin, filtreleyin ve yönetin."
-        newTo="/apps/ebru-preview/finance/income/invoices/new"
+        newTo="/apps/finance/income/invoices/new"
         newLabel="Yeni Fatura"
         rows={rows}
         filename="faturalar"
@@ -223,7 +223,7 @@ export function InvoiceListPage() {
         {rows.map((row) => (
           <tr key={row.no}>
             <td>
-              <Link to="/apps/ebru-preview/finance/income/invoices/new">
+              <Link to="/apps/finance/income/invoices/new">
                 {row.no}
               </Link>
             </td>
@@ -260,7 +260,7 @@ export function CustomerListPage() {
         breadcrumb="Muhasebe ve Finans / Gelir Yönetimi / Müşteriler"
         title="Müşteriler"
         subtitle="Müşteri hesaplarını görüntüleyin ve yönetin."
-        newTo="/apps/ebru-preview/finance/income/customers/new"
+        newTo="/apps/finance/income/customers/new"
         newLabel="Yeni Müşteri"
         rows={rows}
         filename="musteriler"
@@ -342,7 +342,7 @@ export function CustomerFormPage() {
       <FinancePageHeader
         breadcrumb="Muhasebe ve Finans / Gelir Yönetimi / Müşteriler / Yeni Müşteri"
         title="Yeni Müşteri"
-        cancelTo="/apps/ebru-preview/finance/income/customers"
+        cancelTo="/apps/finance/income/customers"
         backLabel="Müşterilere Dön"
       />
       <form

@@ -7,7 +7,7 @@ import { InvoiceLineItemsTable } from "./InvoiceLineItemsTable";
 import { salesInvoiceDefaults } from "./financeFormData";
 import "./finance-forms.css";
 
-const incomeBase = "/apps/ebru-preview/finance/income/invoices";
+const incomeBase = "/apps/finance/income/invoices";
 export function SalesInvoiceForm() {
   const data = salesInvoiceDefaults;
   return (

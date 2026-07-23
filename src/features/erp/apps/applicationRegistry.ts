@@ -306,7 +306,7 @@ export const erpApplications: ErpApplication[] = [
     id: "ebru-preview",
     title: "Ebru UI Preview",
     description: "Frontend tasarım çalışmalarını görüntüle",
-    route: "/apps/ebru-preview",
+    route: "/apps",
     icon: Palette,
     permissionKey: "dashboard.view",
     modules: [],

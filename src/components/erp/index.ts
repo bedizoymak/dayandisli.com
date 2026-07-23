@@ -8,7 +8,6 @@ export * from "./ConfirmDialog";
 export * from "./MigrationNotice";
 export * from "./AuditTimeline";
 export * from "./PrintPage";
-export * from "./ModuleCard";
 export * from "./StatCard";
 export * from "./FilterDrawer";
 export * from "./ViewToggle";

@@ -6,7 +6,7 @@ export const customerName = (id: string) =>
 export function openQuotePreview(quote: SalesQuote, print = false) {
   localStorage.setItem(DRAFT_QUOTE_KEY, JSON.stringify(quote));
   window.open(
-    `/apps/ebru-preview/sales/quotes/${quote.id}/print?draft=1${print ? "&print=1" : ""}`,
+    `/apps/sales/quotes/${quote.id}/print?draft=1${print ? "&print=1" : ""}`,
     "_blank",
     "noopener,noreferrer",
   );

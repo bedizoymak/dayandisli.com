@@ -114,16 +114,16 @@ export const salesSubmenu = [
   {
     id: "quotes",
     label: "Teklifler",
-    route: "/apps/ebru-preview/sales/quotes",
+    route: "/apps/sales/quotes",
   },
   {
     id: "orders",
     label: "Siparişler",
-    route: "/apps/ebru-preview/sales/orders",
+    route: "/apps/sales/orders",
   },
   {
     id: "activities",
     label: "Satış Faaliyetleri",
-    route: "/apps/ebru-preview/sales/activities",
+    route: "/apps/sales/activities",
   },
 ];

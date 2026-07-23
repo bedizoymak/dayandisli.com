@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-const root = "/apps/ebru-preview/crm/customers";
+const root = "/apps/crm/customers";
 export function CrmBreadcrumb({ current }: { current?: string }) {
   return (
     <nav className="crm-breadcrumb" aria-label="Sayfa yolu">

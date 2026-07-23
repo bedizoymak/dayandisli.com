@@ -8,38 +8,38 @@ export type ExportColumn<T> = {
   value: (row: T) => string | number;
 };
 
-const overview = "/apps/ebru-preview";
+const overview = "/apps";
 function segmentRoute(label: string, all: string[]) {
   if (label === "Muhasebe ve Finans") return overview;
   if (label === "Gelir Yönetimi")
-    return "/apps/ebru-preview/finance/income/invoices";
+    return "/apps/finance/income/invoices";
   if (label === "Gider Yönetimi")
-    return "/apps/ebru-preview/finance/expense/list";
-  if (label === "Kasa") return "/apps/ebru-preview/finance/cash/accounts";
+    return "/apps/finance/expense/list";
+  if (label === "Kasa") return "/apps/finance/cash/accounts";
   if (label === "Stok Yönetimi")
-    return "/apps/ebru-preview/finance/inventory/products";
+    return "/apps/finance/inventory/products";
   if (label === "Hizmet ve Ürünler")
-    return "/apps/ebru-preview/finance/inventory/products";
+    return "/apps/finance/inventory/products";
   if (label === "Giden İrsaliyeler")
-    return "/apps/ebru-preview/finance/inventory/outgoing-dispatches";
+    return "/apps/finance/inventory/outgoing-dispatches";
   if (label === "Gelen İrsaliyeler")
-    return "/apps/ebru-preview/finance/inventory/incoming-dispatches";
+    return "/apps/finance/inventory/incoming-dispatches";
   if (label === "Satın Alma")
-    return "/apps/ebru-preview/finance/purchasing/orders";
+    return "/apps/finance/purchasing/orders";
   if (label === "Siparişler")
-    return "/apps/ebru-preview/finance/purchasing/orders";
+    return "/apps/finance/purchasing/orders";
   if (label === "Tedarikçiler")
-    return "/apps/ebru-preview/finance/purchasing/suppliers";
+    return "/apps/finance/purchasing/suppliers";
   if (label === "Faturalar")
-    return "/apps/ebru-preview/finance/income/invoices";
+    return "/apps/finance/income/invoices";
   if (label === "Müşteriler")
-    return "/apps/ebru-preview/finance/income/customers";
+    return "/apps/finance/income/customers";
   if (label === "Tahsilat Raporu")
-    return "/apps/ebru-preview/finance/income/collection-report";
+    return "/apps/finance/income/collection-report";
   if (label === "Gider Listesi")
-    return "/apps/ebru-preview/finance/expense/list";
+    return "/apps/finance/expense/list";
   if (label === "Gelen Faturalar")
-    return "/apps/ebru-preview/finance/expense/incoming-invoices";
+    return "/apps/finance/expense/incoming-invoices";
   return all.includes(label) ? overview : undefined;
 }
 
