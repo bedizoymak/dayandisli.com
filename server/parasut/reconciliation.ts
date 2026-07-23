@@ -24,6 +24,23 @@ export interface ReconciliationSkipDecision {
  * genuinely gone" signal (requirement #7/#8). Every one of these checks
  * must pass before the caller computes/applies any archival diff.
  */
+/**
+ * Minimum fraction of previously-active rows that must reappear in this
+ * run's observed set before reconciliation is allowed to proceed at all.
+ * Exists specifically to catch a snapshot that is truncated but NOT empty —
+ * e.g. pagination stopping early because one page came back short for a
+ * reason other than "this is genuinely the last page" (a transient
+ * provider hiccup, a stale/wrong total_count, anything client.ts's own
+ * termination heuristic can't tell apart from a real end-of-list). Such a
+ * run observes some real rows (so the old exact-zero check missed it
+ * entirely) but far fewer than actually exist — mass-archiving the rest
+ * would be exactly as wrong as archiving everything on a fully empty
+ * response. A real single (or even a handful of) deletions barely moves
+ * this ratio; only a run that's actually missing a large share of what
+ * should be there fails it.
+ */
+export const DEFAULT_MIN_OBSERVED_RATIO = 0.5;
+
 export function evaluateReconciliationEligibility(input: {
   /** Whether syncCollection's page loop completed without throwing. */
   loopCompletedWithoutError: boolean;
@@ -35,6 +52,8 @@ export function evaluateReconciliationEligibility(input: {
   observedCount: number;
   /** How many rows are currently active (source_archived is not true) in the mirror for this exact company/resource scope, before this run. */
   previouslyActiveCount: number;
+  /** Override for DEFAULT_MIN_OBSERVED_RATIO — exposed for testing/tuning, not expected to change per-call in production. */
+  minObservedRatio?: number;
 }): ReconciliationSkipDecision {
   if (!input.loopCompletedWithoutError) {
     return { skip: true, reason: "sync_run_did_not_complete" };
@@ -45,13 +64,20 @@ export function evaluateReconciliationEligibility(input: {
   if (input.pagesFetched < 1) {
     return { skip: true, reason: "no_pages_fetched" };
   }
-  // A "suspiciously empty" snapshot: the API returned nothing (or far less
-  // than expected) for a resource that previously had real rows. This is far
-  // more likely to be a transient provider/auth glitch that happens to
-  // return an empty (but HTTP-200) page than a business fact ("the customer
-  // deleted every contact today") — never mass-archive on that basis.
-  if (input.observedCount === 0 && input.previouslyActiveCount > 0) {
-    return { skip: true, reason: "suspiciously_empty_snapshot" };
+  // A "suspiciously shrunk" snapshot: the API returned far fewer resources
+  // than the mirror previously had active, for reasons ranging from fully
+  // empty to merely truncated. Far more likely to be a transient
+  // provider/pagination glitch than a business fact ("the customer deleted
+  // most of their contacts today") — never mass-archive on that basis.
+  if (input.previouslyActiveCount > 0) {
+    const minRatio = input.minObservedRatio ?? DEFAULT_MIN_OBSERVED_RATIO;
+    const observedRatio = input.observedCount / input.previouslyActiveCount;
+    if (observedRatio < minRatio) {
+      return {
+        skip: true,
+        reason: input.observedCount === 0 ? "suspiciously_empty_snapshot" : "suspiciously_truncated_snapshot",
+      };
+    }
   }
   return { skip: false, reason: null };
 }

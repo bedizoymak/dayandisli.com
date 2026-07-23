@@ -190,6 +190,23 @@ describe("syncCollection — deletion reconciliation", () => {
     expect(tables.contacts.find((r) => r.parasut_id === "2")?.source_archived).toBe(false);
   });
 
+  it("skips reconciliation on a truncated-but-nonzero snapshot instead of mass-archiving the rest", async () => {
+    const { database, tables } = createFakeDatabase([
+      contactRow({ id: "row-1", parasut_id: "1" }),
+      contactRow({ id: "row-2", parasut_id: "2" }),
+      contactRow({ id: "row-3", parasut_id: "3" }),
+      contactRow({ id: "row-4", parasut_id: "4" }),
+    ]);
+    // Only "1" observed out of 4 previously-active rows (25% retention) —
+    // e.g. pagination stopped early for a non-deletion reason.
+    const client = fakeClient([page(1, ["1"])]);
+    const result = await syncCollection(buildContext(database, client), options);
+
+    expect(result.status).toBe("completed");
+    expect(result.reconciliation).toEqual({ archivedCount: 0, skippedReason: "suspiciously_truncated_snapshot" });
+    expect(tables.contacts.every((r) => r.source_archived === false)).toBe(true);
+  });
+
   it("skips reconciliation on a suspiciously empty snapshot instead of mass-archiving", async () => {
     const { database, tables } = createFakeDatabase([
       contactRow({ id: "row-1", parasut_id: "1" }),

@@ -46,6 +46,33 @@ describe("evaluateReconciliationEligibility", () => {
   it("does NOT skip when the snapshot shrank by one real deletion (not suspicious — still mostly populated)", () => {
     expect(baseEligibility({ observedCount: 436, previouslyActiveCount: 437 })).toEqual({ skip: false, reason: null });
   });
+
+  it("skips a truncated-but-nonzero snapshot (e.g. pagination stopped early after only 10%)", () => {
+    expect(baseEligibility({ observedCount: 44, previouslyActiveCount: 437 })).toEqual({
+      skip: true,
+      reason: "suspiciously_truncated_snapshot",
+    });
+  });
+
+  it("does not skip a snapshot just above the retention threshold", () => {
+    // 219/437 = 50.11% — just over the 50% default floor.
+    expect(baseEligibility({ observedCount: 219, previouslyActiveCount: 437 })).toEqual({ skip: false, reason: null });
+  });
+
+  it("skips a snapshot just below the retention threshold", () => {
+    // 218/437 = 49.88% — just under the 50% default floor.
+    expect(baseEligibility({ observedCount: 218, previouslyActiveCount: 437 })).toEqual({
+      skip: true,
+      reason: "suspiciously_truncated_snapshot",
+    });
+  });
+
+  it("honors a custom minObservedRatio override", () => {
+    expect(baseEligibility({ observedCount: 44, previouslyActiveCount: 437, minObservedRatio: 0.05 })).toEqual({
+      skip: false,
+      reason: null,
+    });
+  });
 });
 
 describe("computeIdsToArchive", () => {

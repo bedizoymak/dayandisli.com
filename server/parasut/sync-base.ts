@@ -10,7 +10,7 @@ import {
   type SyncSummary,
 } from "./sync-observability.ts";
 import { upsertResource } from "./upsert-resource.ts";
-import { computeIdsToArchive, evaluateReconciliationEligibility } from "./reconciliation.ts";
+import { computeIdsToArchive, DEFAULT_MIN_OBSERVED_RATIO, evaluateReconciliationEligibility } from "./reconciliation.ts";
 import type {
   JsonApiResource,
   MirrorResourceDefinition,
@@ -241,6 +241,21 @@ async function reconcileMissingResources(
   }
 
   const idsToArchive = computeIdsToArchive(previouslyActiveIds, observedIds);
+
+  // Defense-in-depth beyond evaluateReconciliationEligibility's raw-count
+  // ratio check: that check compares observedIds.size (this run's total)
+  // against previouslyActiveIds.length, which can look healthy even if the
+  // ACTUAL overlap between the two sets is poor (e.g. this run somehow
+  // observed a similar count of ids that mostly don't match the mirror's
+  // existing ones). Re-check using the real post-diff numbers before ever
+  // touching the database.
+  if (previouslyActiveIds.length > 0) {
+    const survivingRatio = (previouslyActiveIds.length - idsToArchive.length) / previouslyActiveIds.length;
+    if (survivingRatio < DEFAULT_MIN_OBSERVED_RATIO) {
+      return { archivedCount: 0, skippedReason: "suspiciously_low_overlap" };
+    }
+  }
+
   for (const parasutId of idsToArchive) {
     const result = await mirrorDb(context)
       .from(options.table)
