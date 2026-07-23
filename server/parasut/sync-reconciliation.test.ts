@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { syncCollection } from "./sync-base.ts";
+import { SyncAlreadyRunningError } from "./types.ts";
 import type { JsonApiDocument, MirrorDatabase, PaginatedPage, SyncContext } from "./types.ts";
 
 interface FakeRow {
@@ -26,10 +27,13 @@ function createFakeDatabase(seedRows: FakeRow[] = []) {
 
   function makeQuery(table: string) {
     const predicates: Array<[string, unknown]> = [];
+    const gtPredicates: Array<[string, string]> = [];
     let mode: "select" | "insert" | "update" = "select";
     let payload: Record<string, unknown> | null = null;
 
-    const matches = (row: Record<string, unknown>) => predicates.every(([col, val]) => row[col] === val);
+    const matches = (row: Record<string, unknown>) =>
+      predicates.every(([col, val]) => row[col] === val) &&
+      gtPredicates.every(([col, val]) => String(row[col] ?? "") > val);
 
     const api = {
       select() {
@@ -38,6 +42,10 @@ function createFakeDatabase(seedRows: FakeRow[] = []) {
       },
       eq(column: string, value: unknown) {
         predicates.push([column, value]);
+        return api;
+      },
+      gt(column: string, value: string) {
+        gtPredicates.push([column, value]);
         return api;
       },
       insert(value: Record<string, unknown>) {
@@ -270,5 +278,79 @@ describe("syncCollection — deletion reconciliation", () => {
     // would throw "not a function" — completing without throwing is itself
     // proof no delete call was attempted.
     await expect(syncCollection(buildContext(database, client), options)).resolves.toBeDefined();
+  });
+});
+
+describe("syncCollection — concurrency election (concurrencyLock: true)", () => {
+  const lockedOptions = { ...options, concurrencyLock: true };
+
+  it("loses the election to a competing non-stale running row for the same resource, and marks its own row failed", async () => {
+    const { database, tables } = createFakeDatabase([contactRow({ id: "row-1", parasut_id: "1" })]);
+    tables.sync_runs.push({
+      id: "competitor-1",
+      company_id: "company-A",
+      parasut_company_id: "666034",
+      resource_type: "contacts",
+      status: "running",
+      started_at: "2026-07-23T11:59:00.000Z", // earlier than context.now() (12:00:00Z) but within the 10-minute window
+    });
+    const client = fakeClient([page(1, ["1"])]);
+    await expect(syncCollection(buildContext(database, client), lockedOptions)).rejects.toBeInstanceOf(SyncAlreadyRunningError);
+
+    const ownRun = tables.sync_runs.find((r) => r.id !== "competitor-1");
+    expect(ownRun?.status).toBe("failed");
+    expect(tables.sync_runs.find((r) => r.id === "competitor-1")?.status).toBe("running"); // never touches the winner's row
+  });
+
+  it("wins the election and completes normally when it is the only running row", async () => {
+    const { database } = createFakeDatabase([contactRow({ id: "row-1", parasut_id: "1" })]);
+    const client = fakeClient([page(1, ["1"])]);
+    const result = await syncCollection(buildContext(database, client), lockedOptions);
+    expect(result.status).toBe("completed");
+  });
+
+  it("ignores a stale competing running row past the 10-minute staleness window", async () => {
+    const { database, tables } = createFakeDatabase([contactRow({ id: "row-1", parasut_id: "1" })]);
+    tables.sync_runs.push({
+      id: "stale-competitor",
+      company_id: "company-A",
+      parasut_company_id: "666034",
+      resource_type: "contacts",
+      status: "running",
+      started_at: "2020-01-01T00:00:00.000Z", // long past the 10-minute window relative to context.now()
+    });
+    const client = fakeClient([page(1, ["1"])]);
+    const result = await syncCollection(buildContext(database, client), lockedOptions);
+    expect(result.status).toBe("completed"); // the stale row never counted as a real competitor
+  });
+
+  it("ignores a competing running row for a different resource_type", async () => {
+    const { database, tables } = createFakeDatabase([contactRow({ id: "row-1", parasut_id: "1" })]);
+    tables.sync_runs.push({
+      id: "other-resource-competitor",
+      company_id: "company-A",
+      parasut_company_id: "666034",
+      resource_type: "products",
+      status: "running",
+      started_at: "2026-07-23T11:59:00.000Z",
+    });
+    const client = fakeClient([page(1, ["1"])]);
+    const result = await syncCollection(buildContext(database, client), lockedOptions);
+    expect(result.status).toBe("completed");
+  });
+
+  it("never runs the election at all when concurrencyLock is not set, even with a competing running row present", async () => {
+    const { database, tables } = createFakeDatabase([contactRow({ id: "row-1", parasut_id: "1" })]);
+    tables.sync_runs.push({
+      id: "competitor-1",
+      company_id: "company-A",
+      parasut_company_id: "666034",
+      resource_type: "contacts",
+      status: "running",
+      started_at: "2026-07-23T11:59:00.000Z",
+    });
+    const client = fakeClient([page(1, ["1"])]);
+    const result = await syncCollection(buildContext(database, client), options); // options, not lockedOptions
+    expect(result.status).toBe("completed");
   });
 });

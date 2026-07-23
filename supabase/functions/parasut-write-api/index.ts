@@ -16,7 +16,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { resolveCompanyScope, type ErpUserAuthzRow } from "../_shared/company-scope.ts";
 import { SupabaseAttemptRepository, SupabaseAuditRepository, SupabaseCommandRepository, SupabaseProviderLinkRepository, type OutboundAdminLike } from "../_shared/accounting-outbound-repository.ts";
-import { computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResync, type ConcurrencyGuard } from "./handlers.ts";
+import { computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResync } from "./handlers.ts";
 import { syncContacts } from "../../../server/parasut/sync-contacts.ts";
 import { syncProducts } from "../../../server/parasut/sync-products.ts";
 import { syncAccounts } from "../../../server/parasut/sync-accounts.ts";
@@ -50,6 +50,8 @@ function json(body: unknown, status = 200) {
 
 interface AccessContext {
   hasCreatePermission: boolean;
+  /** Strictly role-based (roles includes "admin") — unlike hasCreatePermission, never true merely from the 'accounting.contacts.create' or 'system.manage' permission. Required by the manual "Sync" button's own "only ERP administrators" rule. */
+  isAdmin: boolean;
   companyScope: ReturnType<typeof resolveCompanyScope>;
 }
 
@@ -92,7 +94,7 @@ async function resolveAccess(admin: OutboundAdminLike & GenericAdminLike, authUs
   const authzRow: ErpUserAuthzRow = { role, roles, accessible_company_ids: (record.accessible_company_ids as string[] | null) ?? [] };
   const companyScope = resolveCompanyScope(authzRow, requestedCompanyId ?? undefined);
 
-  return { hasCreatePermission, companyScope };
+  return { hasCreatePermission, isAdmin, companyScope };
 }
 
 const PARASUT_CAPABILITIES: ProviderCapabilities = {
@@ -113,7 +115,7 @@ const PARASUT_CAPABILITIES: ProviderCapabilities = {
 // proven direct-list sync wrapper (server/parasut/sync-*.ts) are listed
 // here. Any other page (bank_fees, employees, sales_offers, ...) simply
 // has no "Sync" button; never fabricate a sync path for them.
-const SYNCABLE_RESOURCES: Record<string, { resourceType: string; run: (context: SyncContext) => Promise<SyncResult> }> = {
+const SYNCABLE_RESOURCES: Record<string, { resourceType: string; run: (context: SyncContext, options?: { concurrencyLock?: boolean }) => Promise<SyncResult> }> = {
   customers: { resourceType: "contacts", run: syncContacts },
   suppliers: { resourceType: "contacts", run: syncContacts },
   products: { resourceType: "products", run: syncProducts },
@@ -180,6 +182,12 @@ serve(async (req) => {
   // resource — Paraşüt has no separate customer/supplier list endpoint,
   // account_type is just an attribute on the same resource).
   if (action === "resync") {
+    // "Only ERP administrators" (this feature's own requirement) — strictly
+    // access.isAdmin, deliberately narrower than the hasCreatePermission
+    // check create-customer uses (which also accepts the
+    // 'accounting.contacts.create' permission on its own).
+    if (!access.isAdmin) return json({ error: "Bu işlem için ERP yöneticisi yetkisi gereklidir." }, 403);
+
     const resourceParam = typeof body.resource === "string" ? body.resource : "";
     const mapping = SYNCABLE_RESOURCES[resourceParam];
     if (!mapping) return json({ error: "Desteklenmeyen senkronizasyon kaynağı." }, 400);
@@ -193,27 +201,10 @@ serve(async (req) => {
       });
       const database = admin as unknown as MirrorDatabase;
       const context: SyncContext = { companyId: activeCompanyId, parasutCompanyId, database, client: new ParaşütClient(tokens) };
-      const schemaAdmin = admin as unknown as { schema(name: string): GenericAdminLike };
-      const guard: ConcurrencyGuard = {
-        isResourceSyncRunning: async (companyId, resourceType) => {
-          // A run that never reaches completeRun() (a crashed/killed
-          // function invocation) must not permanently lock this resource —
-          // only treat a `running` row as an active lock within a short
-          // staleness window matching this function's own execution budget.
-          const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-          const result = await schemaAdmin
-            .schema("parasut")
-            .from("sync_runs")
-            .select("id")
-            .eq("company_id", companyId)
-            .eq("resource_type", resourceType)
-            .eq("status", "running")
-            .gt("started_at", cutoff)
-            .maybeSingle();
-          return Boolean(result.data);
-        },
-      };
-      const response = await handleResync(access.hasCreatePermission, guard, activeCompanyId, mapping.resourceType, () => mapping.run(context));
+      // concurrencyLock: true — enforced atomically inside syncCollection
+      // itself (a race-free post-insert election, see sync-base.ts's
+      // enforceSingleRunner), not via a separate check-then-act query here.
+      const response = await handleResync(access.isAdmin, () => mapping.run(context, { concurrencyLock: true }));
       return json(response);
     } catch (error) {
       if (error instanceof CreateCustomerRejectedError) return json({ error: error.message }, error.httpStatus);

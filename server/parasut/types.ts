@@ -109,6 +109,7 @@ export interface DatabaseResult<T = unknown> {
 export interface QueryBuilder<T = unknown> extends PromiseLike<DatabaseResult<T>> {
   select(columns?: string): QueryBuilder<T>;
   eq(column: string, value: unknown): QueryBuilder<T>;
+  gt(column: string, value: unknown): QueryBuilder<T>;
   maybeSingle(): Promise<DatabaseResult<T>>;
   single(): Promise<DatabaseResult<T>>;
 }
@@ -159,6 +160,33 @@ export interface SyncResourceOptions {
    * see resource-registry.ts's `support` classification.
    */
   reconcile?: boolean;
+  /**
+   * Opt-in only — enforces single-runner mutual exclusion for this exact
+   * (company, resource_type) via the election performed right after this
+   * run's own sync_runs row is inserted (see sync-base.ts's
+   * enforceSingleRunner). Without a unique-constraint/advisory-lock at the
+   * database level (this project's "no schema/migration changes" constraint
+   * forbids adding one), a plain check-then-insert has an unavoidable
+   * TOCTOU race; this election is race-free instead because it runs AFTER
+   * both competing rows are guaranteed to exist, and picks a single
+   * deterministic winner (earliest started_at, id as tiebreaker) from
+   * whatever is actually in the table at that moment — every loser reliably
+   * detects it lost, and the winner is unambiguous even under true
+   * concurrent inserts. Set true only for the manual "Sync" button path
+   * (server/parasut/sync-*.ts's optional second argument) — leave unset for
+   * every other caller (e.g. the customer-creation flow's contacts-only
+   * sync) to avoid a manual resync and an unrelated automatic sync
+   * needlessly contending with each other.
+   */
+  concurrencyLock?: boolean;
+}
+
+/** Thrown by syncCollection when concurrencyLock is enabled and this run lost the single-runner election. */
+export class SyncAlreadyRunningError extends Error {
+  constructor(message = "Bir senkronizasyon zaten devam ediyor.") {
+    super(message);
+    this.name = "SyncAlreadyRunningError";
+  }
 }
 
 export interface ReconciliationOutcome {

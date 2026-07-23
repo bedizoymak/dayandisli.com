@@ -15,6 +15,7 @@ function makeFakeDatabase(): MirrorDatabase {
     const builder: QueryBuilder<T> = {
       select: () => builder,
       eq: () => builder,
+      gt: () => builder,
       maybeSingle: async () => singleResult,
       single: async () => singleResult,
       then: (onFulfilled) => Promise.resolve(listResult).then(onFulfilled as never),

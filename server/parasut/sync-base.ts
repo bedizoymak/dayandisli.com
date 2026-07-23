@@ -20,7 +20,59 @@ import type {
   SyncResourceOptions,
   SyncResult,
 } from "./types.ts";
-import { PARASUT_INTEGRATION_SCHEMA, PARASUT_MIRROR_SCHEMA } from "./types.ts";
+import { PARASUT_INTEGRATION_SCHEMA, PARASUT_MIRROR_SCHEMA, SyncAlreadyRunningError } from "./types.ts";
+
+const RUNNING_STALE_AFTER_MS = 10 * 60 * 1000;
+
+/**
+ * Race-free single-runner enforcement without any unique constraint or
+ * advisory lock (both would require a schema/migration change, forbidden
+ * here). Must be called AFTER this run's own sync_runs row is already
+ * inserted. Lists every currently-`running`, non-stale row for this exact
+ * (company, resource_type) — including this run's own row, which by now
+ * definitely exists — and picks the single deterministic winner: earliest
+ * started_at, then lowest id as a tiebreak for an exact timestamp collision.
+ * Correctness does not depend on which side's SELECT happens to run first:
+ * a row that hasn't been inserted yet simply isn't a threat yet, and once
+ * it IS inserted, comparing against the same real, already-committed
+ * started_at/id values, the two sides can never both conclude they won.
+ */
+async function enforceSingleRunner(
+  context: SyncContext,
+  options: SyncResourceOptions,
+  ownRunId: string,
+): Promise<void> {
+  const staleCutoff = new Date((context.now?.() ?? new Date()).getTime() - RUNNING_STALE_AFTER_MS).toISOString();
+  const competing = await integrationDb(context)
+    .from<{ id: string; started_at: string }[]>("sync_runs")
+    .select("id, started_at")
+    .eq("company_id", context.companyId)
+    .eq("parasut_company_id", context.parasutCompanyId)
+    .eq("resource_type", options.resourceType)
+    .eq("status", "running")
+    .gt("started_at", staleCutoff);
+  if (competing.error) throw new Error(competing.error.message ?? "Concurrency election lookup failed");
+
+  const rows = competing.data ?? [];
+  let winner: { id: string; started_at: string } | null = null;
+  for (const row of rows) {
+    if (
+      !winner ||
+      row.started_at < winner.started_at ||
+      (row.started_at === winner.started_at && row.id < winner.id)
+    ) {
+      winner = row;
+    }
+  }
+
+  if (winner && winner.id !== ownRunId) {
+    await integrationDb(context)
+      .from("sync_runs")
+      .update({ status: "failed", completed_at: (context.now?.() ?? new Date()).toISOString() })
+      .eq("id", ownRunId);
+    throw new SyncAlreadyRunningError();
+  }
+}
 
 const INCLUDED_DEFINITIONS = new Map<string, MirrorResourceDefinition>([
   [
@@ -304,6 +356,9 @@ export async function syncCollection(
   };
   const createdRun = await createRun(context, options);
   const runId = createdRun.runId;
+  if (options.concurrencyLock) {
+    await enforceSingleRunner(context, options, runId);
+  }
   let requestMetadata = createdRun.requestMetadata;
   let checkpointBlocked = false;
   const definition: MirrorResourceDefinition = {

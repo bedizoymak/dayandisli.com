@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { assertCreateCustomerAllowed, computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResync, parseCreateCustomerRequestBody, toSafeResponse, type ConcurrencyGuard } from "./handlers.ts";
+import { assertCreateCustomerAllowed, computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResync, parseCreateCustomerRequestBody, toSafeResponse } from "./handlers.ts";
+import { SyncAlreadyRunningError } from "../../../server/parasut/types.ts";
 import { CreateCustomerCommandHandler } from "../../../server/erp/commands/create-customer-command.ts";
 import type { CreateCustomerCommandRecord } from "../../../server/erp/commands/create-customer-command.ts";
 import type { ProviderCapabilities } from "../../../server/erp/providers/accounting-provider.ts";
@@ -174,37 +175,34 @@ describe("handleCreateCustomer", () => {
   });
 });
 
-const NOT_RUNNING: ConcurrencyGuard = { isResourceSyncRunning: async () => false };
-const ALREADY_RUNNING: ConcurrencyGuard = { isResourceSyncRunning: async () => true };
-
 describe("handleResync", () => {
-  it("rejects when the caller lacks permission, without ever invoking the sync function or the concurrency guard", async () => {
+  it("rejects when the caller lacks permission, without ever invoking the sync function", async () => {
     let called = false;
-    let guardCalled = false;
-    const guard: ConcurrencyGuard = { isResourceSyncRunning: async () => { guardCalled = true; return false; } };
     await expect(
-      handleResync(false, guard, "company-1", "contacts", async () => {
+      handleResync(false, async () => {
         called = true;
         return { pages: 0, observed: 0, inserted: 0, updated: 0, unchanged: 0, errors: 0, runId: "r", resourceType: "contacts", status: "completed" };
       }),
     ).rejects.toThrow(CreateCustomerRejectedError);
     expect(called).toBe(false);
-    expect(guardCalled).toBe(false);
   });
 
-  it("rejects with a 409-style error when a sync for this resource is already running, without starting another one", async () => {
-    let called = false;
+  it("converts a lost concurrency election (SyncAlreadyRunningError from syncCollection) into a 409, without swallowing other errors", async () => {
     await expect(
-      handleResync(true, ALREADY_RUNNING, "company-1", "contacts", async () => {
-        called = true;
-        return { pages: 0, observed: 0, inserted: 0, updated: 0, unchanged: 0, errors: 0, runId: "r", resourceType: "contacts", status: "completed" };
+      handleResync(true, async () => {
+        throw new SyncAlreadyRunningError();
       }),
     ).rejects.toMatchObject({ httpStatus: 409 });
-    expect(called).toBe(false);
+
+    await expect(
+      handleResync(true, async () => {
+        throw new Error("some other failure");
+      }),
+    ).rejects.toThrow("some other failure");
   });
 
   it("returns the sync result's counters and reconciliation outcome on success", async () => {
-    const response = await handleResync(true, NOT_RUNNING, "company-1", "contacts", async () => ({
+    const response = await handleResync(true, async () => ({
       pages: 18,
       observed: 437,
       inserted: 0,

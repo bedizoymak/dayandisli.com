@@ -9,7 +9,7 @@
 // convention as supabase/functions/parasut-api/handlers.ts.
 import { CreateCustomerCommandHandler, type CreateCustomerCommandInput, type CreateCustomerCommandRecord } from "../../../server/erp/commands/create-customer-command.ts";
 import type { ProviderCapabilities } from "../../../server/erp/providers/accounting-provider.ts";
-import type { ReconciliationOutcome, SyncResult } from "../../../server/parasut/types.ts";
+import { SyncAlreadyRunningError, type ReconciliationOutcome, type SyncResult } from "../../../server/parasut/types.ts";
 
 export interface CreateCustomerRequestBody {
   input: CreateCustomerCommandInput;
@@ -122,41 +122,42 @@ export interface ResyncContactsResponse {
 }
 
 /**
- * Reports whether a sync run for this exact (company, resourceType) is
- * already in progress, so a second manual click (or two admins clicking at
- * once) can never start a concurrent run against the same resource. See
- * index.ts's implementation, which queries parasut.sync_runs for a
- * status = 'running' row within a short staleness window (a crashed run
- * that never reached completeRun() must not permanently lock a resource).
- */
-export interface ConcurrencyGuard {
-  isResourceSyncRunning(companyId: string, resourceType: string): Promise<boolean>;
-}
-
-/**
  * Runs ONLY the existing GET synchronization for one resource
- * (server/parasut/sync-*.ts) and returns its outcome. Never sends anything
- * to Paraşüt, never touches any other resource, never bypasses
- * ACCOUNTING_WRITE_ENABLED-gated write logic (there is none here) — this is
- * a read+mirror-reconcile operation, not a provider write, so it is
- * deliberately NOT gated by the accounting-write feature flag, only by the
- * same admin/'accounting.contacts.create' permission already required for
- * customer creation (see index.ts's `resolveAccess`). Backs the manual
- * "Sync" button on every Paraşüt-backed ERP list page — always synchronizes
- * only the resource the button was clicked from, never a full sync.
+ * (server/parasut/sync-*.ts, called with concurrencyLock: true) and returns
+ * its outcome. Never sends anything to Paraşüt, never touches any other
+ * resource, never bypasses ACCOUNTING_WRITE_ENABLED-gated write logic
+ * (there is none here) — this is a read+mirror-reconcile operation, not a
+ * provider write, so it is deliberately NOT gated by the accounting-write
+ * feature flag. `hasPermission` must reflect ERP-admin specifically (see
+ * index.ts's `resolveAccess` — this is intentionally stricter than the
+ * broader 'accounting.contacts.create' permission customer creation
+ * accepts, per this feature's own "only ERP administrators" requirement).
+ * Backs the manual "Sync" button on every Paraşüt-backed ERP list page —
+ * always synchronizes only the resource the button was clicked from, never
+ * a full sync.
+ *
+ * Concurrency: does NOT pre-check "is a sync already running" itself — a
+ * separate check-then-act step here would just move the same race
+ * (Codex review, 2026-07-23) to a different layer. The actual mutual
+ * exclusion happens inside syncCollection's post-insert election (see
+ * server/parasut/sync-base.ts's enforceSingleRunner); this function only
+ * needs to translate a lost election (SyncAlreadyRunningError) into the
+ * user-facing 409.
  */
 export async function handleResync(
   hasPermission: boolean,
-  guard: ConcurrencyGuard,
-  companyId: string,
-  resourceType: string,
   runSync: () => Promise<SyncResult>,
 ): Promise<ResyncContactsResponse> {
-  if (!hasPermission) throw new CreateCustomerRejectedError("Bu işlem için 'accounting.contacts.create' yetkisi gereklidir.", 403);
-  if (await guard.isResourceSyncRunning(companyId, resourceType)) {
-    throw new CreateCustomerRejectedError("Bir senkronizasyon zaten devam ediyor.", 409);
+  if (!hasPermission) throw new CreateCustomerRejectedError("Bu işlem için ERP yöneticisi yetkisi gereklidir.", 403);
+  let result: SyncResult;
+  try {
+    result = await runSync();
+  } catch (error) {
+    if (error instanceof SyncAlreadyRunningError) {
+      throw new CreateCustomerRejectedError("Bir senkronizasyon zaten devam ediyor.", 409);
+    }
+    throw error;
   }
-  const result = await runSync();
   return {
     status: result.status,
     pages: result.pages,
