@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Loader2, RefreshCw, Search } from "lucide-react";
+import { Loader2, MoreHorizontal, RefreshCw, Search } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -7,6 +7,8 @@ import { FinanceBreadcrumb } from "./FinanceNavigationTools";
 import { parasutQueryKeys, useParasutList, useParasutReports } from "@/features/erp/parasut/api/queries";
 import { callParasutWriteApi } from "@/features/erp/parasut/api/write-client";
 import { useERPAuth } from "@/contexts/ERPAuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type {
   GenericParasutRow,
   InvoiceListRow,
@@ -49,11 +51,13 @@ type PageConfig = {
   search: string;
   columns: Column[];
   filters?: ListQueryParams["filters"];
+  actionLabel?: string;
+  filterMode?: "invoice" | "search";
 };
 
 export const canonicalParasutPages: Record<string, PageConfig> = {
-  invoices: { resource: "sales_invoices", breadcrumb: "Muhasebe ve Finans / Gelir Yönetimi / Faturalar", title: "Faturalar", subtitle: "Paraşüt satış faturaları.", search: "Fatura veya müşteri ara", filters: { archived: false }, columns: [{ key: "invoice_no", label: "Fatura No" }, { key: "partyName", label: "Müşteri" }, { key: "issue_date", label: "Fatura Tarihi", kind: "date" }, { key: "due_date", label: "Vade Tarihi", kind: "date" }, { key: "gross_total", label: "Tutar", kind: "money", currencyKey: "currency" }, { key: "payment_status", label: "Durum", kind: "status" }] },
-  customers: { resource: "customers", breadcrumb: "Muhasebe ve Finans / Gelir Yönetimi / Müşteriler", title: "Müşteriler", subtitle: "Paraşüt müşteri hesapları.", search: "Ad, e-posta veya VKN / TCKN ara", filters: { archived: false }, columns: [{ key: "name", label: "Müşteri Adı" }, { key: "tax_number", label: "VKN / TCKN" }, { key: "email", label: "E-posta" }, { key: "phone", label: "Telefon" }, { key: "trl_balance", label: "Bakiye", kind: "money" }, { key: "source_archived", label: "Durum", kind: "status" }] },
+  invoices: { resource: "sales_invoices", breadcrumb: "Muhasebe ve Finans / Gelir Yönetimi / Faturalar", title: "Faturalar", subtitle: "Satış faturalarını görüntüleyin, filtreleyin ve yönetin.", search: "Fatura veya müşteri ara", filters: { archived: false }, actionLabel: "Yeni Fatura", filterMode: "invoice", columns: [{ key: "invoice_no", label: "Fatura No" }, { key: "partyName", label: "Müşteri" }, { key: "issue_date", label: "Fatura Tarihi", kind: "date" }, { key: "due_date", label: "Vade Tarihi", kind: "date" }, { key: "gross_total", label: "Tutar", kind: "money", currencyKey: "currency" }, { key: "payment_status", label: "Durum", kind: "status" }] },
+  customers: { resource: "customers", breadcrumb: "Muhasebe ve Finans / Gelir Yönetimi / Müşteriler", title: "Müşteriler", subtitle: "Müşteri hesaplarını görüntüleyin ve yönetin.", search: "Ad, e-posta veya VKN / TCKN ara", filters: { archived: false }, actionLabel: "Yeni Müşteri", filterMode: "search", columns: [{ key: "name", label: "Müşteri Adı" }, { key: "tax_number", label: "VKN / TCKN" }, { key: "email", label: "E-posta" }, { key: "phone", label: "Telefon" }, { key: "trl_balance", label: "Bakiye", kind: "money" }, { key: "source_archived", label: "Durum", kind: "status" }] },
   suppliers: { resource: "suppliers", breadcrumb: "Muhasebe ve Finans / Satın Alma / Tedarikçiler", title: "Tedarikçiler", subtitle: "Paraşüt tedarikçi hesapları.", search: "Tedarikçi adı, e-posta veya vergi no ara", filters: { archived: false }, columns: [{ key: "name", label: "Tedarikçi" }, { key: "tax_number", label: "Vergi No" }, { key: "email", label: "E-posta" }, { key: "phone", label: "Telefon" }, { key: "trl_balance", label: "Bakiye", kind: "money" }] },
   purchaseBills: { resource: "purchase_bills", breadcrumb: "Muhasebe ve Finans / Gider Yönetimi / Gelen Faturalar", title: "Gelen Faturalar", subtitle: "Paraşüt alış faturaları.", search: "Fatura veya tedarikçi ara", filters: { archived: false }, columns: [{ key: "invoice_no", label: "Fatura No" }, { key: "partyName", label: "Tedarikçi" }, { key: "issue_date", label: "Tarih", kind: "date" }, { key: "due_date", label: "Vade", kind: "date" }, { key: "gross_total", label: "Tutar", kind: "money", currencyKey: "currency" }, { key: "payment_status", label: "Durum", kind: "status" }] },
   expenses: { resource: "bank_fees", breadcrumb: "Muhasebe ve Finans / Gider Yönetimi / Gider Listesi", title: "Gider Listesi", subtitle: "Paraşüt banka masrafları ve gider kayıtları.", search: "Gider açıklaması ara", filters: { archived: false }, columns: [{ key: "description", label: "Açıklama" }, { key: "issue_date", label: "Tarih", kind: "date" }, { key: "due_date", label: "Vade", kind: "date" }, { key: "net_total", label: "Net Tutar", kind: "money", currencyKey: "currency" }, { key: "remaining", label: "Kalan", kind: "money", currencyKey: "currency" }] },
@@ -71,7 +75,8 @@ export const canonicalParasutPages: Record<string, PageConfig> = {
 function cell(row: GenericParasutRow & Partial<InvoiceListRow>, column: Column) {
   if (column.key === "partyName") return row.partyName ?? "—";
   if (column.key === "source_archived") return row.source_archived ? "Arşivlendi" : "Aktif";
-  const value = row.attributes[column.key];
+  const typedValue = (row as unknown as Record<string, unknown>)[column.key];
+  const value = typedValue ?? row.attributes[column.key];
   if (column.kind === "date") return formatParasutDate(value as string | null);
   if (column.kind === "datetime") return formatParasutDateTime(value as string | null);
   if (column.kind === "money") return formatParasutCurrency(value as string | number | null, column.currencyKey ? String(row.attributes[column.currencyKey] ?? "TRL") : "TRL");
@@ -114,41 +119,56 @@ export function SyncButton({ config }: { config: PageConfig }) {
   }
 
   return (
-    <button onClick={handleClick} disabled={isSyncing} aria-busy={isSyncing}>
+    <Button className="income-sync-button" variant="outline" onClick={handleClick} disabled={isSyncing} aria-busy={isSyncing}>
       {isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
       {isSyncing ? "Senkronize ediliyor…" : "Senkronize Et"}
-    </button>
+    </Button>
   );
 }
 
 export function CanonicalParasutListPage({ config }: { config: PageConfig }) {
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get("q") ?? "");
+  const [dueFrom, setDueFrom] = useState(params.get("dueFrom") ?? "");
+  const [dueTo, setDueTo] = useState(params.get("dueTo") ?? "");
+  const [status, setStatus] = useState(params.get("status") ?? "");
   const page = Math.max(1, Number(params.get("page") ?? 1));
-  const pageSize = 25;
-  const queryParams = useMemo(() => ({ page, pageSize, search, filters: config.filters }), [page, search, config.filters]);
+  const pageSize = Math.max(10, Number(params.get("pageSize") ?? 25));
+  const filters = useMemo(() => ({
+    ...config.filters,
+    ...(dueFrom ? { dueFrom } : {}),
+    ...(dueTo ? { dueTo } : {}),
+    ...(status ? { status } : {}),
+  }), [config.filters, dueFrom, dueTo, status]);
+  const queryParams = useMemo(() => ({ page, pageSize, search, filters }), [page, pageSize, search, filters]);
   const query = useParasutList<GenericParasutRow & Partial<InvoiceListRow>>(config.resource, queryParams);
   const totalPages = Math.max(1, Math.ceil((query.data?.total ?? 0) / pageSize));
   const go = (nextPage: number) => setParams((current) => {
     const next = new URLSearchParams(current);
     next.set("page", String(nextPage));
+    next.set("pageSize", String(pageSize));
     if (search) next.set("q", search); else next.delete("q");
+    if (dueFrom) next.set("dueFrom", dueFrom); else next.delete("dueFrom");
+    if (dueTo) next.set("dueTo", dueTo); else next.delete("dueTo");
+    if (status) next.set("status", status); else next.delete("status");
     return next;
   });
 
   return <div className="income-page" data-provider="parasut">
-    <header className="income-page-head"><div><FinanceBreadcrumb value={config.breadcrumb} /><h1>{config.title}</h1><p>{config.subtitle}</p></div><div><SyncButton config={config} /></div></header>
+    <header className="income-page-head"><div><FinanceBreadcrumb value={config.breadcrumb} /><h1>{config.title}</h1><p>{config.subtitle}</p></div><div>{config.actionLabel ? <Button className="income-primary" disabled title="Henüz kullanıma açık değil">{config.actionLabel}</Button> : null}<SyncButton config={config} /></div></header>
     <div className="ebru-card income-filters">
-      <label className="income-search"><Search /><input value={search} onChange={(event) => { setSearch(event.target.value); go(1); }} placeholder={config.search} /></label>
-      <button className="income-clear" onClick={() => { setSearch(""); setParams({}); }}>Filtreleri Temizle</button>
+      {config.filterMode === "invoice" ? <><label>Başlangıç Tarihi<Input type="date" value={dueFrom} onChange={(event) => setDueFrom(event.target.value)} /></label><label>Bitiş Tarihi<Input type="date" value={dueTo} onChange={(event) => setDueTo(event.target.value)} /></label><label>Durum<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Tümü</option><option value="paid">Ödendi</option><option value="overdue">Gecikmiş</option><option value="unpaid">Ödenmedi</option></select></label></> : null}
+      <label className="income-search"><Search /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={config.search} /></label>
+      <Button className="income-filter-button" onClick={() => go(1)}>Filtrele</Button>
+      <Button variant="ghost" className="income-clear" onClick={() => { setSearch(""); setDueFrom(""); setDueTo(""); setStatus(""); setParams({}); }}>Filtreleri Temizle</Button>
     </div>
-    <section className="ebru-card income-table-card"><div className="income-table-scroll"><table><thead><tr>{config.columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>
-      {query.isLoading ? <tr><td colSpan={config.columns.length} className="income-state">Yükleniyor…</td></tr>
-        : query.isError ? <tr><td colSpan={config.columns.length} className="income-state income-state-error">Veriler yüklenemedi: {query.error instanceof Error ? query.error.message : "Beklenmeyen hata"}</td></tr>
-        : !query.data?.rows.length ? <tr><td colSpan={config.columns.length} className="income-state">Gösterilecek Paraşüt kaydı bulunamadı.</td></tr>
-        : query.data.rows.map((row) => <tr key={row.id}>{config.columns.map((column) => <td key={column.key}>{column.kind === "status" ? <span className="income-status info">{cell(row, column)}</span> : cell(row, column)}</td>)}</tr>)}
+    <section className="ebru-card income-table-card"><div className="income-table-scroll"><table><thead><tr>{config.columns.map((column) => <th key={column.key}>{column.label} ↕</th>)}<th>İşlemler</th></tr></thead><tbody>
+      {query.isLoading ? <tr><td colSpan={config.columns.length + 1} className="income-state">Yükleniyor…</td></tr>
+        : query.isError ? <tr><td colSpan={config.columns.length + 1} className="income-state income-state-error">Veriler yüklenemedi: {query.error instanceof Error ? query.error.message : "Beklenmeyen hata"}</td></tr>
+        : !query.data?.rows.length ? <tr><td colSpan={config.columns.length + 1} className="income-state">Gösterilecek kayıt bulunamadı.</td></tr>
+        : query.data.rows.map((row) => <tr key={row.id}>{config.columns.map((column) => <td key={column.key}>{column.kind === "status" ? <span className={`income-status ${cell(row, column) === "Aktif" ? "success" : "info"}`}>{cell(row, column)}</span> : cell(row, column)}</td>)}<td><button className="income-row-actions" title="Görüntüle"><MoreHorizontal /></button></td></tr>)}
     </tbody></table></div>
-      <div className="income-pagination"><span>Toplam {query.data?.total ?? 0} kayıt · Sayfa {page} / {totalPages}</span><button disabled={page <= 1} onClick={() => go(page - 1)}>‹</button><button disabled={page >= totalPages} onClick={() => go(page + 1)}>›</button></div>
+      <div className="income-pagination"><span>{query.data?.total ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, query.data.total)} / ${query.data.total}` : "0 kayıt"}</span><label>Sayfa boyutu <select value={pageSize} onChange={(event) => { const next = new URLSearchParams(params); next.set("pageSize", event.target.value); next.set("page", "1"); setParams(next); }}><option>10</option><option>25</option><option>50</option></select></label><button disabled={page <= 1} onClick={() => go(page - 1)}>‹</button><button className="active">{page}</button><button disabled={page >= totalPages} onClick={() => go(page + 1)}>›</button></div>
     </section>
   </div>;
 }

@@ -37,7 +37,6 @@ import {
   searchRoutes,
   sidebarItems,
   systemNotifications,
-  upcomingItems,
 } from "./previewData";
 import { FinanceOverview } from "./finance-preview/FinanceOverview";
 import {
@@ -45,6 +44,8 @@ import {
   CanonicalParasutListPage,
   canonicalParasutPages,
 } from "./finance-preview/CanonicalParasutPages";
+import { useParasutDashboard } from "@/features/erp/parasut/api/queries";
+import { formatParasutCurrency, formatParasutDate } from "@/features/erp/parasut/utils/format";
 import { financeNavigation } from "./finance-preview/financePreviewData";
 import "./crm-preview/crm-preview.css";
 import "./sales-preview/sales-preview.css";
@@ -90,6 +91,10 @@ function initials(value: string) {
   );
 }
 
+function dashboardTotals(values: Array<{ currency: string; total: string }>) {
+  return values.length ? values.map((item) => formatParasutCurrency(item.total, item.currency)).join(" · ") : "—";
+}
+
 function UnavailablePage({ title = "Bu iş akışı henüz kullanıma açık değil" }: { title?: string }) {
   return <div className="income-page"><section className="ebru-card income-state"><h1>{title}</h1><p>Bu ekran için güvenilir, salt okunur bir Paraşüt veri kaynağı bulunmuyor.</p></section></div>;
 }
@@ -106,7 +111,8 @@ export default function EbruPreviewPage() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [activeView, setActiveView] = useState<
     "dashboard" | "finance" | "crm" | "sales" | "reports"
-  >("finance");
+  >("dashboard");
+  const dashboardQuery = useParasutDashboard();
   const [openSection, setOpenSection] = useState<string | null>("finance");
   const [activeCrmPage, setActiveCrmPage] = useState("customers");
   const [activeSalesPage, setActiveSalesPage] = useState("quotes");
@@ -197,7 +203,14 @@ export default function EbruPreviewPage() {
   }, [quickOpen]);
 
   useEffect(() => {
-    if (location.pathname.includes("/reports/")) {
+    if (location.pathname === "/apps" || location.pathname === "/apps/") {
+      setActiveView("dashboard");
+      setOpenSection(null);
+    } else if (location.pathname === "/apps/finance" || location.pathname === "/apps/finance/") {
+      setActiveView("finance");
+      setOpenSection("finance");
+      setActiveFinancePage("overview");
+    } else if (location.pathname.includes("/reports/")) {
       setActiveView("reports");
       setOpenSection("reports");
     } else if (location.pathname.includes("/sales/")) {
@@ -329,6 +342,42 @@ export default function EbruPreviewPage() {
       : location.pathname.endsWith("/finance/expense/vat-report") ? "vat"
       : location.pathname.endsWith("/finance/cash/cash-bank-report") || location.pathname.endsWith("/finance/cash/cash-flow-report") || location.pathname.endsWith("/reports/cash-bank") ? "cash"
       : null;
+  const dashboardData = dashboardQuery.data;
+  const dashboardReceivables = dashboardData ? {
+    total: dashboardTotals(dashboardData.collectionsSummary.totalDue),
+    normal: dashboardTotals(dashboardData.collectionsSummary.totalDue),
+    normalPercent: dashboardData.collectionsSummary.overdueCount ? Math.max(0, Math.round(100 * (1 - dashboardData.collectionsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "receivable").length)))) : dashboardData.collectionsSummary.totalDue.length ? 100 : 0,
+    overdue: dashboardTotals(dashboardData.collectionsSummary.overdue),
+    overduePercent: dashboardData.collectionsSummary.overdueCount ? Math.min(100, Math.round(100 * dashboardData.collectionsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "receivable").length))) : 0,
+  } : previewMetrics.receivables;
+  const dashboardPayables = dashboardData ? {
+    total: dashboardTotals(dashboardData.paymentsSummary.totalDue),
+    normal: dashboardTotals(dashboardData.paymentsSummary.totalDue),
+    normalPercent: dashboardData.paymentsSummary.overdueCount ? Math.max(0, Math.round(100 * (1 - dashboardData.paymentsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "payable").length)))) : dashboardData.paymentsSummary.totalDue.length ? 100 : 0,
+    overdue: dashboardTotals(dashboardData.paymentsSummary.overdue),
+    overduePercent: dashboardData.paymentsSummary.overdueCount ? Math.min(100, Math.round(100 * dashboardData.paymentsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "payable").length))) : 0,
+  } : previewMetrics.payables;
+  const dashboardUpcoming = dashboardData?.timeline.slice(0, 4).map((item) => {
+    const date = new Date(`${item.dueDate}T12:00:00`);
+    return {
+      day: String(date.getDate()).padStart(2, "0"),
+      month: date.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "").toLocaleUpperCase("tr-TR"),
+      title: item.partyName ?? item.documentNo ?? "Paraşüt belgesi",
+      note: `${item.kind === "receivable" ? "Tahsilat" : "Ödeme"} · ${formatParasutDate(item.dueDate)}`,
+      amount: `${item.kind === "receivable" ? "+" : "-"}${formatParasutCurrency(item.amount, item.currency)}`,
+      kind: item.kind === "receivable" ? "income" : "expense",
+    };
+  }) ?? [];
+  const dashboardKpis = dashboardData ? [
+    { label: "Toplam Tahsil Edilecek", value: dashboardTotals(dashboardData.collectionsSummary.totalDue), detail: `${dashboardData.collectionsSummary.overdueCount} gecikmiş belge`, tone: "blue" },
+    { label: "Toplam Ödenecek", value: dashboardTotals(dashboardData.paymentsSummary.totalDue), detail: `${dashboardData.paymentsSummary.overdueCount} gecikmiş belge`, tone: "green" },
+    { label: "Senkronize Kasa ve Banka", value: String(dashboardData.accounts.length), detail: "Paraşüt hesabı", tone: "purple" },
+  ] : [];
+  const dashboardExchange = [
+    { label: "Dolar / TL", value: "—", change: "Kur verisi yok", trend: "flat" },
+    { label: "Euro / TL", value: "—", change: "Kur verisi yok", trend: "flat" },
+    { label: "Altın / TL (Gr)", value: "—", change: "Kur verisi yok", trend: "flat" },
+  ];
 
   return (
     <div className="ebru-dashboard">
@@ -391,7 +440,7 @@ export default function EbruPreviewPage() {
                           onClick={() => {
                             setActiveFinancePage("overview");
                             setActiveView("finance");
-                            navigate("/apps");
+                            navigate("/apps/finance");
                           }}
                         >
                           Güncel Durum
@@ -760,13 +809,13 @@ export default function EbruPreviewPage() {
                       </div>
                     </div>
                     <div className="ebru-fx-grid">
-                      {previewMetrics.exchange.map((item) => (
+                      {dashboardExchange.map((item) => (
                         <div className="ebru-fx" key={item.label}>
                           <span>{item.label}</span>
                           <strong>{item.value}</strong>
                           <small
                             className={
-                              item.trend === "up" ? "ebru-up" : "ebru-down"
+                              item.trend === "up" ? "ebru-up" : item.trend === "down" ? "ebru-down" : ""
                             }
                           >
                             {item.change}
@@ -797,7 +846,7 @@ export default function EbruPreviewPage() {
               </section>
 
               <section className="ebru-grid ebru-kpis">
-                {previewMetrics.kpis.map((item) => (
+                {dashboardKpis.map((item) => (
                   <article
                     className={`ebru-card ebru-kpi ${item.tone}`}
                     key={item.label}
@@ -814,14 +863,14 @@ export default function EbruPreviewPage() {
               <section className="ebru-grid ebru-bottom">
                 <DonutCard
                   title="Tahsilat Durumu"
-                  data={previewMetrics.receivables}
+                  data={dashboardReceivables}
                   color="blue"
                   normalLabel="Vadesi Geçmemiş"
                   overdueLabel="Gecikmiş Tahsilat"
                 />
                 <DonutCard
                   title="Ödeme Durumu"
-                  data={previewMetrics.payables}
+                  data={dashboardPayables}
                   color="green"
                   normalLabel="Vadesi Geçmemiş"
                   overdueLabel="Gecikmiş Ödemeler"
@@ -836,7 +885,7 @@ export default function EbruPreviewPage() {
                     </button>
                   </div>
                   <div className="ebru-upcoming-list">
-                    {upcomingItems.map((item) => (
+                    {dashboardQuery.isLoading ? <div className="ebru-empty-state">Finans takvimi yükleniyor…</div> : dashboardUpcoming.length ? dashboardUpcoming.map((item) => (
                       <div className="ebru-upcoming-row" key={item.title}>
                         <div className="ebru-upcoming-date">
                           <strong>{item.day}</strong>
@@ -850,7 +899,7 @@ export default function EbruPreviewPage() {
                           {item.amount}
                         </strong>
                       </div>
-                    ))}
+                    )) : <div className="ebru-empty-state">Planlanmış ödeme veya tahsilat bulunamadı.</div>}
                   </div>
                 </article>
                 <div className="ebru-right-stack">
@@ -860,12 +909,12 @@ export default function EbruPreviewPage() {
                       <button>Tümünü Gör</button>
                     </div>
                     <div className="ebru-approval-list">
-                      {approvals.map((item) => (
+                      {approvals.length ? approvals.map((item) => (
                         <div className="ebru-approval" key={item.label}>
                           <span>{item.label}</span>
                           <b className="ebru-count">{item.count}</b>
                         </div>
-                      ))}
+                      )) : <div className="ebru-empty-state">Bekleyen onay bulunmuyor.</div>}
                     </div>
                   </article>
                   <article className="ebru-card ebru-panel ebru-system">
@@ -876,7 +925,7 @@ export default function EbruPreviewPage() {
                       <button>Tümünü Gör</button>
                     </div>
                     <div className="ebru-notification-list">
-                      {systemNotifications.map((item) => (
+                      {systemNotifications.length ? systemNotifications.map((item) => (
                         <div className="ebru-notification" key={item.title}>
                           <Bell />
                           <div>
@@ -885,7 +934,7 @@ export default function EbruPreviewPage() {
                           </div>
                           <time>{item.relativeTime}</time>
                         </div>
-                      ))}
+                      )) : <div className="ebru-empty-state">Yeni sistem bildirimi bulunmuyor.</div>}
                     </div>
                   </article>
                 </div>

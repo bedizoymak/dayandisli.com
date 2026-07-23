@@ -701,6 +701,17 @@
   display: grid;
   margin-top: 8px;
 }
+.ebru-empty-state {
+  min-height: 92px;
+  padding: 20px;
+  border: 1px dashed #29415b;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #8297ad;
+  font-size: 11px;
+  text-align: center;
+}
 .ebru-notification {
   display: grid;
   grid-template-columns: 18px 1fr auto;
