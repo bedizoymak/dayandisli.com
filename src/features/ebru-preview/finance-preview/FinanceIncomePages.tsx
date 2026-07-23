@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { MoreHorizontal, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { FinanceFormSection, FinancePageHeader } from "./FinanceFormComponents";
@@ -12,10 +12,12 @@ import {
   collectionKpis,
   collectionRows,
   customerFormDefaults,
-  customerRows,
-  invoiceRows,
 } from "./financeIncomeData";
 import "./finance-income.css";
+import { listInvoices, listStakeholders } from "@/features/erp/shared/erpApi";
+import { formatCurrency, formatDate } from "@/features/erp/shared/formatters";
+import { INVOICE_STATUS_LABELS } from "@/features/erp/shared/statusLabels";
+import type { Invoice, Stakeholder } from "@/features/erp/shared/types";
 
 function IncomeHeader<T>({
   breadcrumb,
@@ -148,8 +150,29 @@ const RowActions = () => (
 
 export function InvoiceListPage() {
   const [search, setSearch] = useState("");
-  const rows = invoiceRows.filter((row) =>
-    `${row.no} ${row.customer}`
+  const [loading, setLoading] = useState(true);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([listInvoices(), listStakeholders()]).then(([invoiceResult, stakeholderResult]) => {
+      if (cancelled) return;
+      setInvoices(invoiceResult.data.filter((invoice) => invoice.invoice_type === "sales"));
+      setStakeholders(stakeholderResult.data);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const stakeholderName = (stakeholderId: string | null) =>
+    stakeholders.find((stakeholder) => stakeholder.id === stakeholderId)?.company_name ?? "-";
+
+  const rows = invoices.filter((invoice) =>
+    `${invoice.invoice_no ?? ""} ${stakeholderName(invoice.stakeholder_id)}`
       .toLocaleLowerCase("tr-TR")
       .includes(search.toLocaleLowerCase("tr-TR")),
   );
@@ -164,13 +187,12 @@ export function InvoiceListPage() {
         rows={rows}
         filename="faturalar"
         columns={[
-          { header: "Fatura No", value: (row) => row.no },
-          { header: "Müşteri", value: (row) => row.customer },
-          { header: "Fatura Tarihi", value: (row) => row.invoiceDate },
-          { header: "Vade Tarihi", value: (row) => row.dueDate },
-          { header: "Tutar", value: (row) => row.amount },
-          { header: "Tahsilat Durumu", value: (row) => row.collection },
-          { header: "Durum", value: (row) => row.status },
+          { header: "Fatura No", value: (row) => row.invoice_no ?? "-" },
+          { header: "Müşteri", value: (row) => stakeholderName(row.stakeholder_id) },
+          { header: "Fatura Tarihi", value: (row) => formatDate(row.invoice_date) },
+          { header: "Vade Tarihi", value: (row) => formatDate(row.due_date) },
+          { header: "Tutar", value: (row) => formatCurrency(row.grand_total, row.currency) },
+          { header: "Durum", value: (row) => INVOICE_STATUS_LABELS[row.status] },
         ]}
       />
       <FilterBar>
@@ -186,16 +208,8 @@ export function InvoiceListPage() {
           Durum
           <select>
             <option>Tümü</option>
-            <option>Onaylandı</option>
-            <option>Kapandı</option>
-          </select>
-        </label>
-        <label>
-          Tahsilat Durumu
-          <select>
-            <option>Tümü</option>
-            <option>Tahsil Edilecek</option>
-            <option>Tahsil Edildi</option>
+            <option>Kesildi</option>
+            <option>Ödendi</option>
           </select>
         </label>
         <label className="income-search">
@@ -214,28 +228,25 @@ export function InvoiceListPage() {
           "Fatura Tarihi",
           "Vade Tarihi",
           "Tutar",
-          "Tahsilat Durumu",
           "Durum",
           "İşlemler",
         ]}
-        empty={!rows.length}
+        empty={!loading && !rows.length}
+        loading={loading}
       >
         {rows.map((row) => (
-          <tr key={row.no}>
+          <tr key={row.id}>
             <td>
               <Link to="/apps/finance/income/invoices/new">
-                {row.no}
+                {row.invoice_no ?? "-"}
               </Link>
             </td>
-            <td>{row.customer}</td>
-            <td>{row.invoiceDate}</td>
-            <td>{row.dueDate}</td>
-            <td>{row.amount}</td>
+            <td>{stakeholderName(row.stakeholder_id)}</td>
+            <td>{formatDate(row.invoice_date)}</td>
+            <td>{formatDate(row.due_date)}</td>
+            <td>{formatCurrency(row.grand_total, row.currency)}</td>
             <td>
-              <Status>{row.collection}</Status>
-            </td>
-            <td>
-              <Status>{row.status}</Status>
+              <Status>{INVOICE_STATUS_LABELS[row.status]}</Status>
             </td>
             <td>
               <RowActions />
@@ -249,11 +260,22 @@ export function InvoiceListPage() {
 
 export function CustomerListPage() {
   const [search, setSearch] = useState("");
-  const rows = customerRows.filter((row) =>
-    `${row.name} ${row.taxNo}`
-      .toLocaleLowerCase("tr-TR")
-      .includes(search.toLocaleLowerCase("tr-TR")),
-  );
+  const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState<Stakeholder[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    listStakeholders(search, "customer").then((result) => {
+      if (cancelled) return;
+      setCustomers(result.data);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [search]);
+
   return (
     <div className="income-page">
       <IncomeHeader
@@ -262,16 +284,15 @@ export function CustomerListPage() {
         subtitle="Müşteri hesaplarını görüntüleyin ve yönetin."
         newTo="/apps/finance/income/customers/new"
         newLabel="Yeni Müşteri"
-        rows={rows}
+        rows={customers}
         filename="musteriler"
         columns={[
-          { header: "Müşteri Adı", value: (row) => row.name },
-          { header: "Tür", value: (row) => row.type },
-          { header: "VKN / TCKN", value: (row) => row.taxNo },
-          { header: "E-posta", value: (row) => row.email },
-          { header: "Telefon", value: (row) => row.phone },
-          { header: "Bakiye", value: (row) => row.balance },
-          { header: "Durum", value: (row) => row.status },
+          { header: "Müşteri Adı", value: (row) => row.company_name },
+          { header: "VKN / TCKN", value: (row) => row.tax_number ?? "-" },
+          { header: "E-posta", value: (row) => row.email ?? "-" },
+          { header: "Telefon", value: (row) => row.phone ?? "-" },
+          { header: "Bakiye", value: (row) => formatCurrency(row.current_balance) },
+          { header: "Durum", value: (row) => (row.is_active ? "Aktif" : "Pasif") },
         ]}
       />
       <FilterBar>
@@ -283,28 +304,10 @@ export function CustomerListPage() {
             placeholder="Ad veya VKN / TCKN ara"
           />
         </label>
-        <label>
-          Durum
-          <select>
-            <option>Tümü</option>
-            <option>Aktif</option>
-            <option>Pasif</option>
-          </select>
-        </label>
-        <label>
-          Bakiye Durumu
-          <select>
-            <option>Tümü</option>
-            <option>Borçlu</option>
-            <option>Alacaklı</option>
-            <option>Dengede</option>
-          </select>
-        </label>
       </FilterBar>
       <TableShell
         headers={[
           "Müşteri Adı",
-          "Tür",
           "VKN / TCKN",
           "E-posta",
           "Telefon",
@@ -312,18 +315,18 @@ export function CustomerListPage() {
           "Durum",
           "İşlemler",
         ]}
-        empty={!rows.length}
+        empty={!loading && !customers.length}
+        loading={loading}
       >
-        {rows.map((row) => (
-          <tr key={row.taxNo}>
-            <td>{row.name}</td>
-            <td>{row.type}</td>
-            <td>{row.taxNo}</td>
-            <td>{row.email}</td>
-            <td>{row.phone}</td>
-            <td>{row.balance}</td>
+        {customers.map((row) => (
+          <tr key={row.id}>
+            <td>{row.company_name}</td>
+            <td>{row.tax_number ?? "-"}</td>
+            <td>{row.email ?? "-"}</td>
+            <td>{row.phone ?? "-"}</td>
+            <td>{formatCurrency(row.current_balance)}</td>
             <td>
-              <Status>{row.status}</Status>
+              <Status>{row.is_active ? "Aktif" : "Pasif"}</Status>
             </td>
             <td>
               <RowActions />
