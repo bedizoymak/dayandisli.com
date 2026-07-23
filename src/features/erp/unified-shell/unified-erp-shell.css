@@ -1,0 +1,10 @@
+/* Scoped to the unified production ERP shell only. Never targets bare
+   element selectors so it cannot leak into /apps/ebru-preview, which does
+   not carry the .unified-erp-shell class. */
+.unified-erp-shell {
+  min-height: 100vh;
+}
+
+.unified-erp-shell main {
+  min-width: 0;
+}

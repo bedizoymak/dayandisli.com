@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
 import { ERPSidebar } from "./ERPSidebar";
 import { ERPTopBar } from "./ERPTopBar";
+import { useIsInsideUnifiedErpShell } from "@/features/erp/unified-shell/UnifiedErpShellContext";
 
 type ERPLayoutProps = {
   title: string;
@@ -9,6 +10,14 @@ type ERPLayoutProps = {
 
 export function ERPLayout({ title, children }: ERPLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isEmbedded = useIsInsideUnifiedErpShell();
+
+  // When UnifiedErpShell already mounted the sidebar/topbar for /apps/*, pages
+  // that still call <ERPLayout> just render their content frame — this is what
+  // prevents a duplicate shell without rewriting every page.
+  if (isEmbedded) {
+    return <div className="min-w-0 space-y-6">{children}</div>;
+  }
 
   return (
     <div className="erp-theme erp-shell">

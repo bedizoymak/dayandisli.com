@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { ERPLayout } from "./layout/ERPLayout";
 
 const ERPHomePage = lazy(() => import("./dashboard/ERPHomePage"));
@@ -70,7 +70,7 @@ export function ERPRoutes() {
   return (
     <Suspense fallback={<RouteLoading />}>
     <Routes>
-      <Route index element={<Navigate to="dashboard" replace />} />
+      <Route index element={<ERPHomePage />} />
       <Route path="dashboard" element={<ERPHomePage />} />
       <Route path="musteriler" element={<CustomersPage />} />
       <Route path="musteriler/yeni" element={<CustomerFormPage />} />

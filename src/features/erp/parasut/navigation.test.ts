@@ -13,7 +13,34 @@ describe("Paraşüt application card", () => {
 
   it("keeps every other application's relative order unchanged after parasut", () => {
     const nonParasutIds = erpApplications.filter((app) => app.id !== "parasut").map((app) => app.id);
-    expect(nonParasutIds).toEqual(["website", "commerce", "crm", "sales", "invoicing", "accounting", "expenses", "inventory", "purchasing", "production", "quality", "maintenance", "repair", "hr", "reports", "settings"]);
+    expect(nonParasutIds).toEqual([
+      "website",
+      "commerce",
+      "crm",
+      "sales",
+      "invoicing",
+      "accounting",
+      "expenses",
+      "inventory",
+      "purchasing",
+      "production",
+      "quality",
+      "maintenance",
+      "repair",
+      "hr",
+      "reports",
+      "settings",
+      "ebru-preview",
+    ]);
+  });
+
+  it("never surfaces the ebru-preview registry entry as a production navigation item", () => {
+    // The application-registry entry still exists for permission-path bookkeeping
+    // (getRequiredPermissionForPath("/apps/ebru-preview")), but the unified shell's
+    // sidebar is built from src/config/erpModules.ts, which has no such entry —
+    // so the retired launcher card can never resurface in production navigation.
+    const previewModule = erpApplications.find((app) => app.id === "ebru-preview");
+    expect(previewModule?.route).toBe("/apps/ebru-preview");
   });
 
   it("routes to /apps/parasut and requires the parasut.view permission at the route level", () => {

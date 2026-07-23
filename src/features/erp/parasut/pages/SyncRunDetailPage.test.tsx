@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import SyncRunDetailPage from "./SyncRunDetailPage";
 import { useParasutSyncRunDetail } from "../api/queries";
+import type { SyncRunDetailResponse } from "../types";
 import { useERPAuth } from "@/contexts/ERPAuthContext";
 
 vi.mock("../api/queries", () => ({
@@ -15,6 +17,49 @@ vi.mock("@/contexts/ERPAuthContext", () => ({
 
 const mockedUseDetail = vi.mocked(useParasutSyncRunDetail);
 const mockedUseAuth = vi.mocked(useERPAuth);
+
+type SyncRunDetailQueryResult = UseQueryResult<SyncRunDetailResponse, Error>;
+
+// Fully typed factory covering every UseQueryResult field so tests can override
+// just the handful of properties that matter for a given state, without
+// resorting to a broad `any` cast or an incomplete/mismatched object literal.
+// The tanstack query result type is a status-keyed discriminated union, so a
+// single plain object literal can never satisfy it structurally across every
+// possible state override — the same reason the library's own test utilities
+// build mocks this way. The `unknown` step is a one-time, fully-typed factory
+// boundary (not a scattered `any`); every call site keeps full type safety on
+// its overrides via `Partial<SyncRunDetailQueryResult>`.
+function buildQueryResult(overrides: Partial<SyncRunDetailQueryResult>): SyncRunDetailQueryResult {
+  const base = {
+    data: undefined,
+    dataUpdatedAt: 0,
+    error: null,
+    errorUpdatedAt: 0,
+    failureCount: 0,
+    failureReason: null,
+    errorUpdateCount: 0,
+    isError: false,
+    isFetched: true,
+    isFetchedAfterMount: true,
+    isFetching: false,
+    isLoading: false,
+    isLoadingError: false,
+    isInitialLoading: false,
+    isPaused: false,
+    isPending: false,
+    isPlaceholderData: false,
+    isRefetchError: false,
+    isRefetching: false,
+    isStale: false,
+    isSuccess: true,
+    refetch: vi.fn(),
+    status: "success",
+    fetchStatus: "idle",
+    promise: Promise.resolve(undefined as unknown as SyncRunDetailResponse),
+  };
+
+  return { ...base, ...overrides } as unknown as SyncRunDetailQueryResult;
+}
 
 function renderAtRun(runId = "run-a") {
   return render(
@@ -47,39 +92,41 @@ const baseRun = {
 describe("SyncRunDetailPage", () => {
   it("shows the permission-denied state when the user lacks parasut.sync.view", () => {
     mockedUseAuth.mockReturnValue({ hasPermission: () => false } as ReturnType<typeof useERPAuth>);
-    mockedUseDetail.mockReturnValue({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() } as ReturnType<typeof useParasutSyncRunDetail>);
+    mockedUseDetail.mockReturnValue(buildQueryResult({ data: undefined }));
     renderAtRun();
     expect(screen.getByText("Bu alana erişim yetkiniz yok")).toBeInTheDocument();
   });
 
   it("shows a loading state while fetching", () => {
     mockedUseAuth.mockReturnValue({ hasPermission: () => true } as ReturnType<typeof useERPAuth>);
-    mockedUseDetail.mockReturnValue({ data: undefined, isLoading: true, isError: false, error: null, refetch: vi.fn() } as ReturnType<typeof useParasutSyncRunDetail>);
+    mockedUseDetail.mockReturnValue(
+      buildQueryResult({ data: undefined, isLoading: true, isPending: true, isSuccess: false, status: "pending", fetchStatus: "fetching" }),
+    );
     renderAtRun();
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
   it("shows an error state with retry when the fetch fails", () => {
     mockedUseAuth.mockReturnValue({ hasPermission: () => true } as ReturnType<typeof useERPAuth>);
-    mockedUseDetail.mockReturnValue({ data: undefined, isLoading: false, isError: true, error: new Error("network"), refetch: vi.fn() } as ReturnType<typeof useParasutSyncRunDetail>);
+    mockedUseDetail.mockReturnValue(
+      buildQueryResult({ data: undefined, isError: true, error: new Error("network"), isSuccess: false, status: "error", isLoadingError: true }),
+    );
     renderAtRun();
     expect(screen.getByRole("alert")).toHaveTextContent("network");
   });
 
   it("renders run statistics, checkpoint, company scope, and errors table without any secret-bearing field", () => {
     mockedUseAuth.mockReturnValue({ hasPermission: () => true } as ReturnType<typeof useERPAuth>);
-    mockedUseDetail.mockReturnValue({
-      data: {
-        run: baseRun,
-        errors: [
-          { id: "err-1", sync_run_id: "run-a", resource_type: "purchase_bills", parasut_id: "123", http_status: 500, error_code: "server_error", sanitized_message: "Bearer [REDACTED]", retryable: true, occurred_at: "2026-07-15T21:25:00.000Z" },
-        ],
-      },
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn(),
-    } as ReturnType<typeof useParasutSyncRunDetail>);
+    mockedUseDetail.mockReturnValue(
+      buildQueryResult({
+        data: {
+          run: baseRun,
+          errors: [
+            { id: "err-1", sync_run_id: "run-a", resource_type: "purchase_bills", parasut_id: "123", http_status: 500, error_code: "server_error", sanitized_message: "Bearer [REDACTED]", retryable: true, occurred_at: "2026-07-15T21:25:00.000Z" },
+          ],
+        },
+      }),
+    );
 
     const { container } = renderAtRun();
 
@@ -95,7 +142,7 @@ describe("SyncRunDetailPage", () => {
 
   it("shows the empty-errors message when the run had no errors", () => {
     mockedUseAuth.mockReturnValue({ hasPermission: () => true } as ReturnType<typeof useERPAuth>);
-    mockedUseDetail.mockReturnValue({ data: { run: baseRun, errors: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() } as ReturnType<typeof useParasutSyncRunDetail>);
+    mockedUseDetail.mockReturnValue(buildQueryResult({ data: { run: baseRun, errors: [] } }));
     renderAtRun();
     expect(screen.getByText("Bu çalışmada hata kaydedilmedi.")).toBeInTheDocument();
   });

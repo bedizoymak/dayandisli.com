@@ -9,6 +9,7 @@ import {
   HandCoins,
   HeartHandshake,
   PackageSearch,
+  Palette,
   ReceiptText,
   Settings,
   ShieldCheck,
@@ -21,6 +22,7 @@ import type { LucideIcon } from "lucide-react";
 
 export type ErpApplicationId =
   | "parasut"
+  | "ebru-preview"
   | "website"
   | "commerce"
   | "crm"
@@ -299,6 +301,15 @@ export const erpApplications: ErpApplication[] = [
       { title: "Yönetim Ayarları", description: "Yönetim ve erişim ayarlarına geçin.", route: "/ayarlar", permissionKey: "settings.view" },
       { title: "Veritabanı Durumu", description: "Migration ve RLS kontrol ekranlarını görüntüleyin.", route: "/dashboard", permissionKey: "dashboard.view" },
     ],
+  },
+  {
+    id: "ebru-preview",
+    title: "Ebru UI Preview",
+    description: "Frontend tasarım çalışmalarını görüntüle",
+    route: "/apps/ebru-preview",
+    icon: Palette,
+    permissionKey: "dashboard.view",
+    modules: [],
   },
 ];
 

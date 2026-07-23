@@ -23,12 +23,9 @@ const Hakkimizda = lazy(() => import("./pages/Hakkimizda"));
 const Referanslar = lazy(() => import("./pages/Referanslar"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const Apps = lazy(() => import("./pages/Apps"));
+const EbruPreviewPage = lazy(() => import("./features/ebru-preview/EbruPreviewPage"));
 const AdminRoutes = lazy(() => import("./features/admin").then((module) => ({ default: module.AdminRoutes })));
-const ApplicationShellPage = lazy(() => import("./features/erp/apps/ApplicationShellPage"));
-const ParasutModuleRoutes = lazy(() => import("./features/erp/parasut").then((module) => ({ default: module.ParasutModuleRoutes })));
-const ERPRoutes = lazy(() => import("./features/erp").then((module) => ({ default: module.ERPRoutes })));
-const ERPHomePage = lazy(() => import("./features/erp/dashboard/ERPHomePage"));
+const UnifiedErpShell = lazy(() => import("./features/erp/unified-shell/UnifiedErpShell"));
 const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CartPage })));
@@ -39,19 +36,21 @@ const DynamicCMSPage = lazy(() => import("./features/public-cms/DynamicCMSPage")
 const SitemapPage = lazy(() => import("./features/public-cms/SitemapPage"));
 
 const queryClient = new QueryClient();
-const isErpBuild = (import.meta.env.VITE_APP_TARGET || "erp") === "erp";
-
-function LegacyCalculatorRedirect() {
-  const location = useLocation();
-  const suffix = location.pathname.replace(/^\/(?:erp\/)?apps\/calculator/, "");
-  const targetBase = isErpBuild ? "/calculator" : "/erp/calculator";
-  return <Navigate to={`${targetBase}${suffix}${location.search}`} replace />;
-}
 
 function LegacyErpRedirect() {
   const location = useLocation();
   const suffix = location.pathname.replace(/^\/erp/, "") || "/";
-  return <Navigate to={`${suffix}${location.search}`} replace />;
+  return <Navigate to={`/apps${suffix}${location.search}`} replace />;
+}
+
+// Every real ERP module now lives under the canonical /apps/... hierarchy
+// (see UnifiedErpShell + ERPRoutes). Any pre-migration bare path — /dashboard,
+// /production, /musteriler, /finans/hareketler/:id, etc. — is redirected here
+// to its /apps-prefixed equivalent, preserving the suffix, search, and hash so
+// deep links and query strings keep working.
+function LegacyRootToAppsRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/apps${location.pathname}${location.search}${location.hash}`} replace />;
 }
 
 const protectedElement = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
@@ -107,16 +106,16 @@ const AppRoutes = () => {
 
       {exposeErpRoutes ? (
           <>
-            <Route path="/apps" element={protectedElement(<Apps />)} />
-            <Route path="/apps/calculator/*" element={protectedElement(<LegacyCalculatorRedirect />)} />
-            <Route path="/apps/shop-orders" element={protectedElement(<Navigate to="/commerce/siparisler" replace />)} />
-            <Route path="/apps/parasut/*" element={protectedElement(<ParasutModuleRoutes />)} />
-            <Route path="/apps/:appId" element={protectedElement(<ApplicationShellPage />)} />
+            {/* Standalone, approved visual reference — declared first, never mounted inside the unified shell. */}
+            <Route path="/apps/ebru-preview/*" element={protectedElement(<EbruPreviewPage />)} />
+            <Route path="/apps/shop-orders" element={protectedElement(<Navigate to="/apps/commerce/siparisler" replace />)} />
+            {/* Canonical unified ERP shell — /apps and every real module route render inside it. */}
+            <Route path="/apps/*" element={protectedElement(<UnifiedErpShell />)} />
             <Route path="/admin/*" element={protectedElement(<AdminRoutes />)} />
-            <Route path="/dashboard" element={protectedElement(<ERPHomePage />)} />
-            <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/teklifler/yeni" replace />)} />
+            <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/apps/teklifler/yeni" replace />)} />
             <Route path="/erp/*" element={protectedElement(<LegacyErpRedirect />)} />
-            <Route path="/*" element={protectedElement(<ERPRoutes />)} />
+            {/* Every other pre-migration ERP path redirects to its /apps/... equivalent. */}
+            <Route path="/*" element={protectedElement(<LegacyRootToAppsRedirect />)} />
           </>
       ) : (
         <Route path="/*" element={<NotFound />} />

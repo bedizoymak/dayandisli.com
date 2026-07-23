@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dayan Dişli ERP Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <button class="brand" id="logoButton" aria-label="Dashboard'a git">
+          <div class="brand-logo">
+            <span>D</span>
+          </div>
+          <div class="brand-text">
+            <strong>DAYAN</strong>
+            <small>DİŞLİ</small>
+          </div>
+        </button>
+        <button class="collapse-btn" id="sidebarCollapse" aria-label="Menüyü daralt">«</button>
+      </div>
+
+      <nav class="nav primary-nav">
+        <button class="nav-item active"><span class="icon">⌂</span><span class="label">Dashboard</span></button>
+        <button class="nav-item"><span class="icon">☆</span><span class="label">Favoriler</span></button>
+      </nav>
+
+      <div class="nav-title">MODÜLLER</div>
+      <nav class="nav module-nav">
+        <button class="nav-item"><span class="icon">▣</span><span class="label">Muhasebe ve Finans</span><span class="arrow">›</span></button>
+        <button class="nav-item"><span class="icon">◎</span><span class="label">Müşteri İlişkileri</span><span class="arrow">›</span></button>
+        <button class="nav-item"><span class="icon">▥</span><span class="label">Raporlar</span><span class="arrow">›</span></button>
+        <button class="nav-item"><span class="icon">🛒</span><span class="label">Satış</span><span class="arrow">›</span></button>
+        <button class="nav-item"><span class="icon">◇</span><span class="label">E-Ticaret</span><span class="arrow">›</span></button>
+        <button class="nav-item"><span class="icon">⚙</span><span class="label">Üretim</span><span class="arrow">›</span></button>
+        <button class="nav-item"><span class="icon">⬡</span><span class="label">Kalite ve Bakım Yönetimi</span><span class="arrow">›</span></button>
+        <button class="nav-item"><span class="icon">♙</span><span class="label">İnsan Kaynakları</span><span class="arrow">›</span></button>
+        <button class="nav-item"><span class="icon">▤</span><span class="label">Web Sitesi</span><span class="arrow">›</span></button>
+        <button class="nav-item"><span class="icon">⚙</span><span class="label">Ayarlar</span><span class="arrow">›</span></button>
+      </nav>
+
+      <div class="sidebar-footer-links">
+        <button class="nav-item"><span class="icon">?</span><span class="label">Yardım &amp; Destek</span></button>
+        <button class="nav-item"><span class="icon">↪</span><span class="label">Çıkış Yap</span></button>
+      </div>
+
+      <button class="profile-card">
+        <span class="avatar">BO</span>
+        <span class="profile-copy"><strong>Bediz Oymak</strong><small>Yönetici</small></span>
+        <span class="arrow">⌄</span>
+      </button>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button class="icon-btn" id="menuButton">☰</button>
+
+        <div class="global-search">
+          <span class="search-icon">⌕</span>
+          <input type="search" id="globalSearch" placeholder="Global arama... (Ctrl + K)" />
+          <div class="search-results" id="searchResults"></div>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="quick-menu-wrap">
+            <button class="quick-action-btn" id="quickActionButton">＋ Hızlı İşlem ⌄</button>
+            <div class="quick-popover" id="quickPopover">
+              <button>Fatura Oluştur</button>
+              <button>Teklif Oluştur</button>
+              <button>Müşteriler</button>
+              <button>Gelir/Gider Raporu</button>
+            </div>
+          </div>
+          <button class="icon-btn notification-btn">♧<span class="badge">3</span></button>
+          <button class="icon-btn" id="calendarButton">☷</button>
+          <button class="topbar-avatar">BO<span class="status-dot"></span></button>
+        </div>
+      </header>
+
+      <section class="dashboard-page">
+        <section class="top-grid">
+          <article class="welcome-card" id="welcomeCard">
+            <div class="welcome-overlay"></div>
+            <div class="welcome-content">
+              <div class="welcome-kicker">DAYAN DİŞLİ ERP</div>
+              <div class="welcome-header-row">
+                <div>
+                  <h1>Günaydın, Bediz! 👋</h1>
+                  <p id="todayText">16 Temmuz 2026, Perşembe</p>
+                </div>
+                <div class="weather-chip">
+                  <span class="sun">☀</span>
+                  <div>
+                    <strong>29°C</strong>
+                    <small>İstanbul · Açık</small>
+                  </div>
+                </div>
+              </div>
+              <div class="fx-grid">
+                <div class="fx-box"><span>Dolar / TL</span><strong>43,52</strong><small class="up">▲ %0,18</small></div>
+                <div class="fx-box"><span>Euro / TL</span><strong>50,26</strong><small class="up">▲ %0,11</small></div>
+                <div class="fx-box"><span>Altın / TL (Gr)</span><strong>4.382,90</strong><small class="down">▼ %0,08</small></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel quick-panel">
+            <h2>Hızlı İşlemler</h2>
+            <div class="quick-grid">
+              <button><span class="qicon blue">▤</span><b>Fatura Oluştur</b></button>
+              <button><span class="qicon green">▥</span><b>Teklif Oluştur</b></button>
+              <button><span class="qicon purple">♟</span><b>Müşteriler</b></button>
+              <button><span class="qicon orange">◔</span><b>Gelir/Gider<br />Raporu</b></button>
+            </div>
+          </article>
+        </section>
+
+        <section class="kpi-grid">
+          <article class="kpi-card blue">
+            <span>Toplam Tahsil Edilecek</span>
+            <strong>₺ 8.425.000</strong>
+            <small class="up">▲ %8,4 <em>geçen aya göre</em></small>
+            <i>＄</i>
+          </article>
+          <article class="kpi-card green">
+            <span>Üretimdeki İş Emri</span>
+            <strong>18</strong>
+            <small>12 aktif · 4 beklemede · 2 gecikmiş</small>
+            <i>▣</i>
+          </article>
+          <article class="kpi-card purple">
+            <span>Bu Ay Oluşan KDV</span>
+            <strong>₺ 612.480</strong>
+            <small class="up">▲ %5,2 <em>önceki aya göre</em></small>
+            <i>%</i>
+          </article>
+        </section>
+
+        <section class="bottom-grid">
+          <article class="panel chart-panel">
+            <div class="panel-header">
+              <h2>Tahsilat Durumu</h2>
+              <select><option>Bu Ay</option></select>
+            </div>
+            <div class="chart-layout">
+              <div class="donut donut-blue">
+                <div class="donut-center"><span>Toplam</span><strong>₺ 9,60M</strong></div>
+              </div>
+              <div class="legend-card">
+                <div><span class="dot blue"></span><b>Toplam Tahsil Edilecek</b><strong>₺ 8.425.000</strong><em>(88%)</em></div>
+                <div><span class="dot red"></span><b>Gecikmiş Tahsilat</b><strong>₺ 1.175.000</strong><em>(12%)</em></div>
+              </div>
+            </div>
+            <div class="panel-summary">Tahsilat oranı %88</div>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-header">
+              <h2>Ödeme Durumu</h2>
+              <select><option>Bu Ay</option></select>
+            </div>
+            <div class="chart-layout">
+              <div class="donut donut-green">
+                <div class="donut-center"><span>Toplam</span><strong>₺ 5,40M</strong></div>
+              </div>
+              <div class="legend-card">
+                <div><span class="dot green"></span><b>Toplam Ödenecek</b><strong>₺ 4.680.000</strong><em>(87%)</em></div>
+                <div><span class="dot red"></span><b>Gecikmiş Ödemeler</b><strong>₺ 720.000</strong><em>(13%)</em></div>
+              </div>
+            </div>
+            <div class="panel-summary">Ödeme oranı %87</div>
+          </article>
+
+          <article class="panel schedule-panel">
+            <div class="panel-header">
+              <h2>Yaklaşan Ödeme ve Tahsilatlar</h2>
+              <button>Tümünü Gör</button>
+            </div>
+            <div class="schedule-list">
+              <div><time><b>17</b><small>TEM</small></time><span><b>ABC Otomotiv Tahsilatı</b><small>Satış Faturası #SF-2026-148</small></span><strong class="up">+₺485.000</strong></div>
+              <div><time><b>18</b><small>TEM</small></time><span><b>Çelik Tedarik Ödemesi</b><small>Satın Alma #SA-2026-072</small></span><strong class="down">-₺260.000</strong></div>
+              <div><time><b>21</b><small>TEM</small></time><span><b>XYZ Makine Tahsilatı</b><small>Satış Faturası #SF-2026-152</small></span><strong class="up">+₺720.000</strong></div>
+              <div><time><b>25</b><small>TEM</small></time><span><b>Personel Ödemeleri</b><small>Temmuz bordro planı</small></span><strong class="down">-₺935.000</strong></div>
+            </div>
+            <button class="calendar-link">▣ Tüm Takvimi Gör</button>
+          </article>
+
+          <aside class="right-stack">
+            <article class="panel approvals-panel">
+              <div class="panel-header">
+                <h2>Onay Bekleyenler</h2>
+                <button>Tümünü Gör</button>
+              </div>
+              <div class="approval-list">
+                <div><span>🛒 Satın Alma Talepleri</span><b>4</b></div>
+                <div><span>♟ Masraf Onayları</span><b>2</b></div>
+                <div><span>⚙ İş Emri Onayları</span><b>3</b></div>
+                <div><span>♙ İzin Talepleri</span><b>5</b></div>
+              </div>
+            </article>
+            <article class="panel notification-card">
+              <div class="notification-row">
+                <span class="notification-icon">♧</span>
+                <div>
+                  <b>Sistem Bildirimleri</b>
+                  <small>3 yeni bildirim bulunuyor.</small>
+                </div>
+                <button>Tümünü Gör</button>
+              </div>
+            </article>
+          </aside>
+        </section>
+      </section>
+
+      <footer class="app-footer">
+        © 2026 Dayan Dişli ERP. Tüm hakları saklıdır.
+        <span>v1.0.0</span>
+      </footer>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="calendarModal">
+    <div class="calendar-modal">
+      <div class="panel-header">
+        <h2>Ödeme ve Tahsilat Takvimi</h2>
+        <button id="closeCalendar">✕</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

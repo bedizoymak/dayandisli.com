@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   ErrorSummary,
   SyncSummary,
-} from "../server/parasut/sync-observability.ts";
+} from "../../server/parasut/sync-observability.ts";
 import {
   composeLocalSyncContext,
   createCliOutputChannels,

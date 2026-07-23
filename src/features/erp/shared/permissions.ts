@@ -209,51 +209,67 @@ export function filterModulesByPermission<T extends { requiredPermission?: strin
   return modules.filter((module) => module.visible !== false && hasPermission(user, module.requiredPermission));
 }
 
+const ROUTE_PERMISSIONS: Array<[RegExp, string]> = [
+  [/^\/apps\/parasut\/senkronizasyon/, "parasut.sync.view"],
+  [/^\/apps\/parasut/, "parasut.view"],
+  [/^\/apps\/calculator(?:\/|$)/, "production.view"],
+  [/^\/apps\/shop-orders(?:\/|$)/, "commerce.view"],
+  [/^\/apps\/settings/, "settings.view"],
+  [/^\/apps\/website/, "website.view"],
+  [/^\/apps\/crm/, "crm.view"],
+  [/^\/apps\/sales/, "sales.view"],
+  [/^\/apps\/commerce/, "commerce.view"],
+  [/^\/apps\/inventory/, "inventory.view"],
+  [/^\/apps\/purchasing/, "purchasing.view"],
+  [/^\/apps\/production/, "production.view"],
+  [/^\/apps\/repair/, "production.view"],
+  [/^\/apps\/maintenance/, "maintenance.view"],
+  [/^\/apps\/quality/, "quality.view"],
+  [/^\/apps\/accounting/, "finance.view"],
+  [/^\/apps\/invoicing/, "finance.view"],
+  [/^\/apps\/expenses/, "finance.view"],
+  [/^\/apps\/reports/, "reports.view"],
+  [/^\/apps\/hr/, "hr.view"],
+  [/^\/ayarlar(?:\/|$)|^\/settings(?:\/|$)/, "settings.view"],
+  [/^\/musteriler|^\/tedarikciler|^\/crm|^\/paydaslar|^\/stakeholders/, "crm.view"],
+  [/^\/teklifler|^\/siparisler|^\/satis-faaliyetleri|^\/quotations|^\/sales-orders|^\/sales-activities/, "sales.view"],
+  [/^\/finans|^\/finance|^\/invoices|^\/payments/, "finance.view"],
+  [/^\/inventory|^\/inventory-movements/, "inventory.view"],
+  [/^\/purchasing|^\/purchase-orders/, "purchasing.view"],
+  [/^\/commerce/, "commerce.view"],
+  [/^\/website/, "website.view"],
+  [/^\/production|^\/work-orders|^\/routes|^\/subcontracting|^\/calculator/, "production.view"],
+  [/^\/logistics|^\/shipments/, "production.view"],
+  [/^\/kargo/, "inventory.view"],
+  [/^\/quality/, "quality.view"],
+  [/^\/maintenance/, "maintenance.view"],
+  [/^\/documents/, "production.view"],
+  [/^\/reports|^\/health/, "reports.view"],
+  [/^\/hr|^\/time-entries/, "hr.view"],
+  [/^\/notifications|^\/bildirimler|^\/gorevler|^\/notlar/, "dashboard.view"],
+  [/^\/admin/, "settings.admin"],
+  [/^\/dashboard|^\/$/, "dashboard.view"],
+];
+
 export function getRequiredPermissionForPath(pathname: string) {
   const normalized = pathname.replace(/^\/erp/, "") || "/";
-  const routePermissions: Array<[RegExp, string]> = [
-    [/^\/apps\/parasut\/senkronizasyon/, "parasut.sync.view"],
-    [/^\/apps\/parasut/, "parasut.view"],
-    [/^\/apps\/calculator(?:\/|$)/, "production.view"],
-    [/^\/apps\/shop-orders(?:\/|$)/, "commerce.view"],
-    [/^\/apps\/settings/, "settings.view"],
-    [/^\/apps\/website/, "website.view"],
-    [/^\/apps\/crm/, "crm.view"],
-    [/^\/apps\/sales/, "sales.view"],
-    [/^\/apps\/commerce/, "commerce.view"],
-    [/^\/apps\/inventory/, "inventory.view"],
-    [/^\/apps\/purchasing/, "purchasing.view"],
-    [/^\/apps\/production/, "production.view"],
-    [/^\/apps\/repair/, "production.view"],
-    [/^\/apps\/maintenance/, "maintenance.view"],
-    [/^\/apps\/quality/, "quality.view"],
-    [/^\/apps\/accounting/, "finance.view"],
-    [/^\/apps\/invoicing/, "finance.view"],
-    [/^\/apps\/expenses/, "finance.view"],
-    [/^\/apps\/reports/, "reports.view"],
-    [/^\/apps\/hr/, "hr.view"],
-    [/^\/apps(?:\/|$)/, "dashboard.view"],
-    [/^\/ayarlar(?:\/|$)|^\/settings(?:\/|$)/, "settings.view"],
-    [/^\/musteriler|^\/tedarikciler|^\/crm|^\/paydaslar|^\/stakeholders/, "crm.view"],
-    [/^\/teklifler|^\/siparisler|^\/satis-faaliyetleri|^\/quotations|^\/sales-orders|^\/sales-activities/, "sales.view"],
-    [/^\/finans|^\/finance|^\/invoices|^\/payments/, "finance.view"],
-    [/^\/inventory|^\/inventory-movements/, "inventory.view"],
-    [/^\/purchasing|^\/purchase-orders/, "purchasing.view"],
-    [/^\/commerce/, "commerce.view"],
-    [/^\/website/, "website.view"],
-    [/^\/production|^\/work-orders|^\/routes|^\/subcontracting|^\/calculator/, "production.view"],
-    [/^\/logistics|^\/shipments/, "production.view"],
-    [/^\/kargo/, "inventory.view"],
-    [/^\/quality/, "quality.view"],
-    [/^\/maintenance/, "maintenance.view"],
-    [/^\/documents/, "production.view"],
-    [/^\/reports|^\/health/, "reports.view"],
-    [/^\/hr|^\/time-entries/, "hr.view"],
-    [/^\/notifications|^\/bildirimler|^\/gorevler|^\/notlar/, "dashboard.view"],
-    [/^\/admin/, "settings.admin"],
-    [/^\/dashboard|^\/$/, "dashboard.view"],
-  ];
-  return routePermissions.find(([pattern]) => pattern.test(normalized))?.[1] ?? "dashboard.view";
+  const directMatch = ROUTE_PERMISSIONS.find(([pattern]) => pattern.test(normalized));
+  if (directMatch) return directMatch[1];
+
+  // Real ERP module pages now mount under the unified /apps/* shell (e.g.
+  // /apps/finans, /apps/musteriler, /apps/work-orders) without their own
+  // dedicated /apps/... entry above — those entries only exist for the
+  // application-registry's own synthetic /apps/<id> routes (sales, invoicing,
+  // accounting, ...). Retry with the /apps prefix stripped so nested shell
+  // routes resolve to exactly the same permission as their pre-migration bare
+  // path, instead of silently falling back to the permissive dashboard.view.
+  if (normalized === "/apps" || normalized.startsWith("/apps/")) {
+    const withoutApps = normalized.replace(/^\/apps/, "") || "/";
+    const fallbackMatch = ROUTE_PERMISSIONS.find(([pattern]) => pattern.test(withoutApps));
+    if (fallbackMatch) return fallbackMatch[1];
+  }
+
+  return "dashboard.view";
 }
 
 export async function getCurrentERPUserSafe() {
