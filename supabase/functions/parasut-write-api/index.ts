@@ -16,8 +16,12 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { resolveCompanyScope, type ErpUserAuthzRow } from "../_shared/company-scope.ts";
 import { SupabaseAttemptRepository, SupabaseAuditRepository, SupabaseCommandRepository, SupabaseProviderLinkRepository, type OutboundAdminLike } from "../_shared/accounting-outbound-repository.ts";
-import { computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResyncContacts } from "./handlers.ts";
+import { computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResync, type ConcurrencyGuard } from "./handlers.ts";
 import { syncContacts } from "../../../server/parasut/sync-contacts.ts";
+import { syncProducts } from "../../../server/parasut/sync-products.ts";
+import { syncAccounts } from "../../../server/parasut/sync-accounts.ts";
+import { syncSalesInvoices } from "../../../server/parasut/sync-sales-invoices.ts";
+import { syncPurchaseBills } from "../../../server/parasut/sync-purchase-bills.ts";
 import { CreateCustomerCommandHandler } from "../../../server/erp/commands/create-customer-command.ts";
 import { ParasutCustomerWriteProvider } from "../../../server/erp/providers/parasut-customer-write-provider.ts";
 import { ParasutContactVerifier, type MinimalParasutReadClient } from "../../../server/erp/providers/parasut-contact-verifier.ts";
@@ -25,7 +29,7 @@ import { ParasutContactsOnlySync, type MirrorContactLookup } from "../../../serv
 import { ParasutContactWriteHttpClient } from "../../../server/parasut/write-client.ts";
 import { TokenManager } from "../../../server/parasut/auth.ts";
 import { ParaşütClient } from "../../../server/parasut/client.ts";
-import type { MirrorDatabase, SyncContext } from "../../../server/parasut/types.ts";
+import type { MirrorDatabase, SyncContext, SyncResult } from "../../../server/parasut/types.ts";
 import type { ProviderCapabilities } from "../../../server/erp/providers/accounting-provider.ts";
 
 const corsHeaders = {
@@ -61,6 +65,7 @@ interface QueryBuilderLike {
   eq(column: string, value: unknown): QueryBuilderLike;
   is(column: string, value: unknown): QueryBuilderLike;
   ilike(column: string, value: string): QueryBuilderLike;
+  gt(column: string, value: unknown): QueryBuilderLike;
   limit(count: number): QueryBuilderLike;
   maybeSingle(): Promise<{ data: Record<string, unknown> | null }>;
 }
@@ -100,6 +105,21 @@ const PARASUT_CAPABILITIES: ProviderCapabilities = {
   dashboard: true,
   reports: true,
   syncStatus: true,
+};
+
+// Backs the manual per-page "Sync" button. Keys match the frontend's
+// ParasutListResource identifiers exactly (see
+// src/features/erp/parasut/types.ts) — only resources with a real,
+// proven direct-list sync wrapper (server/parasut/sync-*.ts) are listed
+// here. Any other page (bank_fees, employees, sales_offers, ...) simply
+// has no "Sync" button; never fabricate a sync path for them.
+const SYNCABLE_RESOURCES: Record<string, { resourceType: string; run: (context: SyncContext) => Promise<SyncResult> }> = {
+  customers: { resourceType: "contacts", run: syncContacts },
+  suppliers: { resourceType: "contacts", run: syncContacts },
+  products: { resourceType: "products", run: syncProducts },
+  accounts: { resourceType: "accounts", run: syncAccounts },
+  sales_invoices: { resourceType: "sales_invoices", run: syncSalesInvoices },
+  purchase_bills: { resourceType: "purchase_bills", run: syncPurchaseBills },
 };
 
 serve(async (req) => {
@@ -153,9 +173,17 @@ serve(async (req) => {
   const parasutCompanyId = env("PARASUT_COMPANY_ID");
 
   // Read+mirror-reconcile only — never a Paraşüt write, so deliberately not
-  // gated by ACCOUNTING_WRITE_ENABLED. See handlers.ts's handleResyncContacts
-  // doc comment for why this exists.
-  if (action === "resync-contacts") {
+  // gated by ACCOUNTING_WRITE_ENABLED. See handlers.ts's handleResync doc
+  // comment for why this exists. Backs the manual per-page "Sync" button —
+  // `resource` names match the frontend's ParasutListResource identifiers
+  // (customers/suppliers both resolve to the single `contacts` mirror
+  // resource — Paraşüt has no separate customer/supplier list endpoint,
+  // account_type is just an attribute on the same resource).
+  if (action === "resync") {
+    const resourceParam = typeof body.resource === "string" ? body.resource : "";
+    const mapping = SYNCABLE_RESOURCES[resourceParam];
+    if (!mapping) return json({ error: "Desteklenmeyen senkronizasyon kaynağı." }, 400);
+
     try {
       const tokens = new TokenManager({
         clientId: env("PARASUT_CLIENT_ID"),
@@ -165,7 +193,27 @@ serve(async (req) => {
       });
       const database = admin as unknown as MirrorDatabase;
       const context: SyncContext = { companyId: activeCompanyId, parasutCompanyId, database, client: new ParaşütClient(tokens) };
-      const response = await handleResyncContacts(access.hasCreatePermission, () => syncContacts(context));
+      const schemaAdmin = admin as unknown as { schema(name: string): GenericAdminLike };
+      const guard: ConcurrencyGuard = {
+        isResourceSyncRunning: async (companyId, resourceType) => {
+          // A run that never reaches completeRun() (a crashed/killed
+          // function invocation) must not permanently lock this resource —
+          // only treat a `running` row as an active lock within a short
+          // staleness window matching this function's own execution budget.
+          const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+          const result = await schemaAdmin
+            .schema("parasut")
+            .from("sync_runs")
+            .select("id")
+            .eq("company_id", companyId)
+            .eq("resource_type", resourceType)
+            .eq("status", "running")
+            .gt("started_at", cutoff)
+            .maybeSingle();
+          return Boolean(result.data);
+        },
+      };
+      const response = await handleResync(access.hasCreatePermission, guard, activeCompanyId, mapping.resourceType, () => mapping.run(context));
       return json(response);
     } catch (error) {
       if (error instanceof CreateCustomerRejectedError) return json({ error: error.message }, error.httpStatus);

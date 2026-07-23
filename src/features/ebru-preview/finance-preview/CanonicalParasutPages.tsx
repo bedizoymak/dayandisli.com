@@ -1,8 +1,12 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Loader2, RefreshCw, Search } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { FinanceBreadcrumb } from "./FinanceNavigationTools";
-import { useParasutList, useParasutReports } from "@/features/erp/parasut/api/queries";
+import { parasutQueryKeys, useParasutList, useParasutReports } from "@/features/erp/parasut/api/queries";
+import { callParasutWriteApi } from "@/features/erp/parasut/api/write-client";
+import { useERPAuth } from "@/contexts/ERPAuthContext";
 import type {
   GenericParasutRow,
   InvoiceListRow,
@@ -10,6 +14,31 @@ import type {
   ParasutListResource,
 } from "@/features/erp/parasut/types";
 import { formatParasutCurrency, formatParasutDate, formatParasutDateTime } from "@/features/erp/parasut/utils/format";
+
+// Only resources with a real, proven direct-list sync wrapper on the server
+// (server/parasut/sync-*.ts) get a "Sync" button — must match
+// supabase/functions/parasut-write-api/index.ts's SYNCABLE_RESOURCES keys
+// exactly. Every other canonical page (bank_fees, employees, sales_offers,
+// ...) has no sync path yet; never fabricate one client-side.
+const SYNCABLE_RESOURCES = new Set<ParasutListResource>([
+  "customers",
+  "suppliers",
+  "products",
+  "accounts",
+  "sales_invoices",
+  "purchase_bills",
+]);
+
+interface ResyncResponse {
+  status: "completed" | "partial" | "failed";
+  pages: number;
+  observed: number;
+  inserted: number;
+  updated: number;
+  unchanged: number;
+  errors: number;
+  reconciliation?: { archivedCount: number; skippedReason: string | null };
+}
 
 type Column = { key: string; label: string; kind?: "date" | "datetime" | "money" | "status" | "boolean"; currencyKey?: string };
 type PageConfig = {
@@ -50,6 +79,48 @@ function cell(row: GenericParasutRow & Partial<InvoiceListRow>, column: Column) 
   return String(value ?? "—");
 }
 
+export function SyncButton({ config }: { config: PageConfig }) {
+  const { roles } = useERPAuth();
+  const queryClient = useQueryClient();
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  if (!roles.includes("admin") || !SYNCABLE_RESOURCES.has(config.resource)) return null;
+
+  async function handleClick() {
+    // Belt-and-suspenders against a duplicate click: the button is also
+    // `disabled` below, but React state updates aren't synchronous, so a
+    // second click before the next render must still be a no-op here.
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const result = await callParasutWriteApi<ResyncResponse>("resync", { resource: config.resource });
+      if (result.error) {
+        toast.error("Senkronizasyon başarısız.", { description: result.error });
+        return;
+      }
+      const response = result.data;
+      // No page reload — invalidate this resource's cached list queries
+      // (every page/search/filter variation, hence the partial key match)
+      // so the currently-visible table refetches on its own.
+      await queryClient.invalidateQueries({ queryKey: [...parasutQueryKeys.all, "list", config.resource] });
+
+      const archived = response.reconciliation?.archivedCount ?? 0;
+      toast.success("Senkronizasyon tamamlandı.", {
+        description: `${response.observed} kayıt senkronize edildi. ${archived} arşivlendi. ${response.errors} hata.`,
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  return (
+    <button onClick={handleClick} disabled={isSyncing} aria-busy={isSyncing}>
+      {isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+      {isSyncing ? "Senkronize ediliyor…" : "Senkronize Et"}
+    </button>
+  );
+}
+
 export function CanonicalParasutListPage({ config }: { config: PageConfig }) {
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get("q") ?? "");
@@ -66,7 +137,7 @@ export function CanonicalParasutListPage({ config }: { config: PageConfig }) {
   });
 
   return <div className="income-page" data-provider="parasut">
-    <header className="income-page-head"><div><FinanceBreadcrumb value={config.breadcrumb} /><h1>{config.title}</h1><p>{config.subtitle}</p></div></header>
+    <header className="income-page-head"><div><FinanceBreadcrumb value={config.breadcrumb} /><h1>{config.title}</h1><p>{config.subtitle}</p></div><div><SyncButton config={config} /></div></header>
     <div className="ebru-card income-filters">
       <label className="income-search"><Search /><input value={search} onChange={(event) => { setSearch(event.target.value); go(1); }} placeholder={config.search} /></label>
       <button className="income-clear" onClick={() => { setSearch(""); setParams({}); }}>Filtreleri Temizle</button>
