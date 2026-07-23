@@ -1,0 +1,90 @@
+.finance-form-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.finance-crumb-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.finance-form-breadcrumb a {
+  color: #6faef2;
+  text-decoration: none;
+  border-radius: 3px;
+}
+.finance-form-breadcrumb a:hover {
+  text-decoration: underline;
+  color: #9acbff;
+}
+.finance-form-breadcrumb a:focus-visible,
+.finance-back-link:focus-visible,
+.finance-export button:focus-visible {
+  outline: 2px solid #65b5ff;
+  outline-offset: 2px;
+}
+.finance-form-breadcrumb i {
+  color: #4e6680;
+  font-style: normal;
+}
+.finance-form-breadcrumb [aria-current="page"] {
+  color: #91a5ba;
+}
+.finance-back-link {
+  display: inline-flex;
+  margin-top: 7px;
+  color: #75b9ff;
+  text-decoration: none;
+  font-size: 10px;
+}
+.finance-back-link:hover {
+  text-decoration: underline;
+}
+.finance-export {
+  position: relative;
+  display: inline-flex;
+}
+.finance-export > button {
+  height: 39px;
+  padding: 0 13px;
+  border: 1px solid #2a4058;
+  border-radius: 8px;
+  background: #0e1e30;
+  color: #cbd9e9;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.finance-export > button svg {
+  width: 15px;
+}
+.finance-export > button svg:last-child {
+  width: 12px;
+}
+.finance-export > div {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  top: 44px;
+  width: 185px;
+  padding: 5px;
+  border: 1px solid #29415b;
+  border-radius: 8px;
+  background: #0b1929;
+  box-shadow: 0 14px 35px #020914aa;
+}
+.finance-export > div button {
+  width: 100%;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #dbe7f4;
+  padding: 9px;
+  text-align: left;
+  font-size: 10px;
+}
+.finance-export > div button:hover,
+.finance-export > div button:focus {
+  background: #142b43;
+}

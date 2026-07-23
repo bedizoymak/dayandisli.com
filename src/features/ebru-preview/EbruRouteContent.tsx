@@ -17,15 +17,9 @@ import {
   canonicalParasutPages,
 } from "./finance-preview/CanonicalParasutPages";
 
-export default function EbruDemoContent({
-  routePath,
-  dataMode = "demo",
-}: {
-  routePath: string;
-  dataMode?: "demo" | "live";
-}) {
+export default function EbruRouteContent({ routePath }: { routePath: string }) {
   if (routePath === "/apps" || routePath === "/apps/") return null;
-  if (dataMode === "live") {
+  {
     const listConfig =
       routePath.endsWith("/finance/income/invoices") ? canonicalParasutPages.invoices
         : routePath.endsWith("/finance/income/customers") ? canonicalParasutPages.customers

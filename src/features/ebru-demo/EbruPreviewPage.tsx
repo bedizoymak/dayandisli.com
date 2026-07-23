@@ -1,4 +1,4 @@
-import { FormEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   BarChart3,
@@ -28,7 +28,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useERPAuth } from "@/contexts/ERPAuthContext";
+import { useDemoIdentity } from "./demoIdentity";
 import {
   approvals,
   calendarEvents,
@@ -37,28 +37,66 @@ import {
   searchRoutes,
   sidebarItems,
   systemNotifications,
+  upcomingItems,
 } from "./previewData";
-import { useParasutDashboard } from "@/features/erp/parasut/api/queries";
-import { formatParasutCurrency, formatParasutDate } from "@/features/erp/parasut/utils/format";
+import { FinanceOverview } from "./finance-preview/FinanceOverview";
 import { financeNavigation } from "./finance-preview/financePreviewData";
+import { SalesInvoiceForm } from "./finance-preview/FinanceInvoicePages";
+import {
+  CollectionReportPage,
+  CustomerFormPage,
+  CustomerListPage,
+  InvoiceListPage,
+} from "./finance-preview/FinanceIncomePages";
+import {
+  ExpenseInvoicePage,
+  ExpenseListPage,
+  IncomingInvoicesPage,
+  SimpleExpenseForm,
+} from "./finance-preview/FinanceExpensePages";
+import {
+  CashAccountsPage,
+  CashBankReportPage,
+  CashFlowReportPage,
+  ChecksPage,
+  IncomeExpenseReportPage,
+  PaymentsReportPage,
+  VatReportPage,
+} from "./finance-preview/FinanceReportPages";
+import {
+  CheckFormPage,
+  DispatchFormPage,
+  DispatchesPage,
+  OrderFormPage,
+  OrdersPage,
+  ProductFormPage,
+  ProductsPage,
+  StockHistoryPage,
+  StockReportPage,
+  SupplierFormPage,
+  SuppliersPage,
+} from "./finance-preview/OperationsPages";
+import { CustomerListPage as CrmCustomerListPage } from "./crm-preview/CustomerListPage";
+import { CustomerFormPage as CrmCustomerFormPage } from "./crm-preview/CustomerFormPage";
+import { CustomerDetailPage } from "./crm-preview/CustomerDetailPage";
+import { crmSubmenu } from "./crm-preview/crmCustomerData";
 import "./crm-preview/crm-preview.css";
+import { salesSubmenu } from "./sales-preview/salesData";
+import {
+  QuotesPage,
+  SalesActivitiesPage,
+  SalesOrdersPage,
+} from "./sales-preview/SalesListPages";
+import {
+  QuoteDetailPage,
+  QuoteFormPage,
+  SalesOrderFormPage,
+} from "./sales-preview/QuotePages";
 import "./sales-preview/sales-preview.css";
+import { QuotePrintPage } from "./sales-preview/pdf/QuotePrintPage";
+import { reportsNavigation } from "./reports-preview/reportsPreviewData";
+import { ProductionReportPage } from "./reports-preview/ProductionReportPage";
 import "./ebru-preview.css";
-
-const EbruRouteContent = lazy(() => import("./EbruRouteContent"));
-
-const crmSubmenu = [{ id: "customers", label: "Müşteriler", route: "/apps/crm/customers" }];
-const salesSubmenu = [
-  { id: "quotes", label: "Teklifler", route: "/apps/sales/quotes" },
-  { id: "orders", label: "Siparişler", route: "/apps/sales/orders" },
-  { id: "activities", label: "Satış Faaliyetleri", route: "/apps/sales/activities" },
-];
-const reportsNavigation = [
-  { id: "collections", label: "Tahsilat Raporu", route: "/apps/reports/collections" },
-  { id: "income-expense", label: "Gelir-Gider Raporu", route: "/apps/reports/income-expense" },
-  { id: "cash-bank", label: "Kasa-Banka Raporu", route: "/apps/reports/cash-bank" },
-  { id: "production", label: "Üretim Raporu", route: "/apps/reports/production" },
-];
 
 const navIcons = [
   Gauge,
@@ -87,16 +125,10 @@ function initials(value: string) {
   );
 }
 
-function dashboardTotals(values: Array<{ currency: string; total: string }>) {
-  return values.length ? values.map((item) => formatParasutCurrency(item.total, item.currency)).join(" · ") : "—";
-}
-
 export default function EbruPreviewPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const routePath = location.pathname;
-  const routeTo = (route: string) => route;
-  const { erpUser, roles, signOut } = useERPAuth();
+  const { erpUser, roles, signOut } = useDemoIdentity();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -105,8 +137,7 @@ export default function EbruPreviewPage() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [activeView, setActiveView] = useState<
     "dashboard" | "finance" | "crm" | "sales" | "reports"
-  >("dashboard");
-  const dashboardQuery = useParasutDashboard();
+  >("finance");
   const [openSection, setOpenSection] = useState<string | null>("finance");
   const [activeCrmPage, setActiveCrmPage] = useState("customers");
   const [activeSalesPage, setActiveSalesPage] = useState("quotes");
@@ -197,106 +228,99 @@ export default function EbruPreviewPage() {
   }, [quickOpen]);
 
   useEffect(() => {
-    if (routePath === "/apps" || routePath === "/apps/") {
-      setActiveView("dashboard");
-      setOpenSection(null);
-    } else if (routePath === "/apps/finance" || routePath === "/apps/finance/") {
-      setActiveView("finance");
-      setOpenSection("finance");
-      setActiveFinancePage("overview");
-    } else if (routePath.includes("/reports/")) {
+    if (location.pathname.includes("/reports/")) {
       setActiveView("reports");
       setOpenSection("reports");
-    } else if (routePath.includes("/sales/")) {
+    } else if (location.pathname.includes("/sales/")) {
       setActiveView("sales");
       setOpenSection("sales");
-      if (routePath.includes("/orders")) setActiveSalesPage("orders");
-      else if (routePath.includes("/activities"))
+      if (location.pathname.includes("/orders")) setActiveSalesPage("orders");
+      else if (location.pathname.includes("/activities"))
         setActiveSalesPage("activities");
       else setActiveSalesPage("quotes");
-    } else if (routePath.includes("/crm/customers")) {
+    } else if (location.pathname.includes("/crm/customers")) {
       setActiveView("crm");
       setOpenSection("crm");
       setActiveCrmPage("customers");
-    } else if (routePath.includes("/finance/income/invoices")) {
+    } else if (location.pathname.includes("/finance/income/invoices")) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("income");
       setActiveFinancePage("invoices");
-    } else if (routePath.includes("/finance/income/customers")) {
+    } else if (location.pathname.includes("/finance/income/customers")) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("income");
       setActiveFinancePage("customers");
     } else if (
-      routePath.includes("/finance/income/collection-report")
+      location.pathname.includes("/finance/income/collection-report")
     ) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("income");
       setActiveFinancePage("collections-report");
-    } else if (routePath.includes("/finance/expense/list")) {
+    } else if (location.pathname.includes("/finance/expense/list")) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("expenses");
       setActiveFinancePage("expense-list");
     } else if (
-      routePath.includes("/finance/expense/income-expense-report")
+      location.pathname.includes("/finance/expense/income-expense-report")
     ) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("expenses");
       setActiveFinancePage("income-expense-report");
-    } else if (routePath.includes("/finance/expense/payments-report")) {
+    } else if (location.pathname.includes("/finance/expense/payments-report")) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("expenses");
       setActiveFinancePage("payments-report");
-    } else if (routePath.includes("/finance/expense/vat-report")) {
+    } else if (location.pathname.includes("/finance/expense/vat-report")) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("expenses");
       setActiveFinancePage("vat-report");
-    } else if (routePath.includes("/finance/inventory/")) {
+    } else if (location.pathname.includes("/finance/inventory/")) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("inventory");
-      if (routePath.includes("/products"))
+      if (location.pathname.includes("/products"))
         setActiveFinancePage("products");
-      else if (routePath.includes("/outgoing-dispatches"))
+      else if (location.pathname.includes("/outgoing-dispatches"))
         setActiveFinancePage("outgoing-dispatches");
-      else if (routePath.includes("/incoming-dispatches"))
+      else if (location.pathname.includes("/incoming-dispatches"))
         setActiveFinancePage("incoming-dispatches");
-      else if (routePath.endsWith("/history"))
+      else if (location.pathname.endsWith("/history"))
         setActiveFinancePage("stock-history");
       else setActiveFinancePage("stock-report");
-    } else if (routePath.includes("/finance/purchasing/")) {
+    } else if (location.pathname.includes("/finance/purchasing/")) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("purchasing");
       setActiveFinancePage(
-        routePath.includes("/suppliers") ? "suppliers" : "orders",
+        location.pathname.includes("/suppliers") ? "suppliers" : "orders",
       );
-    } else if (routePath.includes("/finance/cash/")) {
+    } else if (location.pathname.includes("/finance/cash/")) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("cash");
-      if (routePath.endsWith("/accounts"))
+      if (location.pathname.endsWith("/accounts"))
         setActiveFinancePage("cash-accounts");
-      else if (routePath.endsWith("/checks"))
+      else if (location.pathname.endsWith("/checks"))
         setActiveFinancePage("checks");
-      else if (routePath.endsWith("/cash-bank-report"))
+      else if (location.pathname.endsWith("/cash-bank-report"))
         setActiveFinancePage("cash-bank-report");
       else setActiveFinancePage("cash-flow");
     } else if (
-      routePath.includes("/finance/expense/incoming-invoices")
+      location.pathname.includes("/finance/expense/incoming-invoices")
     ) {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("expenses");
       setActiveFinancePage("incoming-invoices");
     }
-  }, [routePath]);
+  }, [location.pathname]);
 
   const toggleSection = (sectionId: string) => {
     setOpenSection((current) => (current === sectionId ? null : sectionId));
@@ -308,53 +332,8 @@ export default function EbruPreviewPage() {
   };
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
-    if (matches[0]) navigate(routeTo(matches[0].route));
+    if (matches[0]) navigate(matches[0].route);
   };
-
-  const dashboardData = dashboardQuery.data;
-  const dashboardReceivables = dashboardData ? {
-    total: dashboardTotals(dashboardData.collectionsSummary.totalDue),
-    normal: dashboardTotals(dashboardData.collectionsSummary.totalDue),
-    normalPercent: dashboardData.collectionsSummary.overdueCount ? Math.max(0, Math.round(100 * (1 - dashboardData.collectionsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "receivable").length)))) : dashboardData.collectionsSummary.totalDue.length ? 100 : 0,
-    overdue: dashboardTotals(dashboardData.collectionsSummary.overdue),
-    overduePercent: dashboardData.collectionsSummary.overdueCount ? Math.min(100, Math.round(100 * dashboardData.collectionsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "receivable").length))) : 0,
-  } : previewMetrics.receivables;
-  const dashboardPayables = dashboardData ? {
-    total: dashboardTotals(dashboardData.paymentsSummary.totalDue),
-    normal: dashboardTotals(dashboardData.paymentsSummary.totalDue),
-    normalPercent: dashboardData.paymentsSummary.overdueCount ? Math.max(0, Math.round(100 * (1 - dashboardData.paymentsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "payable").length)))) : dashboardData.paymentsSummary.totalDue.length ? 100 : 0,
-    overdue: dashboardTotals(dashboardData.paymentsSummary.overdue),
-    overduePercent: dashboardData.paymentsSummary.overdueCount ? Math.min(100, Math.round(100 * dashboardData.paymentsSummary.overdueCount / Math.max(1, dashboardData.timeline.filter((item) => item.kind === "payable").length))) : 0,
-  } : previewMetrics.payables;
-  const dashboardUpcoming = dashboardData?.timeline.slice(0, 4).map((item) => {
-    const date = new Date(`${item.dueDate}T12:00:00`);
-    return {
-      day: String(date.getDate()).padStart(2, "0"),
-      month: date.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "").toLocaleUpperCase("tr-TR"),
-      title: item.partyName ?? item.documentNo ?? "Paraşüt belgesi",
-      note: `${item.kind === "receivable" ? "Tahsilat" : "Ödeme"} · ${formatParasutDate(item.dueDate)}`,
-      amount: `${item.kind === "receivable" ? "+" : "-"}${formatParasutCurrency(item.amount, item.currency)}`,
-      kind: item.kind === "receivable" ? "income" : "expense",
-    };
-  }) ?? [];
-  const dashboardKpis = dashboardData ? [
-    { label: "Toplam Tahsil Edilecek", value: dashboardTotals(dashboardData.collectionsSummary.totalDue), detail: `${dashboardData.collectionsSummary.overdueCount} gecikmiş belge`, tone: "blue" },
-    { label: "Toplam Ödenecek", value: dashboardTotals(dashboardData.paymentsSummary.totalDue), detail: `${dashboardData.paymentsSummary.overdueCount} gecikmiş belge`, tone: "green" },
-    { label: "Senkronize Kasa ve Banka", value: String(dashboardData.accounts.length), detail: "Paraşüt hesabı", tone: "purple" },
-  ] : [];
-  const dashboardExchange = [
-    { label: "Dolar / TL", value: "—", change: "Kur verisi yok", trend: "flat" },
-    { label: "Euro / TL", value: "—", change: "Kur verisi yok", trend: "flat" },
-    { label: "Altın / TL (Gr)", value: "—", change: "Kur verisi yok", trend: "flat" },
-  ];
-  const visualReceivables = dashboardReceivables;
-  const visualPayables = dashboardPayables;
-  const visualUpcoming = dashboardUpcoming;
-  const visualKpis = dashboardKpis;
-  const visualExchange = dashboardExchange;
-  const visualApprovals = approvals;
-  const visualNotifications = systemNotifications;
-  const visualCalendar = calendarEvents;
 
   return (
     <div className="ebru-dashboard">
@@ -364,7 +343,7 @@ export default function EbruPreviewPage() {
         <aside className="ebru-sidebar">
           <div className="ebru-brand-row">
             <Link
-              to={routeTo("/apps")}
+              to="/apps/demo"
               className="ebru-brand"
               aria-label="Ebru dashboard ana sayfası"
             >
@@ -417,7 +396,7 @@ export default function EbruPreviewPage() {
                           onClick={() => {
                             setActiveFinancePage("overview");
                             setActiveView("finance");
-                            navigate(routeTo("/apps/finance"));
+                            navigate("/apps/demo");
                           }}
                         >
                           Güncel Durum
@@ -452,7 +431,7 @@ export default function EbruPreviewPage() {
                                       className={`ebru-finance-page${activeFinancePage === page.id ? " active" : ""}`}
                                       onClick={() => {
                                         setActiveFinancePage(page.id);
-                                        if (page.route) navigate(routeTo(page.route));
+                                        if (page.route) navigate(page.route);
                                       }}
                                     >
                                       {page.label}
@@ -499,7 +478,7 @@ export default function EbruPreviewPage() {
                               setActiveView(
                                 page.id === "customers" ? "crm" : "dashboard",
                               );
-                              navigate(routeTo(page.route));
+                              navigate(page.route);
                             }}
                           >
                             {page.label}
@@ -519,7 +498,7 @@ export default function EbruPreviewPage() {
                         toggleSection("sales");
                         if (!isOpen) {
                           setActiveView("sales");
-                          navigate(routeTo("/apps/sales/quotes"));
+                          navigate("/apps/demo/sales/quotes");
                         }
                         setMobileOpen(false);
                       }}
@@ -544,7 +523,7 @@ export default function EbruPreviewPage() {
                             className={`ebru-finance-page${activeSalesPage === page.id ? " active" : ""}`}
                             onClick={() => {
                               setActiveSalesPage(page.id);
-                              navigate(routeTo(page.route));
+                              navigate(page.route);
                             }}
                           >
                             {page.label}
@@ -564,7 +543,7 @@ export default function EbruPreviewPage() {
                         toggleSection("reports");
                         if (!isOpen) {
                           setActiveView("reports");
-                          navigate(routeTo("/apps/reports/collections"));
+                          navigate("/apps/demo/reports/collections");
                         }
                         setMobileOpen(false);
                       }}
@@ -586,8 +565,8 @@ export default function EbruPreviewPage() {
                         {reportsNavigation.map((page) => (
                           <button
                             key={page.id}
-                            className={`ebru-finance-page${routePath === page.route ? " active" : ""}`}
-                            onClick={() => navigate(routeTo(page.route))}
+                            className={`ebru-finance-page${location.pathname === page.route ? " active" : ""}`}
+                            onClick={() => navigate(page.route)}
                           >
                             {page.label}
                           </button>
@@ -599,7 +578,7 @@ export default function EbruPreviewPage() {
               return (
                 <Link
                   key={item.label}
-                  to={routeTo(item.route)}
+                  to={item.route}
                   className={`ebru-nav-link${index === 0 && activeView === "dashboard" ? " active" : ""}`}
                   onClick={() => {
                     if (index === 0) setActiveView("dashboard");
@@ -614,7 +593,7 @@ export default function EbruPreviewPage() {
             })}
           </nav>
           <div className="ebru-sidebar-bottom">
-            <Link to={routeTo("/apps")} className="ebru-footer-link">
+            <Link to="/apps" className="ebru-footer-link">
               <CircleHelp />
               <span>Yardım &amp; Destek</span>
             </Link>
@@ -662,7 +641,7 @@ export default function EbruPreviewPage() {
                     matches.map((item) => (
                       <Link
                         key={item.label}
-                        to={routeTo(item.route)}
+                        to={item.route}
                         onClick={() => setQuery("")}
                       >
                         {item.label}
@@ -689,7 +668,7 @@ export default function EbruPreviewPage() {
                     {quickActions.map((item) => (
                       <Link
                         key={item.label}
-                        to={routeTo(item.route)}
+                        to={item.route}
                         onClick={() => setQuickOpen(false)}
                       >
                         {item.label}
@@ -745,10 +724,143 @@ export default function EbruPreviewPage() {
             </div>
           </header>
 
-          {activeView !== "dashboard" ? (
-            <Suspense fallback={<div className="income-state">Ebru önizlemesi yükleniyor…</div>}>
-              <EbruRouteContent routePath={routePath} />
-            </Suspense>
+          {activeView === "reports" ? (
+            location.pathname.endsWith("/reports/collections") ? (
+              <CollectionReportPage />
+            ) : location.pathname.endsWith("/reports/income-expense") ? (
+              <IncomeExpenseReportPage />
+            ) : location.pathname.endsWith("/reports/cash-bank") ? (
+              <CashBankReportPage />
+            ) : (
+              <ProductionReportPage />
+            )
+          ) : activeView === "sales" ? (
+            location.pathname.endsWith("/print") ? (
+              <QuotePrintPage />
+            ) : location.pathname.endsWith("/sales/quotes/new") ||
+              location.pathname.endsWith("/edit") ? (
+              <QuoteFormPage />
+            ) : location.pathname.endsWith("/sales/quotes") ? (
+              <QuotesPage />
+            ) : location.pathname.includes("/sales/quotes/") ? (
+              <QuoteDetailPage />
+            ) : location.pathname.endsWith("/sales/orders/new") ? (
+              <SalesOrderFormPage />
+            ) : location.pathname.endsWith("/sales/orders") ? (
+              <SalesOrdersPage />
+            ) : (
+              <SalesActivitiesPage />
+            )
+          ) : activeView === "crm" ? (
+            location.pathname.endsWith("/crm/customers/new") ? (
+              <CrmCustomerFormPage />
+            ) : location.pathname.endsWith("/edit") ? (
+              <CrmCustomerFormPage edit />
+            ) : location.pathname.endsWith("/crm/customers") ? (
+              <CrmCustomerListPage />
+            ) : (
+              <CustomerDetailPage />
+            )
+          ) : activeView === "finance" ? (
+            location.pathname.endsWith("/finance/income/invoices/new") ? (
+              <SalesInvoiceForm />
+            ) : location.pathname.endsWith(
+                "/finance/expense/list/new/invoice",
+              ) ? (
+              <ExpenseInvoicePage />
+            ) : location.pathname.endsWith(
+                "/finance/expense/list/new/payroll",
+              ) ? (
+              <SimpleExpenseForm type="payroll" />
+            ) : location.pathname.endsWith("/finance/expense/list/new/tax") ? (
+              <SimpleExpenseForm type="tax" />
+            ) : location.pathname.endsWith(
+                "/finance/expense/list/new/bank-expense",
+              ) ? (
+              <SimpleExpenseForm type="bank" />
+            ) : location.pathname.endsWith(
+                "/finance/expense/list/new/other",
+              ) ? (
+              <SimpleExpenseForm type="other" />
+            ) : location.pathname.endsWith(
+                "/finance/expense/list/new/accommodation",
+              ) ? (
+              <ExpenseInvoicePage accommodation />
+            ) : location.pathname.endsWith("/finance/income/invoices") ? (
+              <InvoiceListPage />
+            ) : location.pathname.endsWith("/finance/income/customers/new") ? (
+              <CustomerFormPage />
+            ) : location.pathname.endsWith("/finance/income/customers") ? (
+              <CustomerListPage />
+            ) : location.pathname.endsWith(
+                "/finance/income/collection-report",
+              ) ? (
+              <CollectionReportPage />
+            ) : location.pathname.endsWith("/finance/expense/list") ? (
+              <ExpenseListPage />
+            ) : location.pathname.endsWith(
+                "/finance/expense/incoming-invoices",
+              ) ? (
+              <IncomingInvoicesPage />
+            ) : location.pathname.endsWith(
+                "/finance/expense/income-expense-report",
+              ) ? (
+              <IncomeExpenseReportPage />
+            ) : location.pathname.endsWith(
+                "/finance/expense/payments-report",
+              ) ? (
+              <PaymentsReportPage />
+            ) : location.pathname.endsWith("/finance/expense/vat-report") ? (
+              <VatReportPage />
+            ) : location.pathname.endsWith("/finance/cash/checks/new") ? (
+              <CheckFormPage />
+            ) : location.pathname.endsWith(
+                "/finance/inventory/products/new",
+              ) ? (
+              <ProductFormPage />
+            ) : location.pathname.endsWith("/finance/inventory/products") ? (
+              <ProductsPage />
+            ) : location.pathname.endsWith(
+                "/finance/inventory/outgoing-dispatches/new",
+              ) ? (
+              <DispatchFormPage type="outgoing" />
+            ) : location.pathname.endsWith(
+                "/finance/inventory/outgoing-dispatches",
+              ) ? (
+              <DispatchesPage type="outgoing" />
+            ) : location.pathname.endsWith(
+                "/finance/inventory/incoming-dispatches/new",
+              ) ? (
+              <DispatchFormPage type="incoming" />
+            ) : location.pathname.endsWith(
+                "/finance/inventory/incoming-dispatches",
+              ) ? (
+              <DispatchesPage type="incoming" />
+            ) : location.pathname.endsWith("/finance/inventory/history") ? (
+              <StockHistoryPage />
+            ) : location.pathname.endsWith("/finance/inventory/report") ? (
+              <StockReportPage />
+            ) : location.pathname.endsWith(
+                "/finance/purchasing/suppliers/new",
+              ) ? (
+              <SupplierFormPage />
+            ) : location.pathname.endsWith("/finance/purchasing/suppliers") ? (
+              <SuppliersPage />
+            ) : location.pathname.endsWith("/finance/purchasing/orders/new") ? (
+              <OrderFormPage />
+            ) : location.pathname.endsWith("/finance/purchasing/orders") ? (
+              <OrdersPage />
+            ) : location.pathname.endsWith("/finance/cash/accounts") ? (
+              <CashAccountsPage />
+            ) : location.pathname.endsWith("/finance/cash/checks") ? (
+              <ChecksPage />
+            ) : location.pathname.endsWith("/finance/cash/cash-bank-report") ? (
+              <CashBankReportPage />
+            ) : location.pathname.endsWith("/finance/cash/cash-flow-report") ? (
+              <CashFlowReportPage />
+            ) : (
+              <FinanceOverview />
+            )
           ) : (
             <div className="ebru-content">
               <section className="ebru-top-grid">
@@ -774,13 +886,13 @@ export default function EbruPreviewPage() {
                       </div>
                     </div>
                     <div className="ebru-fx-grid">
-                      {visualExchange.map((item) => (
+                      {previewMetrics.exchange.map((item) => (
                         <div className="ebru-fx" key={item.label}>
                           <span>{item.label}</span>
                           <strong>{item.value}</strong>
                           <small
                             className={
-                              item.trend === "up" ? "ebru-up" : item.trend === "down" ? "ebru-down" : ""
+                              item.trend === "up" ? "ebru-up" : "ebru-down"
                             }
                           >
                             {item.change}
@@ -798,7 +910,7 @@ export default function EbruPreviewPage() {
                       return (
                         <Link
                           className="ebru-quick-card"
-                          to={routeTo(item.route)}
+                          to={item.route}
                           key={item.label}
                         >
                           <Icon />
@@ -811,7 +923,7 @@ export default function EbruPreviewPage() {
               </section>
 
               <section className="ebru-grid ebru-kpis">
-                {visualKpis.map((item) => (
+                {previewMetrics.kpis.map((item) => (
                   <article
                     className={`ebru-card ebru-kpi ${item.tone}`}
                     key={item.label}
@@ -828,14 +940,14 @@ export default function EbruPreviewPage() {
               <section className="ebru-grid ebru-bottom">
                 <DonutCard
                   title="Tahsilat Durumu"
-                  data={visualReceivables}
+                  data={previewMetrics.receivables}
                   color="blue"
                   normalLabel="Vadesi Geçmemiş"
                   overdueLabel="Gecikmiş Tahsilat"
                 />
                 <DonutCard
                   title="Ödeme Durumu"
-                  data={visualPayables}
+                  data={previewMetrics.payables}
                   color="green"
                   normalLabel="Vadesi Geçmemiş"
                   overdueLabel="Gecikmiş Ödemeler"
@@ -850,7 +962,7 @@ export default function EbruPreviewPage() {
                     </button>
                   </div>
                   <div className="ebru-upcoming-list">
-                    {dashboardQuery.isLoading ? <div className="ebru-empty-state">Finans takvimi yükleniyor…</div> : visualUpcoming.length ? visualUpcoming.map((item) => (
+                    {upcomingItems.map((item) => (
                       <div className="ebru-upcoming-row" key={item.title}>
                         <div className="ebru-upcoming-date">
                           <strong>{item.day}</strong>
@@ -864,7 +976,7 @@ export default function EbruPreviewPage() {
                           {item.amount}
                         </strong>
                       </div>
-                    )) : <div className="ebru-empty-state">Planlanmış ödeme veya tahsilat bulunamadı.</div>}
+                    ))}
                   </div>
                 </article>
                 <div className="ebru-right-stack">
@@ -874,12 +986,12 @@ export default function EbruPreviewPage() {
                       <button>Tümünü Gör</button>
                     </div>
                     <div className="ebru-approval-list">
-                      {visualApprovals.length ? visualApprovals.map((item) => (
+                      {approvals.map((item) => (
                         <div className="ebru-approval" key={item.label}>
                           <span>{item.label}</span>
                           <b className="ebru-count">{item.count}</b>
                         </div>
-                      )) : <div className="ebru-empty-state">Bekleyen onay bulunmuyor.</div>}
+                      ))}
                     </div>
                   </article>
                   <article className="ebru-card ebru-panel ebru-system">
@@ -890,7 +1002,7 @@ export default function EbruPreviewPage() {
                       <button>Tümünü Gör</button>
                     </div>
                     <div className="ebru-notification-list">
-                      {visualNotifications.length ? visualNotifications.map((item) => (
+                      {systemNotifications.map((item) => (
                         <div className="ebru-notification" key={item.title}>
                           <Bell />
                           <div>
@@ -899,7 +1011,7 @@ export default function EbruPreviewPage() {
                           </div>
                           <time>{item.relativeTime}</time>
                         </div>
-                      )) : <div className="ebru-empty-state">Yeni sistem bildirimi bulunmuyor.</div>}
+                      ))}
                     </div>
                   </article>
                 </div>
@@ -939,8 +1051,8 @@ export default function EbruPreviewPage() {
                 (day) => (
                   <div className="ebru-calendar-day" key={day}>
                     <strong>{day}</strong>
-                    {visualCalendar[day] && (
-                      <small>{visualCalendar[day]}</small>
+                    {calendarEvents[day] && (
+                      <small>{calendarEvents[day]}</small>
                     )}
                   </div>
                 ),
