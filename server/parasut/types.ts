@@ -51,7 +51,30 @@ export type MirrorTable =
   | "purchase_bills"
   | "purchase_bill_details"
   | "payments"
-  | "accounts";
+  | "accounts"
+  // Added 2026-07-23 alongside docs/migration-proposals/20260723103525_parasut_full_apidocs_schema_expansion.sql —
+  // these tables already exist in the `parasut` schema (see that migration), this
+  // just lets the TS engine reference them with the same type safety as the original 8.
+  | "bank_fees"
+  | "e_archives"
+  | "e_invoice_inboxes"
+  | "e_invoices"
+  | "e_smms"
+  | "employees"
+  | "item_categories"
+  | "inventory_levels"
+  | "salaries"
+  | "sales_offers"
+  | "sales_offers_details"
+  | "shipment_documents"
+  | "stock_movements"
+  | "stock_updates"
+  | "stock_update_details"
+  | "tags"
+  | "taxes"
+  | "trackable_jobs"
+  | "transactions"
+  | "warehouses";
 
 export type IntegrationTable = "sync_runs" | "sync_errors";
 
