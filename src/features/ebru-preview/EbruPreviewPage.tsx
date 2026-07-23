@@ -38,12 +38,6 @@ import {
   sidebarItems,
   systemNotifications,
 } from "./previewData";
-import { FinanceOverview } from "./finance-preview/FinanceOverview";
-import {
-  CanonicalFinanceReportPage,
-  CanonicalParasutListPage,
-  canonicalParasutPages,
-} from "./finance-preview/CanonicalParasutPages";
 import { useParasutDashboard } from "@/features/erp/parasut/api/queries";
 import { formatParasutCurrency, formatParasutDate } from "@/features/erp/parasut/utils/format";
 import { financeNavigation } from "./finance-preview/financePreviewData";
@@ -96,10 +90,6 @@ function initials(value: string) {
 
 function dashboardTotals(values: Array<{ currency: string; total: string }>) {
   return values.length ? values.map((item) => formatParasutCurrency(item.total, item.currency)).join(" · ") : "—";
-}
-
-function UnavailablePage({ title = "Bu iş akışı henüz kullanıma açık değil" }: { title?: string }) {
-  return <div className="income-page"><section className="ebru-card income-state"><h1>{title}</h1><p>Bu ekran için güvenilir, salt okunur bir Paraşüt veri kaynağı bulunmuyor.</p></section></div>;
 }
 
 export default function EbruPreviewPage({ demoMode = false }: { demoMode?: boolean }) {
@@ -322,31 +312,6 @@ export default function EbruPreviewPage({ demoMode = false }: { demoMode?: boole
     if (matches[0]) navigate(demoTo(matches[0].route));
   };
 
-  const canonicalPage = demoMode ? null :
-    routePath.endsWith("/finance/income/invoices") ? canonicalParasutPages.invoices
-      : location.pathname.endsWith("/finance/income/customers") ? canonicalParasutPages.customers
-      : location.pathname.endsWith("/finance/expense/list") ? canonicalParasutPages.expenses
-      : location.pathname.endsWith("/finance/expense/incoming-invoices") ? canonicalParasutPages.purchaseBills
-      : location.pathname.endsWith("/finance/purchasing/orders") ? canonicalParasutPages.purchaseBills
-      : location.pathname.endsWith("/finance/purchasing/suppliers") ? canonicalParasutPages.suppliers
-      : location.pathname.endsWith("/finance/cash/accounts") ? canonicalParasutPages.accounts
-      : location.pathname.endsWith("/finance/inventory/products") ? canonicalParasutPages.products
-      : location.pathname.endsWith("/finance/inventory/history") ? canonicalParasutPages.stockHistory
-      : location.pathname.endsWith("/finance/inventory/report") ? canonicalParasutPages.inventory
-      : location.pathname.includes("/finance/inventory/outgoing-dispatches") || location.pathname.includes("/finance/inventory/incoming-dispatches") ? canonicalParasutPages.shipments
-      : location.pathname.endsWith("/sales/quotes") ? canonicalParasutPages.offers
-      : location.pathname.endsWith("/crm/customers") ? canonicalParasutPages.customers
-      : location.pathname.endsWith("/hr") || location.pathname.endsWith("/hr/employees") ? canonicalParasutPages.employees
-      : location.pathname.endsWith("/hr/salaries") ? canonicalParasutPages.salaries
-      : location.pathname.endsWith("/e-documents") || location.pathname.endsWith("/e-documents/invoices") ? canonicalParasutPages.eInvoices
-      : null;
-  const canonicalReport = demoMode ? null :
-    routePath.endsWith("/finance/income/collection-report") || routePath.endsWith("/reports/collections") ? "collections"
-      : location.pathname.endsWith("/finance/expense/payments-report") ? "payments"
-      : location.pathname.endsWith("/finance/expense/income-expense-report") || location.pathname.endsWith("/reports/income-expense") ? "incomeExpense"
-      : location.pathname.endsWith("/finance/expense/vat-report") ? "vat"
-      : location.pathname.endsWith("/finance/cash/cash-bank-report") || location.pathname.endsWith("/finance/cash/cash-flow-report") || location.pathname.endsWith("/reports/cash-bank") ? "cash"
-      : null;
   const dashboardData = dashboardQuery.data;
   const dashboardReceivables = dashboardData ? {
     total: dashboardTotals(dashboardData.collectionsSummary.totalDue),
@@ -781,26 +746,10 @@ export default function EbruPreviewPage({ demoMode = false }: { demoMode?: boole
             </div>
           </header>
 
-          {demoMode && activeView !== "dashboard" ? (
+          {activeView !== "dashboard" ? (
             <Suspense fallback={<div className="income-state">Ebru önizlemesi yükleniyor…</div>}>
-              <EbruDemoContent routePath={routePath} />
+              <EbruDemoContent routePath={routePath} dataMode={demoMode ? "demo" : "live"} />
             </Suspense>
-          ) : canonicalPage ? (
-            <CanonicalParasutListPage config={canonicalPage} />
-          ) : canonicalReport ? (
-            <CanonicalFinanceReportPage kind={canonicalReport} />
-          ) : activeView === "reports" ? (
-            <UnavailablePage title="Bu rapor için doğrulanmış Paraşüt kaynağı bulunmuyor" />
-          ) : activeView === "sales" ? (
-            <UnavailablePage />
-          ) : activeView === "crm" ? (
-            <UnavailablePage />
-          ) : activeView === "finance" ? (
-            location.pathname.includes("/new") || location.pathname.includes("/edit") || location.pathname.endsWith("/finance/cash/checks") ? (
-              <UnavailablePage />
-            ) : (
-              <FinanceOverview />
-            )
           ) : (
             <div className="ebru-content">
               <section className="ebru-top-grid">
