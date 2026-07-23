@@ -24,6 +24,7 @@ const Referanslar = lazy(() => import("./pages/Referanslar"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const EbruPreviewPage = lazy(() => import("./features/ebru-preview/EbruPreviewPage"));
+const EbruDemoPage = lazy(() => import("./features/ebru-preview/EbruDemoPage"));
 const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import("./features/shop").then((module) => ({ default: module.CartPage })));
@@ -131,6 +132,7 @@ const AppRoutes = () => {
 
       {exposeErpRoutes ? (
           <>
+            <Route path="/apps/demo/*" element={protectedElement(<EbruDemoPage />)} />
             <Route path="/apps/ebru-preview/*" element={protectedElement(<Navigate to="/apps" replace />)} />
             <Route path="/apps/parasut/*" element={protectedElement(<LegacyParasutRedirect />)} />
             {/* The approved Ebru UI is the one canonical ERP shell. */}
