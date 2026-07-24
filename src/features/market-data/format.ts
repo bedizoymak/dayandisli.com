@@ -4,27 +4,16 @@ export function formatTryAmount(value: number): string {
   return `₺${rateFormatter.format(value)}`;
 }
 
-const TR_MONTHS = [
-  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
-];
+const PROVIDER_LABELS: Record<string, string> = {
+  "metalpriceapi.com": "MetalPriceAPI",
+};
 
-/** `rateDate` is a "YYYY-MM-DD" calendar date (Frankfurter/TCMB), not a
- * timestamp — parsed manually to avoid UTC-vs-local day drift. */
-export function formatCurrencyMeta(rateDate: string, source: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(rateDate);
-  if (!match) return source;
-  const day = Number(match[3]);
-  const month = TR_MONTHS[Number(match[2]) - 1];
-  if (!month) return source;
-  return `${day} ${month} · ${source}`;
-}
-
-export function formatGoldMeta(updatedAtIso: string): string {
-  const date = new Date(updatedAtIso);
-  if (Number.isNaN(date.getTime())) return "Güncellendi —";
-  const time = date.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-  return `Güncellendi ${time}`;
+/** Card sublabels show the provider only — no rate date or update time, by
+ * design (dates/times were removed from all market/weather cards). Raw
+ * source identifiers are mapped to a friendlier display name where one is
+ * known; unrecognized sources (e.g. "TCMB") pass through unchanged. */
+export function formatProviderLabel(source: string): string {
+  return PROVIDER_LABELS[source] ?? source;
 }
 
 export function formatTemperature(celsius: number): string {

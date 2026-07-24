@@ -4,16 +4,41 @@
 //
 // Providers:
 //  - Currency: Frankfurter (api.frankfurter.dev), TCMB indicative rates.
-//  - Weather: Tomorrow.io realtime weather, Istanbul coordinates.
+//  - Weather: Tomorrow.io realtime weather, at the caller's coordinates
+//    (fixed Istanbul coordinates when none are supplied).
 //  - Gold: MetalpriceAPI (https://api.metalpriceapi.com/v1/latest,
 //    base=XAU&currencies=TRY&api_key=..., ounce price converted to grams).
+//  - Reverse geocoding: Nominatim (OpenStreetMap), no API key. Open-Meteo
+//    was the originally preferred provider but does not offer reverse
+//    geocoding (confirmed against its docs) — Nominatim's `address.town`
+//    field reliably carries the Istanbul district (ilçe) name, confirmed
+//    against the live API for two real coordinate pairs.
 //
 // Every provider call is isolated: one provider failing never blocks the
 // others (Promise.allSettled), and no fabricated/zero/negative value is
 // ever substituted for a failed or invalid upstream response.
+//
+// PRIVACY: coordinates supplied by the caller exist only for the duration
+// of a single request (or a short in-memory cache entry keyed by rounded
+// coordinates, held by index.ts) — never logged, never written to any
+// store, and never returned to the browser. Only the sanitized district/
+// city/displayName strings are returned.
 
 const FETCH_TIMEOUT_MS = 8000;
 const OUNCE_TO_GRAM = 31.1034768;
+const FALLBACK_LATITUDE = 41.0082;
+const FALLBACK_LONGITUDE = 28.9784;
+
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export interface LocationLabel {
+  district: string | null;
+  city: string | null;
+  displayName: string;
+}
 
 export interface CurrencyRate {
   usdTry: number;
@@ -56,6 +81,7 @@ export interface MarketDataDeps {
   now: () => Date;
   goldApiKey: string | null;
   weatherApiKey: string | null;
+  coordinates: Coordinates | null;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -64,6 +90,17 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isPositiveFiniteNumber(value: unknown): value is number {
   return isFiniteNumber(value) && value > 0;
+}
+
+function pickString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+/** ~1.1km precision — enough for district-level weather/geocoding, coarse
+ * enough that it is not a precise/persistable location, and used as the
+ * geocoding cache key so nearby requests share one lookup. */
+export function roundCoordinate(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 async function fetchJson(fetchImpl: typeof fetch, url: string, headers?: Record<string, string>): Promise<unknown> {
@@ -112,6 +149,37 @@ export async function fetchCurrency(deps: MarketDataDeps): Promise<CurrencyRate>
   };
 }
 
+/** Reverse-geocodes rounded coordinates to a district/city label via
+ * Nominatim. Returns only sanitized fields — never street, building,
+ * postcode, or the provider's full `display_name` address string. Any
+ * failure (network, malformed body, no usable address fields) resolves to
+ * "Konumunuz" rather than throwing, since a location label is a display
+ * nicety and must never take down the weather card. */
+export async function reverseGeocode(deps: MarketDataDeps, coordinates: Coordinates): Promise<LocationLabel> {
+  const lat = roundCoordinate(coordinates.latitude);
+  const lon = roundCoordinate(coordinates.longitude);
+  try {
+    const payload = await fetchJson(
+      deps.fetchImpl,
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1&accept-language=tr`,
+      { "User-Agent": "dayandisli-erp-dashboard/1.0 (internal ERP dashboard weather widget)" },
+    );
+    if (typeof payload !== "object" || payload === null) throw new Error("malformed geocoding response");
+    const address = (payload as Record<string, unknown>).address;
+    if (typeof address !== "object" || address === null) throw new Error("missing address block");
+    const a = address as Record<string, unknown>;
+
+    const district = pickString(a.town) ?? pickString(a.city_district) ?? pickString(a.county) ?? pickString(a.suburb);
+    const city = pickString(a.city) ?? pickString(a.province) ?? pickString(a.state);
+
+    if (district && city) return { district, city, displayName: `${district}, ${city}` };
+    if (city) return { district: null, city, displayName: city };
+    return { district: null, city: null, displayName: "Konumunuz" };
+  } catch {
+    return { district: null, city: null, displayName: "Konumunuz" };
+  }
+}
+
 /** Tomorrow.io's realtime endpoint (this plan/field set) does not return a
  * sunrise/sunset or is-day field, so day/night is derived from `uvIndex`
  * (0 at night, positive during daylight) — a standard, documented proxy,
@@ -120,14 +188,27 @@ export async function fetchWeather(deps: MarketDataDeps): Promise<WeatherInfo> {
   if (!deps.weatherApiKey) {
     throw new Error("missing_credential");
   }
-  const payload = await fetchJson(
-    deps.fetchImpl,
-    "https://api.tomorrow.io/v4/weather/realtime" +
-      "?location=41.0082,28.9784" +
-      "&units=metric" +
-      "&fields=temperature,temperatureApparent,weatherCode,uvIndex" +
-      `&apikey=${encodeURIComponent(deps.weatherApiKey)}`,
-  );
+
+  const usingFallback = deps.coordinates === null;
+  const latitude = usingFallback ? FALLBACK_LATITUDE : roundCoordinate(deps.coordinates!.latitude);
+  const longitude = usingFallback ? FALLBACK_LONGITUDE : roundCoordinate(deps.coordinates!.longitude);
+
+  const [payload, locationLabel] = await Promise.all([
+    fetchJson(
+      deps.fetchImpl,
+      "https://api.tomorrow.io/v4/weather/realtime" +
+        `?location=${latitude},${longitude}` +
+        "&units=metric" +
+        "&fields=temperature,temperatureApparent,weatherCode,uvIndex" +
+        `&apikey=${encodeURIComponent(deps.weatherApiKey)}`,
+    ),
+    // Fixed fallback coordinates never trigger reverse geocoding — the
+    // display name is always the plain city name in that case.
+    usingFallback
+      ? Promise.resolve<LocationLabel>({ district: null, city: "İstanbul", displayName: "İstanbul" })
+      : reverseGeocode(deps, { latitude, longitude }),
+  ]);
+
   if (typeof payload !== "object" || payload === null) throw new Error("malformed weather response");
   const data = (payload as Record<string, unknown>).data;
   if (typeof data !== "object" || data === null) throw new Error("missing data block");
@@ -151,7 +232,7 @@ export async function fetchWeather(deps: MarketDataDeps): Promise<WeatherInfo> {
     weatherCode,
     condition: mapWeatherCodeToTurkish(weatherCode),
     isDay: uvIndex > 0,
-    location: "İstanbul",
+    location: locationLabel.displayName,
     updatedAt: deps.now().toISOString(),
     source: "Tomorrow.io",
   };

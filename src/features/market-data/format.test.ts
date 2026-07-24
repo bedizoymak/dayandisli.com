@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatTryAmount,
-  formatCurrencyMeta,
-  formatGoldMeta,
+  formatProviderLabel,
   formatTemperature,
   isMarketDataStale,
   getWeatherIconKey,
@@ -18,23 +17,18 @@ describe("formatTryAmount", () => {
   });
 });
 
-describe("formatCurrencyMeta", () => {
-  it("formats a YYYY-MM-DD date as 'D Month · Source'", () => {
-    expect(formatCurrencyMeta("2026-07-24", "TCMB")).toBe("24 Temmuz · TCMB");
+describe("formatProviderLabel", () => {
+  it("maps the metalpriceapi.com source to a friendly display name", () => {
+    expect(formatProviderLabel("metalpriceapi.com")).toBe("MetalPriceAPI");
   });
 
-  it("falls back to just the source for an unparsable date", () => {
-    expect(formatCurrencyMeta("not-a-date", "TCMB")).toBe("TCMB");
-  });
-});
-
-describe("formatGoldMeta", () => {
-  it("formats an ISO timestamp as 'Güncellendi HH:MM'", () => {
-    expect(formatGoldMeta("2026-07-24T04:15:00.000Z")).toMatch(/^Güncellendi \d{2}:\d{2}$/);
+  it("passes an already-friendly source (e.g. TCMB) through unchanged", () => {
+    expect(formatProviderLabel("TCMB")).toBe("TCMB");
   });
 
-  it("handles an invalid timestamp without throwing", () => {
-    expect(formatGoldMeta("not-a-date")).toBe("Güncellendi —");
+  it("never includes a date or clock time", () => {
+    expect(formatProviderLabel("TCMB")).not.toMatch(/\d{1,2}:\d{2}|\d{4}-\d{2}-\d{2}|Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık/);
+    expect(formatProviderLabel("metalpriceapi.com")).not.toMatch(/\d{1,2}:\d{2}|\d{4}-\d{2}-\d{2}/);
   });
 });
 

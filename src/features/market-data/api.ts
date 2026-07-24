@@ -1,11 +1,38 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { CurrencyRate, GoldRate, MarketDataResponse, WeatherInfo } from "./types";
 
+const GEOLOCATION_TIMEOUT_MS = 5000;
+
+/** Best-effort browser geolocation — resolves to `null` (never rejects) on
+ * denial, timeout, an unsupported browser, or a non-browser environment
+ * (tests/SSR), so the caller always falls back to the fixed Istanbul
+ * coordinates rather than blocking or erroring. Coordinates are used only
+ * to build this one request's query string — never stored, never logged. */
+function getBrowserCoordinates(): Promise<{ latitude: number; longitude: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+      () => resolve(null),
+      { timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 10 * 60_000 },
+    );
+  });
+}
+
 /** No demo/hardcoded fallback here by design — a failed or malformed response
  * from the market-data edge function must surface as "unavailable" in the
  * UI, never a fabricated rate or temperature. */
 export async function fetchMarketData(): Promise<MarketDataResponse> {
-  const { data, error } = await supabase.functions.invoke("market-data", { method: "GET" });
+  const coordinates = await getBrowserCoordinates();
+  // supabase-js has no dedicated query-param option for `invoke`; embedding
+  // the query string directly in the function name is the documented
+  // community workaround (functions-js constructs the URL by simple
+  // concatenation, so this reaches the edge function's `req.url` intact).
+  const functionName = coordinates ? `market-data?lat=${coordinates.latitude}&lon=${coordinates.longitude}` : "market-data";
+  const { data, error } = await supabase.functions.invoke(functionName, { method: "GET" });
   if (error) {
     const message = (error as { message?: string })?.message ?? "Piyasa verisi alınamadı.";
     throw new Error(message);

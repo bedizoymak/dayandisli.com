@@ -5,6 +5,8 @@ import {
   fetchGold,
   fetchWeather,
   mapWeatherCodeToTurkish,
+  reverseGeocode,
+  roundCoordinate,
   type MarketDataDeps,
 } from "./handlers";
 
@@ -25,6 +27,7 @@ function deps(overrides: Partial<MarketDataDeps> = {}): MarketDataDeps {
     now: () => NOW,
     goldApiKey: "test-key",
     weatherApiKey: "test-key",
+    coordinates: null,
     ...overrides,
   };
 }
@@ -52,6 +55,25 @@ const WEATHER_OK = {
 // base=XAU&currencies=TRY — rates.TRY is the TRY price of 1 troy ounce.
 const GOLD_OUNCE_PRICE_TRY = 150881.2;
 const GOLD_OK = { success: true, base: "XAU", timestamp: 1753333333, rates: { TRY: GOLD_OUNCE_PRICE_TRY } };
+// Matches a real nominatim.openstreetmap.org/reverse response for an
+// Istanbul coordinate — confirmed against the live API.
+const NOMINATIM_EYUPSULTAN = {
+  place_id: 59867629,
+  osm_type: "relation",
+  addresstype: "suburb",
+  name: "Rami Yeni Mahallesi",
+  display_name: "Rami Yeni Mahallesi, Eyüpsultan, İstanbul, Marmara Bölgesi, Türkiye",
+  address: {
+    suburb: "Rami Yeni Mahallesi",
+    town: "Eyüpsultan",
+    province: "İstanbul",
+    "ISO3166-2-lvl4": "TR-34",
+    region: "Marmara Bölgesi",
+    country: "Türkiye",
+    country_code: "tr",
+  },
+  boundingbox: ["41.0453901", "41.0554291", "28.9109746", "28.9225336"],
+};
 
 describe("fetchCurrency", () => {
   it("returns a valid TCMB USD/TRY and EUR/TRY pair", async () => {
@@ -112,6 +134,76 @@ describe("fetchWeather", () => {
     const fetchImpl = vi.fn();
     await expect(fetchWeather(deps({ fetchImpl, weatherApiKey: null }))).rejects.toThrow("missing_credential");
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("uses the fixed Istanbul fallback and skips reverse geocoding when no coordinates are supplied", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(WEATHER_OK));
+    const result = await fetchWeather(deps({ fetchImpl, coordinates: null }));
+    expect(result.location).toBe("İstanbul");
+    expect(fetchImpl).toHaveBeenCalledTimes(1); // weather only — no geocoding call
+    expect(fetchImpl.mock.calls[0][0]).toContain("41.0082,28.9784");
+  });
+
+  it("uses the caller's coordinates for the weather request and reverse-geocodes them", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(WEATHER_OK))
+      .mockResolvedValueOnce(jsonResponse(NOMINATIM_EYUPSULTAN));
+    const result = await fetchWeather(deps({ fetchImpl, coordinates: { latitude: 41.0526, longitude: 28.9186 } }));
+    expect(result.location).toBe("Eyüpsultan, İstanbul");
+    expect(fetchImpl.mock.calls[0][0]).toContain("41.05,28.92");
+  });
+});
+
+describe("roundCoordinate", () => {
+  it("rounds to 2 decimal places (~1.1km precision)", () => {
+    expect(roundCoordinate(41.052637)).toBe(41.05);
+    expect(roundCoordinate(28.918642)).toBe(28.92);
+  });
+});
+
+describe("reverseGeocode", () => {
+  it("returns 'district, city' when both resolve", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(NOMINATIM_EYUPSULTAN));
+    const result = await reverseGeocode(deps({ fetchImpl }), { latitude: 41.0526, longitude: 28.9186 });
+    expect(result).toEqual({ district: "Eyüpsultan", city: "İstanbul", displayName: "Eyüpsultan, İstanbul" });
+  });
+
+  it("falls back to city only when no district field is present", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse({ address: { province: "İstanbul" } }),
+    );
+    const result = await reverseGeocode(deps({ fetchImpl }), { latitude: 41, longitude: 29 });
+    expect(result).toEqual({ district: null, city: "İstanbul", displayName: "İstanbul" });
+  });
+
+  it("falls back to 'Konumunuz' when neither district nor city resolve", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ address: {} }));
+    const result = await reverseGeocode(deps({ fetchImpl }), { latitude: 41, longitude: 29 });
+    expect(result.displayName).toBe("Konumunuz");
+  });
+
+  it("falls back to 'Konumunuz' (never throws) when the geocoding request fails outright", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}, { ok: false, status: 503 }));
+    const result = await reverseGeocode(deps({ fetchImpl }), { latitude: 41, longitude: 29 });
+    expect(result).toEqual({ district: null, city: null, displayName: "Konumunuz" });
+  });
+
+  it("never returns street, house number, postcode, or the provider's full address string", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(NOMINATIM_EYUPSULTAN));
+    const result = await reverseGeocode(deps({ fetchImpl }), { latitude: 41.0526, longitude: 28.9186 });
+    expect(Object.keys(result).sort()).toEqual(["city", "displayName", "district"]);
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toMatch(/road|house_number|postcode|display_name|Rami Yeni Mahallesi/);
+  });
+
+  it("rounds coordinates before requesting (never sends full-precision coordinates upstream)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(NOMINATIM_EYUPSULTAN));
+    await reverseGeocode(deps({ fetchImpl }), { latitude: 41.052637123, longitude: 28.918642987 });
+    const requestedUrl = fetchImpl.mock.calls[0][0] as string;
+    expect(requestedUrl).toContain("lat=41.05");
+    expect(requestedUrl).toContain("lon=28.92");
+    expect(requestedUrl).not.toContain("41.052637123");
   });
 });
 

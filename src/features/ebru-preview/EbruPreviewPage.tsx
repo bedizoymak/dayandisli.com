@@ -47,10 +47,8 @@ import { formatParasutCurrency, formatParasutDate } from "@/features/erp/parasut
 import { useMarketData } from "@/features/market-data/useMarketData";
 import {
   formatTryAmount,
-  formatCurrencyMeta,
-  formatGoldMeta,
+  formatProviderLabel,
   formatTemperature,
-  isMarketDataStale,
   getWeatherIconKey,
 } from "@/features/market-data/format";
 import { financeNavigation } from "./finance-preview/financePreviewData";
@@ -371,9 +369,6 @@ export default function EbruPreviewPage() {
     { label: "Senkronize Kasa ve Banka", value: String(dashboardData.accounts.length), detail: "Paraşüt hesabı", tone: "purple" },
   ] : [];
   const marketData = marketDataQuery.data;
-  const marketDataStale =
-    marketDataQuery.dataUpdatedAt > 0 && isMarketDataStale(marketDataQuery.dataUpdatedAt);
-  const staleSuffix = (meta: string) => (marketDataStale ? `${meta} · Güncelleme gecikti` : meta);
 
   const buildCurrencyCard = (
     label: string,
@@ -388,7 +383,7 @@ export default function EbruPreviewPage() {
     return {
       label,
       value: formatTryAmount(rawValue),
-      change: staleSuffix(formatCurrencyMeta(marketData.currency.rateDate, marketData.currency.source)),
+      change: formatProviderLabel(marketData.currency.source),
       trend: "flat",
     };
   };
@@ -408,7 +403,7 @@ export default function EbruPreviewPage() {
     return {
       label,
       value: formatTryAmount(gold.gramTry),
-      change: staleSuffix(formatGoldMeta(gold.updatedAt)),
+      change: formatProviderLabel(gold.source),
       trend: "flat",
     };
   };
@@ -429,7 +424,7 @@ export default function EbruPreviewPage() {
     }
     return {
       temperature: formatTemperature(weather.temperatureC),
-      meta: staleSuffix(`${weather.location} · ${weather.condition}`),
+      meta: `${weather.location} · ${weather.condition}`,
       iconKey: getWeatherIconKey(weather.weatherCode, weather.isDay),
     };
   })();
