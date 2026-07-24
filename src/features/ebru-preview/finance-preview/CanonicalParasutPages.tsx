@@ -54,6 +54,11 @@ interface ResyncResponse {
   unchanged: number;
   errors: number;
   reconciliation?: { archivedCount: number; skippedReason: string | null };
+  hasMore: boolean;
+  resumed: boolean;
+  pagesProcessedThisInvocation: number;
+  totalPagesProcessed: number;
+  resumeAfterSeconds?: number;
 }
 
 type Column = { key: string; label: string; kind?: "date" | "datetime" | "money" | "status" | "boolean"; currencyKey?: string };
@@ -104,10 +109,23 @@ function cell(row: GenericParasutRow & Partial<InvoiceListRow>, column: Column) 
   return String(value ?? "—");
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Hard ceiling on how many bounded batches one click will chain through —
+// never an infinite loop. At 2 pages/invocation for the heaviest resources
+// this covers well over 1,000 pages; if a resource is somehow still not
+// done, the button simply becomes clickable again and the next click
+// resumes right where this one left off (server-side checkpoint), so
+// hitting this cap is a soft stop, not a failure.
+const MAX_CONTINUATIONS_PER_CLICK = 60;
+
 export function SyncButton({ config }: { config: PageConfig }) {
   const { roles } = useERPAuth();
   const queryClient = useQueryClient();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
 
   if (!roles.includes("admin") || !SYNCABLE_RESOURCES.has(config.resource)) return null;
 
@@ -117,31 +135,62 @@ export function SyncButton({ config }: { config: PageConfig }) {
     // second click before the next render must still be a no-op here.
     if (isSyncing) return;
     setIsSyncing(true);
+    setProgress(null);
     try {
-      const result = await callParasutWriteApi<ResyncResponse>("resync", { resource: config.resource });
-      if (result.error) {
-        toast.error("Senkronizasyon başarısız.", { description: result.error });
+      for (let attempt = 1; attempt <= MAX_CONTINUATIONS_PER_CLICK; attempt++) {
+        const result = await callParasutWriteApi<ResyncResponse>("resync", { resource: config.resource });
+        if (result.error) {
+          // The write-api returns 409 (not the generic 500) with this exact
+          // message when another invocation of the same resource's sync is
+          // genuinely still in flight (see enforceSingleRunner) — a
+          // conflict the user should wait out, not a failure to alarm on.
+          if (result.error.includes("zaten devam ediyor")) {
+            toast.info("Senkronizasyon devam ediyor", { description: "Başka bir istek bu kaynağı zaten senkronize ediyor. Lütfen birkaç saniye sonra tekrar deneyin." });
+            return;
+          }
+          toast.error("Senkronizasyon başarısız.", { description: result.error });
+          return;
+        }
+        const response = result.data;
+
+        if (response.hasMore) {
+          setProgress(
+            response.resumed && attempt === 1
+              ? "Senkronizasyon kaldığı yerden sürdürüldü"
+              : `${response.totalPagesProcessed} sayfa işlendi, devam ediliyor`,
+          );
+          await sleep((response.resumeAfterSeconds ?? 1) * 1000);
+          continue;
+        }
+
+        // No page reload — invalidate this resource's cached list queries
+        // (every page/search/filter variation, hence the partial key match)
+        // so the currently-visible table refetches on its own. Only after
+        // the *final* batch — not after every intermediate partial batch —
+        // so the table doesn't refetch dozens of times during a long sync.
+        await queryClient.invalidateQueries({ queryKey: [...parasutQueryKeys.all, "list", config.resource] });
+
+        const archived = response.reconciliation?.archivedCount ?? 0;
+        toast.success("Senkronizasyon tamamlandı.", {
+          description: `${response.observed} kayıt senkronize edildi. ${archived} arşivlendi. ${response.errors} hata.`,
+        });
         return;
       }
-      const response = result.data;
-      // No page reload — invalidate this resource's cached list queries
-      // (every page/search/filter variation, hence the partial key match)
-      // so the currently-visible table refetches on its own.
-      await queryClient.invalidateQueries({ queryKey: [...parasutQueryKeys.all, "list", config.resource] });
-
-      const archived = response.reconciliation?.archivedCount ?? 0;
-      toast.success("Senkronizasyon tamamlandı.", {
-        description: `${response.observed} kayıt senkronize edildi. ${archived} arşivlendi. ${response.errors} hata.`,
-      });
+      // Hit MAX_CONTINUATIONS_PER_CLICK — soft stop, not an error: the
+      // server-side checkpoint is intact, so the very next click (by this
+      // user or anyone else with access) resumes exactly where this one
+      // stopped.
+      toast.info("Senkronizasyon devam ediyor", { description: "Bu kaynak büyük — senkronizasyon arka planda kaldığı yerden devam edecek. Tekrar Senkronize Et'e basabilirsiniz." });
     } finally {
       setIsSyncing(false);
+      setProgress(null);
     }
   }
 
   return (
     <Button className="income-sync-button" variant="outline" onClick={handleClick} disabled={isSyncing} aria-busy={isSyncing}>
       {isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-      {isSyncing ? "Senkronize ediliyor…" : "Senkronize Et"}
+      {isSyncing ? (progress ?? "Senkronize ediliyor…") : "Senkronize Et"}
     </Button>
   );
 }

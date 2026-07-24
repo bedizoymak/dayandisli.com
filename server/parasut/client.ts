@@ -104,10 +104,11 @@ export class ParaşütClient {
   async *getPaginated(
     path: string,
     include: string[] = [],
+    startPage = 1,
   ): AsyncGenerator<PaginatedPage> {
     let observed = 0;
 
-    for (let pageNumber = 1; pageNumber <= this.maxPages; pageNumber++) {
+    for (let pageNumber = startPage; pageNumber <= this.maxPages; pageNumber++) {
       const separator = path.includes("?") ? "&" : "?";
       const params = new URLSearchParams({
         "page[number]": String(pageNumber),

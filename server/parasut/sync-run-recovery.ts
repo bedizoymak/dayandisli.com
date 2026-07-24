@@ -11,6 +11,7 @@ interface RecoveryRun {
   page_count: number;
   request_metadata: Record<string, unknown>;
   created_at: string;
+  updated_at: string;
 }
 
 interface DatabaseResult<T> {
@@ -55,11 +56,33 @@ function positiveThreshold(value: number | undefined): number {
   return threshold;
 }
 
+/**
+ * A stuck run's own request_metadata.resume.last_completed_page (advanced by
+ * persistPageThenCheckpoint after every committed page) is always at least
+ * as accurate as page_count (only ever written once, by completeRun — which
+ * never ran for a run stuck in "running"). Prefer it; fall back to
+ * page_count only if the checkpoint metadata was never initialized.
+ */
+function lastCheckpointedPage(run: RecoveryRun): number {
+  const resume = run.request_metadata?.resume;
+  if (resume && typeof resume === "object" && !Array.isArray(resume)) {
+    const value = (resume as Record<string, unknown>).last_completed_page;
+    if (Number.isInteger(value) && (value as number) >= 0) return value as number;
+  }
+  return Number.isInteger(run.page_count) ? run.page_count : 0;
+}
+
 function recoveryMetadata(
   run: RecoveryRun,
   recoveredAt: string,
   thresholdMinutes: number,
 ): Record<string, unknown> {
+  const originalResume = run.request_metadata?.resume;
+  const priorResume =
+    originalResume && typeof originalResume === "object" && !Array.isArray(originalResume)
+      ? (originalResume as Record<string, unknown>)
+      : {};
+
   return {
     ...run.request_metadata,
     recovery: {
@@ -69,10 +92,12 @@ function recoveryMetadata(
       previous_status: "running",
     },
     resume: {
+      ...priorResume,
+      contract_version: 1,
       eligible: true,
       source_run_id: run.id,
       resource_type: run.resource_type,
-      last_completed_page: run.page_count,
+      last_completed_page: lastCheckpointedPage(run),
     },
   };
 }
@@ -93,11 +118,16 @@ export async function recoverStaleRuns(
   let query = scoped
     .from<RecoveryRun[]>("sync_runs")
     .select(
-      "id,company_id,parasut_company_id,resource_type,status,completed_at,page_count,request_metadata,created_at",
+      "id,company_id,parasut_company_id,resource_type,status,completed_at,page_count,request_metadata,created_at,updated_at",
     )
     .eq("status", "running")
     .is("completed_at", null)
-    .lt("created_at", cutoff);
+    // Heartbeat-based, not started_at-based: updated_at is touched by the
+    // erp_set_updated_at trigger on every persistCheckpoint/completeRun
+    // UPDATE, so a run that's still actively progressing (even if it's been
+    // running a while) is never mistaken for stale — only a row with no
+    // progress for the full threshold is.
+    .lt("updated_at", cutoff);
 
   if (options.companyId) query = query.eq("company_id", options.companyId);
   if (options.parasutCompanyId) {
@@ -117,7 +147,11 @@ export async function recoverStaleRuns(
     const update = await scoped
       .from<RecoveryRun[]>("sync_runs")
       .update({
-        status: "failed",
+        // "partial", not "failed" — a recovered run's checkpoint (if any
+        // pages were committed) is exactly as trustworthy as a clean
+        // maxPagesPerInvocation stop, so it's resumable without the
+        // acceptPageDriftRisk gate decideSyncResume requires for "failed".
+        status: "partial",
         completed_at: recoveredAt,
         request_metadata: recoveryMetadata(run, recoveredAt, thresholdMinutes),
       })

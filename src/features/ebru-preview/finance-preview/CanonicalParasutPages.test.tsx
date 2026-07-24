@@ -9,7 +9,7 @@ import { useERPAuth } from "@/contexts/ERPAuthContext";
 
 vi.mock("@/features/erp/parasut/api/write-client", () => ({ callParasutWriteApi: vi.fn() }));
 vi.mock("@/contexts/ERPAuthContext", () => ({ useERPAuth: vi.fn() }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 const mockedCall = vi.mocked(callParasutWriteApi);
 const mockedAuth = vi.mocked(useERPAuth);
@@ -122,13 +122,47 @@ describe("SyncButton", () => {
 
   it("shows the server's exact error message on failure", async () => {
     asAdmin();
-    mockedCall.mockResolvedValueOnce({ data: null, error: "Bir senkronizasyon zaten devam ediyor." } as never);
+    mockedCall.mockResolvedValueOnce({ data: null, error: "Yetkili kullanıcı gerekli." } as never);
     const user = userEvent.setup();
     renderWithClient(<SyncButton config={customersConfig} />);
     await user.click(screen.getByRole("button", { name: /Senkronize Et/ }));
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Senkronizasyon başarısız.", { description: "Bir senkronizasyon zaten devam ediyor." }),
+      expect(toast.error).toHaveBeenCalledWith("Senkronizasyon başarısız.", { description: "Yetkili kullanıcı gerekli." }),
     );
+  });
+
+  // "already running" (the 409 handleResync/index.ts returns for a lost
+  // concurrency election) is a conflict to wait out, not a failure — must
+  // not alarm the user the same way a real error does.
+  it("shows an informational message, not an error, when another sync is already running", async () => {
+    asAdmin();
+    mockedCall.mockResolvedValueOnce({ data: null, error: "Bir senkronizasyon zaten devam ediyor." } as never);
+    const user = userEvent.setup();
+    renderWithClient(<SyncButton config={customersConfig} />);
+    await user.click(screen.getByRole("button", { name: /Senkronize Et/ }));
+
+    await waitFor(() => expect(toast.info).toHaveBeenCalled());
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("chains bounded continuations while hasMore is true, then invalidates and shows completion only once", async () => {
+    asAdmin();
+    mockedCall
+      .mockResolvedValueOnce({
+        data: { status: "partial", pages: 2, observed: 50, inserted: 50, updated: 0, unchanged: 0, errors: 0, hasMore: true, resumed: false, pagesProcessedThisInvocation: 2, totalPagesProcessed: 2, resumeAfterSeconds: 0 },
+        error: null,
+      } as never)
+      .mockResolvedValueOnce({
+        data: { status: "completed", pages: 1, observed: 10, inserted: 10, updated: 0, unchanged: 0, errors: 0, hasMore: false, resumed: false, pagesProcessedThisInvocation: 1, totalPagesProcessed: 3 },
+        error: null,
+      } as never);
+    const user = userEvent.setup();
+    const { invalidateSpy } = renderWithClient(<SyncButton config={customersConfig} />);
+    await user.click(screen.getByRole("button", { name: /Senkronize Et/ }));
+
+    await waitFor(() => expect(mockedCall).toHaveBeenCalledTimes(2));
+    expect(invalidateSpy).toHaveBeenCalledTimes(1);
+    expect(toast.success).toHaveBeenCalledTimes(1);
   });
 });

@@ -111,8 +111,12 @@ function restart(reason: string): ResumeDecision {
 export function decideSyncResume(input: ResumeDecisionInput): ResumeDecision {
   const source = input.sourceRun;
   if (!source) return restart("no_failed_source_run");
-  if (source.status !== "failed") return restart("source_run_is_not_failed");
-  if (!input.acceptPageDriftRisk) return restart("page_drift_risk_not_accepted");
+  // "partial" = this run's own bounded page budget stopped it cleanly
+  // (checkpoint always valid, no drift risk); "failed" = an error or
+  // recovered-stale run (checkpoint may be mid-page, hence the
+  // acceptPageDriftRisk gate below). Nothing else is resumable.
+  if (source.status !== "failed" && source.status !== "partial") return restart("source_run_is_not_failed");
+  if (source.status === "failed" && !input.acceptPageDriftRisk) return restart("page_drift_risk_not_accepted");
 
   const resume = storedResumeMetadata(source.requestMetadata);
   if (!resume) return restart("resume_metadata_is_invalid");

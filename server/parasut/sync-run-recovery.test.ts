@@ -15,6 +15,7 @@ interface TestRun {
   page_count: number;
   request_metadata: Record<string, unknown>;
   created_at: string;
+  updated_at: string;
 }
 
 type Filter =
@@ -22,7 +23,7 @@ type Filter =
   | { operation: "is"; column: string; value: null }
   | { operation: "lt"; column: string; value: string };
 
-function testRun(id: string, createdAt: string): TestRun {
+function testRun(id: string, createdAt: string, updatedAt: string = createdAt): TestRun {
   return {
     id,
     company_id: "company-1",
@@ -33,6 +34,7 @@ function testRun(id: string, createdAt: string): TestRun {
     page_count: 4,
     request_metadata: { endpoint: "/v4/666034/contacts" },
     created_at: createdAt,
+    updated_at: updatedAt,
   };
 }
 
@@ -99,7 +101,9 @@ describe("recoverStaleRuns", () => {
     expect(result.detectedRunIds).toEqual(["stale"]);
     expect(result.recoveredRunIds).toEqual(["stale"]);
     expect(runs[0]).toMatchObject({
-      status: "failed",
+      // "partial", not "failed" — recovered runs are resumable without the
+      // acceptPageDriftRisk gate (see sync-resume-policy.ts).
+      status: "partial",
       completed_at: NOW.toISOString(),
       request_metadata: {
         recovery: {
@@ -148,7 +152,19 @@ describe("recoverStaleRuns", () => {
     const result = await recoverStaleRuns(memoryDatabase(runs), { now: NOW });
 
     expect(result.recoveredRunIds).toEqual(["one", "two"]);
-    expect(runs.map((run) => run.status)).toEqual(["failed", "failed", "running"]);
+    expect(runs.map((run) => run.status)).toEqual(["partial", "partial", "running"]);
+  });
+
+  it("uses the heartbeat (updated_at), not started_at, to judge staleness", async () => {
+    // created_at is old (would be stale by started_at alone), but updated_at
+    // is recent — a long-lived run that's still actively checkpointing must
+    // never be recovered out from under itself.
+    const runs = [testRun("still-progressing", "2026-06-13T09:00:00.000Z", "2026-06-13T11:55:00.000Z")];
+
+    const result = await recoverStaleRuns(memoryDatabase(runs), { now: NOW });
+
+    expect(result.detectedRunIds).toEqual([]);
+    expect(runs[0].status).toBe("running");
   });
 
   it("is idempotent when recovery runs more than once", async () => {

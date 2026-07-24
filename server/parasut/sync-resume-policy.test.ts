@@ -153,14 +153,29 @@ describe("decideSyncResume", () => {
     expect(decision.reason).toBe("resume_metadata_is_invalid");
   });
 
-  it("associates only failed source runs with new runs", () => {
+  it("restarts when the source run is completed or running (never resumable)", () => {
+    for (const status of ["completed", "running"] as const) {
+      const decision = decideSyncResume({
+        sourceRun: failedRun({ status }),
+        request,
+        acceptPageDriftRisk: true,
+      });
+
+      expect(decision.strategy).toBe("restart");
+      expect(decision.newRunMetadata.source_run_id).toBeNull();
+    }
+  });
+
+  // "partial" runs are the clean, bounded-page-budget stop (maxPagesPerInvocation)
+  // — their checkpoint is always valid, so resuming doesn't need the
+  // acceptPageDriftRisk gate that "failed" runs require.
+  it("resumes from a partial source run without requiring acceptPageDriftRisk", () => {
     const decision = decideSyncResume({
       sourceRun: failedRun({ status: "partial" }),
       request,
-      acceptPageDriftRisk: true,
     });
 
-    expect(decision.strategy).toBe("restart");
-    expect(decision.newRunMetadata.source_run_id).toBeNull();
+    expect(decision.strategy).toBe("resume");
+    expect(decision.startPage).toBe(5);
   });
 });

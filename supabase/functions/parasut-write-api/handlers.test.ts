@@ -181,7 +181,7 @@ describe("handleResync", () => {
     await expect(
       handleResync(false, async () => {
         called = true;
-        return { pages: 0, observed: 0, inserted: 0, updated: 0, unchanged: 0, errors: 0, runId: "r", resourceType: "contacts", status: "completed" };
+        return { pages: 0, observed: 0, inserted: 0, updated: 0, unchanged: 0, errors: 0, runId: "r", resourceType: "contacts", status: "completed", hasMore: false, resumed: false, pagesThisInvocation: 0, totalPagesProcessed: 0 };
       }),
     ).rejects.toThrow(CreateCustomerRejectedError);
     expect(called).toBe(false);
@@ -213,9 +213,38 @@ describe("handleResync", () => {
       resourceType: "contacts",
       status: "completed",
       reconciliation: { archivedCount: 1, skippedReason: null },
+      hasMore: false,
+      resumed: false,
+      pagesThisInvocation: 18,
+      totalPagesProcessed: 18,
     }));
     expect(response.status).toBe("completed");
     expect(response.reconciliation).toEqual({ archivedCount: 1, skippedReason: null });
     expect(response.observed).toBe(437);
+    expect(response.hasMore).toBe(false);
+  });
+
+  it("surfaces continuation metadata for a bounded partial run", async () => {
+    const response = await handleResync(true, async () => ({
+      pages: 2,
+      observed: 50,
+      inserted: 10,
+      updated: 5,
+      unchanged: 35,
+      errors: 0,
+      runId: "run-2",
+      resourceType: "sales_invoices",
+      status: "partial",
+      hasMore: true,
+      resumed: true,
+      pagesThisInvocation: 2,
+      totalPagesProcessed: 8,
+    }));
+    expect(response.status).toBe("partial");
+    expect(response.hasMore).toBe(true);
+    expect(response.resumed).toBe(true);
+    expect(response.pagesProcessedThisInvocation).toBe(2);
+    expect(response.totalPagesProcessed).toBe(8);
+    expect(response.resumeAfterSeconds).toBe(1);
   });
 });

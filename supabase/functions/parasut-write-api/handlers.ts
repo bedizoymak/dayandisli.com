@@ -119,6 +119,16 @@ export interface ResyncContactsResponse {
   unchanged: number;
   errors: number;
   reconciliation?: ReconciliationOutcome;
+  /** True when this resource wasn't fully traversed yet — the caller must invoke resync again (same resource) to continue. */
+  hasMore: boolean;
+  /** True when this invocation continued from a prior partial/interrupted run's checkpoint instead of starting at page 1. */
+  resumed: boolean;
+  /** Pages fetched by this invocation only. */
+  pagesProcessedThisInvocation: number;
+  /** Pages fetched across this logical run's whole resume chain, including earlier invocations. */
+  totalPagesProcessed: number;
+  /** Suggested delay (seconds) before the caller invokes resync again when hasMore is true. */
+  resumeAfterSeconds?: number;
 }
 
 /**
@@ -167,6 +177,11 @@ export async function handleResync(
     unchanged: result.unchanged,
     errors: result.errors,
     reconciliation: result.reconciliation,
+    hasMore: result.hasMore,
+    resumed: result.resumed,
+    pagesProcessedThisInvocation: result.pagesThisInvocation,
+    totalPagesProcessed: result.totalPagesProcessed,
+    ...(result.hasMore ? { resumeAfterSeconds: 1 } : {}),
   };
 }
 

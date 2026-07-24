@@ -11,6 +11,8 @@ import {
 } from "./sync-observability.ts";
 import { upsertResource } from "./upsert-resource.ts";
 import { computeIdsToArchive, DEFAULT_MIN_OBSERVED_RATIO, evaluateReconciliationEligibility } from "./reconciliation.ts";
+import { recoverStaleRuns, type RecoveryDatabase } from "./sync-run-recovery.ts";
+import { decideSyncResume, type FailedSourceRun } from "./sync-resume-policy.ts";
 import type {
   JsonApiResource,
   MirrorResourceDefinition,
@@ -147,21 +149,25 @@ function safeError(error: unknown): {
 async function createRun(
   context: SyncContext,
   options: SyncResourceOptions,
+  chainStartedAt: Date,
 ): Promise<{ runId: string; requestMetadata: Record<string, unknown> }> {
   const runId = randomUUID();
-  const requestMetadata = initializeCheckpointMetadata(
-    {
-      endpoint: options.endpoint,
-      include: options.include ?? [],
-    },
-    runId,
-    {
-      resourceType: options.resourceType,
-      endpoint: options.endpoint,
-      include: options.include ?? [],
-      pageSize: DEFAULT_PAGE_SIZE,
-    },
-  );
+  const requestMetadata = {
+    ...initializeCheckpointMetadata(
+      {
+        endpoint: options.endpoint,
+        include: options.include ?? [],
+      },
+      runId,
+      {
+        resourceType: options.resourceType,
+        endpoint: options.endpoint,
+        include: options.include ?? [],
+        pageSize: DEFAULT_PAGE_SIZE,
+      },
+    ),
+    chain_started_at: chainStartedAt.toISOString(),
+  };
   const result = await integrationDb(context)
     .from<{ id: string }>("sync_runs")
     .insert({
@@ -179,6 +185,59 @@ async function createRun(
     throw new Error(result.error?.message ?? "Sync run creation failed");
   }
   return { runId: result.data.id, requestMetadata };
+}
+
+interface LatestRunRow {
+  id: string;
+  status: string;
+  request_metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+interface LatestRunQuery {
+  select(columns: string): LatestRunQuery;
+  eq(column: string, value: unknown): LatestRunQuery;
+  then<T>(resolve: (value: { data: LatestRunRow[] | null; error: { message?: string } | null }) => T): Promise<T>;
+}
+interface LatestRunDatabase {
+  schema(name: string): LatestRunDatabase;
+  from(table: string): LatestRunQuery;
+}
+
+/**
+ * Most recent resumable ("failed" or "partial") run for this exact
+ * (company, resource) — the candidate source for decideSyncResume, which
+ * re-validates status, identity, and request fingerprint before trusting
+ * it, so a false positive here is always caught downstream and safely
+ * falls back to "restart". No .order()/.limit() in this project's minimal
+ * DB contract, so both statuses are fetched (each resource has very few
+ * historical runs) and compared client-side.
+ */
+async function findLatestResumableRun(
+  context: SyncContext,
+  resourceType: string,
+): Promise<FailedSourceRun | null> {
+  const db = integrationDb(context) as unknown as LatestRunDatabase;
+  const columns = "id,status,request_metadata,created_at";
+  const [failed, partial] = await Promise.all([
+    db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "failed"),
+    db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "partial"),
+  ]);
+  if (failed.error) throw new Error(failed.error.message ?? "Latest sync-run lookup failed");
+  if (partial.error) throw new Error(partial.error.message ?? "Latest sync-run lookup failed");
+
+  const candidates = [...(failed.data ?? []), ...(partial.data ?? [])];
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+  const latest = candidates[0];
+  return {
+    id: latest.id,
+    companyId: context.companyId,
+    parasutCompanyId: context.parasutCompanyId,
+    resourceType,
+    status: latest.status as FailedSourceRun["status"],
+    requestMetadata: latest.request_metadata ?? {},
+  };
 }
 
 async function persistCheckpoint(
@@ -261,24 +320,42 @@ function mirrorDb(context: SyncContext) {
  * Scoped to the exact (company_id, parasut_company_id, resource_type) of
  * this run — never touches another tenant or another resource's rows.
  * Archives by UPDATE ... SET source_archived = true only; never DELETE.
+ *
+ * `chainStartedAt` (not an in-memory Set built during this invocation's own
+ * loop) is what makes this safe for a run that resumed across multiple
+ * Edge Function invocations: a resumed run's *this-invocation* page loop
+ * never re-walks the pages an earlier invocation already committed, so an
+ * in-memory "observed" set here would incorrectly look incomplete and
+ * archive rows that were genuinely seen earlier in the same logical run.
+ * upsertResource unconditionally stamps last_seen_at on every touch
+ * (insert or update), so "last_seen_at >= chainStartedAt" is a durable,
+ * cross-invocation-safe substitute — every row genuinely observed anywhere
+ * in this logical run (this invocation or an earlier one in the same
+ * resume chain) satisfies it, and only rows the whole chain never touched
+ * do not.
  */
 async function reconcileMissingResources(
   context: SyncContext,
   options: SyncResourceOptions,
-  observedIds: Set<string>,
+  chainStartedAt: Date,
   counters: SyncCounters,
 ): Promise<ReconciliationOutcome> {
   const existing = await mirrorDb(context)
-    .from<{ parasut_id: string; source_archived: boolean | null }[]>(options.table)
-    .select("parasut_id, source_archived")
+    .from<{ parasut_id: string; source_archived: boolean | null; last_seen_at: string }[]>(options.table)
+    .select("parasut_id, source_archived, last_seen_at")
     .eq("company_id", context.companyId)
     .eq("parasut_company_id", context.parasutCompanyId)
     .eq("resource_type", options.resourceType);
   if (existing.error) throw new Error(existing.error.message ?? "Reconciliation lookup failed");
 
-  const previouslyActiveIds = (existing.data ?? [])
+  const rows = existing.data ?? [];
+  const previouslyActiveIds = rows
     .filter((row) => row.source_archived !== true)
     .map((row) => row.parasut_id);
+  const chainStartedAtIso = chainStartedAt.toISOString();
+  const observedIds = new Set(
+    rows.filter((row) => row.last_seen_at >= chainStartedAtIso).map((row) => row.parasut_id),
+  );
 
   const decision = evaluateReconciliationEligibility({
     loopCompletedWithoutError: true,
@@ -354,27 +431,99 @@ export async function syncCollection(
     unchanged: 0,
     errors: 0,
   };
-  const createdRun = await createRun(context, options);
-  const runId = createdRun.runId;
-  if (options.concurrencyLock) {
-    await enforceSingleRunner(context, options, runId);
+
+  // Self-healing: a run stuck in "running" (killed mid-invocation by the
+  // platform's execution timeout) must never permanently block every future
+  // attempt for this tenant via enforceSingleRunner's election. This is
+  // company-wide (not resource-scoped — recoverStaleRuns has no resourceType
+  // filter), which is fine: it only ever touches rows already stale past the
+  // heartbeat threshold, for any resource, and is safe to call on every
+  // invocation. Best-effort: a database double that doesn't implement the
+  // extra filter methods this uses (.is/.lt) must never break the sync
+  // itself — recovery/resume are enhancements over the core fix
+  // (maxPagesPerInvocation), not prerequisites for it.
+  try {
+    await recoverStaleRuns(context.database as unknown as RecoveryDatabase, {
+      companyId: context.companyId,
+      parasutCompanyId: context.parasutCompanyId,
+      now: context.now?.(),
+    });
+  } catch {
+    // Swallowed deliberately — see comment above.
   }
+
+  const requestIdentity = {
+    companyId: context.companyId,
+    parasutCompanyId: context.parasutCompanyId,
+    resourceType: options.resourceType,
+    endpoint: options.endpoint,
+    include: options.include ?? [],
+    pageSize: DEFAULT_PAGE_SIZE,
+  };
+  let sourceRun: FailedSourceRun | null = null;
+  try {
+    sourceRun = await findLatestResumableRun(context, options.resourceType);
+  } catch {
+    // Same best-effort reasoning as recoverStaleRuns above — falls through
+    // to decideSyncResume(null), which always restarts from page 1.
+  }
+  const resumeDecision = decideSyncResume({
+    sourceRun,
+    request: requestIdentity,
+    acceptPageDriftRisk: true,
+  });
+  const pagesBeforeThisInvocation = resumeDecision.newRunMetadata.last_completed_page;
+  // The true start of this *logical* run chain — carried forward unchanged
+  // across every resumed invocation so reconcileMissingResources can tell
+  // "observed somewhere in this whole chain" from "observed before this
+  // chain even started", regardless of how many bounded invocations it took.
+  const sourceChainStartedAt = sourceRun?.requestMetadata?.chain_started_at;
+  const chainStartedAt =
+    resumeDecision.strategy === "resume" && typeof sourceChainStartedAt === "string"
+      ? new Date(sourceChainStartedAt)
+      : startedAt;
+
+  const createdRun = await createRun(context, options, chainStartedAt);
+  const runId = createdRun.runId;
   let requestMetadata = createdRun.requestMetadata;
+  if (resumeDecision.strategy === "resume") {
+    // Seed this new run's own checkpoint from the source run's last
+    // committed page so a crash between here and the first page persist
+    // still resumes correctly on the *next* attempt too.
+    requestMetadata = advanceCheckpointMetadata(requestMetadata, pagesBeforeThisInvocation);
+    await persistCheckpoint(context, runId, requestMetadata);
+  }
+
   let checkpointBlocked = false;
   const definition: MirrorResourceDefinition = {
     resourceType: options.resourceType,
     table: options.table,
   };
-  // Only populated/used when options.reconcile is true — tracks every
-  // top-level (non-included) parasut_id actually observed this run, so a
-  // genuinely complete run can be diffed against what the mirror already
-  // has. See reconcileMissingResources().
-  const observedIds = new Set<string>();
+  const pageBudget = options.maxPagesPerInvocation ?? Infinity;
+  let pagesThisInvocation = 0;
+  let hasMore = false;
+
+  const buildResult = (status: SyncResult["status"], reconciliation?: ReconciliationOutcome): SyncResult => ({
+    ...counters,
+    runId,
+    resourceType: options.resourceType,
+    status,
+    hasMore,
+    resumed: resumeDecision.strategy === "resume",
+    pagesThisInvocation,
+    totalPagesProcessed: pagesBeforeThisInvocation + pagesThisInvocation,
+    ...(reconciliation ? { reconciliation } : {}),
+  });
 
   try {
+    if (options.concurrencyLock) {
+      await enforceSingleRunner(context, options, runId);
+    }
+
     for await (const page of context.client.getPaginated(
       options.endpoint,
       options.include,
+      resumeDecision.startPage,
     )) {
       counters.pages++;
       const errorsBeforePage = counters.errors;
@@ -385,7 +534,6 @@ export async function syncCollection(
 
       for (const resource of parentResources) {
         counters.observed++;
-        if (options.reconcile) observedIds.add(resource.id);
         try {
           const result = await upsertResource(
             context.database,
@@ -422,6 +570,39 @@ export async function syncCollection(
         await persistCheckpoint(context, runId, nextRequestMetadata);
         requestMetadata = nextRequestMetadata;
       }
+
+      pagesThisInvocation++;
+      if (pagesThisInvocation >= pageBudget) {
+        // Can't know for certain this was the resource's actual last page —
+        // erring toward "assume more" is always safe (reconciliation stays
+        // gated off; the next invocation just discovers a short/empty page
+        // and finishes for real) whereas erring toward "assume done" is not.
+        hasMore = true;
+        break;
+      }
+    }
+
+    if (hasMore) {
+      await completeRun(context, runId, counters, "partial");
+      const completedAt = context.now?.() ?? new Date();
+      const resume = requestMetadata.resume as Record<string, unknown> | undefined;
+      await emitSyncSummary(
+        context,
+        createSyncSummary({
+          ...counters,
+          runId,
+          resourceType: options.resourceType,
+          status: "partial",
+          startedAt,
+          completedAt,
+          lastCompletedPage:
+            typeof resume?.last_completed_page === "number"
+              ? resume.last_completed_page
+              : 0,
+        }),
+      );
+      // Never reconcile on a bounded, incomplete traversal.
+      return buildResult("partial");
     }
 
     const status = counters.errors > 0 ? "partial" : "completed";
@@ -445,18 +626,22 @@ export async function syncCollection(
     );
 
     // Reconciliation only ever runs for a run that finished as "completed"
-    // (never "partial") — a resource opting in via options.reconcile but
-    // whose run had any error must never have rows archived on its behalf.
+    // with a genuinely full traversal (never "partial", never hasMore).
+    // chainStartedAt (not this invocation's own pages) is what
+    // reconcileMissingResources uses to determine "observed" — see its own
+    // doc comment — so this is correct even when the completing invocation
+    // only walked the tail end of a resource that an earlier invocation in
+    // the same resume chain started.
     let reconciliation: ReconciliationOutcome | undefined;
     if (options.reconcile) {
       if (status === "completed") {
-        reconciliation = await reconcileMissingResources(context, options, observedIds, counters);
+        reconciliation = await reconcileMissingResources(context, options, chainStartedAt, counters);
       } else {
         reconciliation = { archivedCount: 0, skippedReason: "sync_run_had_errors" };
       }
     }
 
-    return { ...counters, runId, resourceType: options.resourceType, status, ...(reconciliation ? { reconciliation } : {}) };
+    return buildResult(status, reconciliation);
   } catch (error) {
     counters.errors++;
     await recordError(context, runId, options.resourceType, error);

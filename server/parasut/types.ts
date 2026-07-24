@@ -179,6 +179,17 @@ export interface SyncResourceOptions {
    * needlessly contending with each other.
    */
   concurrencyLock?: boolean;
+  /**
+   * Bounded page budget for a single Edge Function invocation — the fix for
+   * large include-expanded resources (sales_invoices, purchase_bills) being
+   * killed mid-run by the platform's execution timeout before a single page
+   * could be checkpointed. Leave unset for unbounded (existing behavior,
+   * used by tests and by resources proven fast/small, e.g. contacts).
+   * When set, syncCollection stops after this many pages *in this
+   * invocation* (not cumulatively across resumes), persists the checkpoint,
+   * and returns status "partial" with hasMore true instead of continuing.
+   */
+  maxPagesPerInvocation?: number;
 }
 
 /** Thrown by syncCollection when concurrencyLock is enabled and this run lost the single-runner election. */
@@ -202,6 +213,14 @@ export interface SyncResult extends SyncCounters {
   status: "completed" | "partial" | "failed";
   /** Only present when `options.reconcile` was true for this run. */
   reconciliation?: ReconciliationOutcome;
+  /** True when maxPagesPerInvocation stopped the run before the resource was fully traversed — the caller must invoke again to continue. Never true for "failed". */
+  hasMore: boolean;
+  /** True when this invocation resumed from a prior partial/failed run's checkpoint rather than starting at page 1. */
+  resumed: boolean;
+  /** Pages fetched by this invocation only (not cumulative across resumes). */
+  pagesThisInvocation: number;
+  /** Pages fetched across this run and every prior invocation it resumed from, best-effort (0 if unknown). */
+  totalPagesProcessed: number;
 }
 
 export interface PaginatedPage {
@@ -210,5 +229,5 @@ export interface PaginatedPage {
 }
 
 export interface ParaşütClientContract {
-  getPaginated(path: string, include?: string[]): AsyncGenerator<PaginatedPage>;
+  getPaginated(path: string, include?: string[], startPage?: number): AsyncGenerator<PaginatedPage>;
 }
