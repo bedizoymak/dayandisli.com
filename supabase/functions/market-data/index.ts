@@ -6,10 +6,10 @@
 // sensitive in currency/gold/weather data. See handlers.ts for the actual
 // provider logic (Deno-free, unit-tested with Vitest).
 //
-// GOLD_API_KEY (Supabase Edge Function secret, never a VITE_* variable) is
-// read from Deno.env here and passed into handlers.ts — it is never logged,
-// never included in the response, and this file has no code path that
-// could leak it.
+// GOLD_API_KEY and TOMORROW_API_KEY (Supabase Edge Function secrets, never
+// VITE_* variables) are read from Deno.env here and passed into
+// handlers.ts — neither is ever logged, included in the response, or
+// reachable by any code path in this file.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { buildMarketDataResponse, type MarketDataResponse } from "./handlers.ts";
 
@@ -40,6 +40,7 @@ serve(async (req) => {
       fetchImpl: fetch,
       now: () => new Date(),
       goldApiKey: Deno.env.get("GOLD_API_KEY") ?? null,
+      weatherApiKey: Deno.env.get("TOMORROW_API_KEY") ?? null,
     });
     cached = { body, expiresAt: now + CACHE_TTL_MS };
     return json(body);

@@ -50,17 +50,17 @@ export type WeatherIconKey =
   | "snow"
   | "thunder";
 
-/** WMO weather codes as used by Open-Meteo — kept in sync with
+/** Tomorrow.io weather codes — kept in sync with
  * supabase/functions/market-data/handlers.ts's mapWeatherCodeToTurkish. */
 export function getWeatherIconKey(code: number, isDay: boolean): WeatherIconKey {
-  if (code === 0) return isDay ? "sun" : "moon";
-  if (code === 1 || code === 2) return "cloud-sun";
-  if (code === 3) return "cloud";
-  if (code === 45 || code === 48) return "fog";
-  if (code >= 51 && code <= 57) return "drizzle";
-  if ((code >= 61 && code <= 67) || code === 80 || code === 81) return "rain";
-  if (code === 82) return "showers";
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "snow";
-  if (code >= 95 && code <= 99) return "thunder";
+  if (code === 1000 || code === 1100) return isDay ? "sun" : "moon";
+  if (code === 1101) return "cloud-sun";
+  if (code === 1102 || code === 1001) return "cloud";
+  if (code === 2000 || code === 2100) return "fog";
+  if (code === 4000 || code === 6000) return "drizzle";
+  if (code === 4001 || code === 4200 || code === 6001 || code === 6200) return "rain";
+  if (code === 4201 || code === 6201) return "showers";
+  if (code === 5000 || code === 5001 || code === 5100 || code === 5101 || code === 7000 || code === 7101 || code === 7102) return "snow";
+  if (code === 8000) return "thunder";
   return "cloud";
 }

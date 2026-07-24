@@ -59,14 +59,14 @@ describe("isMarketDataStale", () => {
 
 describe("getWeatherIconKey", () => {
   it("maps clear-day and clear-night to different icons", () => {
-    expect(getWeatherIconKey(0, true)).toBe("sun");
-    expect(getWeatherIconKey(0, false)).toBe("moon");
+    expect(getWeatherIconKey(1000, true)).toBe("sun");
+    expect(getWeatherIconKey(1000, false)).toBe("moon");
   });
 
   it("does not map every condition to sun", () => {
-    expect(getWeatherIconKey(61, true)).toBe("rain");
-    expect(getWeatherIconKey(3, true)).toBe("cloud");
-    expect(getWeatherIconKey(95, true)).toBe("thunder");
-    expect(getWeatherIconKey(71, true)).toBe("snow");
+    expect(getWeatherIconKey(4001, true)).toBe("rain");
+    expect(getWeatherIconKey(1001, true)).toBe("cloud");
+    expect(getWeatherIconKey(8000, true)).toBe("thunder");
+    expect(getWeatherIconKey(5000, true)).toBe("snow");
   });
 });

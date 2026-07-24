@@ -24,6 +24,7 @@ function deps(overrides: Partial<MarketDataDeps> = {}): MarketDataDeps {
     fetchImpl: vi.fn(),
     now: () => NOW,
     goldApiKey: "test-key",
+    weatherApiKey: "test-key",
     ...overrides,
   };
 }
@@ -32,16 +33,20 @@ function deps(overrides: Partial<MarketDataDeps> = {}): MarketDataDeps {
 // (flat, not nested under `rates`) — confirmed against the live API.
 const USD_TCMB = { date: "2026-07-24", base: "USD", quote: "TRY", rate: 47.23 };
 const EUR_TCMB = { date: "2026-07-24", base: "EUR", quote: "TRY", rate: 53.9 };
+// Matches the real api.tomorrow.io/v4/weather/realtime response shape —
+// confirmed against the live API (data.values.{temperature,
+// temperatureApparent,weatherCode,uvIndex}; no is_day field on this plan).
 const WEATHER_OK = {
-  current: {
-    time: "2026-07-24T04:15",
-    temperature_2m: 29,
-    apparent_temperature: 31.2,
-    weather_code: 0,
-    is_day: 1,
-    relative_humidity_2m: 55,
-    wind_speed_10m: 12,
+  data: {
+    time: "2026-07-24T04:15:00Z",
+    values: {
+      temperature: 29,
+      temperatureApparent: 31.2,
+      weatherCode: 1000,
+      uvIndex: 6,
+    },
   },
+  location: { lat: 41.0082, lon: 28.9784 },
 };
 // Matches the real api.metalpriceapi.com/v1/latest response shape for
 // base=XAU&currencies=TRY — rates.TRY is the TRY price of 1 troy ounce.
@@ -81,34 +86,49 @@ describe("fetchWeather", () => {
     expect(result).toEqual({
       temperatureC: 29,
       apparentTemperatureC: 31.2,
-      weatherCode: 0,
+      weatherCode: 1000,
       condition: "Açık",
       isDay: true,
       location: "İstanbul",
       updatedAt: NOW.toISOString(),
-      source: "Open-Meteo",
+      source: "Tomorrow.io",
     });
   });
 
-  it("rejects a response missing the current block", async () => {
+  it("derives isDay: false from uvIndex 0", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse({ data: { values: { temperature: 18, temperatureApparent: 17, weatherCode: 1000, uvIndex: 0 } } }),
+    );
+    const result = await fetchWeather(deps({ fetchImpl }));
+    expect(result.isDay).toBe(false);
+  });
+
+  it("rejects a response missing the data/values block", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}));
     await expect(fetchWeather(deps({ fetchImpl }))).rejects.toThrow();
+  });
+
+  it("throws missing_credential when no TOMORROW_API_KEY is configured, without calling fetch", async () => {
+    const fetchImpl = vi.fn();
+    await expect(fetchWeather(deps({ fetchImpl, weatherApiKey: null }))).rejects.toThrow("missing_credential");
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
 
 describe("mapWeatherCodeToTurkish", () => {
   it.each([
-    [0, "Açık"],
-    [1, "Parçalı bulutlu"],
-    [2, "Parçalı bulutlu"],
-    [3, "Bulutlu"],
-    [45, "Sisli"],
-    [51, "Çisenti"],
-    [61, "Yağmurlu"],
-    [80, "Yağmurlu"],
-    [82, "Sağanak"],
-    [71, "Karlı"],
-    [95, "Gök gürültülü"],
+    [1000, "Açık"],
+    [1100, "Açık"],
+    [1101, "Parçalı bulutlu"],
+    [1102, "Bulutlu"],
+    [1001, "Bulutlu"],
+    [2000, "Sisli"],
+    [4000, "Çisenti"],
+    [4001, "Yağmurlu"],
+    [4200, "Yağmurlu"],
+    [4201, "Sağanak"],
+    [5000, "Karlı"],
+    [8000, "Gök gürültülü"],
   ])("maps code %i to %s", (code, expected) => {
     expect(mapWeatherCodeToTurkish(code)).toBe(expected);
   });
@@ -185,6 +205,19 @@ describe("buildMarketDataResponse (failure isolation)", () => {
     expect(result.gold.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
     expect(result.weather).toBeNull();
     expect(result.errors.weather).toBe("unavailable");
+  });
+
+  it("keeps currency and gold valid when weather is missing its credential", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(USD_TCMB))
+      .mockResolvedValueOnce(jsonResponse(EUR_TCMB))
+      .mockResolvedValueOnce(jsonResponse(GOLD_OK));
+    const result = await buildMarketDataResponse(deps({ fetchImpl, weatherApiKey: null }));
+    expect(result.currency).not.toBeNull();
+    expect(result.gold.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
+    expect(result.weather).toBeNull();
+    expect(result.errors.weather).toBe("missing_credential");
   });
 
   it("isolates a partial failure (currency down, gold and weather fine)", async () => {

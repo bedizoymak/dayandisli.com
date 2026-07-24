@@ -4,7 +4,7 @@
 //
 // Providers:
 //  - Currency: Frankfurter (api.frankfurter.dev), TCMB indicative rates.
-//  - Weather: Open-Meteo, Istanbul coordinates.
+//  - Weather: Tomorrow.io realtime weather, Istanbul coordinates.
 //  - Gold: MetalpriceAPI (https://api.metalpriceapi.com/v1/latest,
 //    base=XAU&currencies=TRY&api_key=..., ounce price converted to grams).
 //
@@ -55,6 +55,7 @@ export interface MarketDataDeps {
   fetchImpl: typeof fetch;
   now: () => Date;
   goldApiKey: string | null;
+  weatherApiKey: string | null;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -111,49 +112,62 @@ export async function fetchCurrency(deps: MarketDataDeps): Promise<CurrencyRate>
   };
 }
 
+/** Tomorrow.io's realtime endpoint (this plan/field set) does not return a
+ * sunrise/sunset or is-day field, so day/night is derived from `uvIndex`
+ * (0 at night, positive during daylight) — a standard, documented proxy,
+ * not a guess: confirmed live (uvIndex=6 at 11:04 local Istanbul time). */
 export async function fetchWeather(deps: MarketDataDeps): Promise<WeatherInfo> {
+  if (!deps.weatherApiKey) {
+    throw new Error("missing_credential");
+  }
   const payload = await fetchJson(
     deps.fetchImpl,
-    "https://api.open-meteo.com/v1/forecast?latitude=41.0082&longitude=28.9784&current=temperature_2m,apparent_temperature,weather_code,is_day,relative_humidity_2m,wind_speed_10m&timezone=Europe%2FIstanbul",
+    "https://api.tomorrow.io/v4/weather/realtime" +
+      "?location=41.0082,28.9784" +
+      "&units=metric" +
+      "&fields=temperature,temperatureApparent,weatherCode,uvIndex" +
+      `&apikey=${encodeURIComponent(deps.weatherApiKey)}`,
   );
   if (typeof payload !== "object" || payload === null) throw new Error("malformed weather response");
-  const current = (payload as Record<string, unknown>).current;
-  if (typeof current !== "object" || current === null) throw new Error("missing current weather block");
-  const c = current as Record<string, unknown>;
+  const data = (payload as Record<string, unknown>).data;
+  if (typeof data !== "object" || data === null) throw new Error("missing data block");
+  const values = (data as Record<string, unknown>).values;
+  if (typeof values !== "object" || values === null) throw new Error("missing values block");
+  const v = values as Record<string, unknown>;
 
-  const temperatureC = c.temperature_2m;
-  const apparentTemperatureC = c.apparent_temperature;
-  const weatherCode = c.weather_code;
-  const isDayRaw = c.is_day;
+  const temperatureC = v.temperature;
+  const apparentTemperatureC = v.temperatureApparent;
+  const weatherCode = v.weatherCode;
+  const uvIndex = v.uvIndex;
 
   if (!isFiniteNumber(temperatureC)) throw new Error("invalid temperature");
   if (!isFiniteNumber(apparentTemperatureC)) throw new Error("invalid apparent temperature");
   if (!isFiniteNumber(weatherCode) || !Number.isInteger(weatherCode)) throw new Error("invalid weather code");
-  if (isDayRaw !== 0 && isDayRaw !== 1) throw new Error("invalid is_day flag");
+  if (!isFiniteNumber(uvIndex)) throw new Error("invalid uvIndex");
 
   return {
     temperatureC,
     apparentTemperatureC,
     weatherCode,
     condition: mapWeatherCodeToTurkish(weatherCode),
-    isDay: isDayRaw === 1,
+    isDay: uvIndex > 0,
     location: "İstanbul",
     updatedAt: deps.now().toISOString(),
-    source: "Open-Meteo",
+    source: "Tomorrow.io",
   };
 }
 
-/** WMO weather codes as used by Open-Meteo. */
+/** Tomorrow.io weather codes (docs.tomorrow.io/reference/data-layers-weather-codes). */
 export function mapWeatherCodeToTurkish(code: number): string {
-  if (code === 0) return "Açık";
-  if (code === 1 || code === 2) return "Parçalı bulutlu";
-  if (code === 3) return "Bulutlu";
-  if (code === 45 || code === 48) return "Sisli";
-  if (code >= 51 && code <= 57) return "Çisenti";
-  if ((code >= 61 && code <= 67) || code === 80 || code === 81) return "Yağmurlu";
-  if (code === 82) return "Sağanak";
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Karlı";
-  if (code >= 95 && code <= 99) return "Gök gürültülü";
+  if (code === 1000 || code === 1100) return "Açık";
+  if (code === 1101) return "Parçalı bulutlu";
+  if (code === 1102 || code === 1001) return "Bulutlu";
+  if (code === 2000 || code === 2100) return "Sisli";
+  if (code === 4000 || code === 6000) return "Çisenti";
+  if (code === 4001 || code === 4200 || code === 6001 || code === 6200) return "Yağmurlu";
+  if (code === 4201 || code === 6201) return "Sağanak";
+  if (code === 5000 || code === 5001 || code === 5100 || code === 5101 || code === 7000 || code === 7101 || code === 7102) return "Karlı";
+  if (code === 8000) return "Gök gürültülü";
   return "Bulutlu";
 }
 
@@ -198,12 +212,8 @@ export async function buildMarketDataResponse(deps: MarketDataDeps): Promise<Mar
       ? goldResult.value
       : { gramTry: null, updatedAt: deps.now().toISOString(), source: "metalpriceapi.com" };
 
-  const goldErrorMessage =
-    goldResult.status === "rejected"
-      ? goldResult.reason instanceof Error && goldResult.reason.message === "missing_credential"
-        ? "missing_credential"
-        : "unavailable"
-      : null;
+  const missingCredential = (result: PromiseSettledResult<unknown>) =>
+    result.status === "rejected" && result.reason instanceof Error && result.reason.message === "missing_credential";
 
   return {
     currency,
@@ -212,8 +222,8 @@ export async function buildMarketDataResponse(deps: MarketDataDeps): Promise<Mar
     fetchedAt: deps.now().toISOString(),
     errors: {
       currency: currencyResult.status === "rejected" ? "unavailable" : null,
-      gold: goldErrorMessage,
-      weather: weatherResult.status === "rejected" ? "unavailable" : null,
+      gold: goldResult.status === "rejected" ? (missingCredential(goldResult) ? "missing_credential" : "unavailable") : null,
+      weather: weatherResult.status === "rejected" ? (missingCredential(weatherResult) ? "missing_credential" : "unavailable") : null,
     },
   };
 }
