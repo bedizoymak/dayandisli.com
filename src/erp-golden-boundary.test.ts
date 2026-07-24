@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const demoRoot = "src/features/ebru-demo";
 const productionRoot = "src/features/ebru-preview";
-const goldenDigest = "d8f781c89964c8e89d5b9f971d9f3ccf94956481c5d55ef3e963d0f4a270a7c3";
+const goldenDigest = "cc00d0f2afddb9e5d87ca6e430d148b766f88e268952edbea420aced3ca9f54c";
 
 function filesUnder(root: string): string[] {
   const files: string[] = [];

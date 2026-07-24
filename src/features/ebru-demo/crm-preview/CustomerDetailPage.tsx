@@ -21,7 +21,7 @@ import {
 import { CrmPageHeader, StatusBadge } from "./CrmShared";
 import { salesQuotes } from "../sales-preview/salesData";
 import { printQuote } from "../sales-preview/salesUtils";
-const parent = "/apps/demo/crm/customers";
+const parent = "/demo/crm/customers";
 export function CustomerDetailPage() {
   const { customerId } = useParams();
   const [account, setAccount] = useState<"official" | "unofficial">("official");
@@ -237,7 +237,7 @@ function QuoteHistory({ quotes }: { quotes: typeof salesQuotes }) {
                 <td>
                   <Link
                     title="Görüntüle"
-                    to={`/apps/demo/sales/quotes/${q.id}`}
+                    to={`/demo/sales/quotes/${q.id}`}
                   >
                     <Eye />
                   </Link>

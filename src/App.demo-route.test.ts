@@ -17,34 +17,34 @@ function featureSource(directory: string): string {
 const demoSource = featureSource(demoRoot);
 
 const requiredRoutes = [
-  "/apps/demo",
-  "/apps/demo/finance/income/invoices",
-  "/apps/demo/finance/income/customers",
-  "/apps/demo/finance/expense/list",
-  "/apps/demo/finance/expense/incoming-invoices",
-  "/apps/demo/finance/purchasing/orders",
-  "/apps/demo/finance/purchasing/suppliers",
-  "/apps/demo/finance/cash/accounts",
-  "/apps/demo/finance/inventory/products",
-  "/apps/demo/finance/inventory/history",
-  "/apps/demo/crm/customers",
-  "/apps/demo/sales/quotes",
-  "/apps/demo/sales/orders",
-  "/apps/demo/sales/activities",
-  "/apps/demo/reports/collections",
-  "/apps/demo/reports/income-expense",
-  "/apps/demo/reports/cash-bank",
-  "/apps/demo/reports/production",
+  "/demo",
+  "/demo/finance/income/invoices",
+  "/demo/finance/income/customers",
+  "/demo/finance/expense/list",
+  "/demo/finance/expense/incoming-invoices",
+  "/demo/finance/purchasing/orders",
+  "/demo/finance/purchasing/suppliers",
+  "/demo/finance/cash/accounts",
+  "/demo/finance/inventory/products",
+  "/demo/finance/inventory/history",
+  "/demo/crm/customers",
+  "/demo/sales/quotes",
+  "/demo/sales/orders",
+  "/demo/sales/activities",
+  "/demo/reports/collections",
+  "/demo/reports/income-expense",
+  "/demo/reports/cash-bank",
+  "/demo/reports/production",
 ];
 
 describe("isolated golden Ebru demo route", () => {
-  it("registers /apps/demo before the canonical /apps wildcard", () => {
-    expect(appSource.indexOf('path="/apps/demo/*"')).toBeGreaterThan(-1);
-    expect(appSource.indexOf('path="/apps/demo/*"')).toBeLessThan(appSource.indexOf('path="/apps/*"'));
+  it("registers /demo before the canonical /apps wildcard", () => {
+    expect(appSource.indexOf('path="/demo/*"')).toBeGreaterThan(-1);
+    expect(appSource.indexOf('path="/demo/*"')).toBeLessThan(appSource.indexOf('path="/apps/*"'));
   });
 
   it("uses the existing ProtectedRoute wrapper", () => {
-    expect(appSource).toContain('path="/apps/demo/*" element={protectedElement(<EbruDemoPage />)}');
+    expect(appSource).toContain('path="/demo/*" element={protectedElement(<EbruDemoPage />)}');
   });
 
   it("loads the isolated snapshot implementation without changing the canonical route", () => {

@@ -166,6 +166,6 @@ export const crmSubmenu = [
   {
     id: "customers",
     label: "Müşteriler",
-    route: "/apps/demo/crm/customers",
+    route: "/demo/crm/customers",
   },
 ];

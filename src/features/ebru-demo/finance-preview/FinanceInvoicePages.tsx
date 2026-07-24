@@ -7,7 +7,7 @@ import { InvoiceLineItemsTable } from "./InvoiceLineItemsTable";
 import { salesInvoiceDefaults } from "./financeFormData";
 import "./finance-forms.css";
 
-const incomeBase = "/apps/demo/finance/income/invoices";
+const incomeBase = "/demo/finance/income/invoices";
 export function SalesInvoiceForm() {
   const data = salesInvoiceDefaults;
   return (

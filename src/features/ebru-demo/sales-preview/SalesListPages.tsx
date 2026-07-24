@@ -14,7 +14,7 @@ import {
 import { salesActivities, salesOrders, salesQuotes } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
 import { customerName, printQuote } from "./salesUtils";
-const root = "/apps/demo/sales";
+const root = "/demo/sales";
 const quoteColumns: ExportColumn<(typeof salesQuotes)[number]>[] = [
   { header: "Teklif No", value: (r) => r.no },
   { header: "Firma", value: (r) => customerName(r.customerId) },
@@ -121,7 +121,7 @@ export function QuotesPage() {
             <td>
               <Link
                 className="sales-customer-link"
-                to={`/apps/demo/crm/customers/${q.customerId}`}
+                to={`/demo/crm/customers/${q.customerId}`}
               >
                 {customerName(q.customerId)}
               </Link>
@@ -232,7 +232,7 @@ export function SalesActivitiesPage() {
             <td>
               <Link
                 className="sales-customer-link"
-                to={`/apps/demo/crm/customers/${a.customerId}`}
+                to={`/demo/crm/customers/${a.customerId}`}
               >
                 {customerName(a.customerId)}
               </Link>

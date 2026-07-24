@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-const root = "/apps/demo/sales";
+const root = "/demo/sales";
 export function SalesBreadcrumb({
   section,
   current,

@@ -1,8 +1,8 @@
 export type PreviewRoute = { label: string; route: string; keywords?: string };
 
 export const sidebarItems: PreviewRoute[] = [
-  { label: "Dashboard", route: "/apps/demo" },
-  { label: "Favoriler", route: "/apps/demo" },
+  { label: "Dashboard", route: "/demo" },
+  { label: "Favoriler", route: "/demo" },
   { label: "Muhasebe ve Finans", route: "/finans" },
   { label: "Müşteri İlişkileri", route: "/crm" },
   { label: "Raporlar", route: "/reports" },

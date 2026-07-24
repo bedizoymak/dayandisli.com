@@ -366,7 +366,7 @@ export function ChecksPage() {
         actions={
           <Link
             className="report-primary-link"
-            to="/apps/demo/finance/cash/checks/new"
+            to="/demo/finance/cash/checks/new"
           >
             <Plus /> Çek Ekle
           </Link>

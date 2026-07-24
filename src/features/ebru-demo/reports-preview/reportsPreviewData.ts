@@ -2,22 +2,22 @@ export const reportsNavigation = [
   {
     id: "collections",
     label: "Tahsilat Raporu",
-    route: "/apps/demo/reports/collections",
+    route: "/demo/reports/collections",
   },
   {
     id: "income-expense",
     label: "Gelir-Gider Raporu",
-    route: "/apps/demo/reports/income-expense",
+    route: "/demo/reports/income-expense",
   },
   {
     id: "cash-bank",
     label: "Kasa-Banka Raporu",
-    route: "/apps/demo/reports/cash-bank",
+    route: "/demo/reports/cash-bank",
   },
   {
     id: "production",
     label: "Üretim Raporu",
-    route: "/apps/demo/reports/production",
+    route: "/demo/reports/production",
   },
 ] as const;
 

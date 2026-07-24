@@ -1,12 +1,12 @@
 export const expenseTypes = ["Fiş / Fatura", "Maaş / Prim", "Vergi / SGK Primi", "Banka Gideri", "Konaklama", "Diğer Gider"];
 export const expensePaymentStatuses = ["Ödenecek", "Ödendi", "Çalışan Cebinden Ödedi", "Gecikmiş"];
 export const newExpenseActions = [
-  { label: "Yeni Fiş / Fatura", route: "/apps/demo/finance/expense/list/new/invoice" },
-  { label: "Yeni Maaş / Prim", route: "/apps/demo/finance/expense/list/new/payroll" },
-  { label: "Yeni Vergi / SGK Primi", route: "/apps/demo/finance/expense/list/new/tax" },
-  { label: "Yeni Banka Gideri", route: "/apps/demo/finance/expense/list/new/bank-expense" },
-  { label: "Yeni Konaklama Faturası", route: "/apps/demo/finance/expense/list/new/accommodation" },
-  { label: "Diğer Gider", route: "/apps/demo/finance/expense/list/new/other" },
+  { label: "Yeni Fiş / Fatura", route: "/demo/finance/expense/list/new/invoice" },
+  { label: "Yeni Maaş / Prim", route: "/demo/finance/expense/list/new/payroll" },
+  { label: "Yeni Vergi / SGK Primi", route: "/demo/finance/expense/list/new/tax" },
+  { label: "Yeni Banka Gideri", route: "/demo/finance/expense/list/new/bank-expense" },
+  { label: "Yeni Konaklama Faturası", route: "/demo/finance/expense/list/new/accommodation" },
+  { label: "Diğer Gider", route: "/demo/finance/expense/list/new/other" },
 ];
 
 export const expenseRows = [

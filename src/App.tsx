@@ -130,9 +130,10 @@ const AppRoutes = () => {
 
       {exposePublicRoutes && <Route path="/sayfa/*" element={<DynamicCMSPage />} />}
 
+      {exposeErpRoutes && <Route path="/demo/*" element={protectedElement(<EbruDemoPage />)} />}
+
       {exposeErpRoutes ? (
           <>
-            <Route path="/apps/demo/*" element={protectedElement(<EbruDemoPage />)} />
             <Route path="/apps/ebru-preview/*" element={protectedElement(<Navigate to="/apps" replace />)} />
             <Route path="/apps/parasut/*" element={protectedElement(<LegacyParasutRedirect />)} />
             {/* The approved Ebru UI is the one canonical ERP shell. */}

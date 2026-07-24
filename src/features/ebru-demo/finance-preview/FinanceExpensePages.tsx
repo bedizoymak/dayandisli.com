@@ -30,7 +30,7 @@ import {
 } from "./financeExpenseData";
 import "./finance-expense.css";
 
-const base = "/apps/demo/finance/expense/list";
+const base = "/demo/finance/expense/list";
 
 function PageHeader({
   breadcrumb,

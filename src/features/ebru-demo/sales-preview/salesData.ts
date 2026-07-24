@@ -114,16 +114,16 @@ export const salesSubmenu = [
   {
     id: "quotes",
     label: "Teklifler",
-    route: "/apps/demo/sales/quotes",
+    route: "/demo/sales/quotes",
   },
   {
     id: "orders",
     label: "Siparişler",
-    route: "/apps/demo/sales/orders",
+    route: "/demo/sales/orders",
   },
   {
     id: "activities",
     label: "Satış Faaliyetleri",
-    route: "/apps/demo/sales/activities",
+    route: "/demo/sales/activities",
   },
 ];

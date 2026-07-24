@@ -17,7 +17,7 @@ import {
 } from "./operationsData";
 import "./operations-pages.css";
 
-const root = "/apps/demo/finance";
+const root = "/demo/finance";
 function Header({
   breadcrumb,
   title,

@@ -343,7 +343,7 @@ export default function EbruPreviewPage() {
         <aside className="ebru-sidebar">
           <div className="ebru-brand-row">
             <Link
-              to="/apps/demo"
+              to="/demo"
               className="ebru-brand"
               aria-label="Ebru dashboard ana sayfası"
             >
@@ -396,7 +396,7 @@ export default function EbruPreviewPage() {
                           onClick={() => {
                             setActiveFinancePage("overview");
                             setActiveView("finance");
-                            navigate("/apps/demo");
+                            navigate("/demo");
                           }}
                         >
                           Güncel Durum
@@ -498,7 +498,7 @@ export default function EbruPreviewPage() {
                         toggleSection("sales");
                         if (!isOpen) {
                           setActiveView("sales");
-                          navigate("/apps/demo/sales/quotes");
+                          navigate("/demo/sales/quotes");
                         }
                         setMobileOpen(false);
                       }}
@@ -543,7 +543,7 @@ export default function EbruPreviewPage() {
                         toggleSection("reports");
                         if (!isOpen) {
                           setActiveView("reports");
-                          navigate("/apps/demo/reports/collections");
+                          navigate("/demo/reports/collections");
                         }
                         setMobileOpen(false);
                       }}

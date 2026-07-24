@@ -8,38 +8,38 @@ export type ExportColumn<T> = {
   value: (row: T) => string | number;
 };
 
-const overview = "/apps/demo";
+const overview = "/demo";
 function segmentRoute(label: string, all: string[]) {
   if (label === "Muhasebe ve Finans") return overview;
   if (label === "Gelir Yönetimi")
-    return "/apps/demo/finance/income/invoices";
+    return "/demo/finance/income/invoices";
   if (label === "Gider Yönetimi")
-    return "/apps/demo/finance/expense/list";
-  if (label === "Kasa") return "/apps/demo/finance/cash/accounts";
+    return "/demo/finance/expense/list";
+  if (label === "Kasa") return "/demo/finance/cash/accounts";
   if (label === "Stok Yönetimi")
-    return "/apps/demo/finance/inventory/products";
+    return "/demo/finance/inventory/products";
   if (label === "Hizmet ve Ürünler")
-    return "/apps/demo/finance/inventory/products";
+    return "/demo/finance/inventory/products";
   if (label === "Giden İrsaliyeler")
-    return "/apps/demo/finance/inventory/outgoing-dispatches";
+    return "/demo/finance/inventory/outgoing-dispatches";
   if (label === "Gelen İrsaliyeler")
-    return "/apps/demo/finance/inventory/incoming-dispatches";
+    return "/demo/finance/inventory/incoming-dispatches";
   if (label === "Satın Alma")
-    return "/apps/demo/finance/purchasing/orders";
+    return "/demo/finance/purchasing/orders";
   if (label === "Siparişler")
-    return "/apps/demo/finance/purchasing/orders";
+    return "/demo/finance/purchasing/orders";
   if (label === "Tedarikçiler")
-    return "/apps/demo/finance/purchasing/suppliers";
+    return "/demo/finance/purchasing/suppliers";
   if (label === "Faturalar")
-    return "/apps/demo/finance/income/invoices";
+    return "/demo/finance/income/invoices";
   if (label === "Müşteriler")
-    return "/apps/demo/finance/income/customers";
+    return "/demo/finance/income/customers";
   if (label === "Tahsilat Raporu")
-    return "/apps/demo/finance/income/collection-report";
+    return "/demo/finance/income/collection-report";
   if (label === "Gider Listesi")
-    return "/apps/demo/finance/expense/list";
+    return "/demo/finance/expense/list";
   if (label === "Gelen Faturalar")
-    return "/apps/demo/finance/expense/incoming-invoices";
+    return "/demo/finance/expense/incoming-invoices";
   return all.includes(label) ? overview : undefined;
 }
 

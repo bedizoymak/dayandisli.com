@@ -47,7 +47,7 @@ export function CustomerListPage() {
           rows={rows}
           columns={columns}
         />
-        <Link className="crm-primary" to="/apps/demo/crm/customers/new">
+        <Link className="crm-primary" to="/demo/crm/customers/new">
           Yeni Müşteri
         </Link>
       </CrmPageHeader>
@@ -113,7 +113,7 @@ export function CustomerListPage() {
                       {c.type === "Tüzel Kişi" ? <Building2 /> : <UserRound />}
                     </i>
                     <span>
-                      <Link to={`/apps/demo/crm/customers/${c.id}`}>
+                      <Link to={`/demo/crm/customers/${c.id}`}>
                         {c.name}
                       </Link>
                       <small>
@@ -136,13 +136,13 @@ export function CustomerListPage() {
                   <div className="crm-row-actions">
                     <Link
                       title="Görüntüle"
-                      to={`/apps/demo/crm/customers/${c.id}`}
+                      to={`/demo/crm/customers/${c.id}`}
                     >
                       <Eye />
                     </Link>
                     <Link
                       title="Düzenle"
-                      to={`/apps/demo/crm/customers/${c.id}/edit`}
+                      to={`/demo/crm/customers/${c.id}/edit`}
                     >
                       <Pencil />
                     </Link>
