@@ -7,6 +7,13 @@ import {
   ChevronRight,
   CircleHelp,
   ClipboardCheck,
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  CloudSnow,
+  CloudSun,
   Factory,
   FilePlus2,
   Gauge,
@@ -14,6 +21,7 @@ import {
   HeartHandshake,
   LogOut,
   Menu,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   ReceiptText,
@@ -36,7 +44,17 @@ import {
 } from "./previewData";
 import { useParasutDashboard } from "@/features/erp/parasut/api/queries";
 import { formatParasutCurrency, formatParasutDate } from "@/features/erp/parasut/utils/format";
+import { useMarketData } from "@/features/market-data/useMarketData";
+import {
+  formatTryAmount,
+  formatCurrencyMeta,
+  formatGoldMeta,
+  formatTemperature,
+  isMarketDataStale,
+  getWeatherIconKey,
+} from "@/features/market-data/format";
 import { financeNavigation } from "./finance-preview/financePreviewData";
+import type { WeatherIconKey } from "@/features/market-data/format";
 import "./crm-preview/crm-preview.css";
 import "./sales-preview/sales-preview.css";
 import "./ebru-preview.css";
@@ -87,6 +105,19 @@ function dashboardTotals(values: Array<{ currency: string; total: string }>) {
   return values.length ? values.map((item) => formatParasutCurrency(item.total, item.currency)).join(" · ") : "—";
 }
 
+const weatherIconComponents: Record<WeatherIconKey, typeof Sun> = {
+  sun: Sun,
+  moon: Moon,
+  "cloud-sun": CloudSun,
+  cloud: Cloud,
+  fog: CloudFog,
+  drizzle: CloudDrizzle,
+  rain: CloudRain,
+  showers: CloudRain,
+  snow: CloudSnow,
+  thunder: CloudLightning,
+};
+
 export default function EbruPreviewPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,6 +134,7 @@ export default function EbruPreviewPage() {
     "dashboard" | "finance" | "crm" | "sales" | "reports"
   >("dashboard");
   const dashboardQuery = useParasutDashboard();
+  const marketDataQuery = useMarketData();
   const [openSection, setOpenSection] = useState<string | null>("finance");
   const [activeCrmPage, setActiveCrmPage] = useState("customers");
   const [activeSalesPage, setActiveSalesPage] = useState("quotes");
@@ -338,11 +370,70 @@ export default function EbruPreviewPage() {
     { label: "Toplam Ödenecek", value: dashboardTotals(dashboardData.paymentsSummary.totalDue), detail: `${dashboardData.paymentsSummary.overdueCount} gecikmiş belge`, tone: "green" },
     { label: "Senkronize Kasa ve Banka", value: String(dashboardData.accounts.length), detail: "Paraşüt hesabı", tone: "purple" },
   ] : [];
+  const marketData = marketDataQuery.data;
+  const marketDataStale =
+    marketDataQuery.dataUpdatedAt > 0 && isMarketDataStale(marketDataQuery.dataUpdatedAt);
+  const staleSuffix = (meta: string) => (marketDataStale ? `${meta} · Güncelleme gecikti` : meta);
+
+  const buildCurrencyCard = (
+    label: string,
+    rawValue: number | undefined,
+  ): { label: string; value: string; change: string; trend: string } => {
+    if (marketDataQuery.isLoading) {
+      return { label, value: "—", change: "Yükleniyor…", trend: "flat" };
+    }
+    if (rawValue === undefined || !marketData?.currency) {
+      return { label, value: "—", change: "Veri alınamadı", trend: "flat" };
+    }
+    return {
+      label,
+      value: formatTryAmount(rawValue),
+      change: staleSuffix(formatCurrencyMeta(marketData.currency.rateDate, marketData.currency.source)),
+      trend: "flat",
+    };
+  };
+
+  const buildGoldCard = (): { label: string; value: string; change: string; trend: string } => {
+    const label = "Altın / TL (Gr)";
+    if (marketDataQuery.isLoading) {
+      return { label, value: "—", change: "Yükleniyor…", trend: "flat" };
+    }
+    const gold = marketData?.gold;
+    if (!gold) {
+      return { label, value: "—", change: "Veri alınamadı", trend: "flat" };
+    }
+    if (gold.gramTry === null) {
+      return { label, value: "—", change: "Veri sağlayıcı gerekli", trend: "flat" };
+    }
+    return {
+      label,
+      value: formatTryAmount(gold.gramTry),
+      change: staleSuffix(formatGoldMeta(gold.updatedAt)),
+      trend: "flat",
+    };
+  };
+
   const dashboardExchange = [
-    { label: "Dolar / TL", value: "—", change: "Kur verisi yok", trend: "flat" },
-    { label: "Euro / TL", value: "—", change: "Kur verisi yok", trend: "flat" },
-    { label: "Altın / TL (Gr)", value: "—", change: "Kur verisi yok", trend: "flat" },
+    buildCurrencyCard("Dolar / TL", marketData?.currency?.usdTry),
+    buildCurrencyCard("Euro / TL", marketData?.currency?.eurTry),
+    buildGoldCard(),
   ];
+
+  const weatherDisplay = (() => {
+    if (marketDataQuery.isLoading) {
+      return { temperature: "—", meta: "Yükleniyor…", iconKey: "cloud" as const };
+    }
+    const weather = marketData?.weather;
+    if (!weather) {
+      return { temperature: "—", meta: "Veri alınamadı", iconKey: "cloud" as const };
+    }
+    return {
+      temperature: formatTemperature(weather.temperatureC),
+      meta: staleSuffix(`${weather.location} · ${weather.condition}`),
+      iconKey: getWeatherIconKey(weather.weatherCode, weather.isDay),
+    };
+  })();
+  const WeatherIcon = weatherIconComponents[weatherDisplay.iconKey];
   const visualReceivables = dashboardReceivables;
   const visualPayables = dashboardPayables;
   const visualUpcoming = dashboardUpcoming;
@@ -762,10 +853,10 @@ export default function EbruPreviewPage() {
                         </div>
                       </div>
                       <div className="ebru-weather">
-                        <Sun color="#ffd33d" />
+                        <WeatherIcon color="#ffd33d" />
                         <div>
-                          <strong>—</strong>
-                          <small>Hava durumu verisi yok</small>
+                          <strong>{weatherDisplay.temperature}</strong>
+                          <small>{weatherDisplay.meta}</small>
                         </div>
                       </div>
                     </div>
