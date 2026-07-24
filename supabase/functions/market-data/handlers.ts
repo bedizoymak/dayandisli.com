@@ -5,9 +5,8 @@
 // Providers:
 //  - Currency: Frankfurter (api.frankfurter.dev), TCMB indicative rates.
 //  - Weather: Open-Meteo, Istanbul coordinates.
-//  - Gold: GoldAPI.io (https://www.goldapi.io/api/XAU/TRY, `x-access-token`
-//    header, `price_gram_24k` field is already per-gram in the requested
-//    currency — no ounce conversion needed when that field is present).
+//  - Gold: MetalpriceAPI (https://api.metalpriceapi.com/v1/latest,
+//    base=XAU&currencies=TRY&api_key=..., ounce price converted to grams).
 //
 // Every provider call is isolated: one provider failing never blocks the
 // others (Promise.allSettled), and no fabricated/zero/negative value is
@@ -158,28 +157,30 @@ export function mapWeatherCodeToTurkish(code: number): string {
   return "Bulutlu";
 }
 
+/** MetalpriceAPI's /v1/latest returns HTTP 200 even on failure — the only
+ * reliable signal is the `success` field, never response.ok alone. With
+ * base=XAU&currencies=TRY, `rates.TRY` is the TRY price of one troy ounce
+ * of gold (documented pattern: "1 <base> = rates.<quote> <quote>"). */
 export async function fetchGold(deps: MarketDataDeps): Promise<GoldRate> {
   if (!deps.goldApiKey) {
     throw new Error("missing_credential");
   }
-  const payload = await fetchJson(deps.fetchImpl, "https://www.goldapi.io/api/XAU/TRY", {
-    "x-access-token": deps.goldApiKey,
-  });
+  const payload = await fetchJson(
+    deps.fetchImpl,
+    `https://api.metalpriceapi.com/v1/latest?api_key=${encodeURIComponent(deps.goldApiKey)}&base=XAU&currencies=TRY`,
+  );
   if (typeof payload !== "object" || payload === null) throw new Error("malformed gold response");
   const record = payload as Record<string, unknown>;
+  if (record.success !== true) throw new Error("gold provider reported failure");
 
-  let gramTry: number | null = null;
-  if (isPositiveFiniteNumber(record.price_gram_24k)) {
-    gramTry = record.price_gram_24k;
-  } else if (isPositiveFiniteNumber(record.price)) {
-    gramTry = record.price / OUNCE_TO_GRAM;
-  }
-  if (gramTry === null) throw new Error("invalid gold price");
+  const rates = record.rates as Record<string, unknown> | undefined;
+  const ouncePriceTry = rates?.TRY;
+  if (!isPositiveFiniteNumber(ouncePriceTry)) throw new Error("invalid gold price");
 
   return {
-    gramTry,
+    gramTry: ouncePriceTry / OUNCE_TO_GRAM,
     updatedAt: deps.now().toISOString(),
-    source: "goldapi.io",
+    source: "metalpriceapi.com",
   };
 }
 
@@ -195,7 +196,7 @@ export async function buildMarketDataResponse(deps: MarketDataDeps): Promise<Mar
   const gold: GoldRate =
     goldResult.status === "fulfilled"
       ? goldResult.value
-      : { gramTry: null, updatedAt: deps.now().toISOString(), source: "goldapi.io" };
+      : { gramTry: null, updatedAt: deps.now().toISOString(), source: "metalpriceapi.com" };
 
   const goldErrorMessage =
     goldResult.status === "rejected"

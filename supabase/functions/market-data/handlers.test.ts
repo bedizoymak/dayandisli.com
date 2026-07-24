@@ -43,7 +43,10 @@ const WEATHER_OK = {
     wind_speed_10m: 12,
   },
 };
-const GOLD_OK = { price: 3200, price_gram_24k: 4850.32, currency: "TRY" };
+// Matches the real api.metalpriceapi.com/v1/latest response shape for
+// base=XAU&currencies=TRY — rates.TRY is the TRY price of 1 troy ounce.
+const GOLD_OUNCE_PRICE_TRY = 150881.2;
+const GOLD_OK = { success: true, base: "XAU", timestamp: 1753333333, rates: { TRY: GOLD_OUNCE_PRICE_TRY } };
 
 describe("fetchCurrency", () => {
   it("returns a valid TCMB USD/TRY and EUR/TRY pair", async () => {
@@ -112,16 +115,17 @@ describe("mapWeatherCodeToTurkish", () => {
 });
 
 describe("fetchGold", () => {
-  it("returns the gram-24k price directly when present", async () => {
+  it("converts the ounce price to a gram price", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(GOLD_OK));
     const result = await fetchGold(deps({ fetchImpl }));
-    expect(result).toEqual({ gramTry: 4850.32, updatedAt: NOW.toISOString(), source: "goldapi.io" });
+    expect(result.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
+    expect(result.updatedAt).toBe(NOW.toISOString());
+    expect(result.source).toBe("metalpriceapi.com");
   });
 
-  it("falls back to ounce/31.1034768 when price_gram_24k is absent", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ price: 3200 }));
-    const result = await fetchGold(deps({ fetchImpl }));
-    expect(result.gramTry).toBeCloseTo(3200 / 31.1034768, 6);
+  it("rejects a response with success:false even though HTTP status is 200 (MetalpriceAPI's actual failure signal)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: false, error: { statusCode: 101, message: "User did not supply an API Key" } }));
+    await expect(fetchGold(deps({ fetchImpl }))).rejects.toThrow();
   });
 
   it("throws missing_credential when no GOLD_API_KEY is configured, without calling fetch", async () => {
@@ -131,7 +135,12 @@ describe("fetchGold", () => {
   });
 
   it("rejects a non-positive gold price", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ price: -1, price_gram_24k: 0 }));
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: true, rates: { TRY: 0 } }));
+    await expect(fetchGold(deps({ fetchImpl }))).rejects.toThrow();
+  });
+
+  it("rejects a missing rates.TRY field", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: true, rates: {} }));
     await expect(fetchGold(deps({ fetchImpl }))).rejects.toThrow();
   });
 });
@@ -146,7 +155,7 @@ describe("buildMarketDataResponse (failure isolation)", () => {
       .mockResolvedValueOnce(jsonResponse(WEATHER_OK));
     const result = await buildMarketDataResponse(deps({ fetchImpl }));
     expect(result.currency).not.toBeNull();
-    expect(result.gold.gramTry).toBe(4850.32);
+    expect(result.gold.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
     expect(result.weather).not.toBeNull();
     expect(result.errors).toEqual({ currency: null, gold: null, weather: null });
   });
@@ -173,7 +182,7 @@ describe("buildMarketDataResponse (failure isolation)", () => {
       .mockResolvedValueOnce(jsonResponse({}, { ok: false, status: 500 }));
     const result = await buildMarketDataResponse(deps({ fetchImpl }));
     expect(result.currency).not.toBeNull();
-    expect(result.gold.gramTry).toBe(4850.32);
+    expect(result.gold.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
     expect(result.weather).toBeNull();
     expect(result.errors.weather).toBe("unavailable");
   });
@@ -188,7 +197,7 @@ describe("buildMarketDataResponse (failure isolation)", () => {
     const result = await buildMarketDataResponse(deps({ fetchImpl }));
     expect(result.currency).toBeNull();
     expect(result.errors.currency).toBe("unavailable");
-    expect(result.gold.gramTry).toBe(4850.32);
+    expect(result.gold.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
     expect(result.weather).not.toBeNull();
   });
 
