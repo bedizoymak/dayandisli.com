@@ -116,6 +116,18 @@ th {
   background: #0b1929;
   font-weight: 600;
 }
+.income-sort-button {
+  all: unset;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+}
+.income-sort-button:hover,
+.income-sort-button:focus-visible {
+  color: #e2edf7;
+}
 tbody tr:hover {
   background: #10243a;
 }

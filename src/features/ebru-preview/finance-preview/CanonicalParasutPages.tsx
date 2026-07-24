@@ -203,13 +203,32 @@ export function CanonicalParasutListPage({ config }: { config: PageConfig }) {
   const [status, setStatus] = useState(params.get("status") ?? "");
   const page = Math.max(1, Number(params.get("page") ?? 1));
   const pageSize = Math.max(10, Number(params.get("pageSize") ?? 25));
+  const sortField = params.get("sort") || undefined;
+  const sortDirection = params.get("dir") === "asc" ? "asc" : "desc";
+  const toggleSort = (key: string) => setParams((current) => {
+    const next = new URLSearchParams(current);
+    const isSameColumn = current.get("sort") === key;
+    const currentDirection = current.get("dir") === "asc" ? "asc" : "desc";
+    next.set("sort", key);
+    next.set("dir", isSameColumn && currentDirection === "desc" ? "asc" : "desc");
+    next.set("page", "1");
+    return next;
+  });
   const filters = useMemo(() => ({
     ...config.filters,
     ...(dueFrom ? { dueFrom } : {}),
     ...(dueTo ? { dueTo } : {}),
     ...(status ? { status } : {}),
   }), [config.filters, dueFrom, dueTo, status]);
-  const queryParams = useMemo(() => ({ page, pageSize, search, filters }), [page, pageSize, search, filters]);
+  const sort = useMemo(() => (sortField ? { field: sortField, direction: sortDirection as "asc" | "desc" } : undefined), [sortField, sortDirection]);
+  const queryParams = useMemo(() => ({ page, pageSize, search, filters, sort }), [page, pageSize, search, filters, sort]);
+  const sortableTh = (column: Column) => (
+    <th key={column.key}>
+      <button type="button" className="income-sort-button" onClick={() => toggleSort(column.key)}>
+        {column.label} {sortField === column.key ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}
+      </button>
+    </th>
+  );
   const query = useParasutList<GenericParasutRow & Partial<InvoiceListRow>>(config.resource, queryParams);
   const rows = query.data?.rows ?? [];
   const exportColumns = useMemo<ExportColumn<GenericParasutRow & Partial<InvoiceListRow>>[]>(
@@ -248,7 +267,7 @@ export function CanonicalParasutListPage({ config }: { config: PageConfig }) {
     return <div className="ops-page" data-provider="parasut">
       <header className="ops-header"><div><FinanceBreadcrumb value={config.breadcrumb} /><h1>{config.title}</h1></div><div>{config.actionPath ? <Link className="ops-primary" to={config.actionPath}>{config.actionLabel}</Link> : null}<FinanceExportMenu title={config.title} filename={config.filename ?? config.resource} rows={rows} columns={exportColumns} /><SyncButton config={config} /></div></header>
       <div className="ops-filters"><label><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={config.search} /></label><button onClick={() => go(1)}>Filtrele</button><button onClick={() => { setSearch(""); setParams({}); }}>Temizle</button></div>
-      <div className="ebru-card ops-table-wrap"><table className="ops-table"><thead><tr>{config.columns.map((column) => <th key={column.key}>{column.label}</th>)}<th>İşlemler</th></tr></thead><tbody><LiveTableBody config={config} rows={rows} loading={query.isLoading} error={error} /></tbody></table>{pagination}</div>
+      <div className="ebru-card ops-table-wrap"><table className="ops-table"><thead><tr>{config.columns.map((column) => sortableTh(column))}<th>İşlemler</th></tr></thead><tbody><LiveTableBody config={config} rows={rows} loading={query.isLoading} error={error} /></tbody></table>{pagination}</div>
     </div>;
   }
 
@@ -256,7 +275,7 @@ export function CanonicalParasutListPage({ config }: { config: PageConfig }) {
     return <div className="sales-page" data-provider="parasut">
       <header className="sales-header"><div><span>Satış / Teklifler</span><h1>Teklifler</h1><p>{config.subtitle}</p></div><div><FinanceExportMenu title={config.title} filename="teklifler" rows={rows} columns={exportColumns} /><Link className="sales-primary" to="/apps/sales/quotes/new">Yeni Teklif Oluştur</Link><SyncButton config={config} /></div></header>
       <div className="ebru-card sales-filters"><label className="search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={config.search} /></label><select><option>Tüm Durumlar</option></select><button onClick={() => go(1)}>Filtrele</button></div>
-      <div className="ebru-card sales-table-wrap"><table className="sales-table"><thead><tr>{config.columns.map((column) => <th key={column.key}>{column.label}</th>)}<th>İşlemler</th></tr></thead><tbody><LiveTableBody config={config} rows={rows} loading={query.isLoading} error={error} /></tbody></table>{pagination}</div>
+      <div className="ebru-card sales-table-wrap"><table className="sales-table"><thead><tr>{config.columns.map((column) => sortableTh(column))}<th>İşlemler</th></tr></thead><tbody><LiveTableBody config={config} rows={rows} loading={query.isLoading} error={error} /></tbody></table>{pagination}</div>
     </div>;
   }
 
@@ -274,7 +293,7 @@ export function CanonicalParasutListPage({ config }: { config: PageConfig }) {
     return <div className="report-page" data-provider="parasut">
       <header className="report-header"><div><FinanceBreadcrumb value={config.breadcrumb} /><h1>{config.title}</h1></div><div className="report-actions"><FinanceExportMenu title={config.title} filename="kasa-ve-bankalar" rows={rows} columns={exportColumns} /><SyncButton config={config} /></div></header>
       <div className="ebru-card report-filters"><label className="wide"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Hesap ara" /></label><button onClick={() => go(1)}>Filtrele</button></div>
-      <div className="ebru-card report-table-wrap"><table><thead><tr>{config.columns.map((column) => <th key={column.key}>{column.label}</th>)}<th>İşlemler</th></tr></thead><tbody><LiveTableBody config={config} rows={rows} loading={query.isLoading} error={error} /></tbody></table>{pagination}</div>
+      <div className="ebru-card report-table-wrap"><table><thead><tr>{config.columns.map((column) => sortableTh(column))}<th>İşlemler</th></tr></thead><tbody><LiveTableBody config={config} rows={rows} loading={query.isLoading} error={error} /></tbody></table>{pagination}</div>
     </div>;
   }
 
@@ -287,7 +306,7 @@ export function CanonicalParasutListPage({ config }: { config: PageConfig }) {
       <Button className="income-filter-button" onClick={() => go(1)}>Filtrele</Button>
       <Button variant="ghost" className="income-clear" onClick={() => { setSearch(""); setDueFrom(""); setDueTo(""); setStatus(""); setParams({}); }}>Filtreleri Temizle</Button>
     </div>
-    <section className="ebru-card income-table-card"><div className="income-table-scroll"><table><thead><tr>{config.columns.map((column) => <th key={column.key}>{column.label} ↕</th>)}<th>İşlemler</th></tr></thead><tbody>
+    <section className="ebru-card income-table-card"><div className="income-table-scroll"><table><thead><tr>{config.columns.map((column) => sortableTh(column))}<th>İşlemler</th></tr></thead><tbody>
       {query.isLoading ? <tr><td colSpan={config.columns.length + 1} className="income-state">Yükleniyor…</td></tr>
         : query.isError ? <tr><td colSpan={config.columns.length + 1} className="income-state income-state-error">Veriler yüklenemedi: {query.error instanceof Error ? query.error.message : "Beklenmeyen hata"}</td></tr>
         : !rows.length ? <tr><td colSpan={config.columns.length + 1} className="income-state">Gösterilecek kayıt bulunamadı.</td></tr>
