@@ -30,14 +30,21 @@ describe("canonical Ebru visual architecture", () => {
     expect(reportsSource).toContain('className="report-page"');
   });
 
-  it("routes demo-backed pages to exact presentation modules instead of the generic adapter", () => {
-    expect(routeSource).toContain("<InvoiceListPage />");
-    expect(routeSource).toContain("<ExpenseListPage />");
-    expect(routeSource).toContain("<ProductsPage />");
-    expect(routeSource).toContain("<CrmCustomerListPage />");
-    expect(routeSource).toContain("<QuotesPage />");
-    expect(routeSource).not.toContain("canonicalParasutPages.invoices");
-    expect(routeSource).not.toContain("canonicalParasutPages.customers");
+  // The demo-era presentation modules asserted here previously (InvoiceListPage,
+  // ExpenseListPage, ProductsPage, CrmCustomerListPage, QuotesPage) queried
+  // src/features/erp/shared/erpApi.ts tables (stakeholders, invoices, ...)
+  // that were confirmed absent from production via read-only introspection
+  // (see docs/PARASUT_SCHEMA_ARCHITECTURE.md, "Live read-only verification").
+  // CanonicalParasutListPage renders resource-specific branches with the
+  // exact same CSS class contracts (crm-page, income-page, sales-page, ...)
+  // against the real, live parasut.* mirror tables — see
+  // docs/ERP_ROUTE_DATA_MAP.md.
+  it("routes production list pages through the live parasut.* adapter, matching each domain's approved CSS classes", () => {
+    expect(routeSource).toContain("canonicalParasutPages.invoices");
+    expect(routeSource).toContain("canonicalParasutPages.customers");
+    expect(routeSource).toContain("canonicalParasutPages.products");
+    expect(routeSource).toContain("canonicalParasutPages.offers");
+    expect(routeSource).toContain("canonicalParasutPages.suppliers");
   });
 
   it("does not mount obsolete standalone or primitive resource shells", () => {

@@ -76,26 +76,14 @@ describe("canonical ERP route coverage", () => {
 
   it("routes demo-backed canonical pages through their matching presentation components", () => {
     for (const component of [
-      "InvoiceListPage",
-      "CustomerListPage",
       "CollectionReportPage",
-      "ExpenseListPage",
-      "IncomingInvoicesPage",
       "IncomeExpenseReportPage",
       "PaymentsReportPage",
       "VatReportPage",
-      "ProductsPage",
-      "DispatchesPage",
-      "StockHistoryPage",
-      "StockReportPage",
-      "SuppliersPage",
       "OrdersPage",
-      "CashAccountsPage",
       "ChecksPage",
       "CashBankReportPage",
       "CashFlowReportPage",
-      "CrmCustomerListPage",
-      "QuotesPage",
       "SalesOrdersPage",
       "SalesActivitiesPage",
       "ProductionReportPage",
@@ -104,12 +92,29 @@ describe("canonical ERP route coverage", () => {
     }
   });
 
-  it("uses the generic live adapter only for production-only routes without demo counterparts", () => {
-    expect(routeContent).toContain("canonicalParasutPages.employees");
-    expect(routeContent).toContain("canonicalParasutPages.salaries");
-    expect(routeContent).toContain("canonicalParasutPages.eInvoices");
-    expect(routeContent).not.toContain("canonicalParasutPages.invoices");
-    expect(routeContent).not.toContain("canonicalParasutPages.customers");
+  // Routes whose demo-era presentation component queried a legacy table that
+  // does not exist in production (see docs/ERP_ROUTE_DATA_MAP.md, "Central
+  // finding") were repointed at the pre-existing, already-live
+  // canonicalParasutPages configs instead of inventing a new adapter.
+  it("uses the live parasut.* adapter for every route with a real mirror table", () => {
+    for (const resource of [
+      "employees",
+      "salaries",
+      "eInvoices",
+      "invoices",
+      "customers",
+      "suppliers",
+      "purchaseBills",
+      "expenses",
+      "accounts",
+      "products",
+      "stockHistory",
+      "inventory",
+      "shipments",
+      "offers",
+    ]) {
+      expect(routeContent).toContain(`canonicalParasutPages.${resource}`);
+    }
     expect(routeContent).not.toContain("CanonicalFinanceReportPage");
   });
 });
