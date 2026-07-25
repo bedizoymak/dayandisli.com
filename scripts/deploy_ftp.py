@@ -10,13 +10,31 @@ The build produces one `dist/` tree containing both production targets:
     dist/erp/assets/*
 
 Because `dist/erp` is already nested inside `dist`, a single recursive
-upload of `dist/` onto the remote root `/public_html` reproduces both
-targets in one pass:
+upload of `dist/` onto the remote deployment root reproduces both targets
+in one pass. Two account topologies are both supported, controlled by
+DAYAN_FTP_REMOTE_ROOT:
 
-    dist/index.html      -> /public_html/index.html
-    dist/assets/x        -> /public_html/assets/x
-    dist/erp/index.html  -> /public_html/erp/index.html
-    dist/erp/assets/x    -> /public_html/erp/assets/x
+  - The FTP account's own root is already jailed to the site's document
+    root (verified for dayandisli.com's account: connecting and listing
+    "/" shows index.html, erp/, assets/, .htaccess directly — there is no
+    /public_html subdirectory at all). Here REMOTE_ROOT="/" is correct:
+
+        dist/index.html      -> /index.html
+        dist/assets/x        -> /assets/x
+        dist/erp/index.html  -> /erp/index.html
+        dist/erp/assets/x    -> /erp/assets/x
+
+  - The FTP account's root is the real server filesystem root and the
+    site lives under a public_html subdirectory. Here
+    REMOTE_ROOT="/public_html" is correct:
+
+        dist/index.html      -> /public_html/index.html
+        dist/erp/index.html  -> /public_html/erp/index.html
+
+Only the historically-known-bad values are rejected outright (see
+resolve_remote_root): empty, the old ERP-only root, and the doubled ERP
+root. Whichever topology applies to a given account, always confirm it
+with a read-only directory listing before deploying — do not guess.
 
 Usage:
     python scripts/deploy_ftp.py                 # diff deploy (default)
@@ -32,10 +50,7 @@ Required user environment variables:
 
 Optional:
     DAYAN_FTP_PORT default: 21
-
-The remote deployment root is fixed at /public_html — this is the only
-value that correctly maps the combined dist/ tree onto the two production
-domains, so it is validated rather than left freely configurable.
+    DAYAN_FTP_REMOTE_ROOT default: /public_html
 """
 
 from __future__ import annotations
@@ -91,11 +106,15 @@ def remote_join(parent: str, name: str) -> str:
 
 
 def resolve_remote_root() -> str:
-    """The only correct remote root for the combined dist/ tree is /public_html.
+    """Resolve and sanity-check the remote deployment root.
 
-    Explicitly reject every historically-unsafe or ambiguous value: an empty
-    root, the bare filesystem root, the old ERP-only root, and the doubled
-    ERP root that would result from deploying the combined tree under it.
+    FTP accounts vary in topology: some are already jailed to the site's
+    document root (root "/" IS the docroot), others expose the real
+    filesystem root with the site under a public_html subdirectory. Both
+    are valid depending on DAYAN_FTP_REMOTE_ROOT — what's rejected here is
+    only the specific values that are unsafe or wrong *regardless* of
+    topology: an empty root, the old ERP-only root, and the doubled ERP
+    root that would result from deploying the combined tree under it.
     """
     raw = os.getenv("DAYAN_FTP_REMOTE_ROOT", "/public_html")
     if raw.strip() == "":
@@ -104,18 +123,11 @@ def resolve_remote_root() -> str:
     root = normalise(raw)
 
     forbidden = {
-        "/": "the bare server root would place the build outside /public_html entirely",
-        "/public_html/erp": "this was the old ERP-only root; the combined tree must land at /public_html",
+        "/public_html/erp": "this was the old ERP-only root; the combined tree must land one level up",
         "/public_html/erp/erp": "this would double-nest the ERP build under itself",
     }
     if root in forbidden:
         raise SystemExit(f"Refusing unsafe remote deployment root {root!r}: {forbidden[root]}")
-
-    if root != "/public_html":
-        raise SystemExit(
-            f"Remote deployment root must be exactly /public_html for the combined dist/ tree; "
-            f"got {root!r}. Refusing to deploy outside /public_html."
-        )
 
     return root
 
