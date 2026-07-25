@@ -1,12 +1,12 @@
 @echo off
 setlocal
-title Dayan Disli ERP Deploy
-cd /d "%userprofile%\Documents\dayandisli.com"
+title Dayan Disli Combined Deploy
+cd /d "%~dp0.."
 
 if not exist "package.json" (
   echo.
   echo HATA: Proje klasoru bulunamadi veya package.json yok.
-  echo Beklenen klasor: %userprofile%\Documents\dayandisli.com
+  echo Beklenen klasor: bu script'in bir ust dizini.
   pause
   exit /b 1
 )
@@ -17,6 +17,11 @@ if not exist "scripts\deploy_ftp.py" (
   pause
   exit /b 1
 )
+
+echo.
+echo === DEPENDENCIES ===
+call npm install
+if errorlevel 1 goto :error
 
 echo.
 echo === TYPECHECK ===
@@ -34,13 +39,25 @@ call npm run build
 if errorlevel 1 goto :error
 
 echo.
-echo === FTP DIFF DEPLOY ===
-python scripts\deploy_ftp.py --diff
+echo === VERIFY COMBINED BUILD OUTPUT ===
+if not exist "dist\index.html" (
+  echo HATA: dist\index.html bulunamadi.
+  goto :error
+)
+if not exist "dist\erp\index.html" (
+  echo HATA: dist\erp\index.html bulunamadi.
+  goto :error
+)
+echo dist\index.html ve dist\erp\index.html mevcut.
+
+echo.
+echo === FTP FULL DEPLOY: dist/ -^> /public_html ===
+python scripts\deploy_ftp.py --full
 if errorlevel 1 goto :error
 
 echo.
 echo === DEPLOY BASARILI ===
-echo Ozet kontrolu: Errors 0 olmali.
+echo dist/ -^> /public_html tamamlandi (root site + nested erp). Ozet kontrolu: Errors 0 olmali.
 pause
 exit /b 0
 

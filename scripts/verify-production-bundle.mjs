@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const outputDirectory = fileURLToPath(new URL("../dist/erp/", import.meta.url));
+const outputDirectory = fileURLToPath(new URL("../dist/", import.meta.url));
 const forbidden = [
   "INV-DEMO-2026-001",
   "[DEMO] Atlas Makina",
