@@ -1,12 +1,15 @@
 import { type ReactNode } from "react";
 import { Filter, Plus, Search, Upload } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   FinanceBackLink,
   FinanceBreadcrumb,
   FinanceExportMenu,
+  RowActionsMenu,
+  printReport,
   type ExportColumn,
 } from "./FinanceNavigationTools";
+import { PartyLedgerEntryDialog } from "./PartyLedgerEntryDialog";
 import {
   dispatches,
   orders,
@@ -16,6 +19,13 @@ import {
   suppliers,
 } from "./operationsData";
 import "./operations-pages.css";
+
+const suppliersBase = "/demo/finance/purchasing/suppliers";
+
+function lastPathSegment(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  return decodeURIComponent(segments[segments.length - 1] ?? "");
+}
 
 const root = "/demo/finance";
 function Header({
@@ -400,6 +410,9 @@ export function StockHistoryPage() {
 }
 export function StockReportPage() {
   const rows = products.filter((p) => p.stock > 0);
+  const totalCost = rows.reduce((sum, r) => sum + r.stock * r.purchase, 0);
+  const totalSales = rows.reduce((sum, r) => sum + r.stock * r.sale, 0);
+  const totalProfit = totalSales - totalCost;
   const columns = [
     ...productColumns,
     {
@@ -424,23 +437,31 @@ export function StockReportPage() {
         breadcrumb="Muhasebe ve Finans / Stok Yönetimi / Stoktaki Ürünler Raporu"
         title="Stoktaki Ürünler Raporu"
       />
+      <Filters />
       <section className="ops-kpis">
         <article className="ebru-card">
-          Toplam Stok Maliyeti<strong>₺226.960</strong>
+          Toplam Stok Maliyeti
+          <strong>₺{totalCost.toLocaleString("tr-TR")}</strong>
         </article>
         <article className="ebru-card">
-          Toplam Satış Değeri<strong>₺350.060</strong>
+          Toplam Satış Değeri
+          <strong>₺{totalSales.toLocaleString("tr-TR")}</strong>
         </article>
         <article className="ebru-card">
-          Tahmini Kâr<strong>₺123.100</strong>
+          Tahmini Kâr
+          <strong>₺{totalProfit.toLocaleString("tr-TR")}</strong>
         </article>
       </section>
-      <Table
-        rows={rows}
-        columns={columns}
-        title="Stoktaki Ürünler Raporu"
-        filename="stok-raporu"
-      />
+      {rows.length ? (
+        <Table
+          rows={rows}
+          columns={columns}
+          title="Stoktaki Ürünler Raporu"
+          filename="stok-raporu"
+        />
+      ) : (
+        <p className="ops-empty">Stokta ürün bulunamadı.</p>
+      )}
     </div>
   );
 }
@@ -465,12 +486,181 @@ export function SuppliersPage() {
         }}
       />
       <Filters />
-      <Table
-        rows={suppliers}
-        columns={supplierColumns}
-        title="Tedarikçiler"
-        filename="tedarikciler"
+      <div className="ops-export">
+        <FinanceExportMenu
+          rows={suppliers}
+          columns={supplierColumns}
+          title="Tedarikçiler"
+          filename="tedarikciler"
+        />
+      </div>
+      <div className="ebru-card ops-table">
+        <table>
+          <thead>
+            <tr>
+              {supplierColumns.map((column) => (
+                <th key={column.header}>{column.header}</th>
+              ))}
+              <th>İşlemler</th>
+            </tr>
+          </thead>
+          <tbody>
+            {suppliers.map((row) => (
+              <tr key={row.taxNo}>
+                <td>
+                  <Link
+                    className="ops-cell-link"
+                    to={`${suppliersBase}/${encodeURIComponent(row.taxNo)}`}
+                  >
+                    {row.name}
+                  </Link>
+                </td>
+                {supplierColumns.slice(1).map((column) => (
+                  <td key={column.header}>{column.value(row)}</td>
+                ))}
+                <td>
+                  <RowActionsMenu
+                    actions={[
+                      {
+                        label: "Görüntüle",
+                        href: `${suppliersBase}/${encodeURIComponent(row.taxNo)}`,
+                      },
+                      {
+                        label: "Dışa Aktar",
+                        onSelect: () =>
+                          printReport(
+                            row.name,
+                            supplierColumns,
+                            [row],
+                            `Tedarikçi: ${row.name}`,
+                          ),
+                      },
+                    ]}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export function SupplierDetailPage() {
+  const location = useLocation();
+  const taxNo = lastPathSegment(location.pathname);
+  const supplier = suppliers.find((row) => row.taxNo === taxNo);
+
+  if (!supplier) {
+    return (
+      <div className="ops-page">
+        <Header
+          breadcrumb="Muhasebe ve Finans / Satın Alma / Tedarikçiler"
+          title="Tedarikçi Bulunamadı"
+        />
+        <FinanceBackLink to={`${root}/purchasing/suppliers`}>
+          Tedarikçilere Dön
+        </FinanceBackLink>
+        <p className="ops-empty">
+          "{taxNo}" vergi numarasına ait bir tedarikçi bulunamadı.
+        </p>
+      </div>
+    );
+  }
+
+  const relatedDispatches = dispatches.filter(
+    (row) => row.party === supplier.name,
+  );
+
+  return (
+    <div className="ops-page">
+      <Header
+        breadcrumb={`Muhasebe ve Finans / Satın Alma / Tedarikçiler / ${supplier.name}`}
+        title={supplier.name}
       />
+      <FinanceBackLink to={`${root}/purchasing/suppliers`}>
+        Tedarikçilere Dön
+      </FinanceBackLink>
+      <section className="ebru-card ops-supplier-card">
+        <header className="ops-supplier-head">
+          <div>
+            <h2>{supplier.name}</h2>
+            <span>{supplier.short}</span>
+          </div>
+          <PartyLedgerEntryDialog
+            kind="payment"
+            partyLabel="Tedarikçi"
+            partyName={supplier.name}
+            trigger={
+              <button type="button" className="ops-supplier-payment">
+                Ödeme Ekle
+              </button>
+            }
+          />
+        </header>
+        <div className="ops-supplier-grid">
+          <div>
+            <h3>Kimlik ve Vergi Bilgileri</h3>
+            <dl>
+              <div>
+                <dt>Vergi No</dt>
+                <dd>{supplier.taxNo}</dd>
+              </div>
+              <div>
+                <dt>İl</dt>
+                <dd>{supplier.city}</dd>
+              </div>
+            </dl>
+          </div>
+          <div>
+            <h3>İletişim</h3>
+            <dl>
+              <div>
+                <dt>Telefon</dt>
+                <dd>{supplier.phone}</dd>
+              </div>
+              <div>
+                <dt>E-posta</dt>
+                <dd>{supplier.email}</dd>
+              </div>
+              <div>
+                <dt>Yetkili Kişi</dt>
+                <dd>{supplier.contact}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
+      <section className="ebru-card ops-supplier-history">
+        <h3>İrsaliye Geçmişi</h3>
+        {relatedDispatches.length ? (
+          <table>
+            <thead>
+              <tr>
+                <th>İrsaliye No</th>
+                <th>Tür</th>
+                <th>Tarih</th>
+                <th>Miktar</th>
+                <th>Durum</th>
+              </tr>
+            </thead>
+            <tbody>
+              {relatedDispatches.map((row) => (
+                <tr key={row.no}>
+                  <td>{row.no}</td>
+                  <td>{row.type}</td>
+                  <td>{row.date}</td>
+                  <td>{row.quantity}</td>
+                  <td>{row.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="ops-empty">Bu tedarikçiye ait irsaliye bulunamadı.</p>
+        )}
+      </section>
     </div>
   );
 }

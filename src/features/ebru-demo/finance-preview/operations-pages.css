@@ -169,6 +169,110 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+.ops-cell-link {
+  color: #64b1ff;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ops-cell-link:hover {
+  text-decoration: underline;
+}
+.ops-cell-link:focus-visible {
+  outline: 2px solid #64b1ff;
+  outline-offset: 2px;
+}
+.ops-empty {
+  padding: 24px;
+  text-align: center;
+  color: #8297ad;
+}
+.ops-supplier-card {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.ops-supplier-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.ops-supplier-head h2 {
+  margin: 0;
+  color: #f3f7fc;
+  font-size: 20px;
+}
+.ops-supplier-head span {
+  color: #8499af;
+  font-size: 12px;
+}
+.ops-supplier-payment {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid #246da9;
+  background: #14518a;
+  color: #fff;
+  cursor: pointer;
+}
+.ops-supplier-payment:hover {
+  background: #1a63a8;
+}
+.ops-supplier-payment:focus-visible {
+  outline: 2px solid #6eb6ff;
+  outline-offset: 2px;
+}
+.ops-supplier-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+.ops-supplier-grid h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #8fa2b9;
+  text-transform: uppercase;
+}
+.ops-supplier-grid dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ops-supplier-grid dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.ops-supplier-grid dt {
+  color: #8499af;
+}
+.ops-supplier-grid dd {
+  margin: 0;
+  color: #e7eef6;
+}
+.ops-supplier-history {
+  padding: 18px;
+}
+.ops-supplier-history h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #dbe8f6;
+}
+.ops-supplier-history table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.ops-supplier-history th,
+.ops-supplier-history td {
+  text-align: left;
+  padding: 8px 6px;
+  border-top: 1px solid #20364d;
+  color: #b9c8d8;
+}
+
 @media (max-width: 650px) {
   .ops-page {
     padding: 14px;
@@ -187,5 +291,8 @@
   }
   .ops-filters {
     overflow-x: auto;
+  }
+  .ops-supplier-grid {
+    grid-template-columns: 1fr;
   }
 }

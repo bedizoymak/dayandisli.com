@@ -2,9 +2,11 @@ import { useState, type ReactNode } from "react";
 import { Filter, Landmark, Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
+  FinanceBackLink,
   FinanceBreadcrumb,
   FinanceExportMenu,
   type ExportColumn,
+  type PdfReportExtras,
 } from "./FinanceNavigationTools";
 import {
   incomeExpenseReport,
@@ -13,6 +15,7 @@ import {
   vatDetails,
   vatMonths,
 } from "./financeReportData";
+import { expenseRows } from "./financeExpenseData";
 import {
   cashAccounts,
   cashChart,
@@ -30,6 +33,7 @@ function Header<T>({
   columns,
   filename,
   actions,
+  pdfExtras,
 }: {
   breadcrumb: string;
   title: string;
@@ -37,6 +41,7 @@ function Header<T>({
   columns?: ExportColumn<T>[];
   filename?: string;
   actions?: ReactNode;
+  pdfExtras?: PdfReportExtras;
 }) {
   return (
     <header className="report-head">
@@ -52,6 +57,7 @@ function Header<T>({
             rows={rows}
             columns={columns}
             filename={filename}
+            pdfExtras={pdfExtras}
           />
         )}
       </div>
@@ -209,6 +215,13 @@ export function IncomeExpenseReportPage() {
   );
 }
 
+const paymentsReportKpis = [
+  { label: "Planlanmamış", value: "₺199K" },
+  { label: "Vadesi Geçen", value: "₺1,30M" },
+  { label: "Toplam Ödeme", value: "₺1,62M" },
+  { label: "Ort. Vade Aşımı", value: "42 gün" },
+];
+
 export function PaymentsReportPage() {
   return (
     <div className="report-page">
@@ -218,18 +231,23 @@ export function PaymentsReportPage() {
         rows={pendingPayments}
         columns={paymentColumns}
         filename="odemeler-raporu"
+        pdfExtras={{
+          kpis: paymentsReportKpis,
+          chart: {
+            title: "Ödeme Yaşlandırması",
+            bars: paymentAging.map((item) => ({
+              label: item.label,
+              value: item.value,
+            })),
+          },
+        }}
       />
       <DateFilters />
       <section className="report-kpis">
-        {[
-          ["Planlanmamış", "₺199K"],
-          ["Vadesi Geçen", "₺1,30M"],
-          ["Toplam Ödeme", "₺1,62M"],
-          ["Ort. Vade Aşımı", "42 gün"],
-        ].map((kpi) => (
-          <article className="ebru-card" key={kpi[0]}>
-            <span>{kpi[0]}</span>
-            <strong>{kpi[1]}</strong>
+        {paymentsReportKpis.map((kpi) => (
+          <article className="ebru-card" key={kpi.label}>
+            <span>{kpi.label}</span>
+            <strong>{kpi.value}</strong>
           </article>
         ))}
       </section>
@@ -246,7 +264,44 @@ export function PaymentsReportPage() {
         </div>
       </article>
       <h2 className="report-section-title">Bekleyen Ödemeler</h2>
-      <Table rows={pendingPayments} columns={paymentColumns} />
+      <div className="ebru-card report-table">
+        <table>
+          <thead>
+            <tr>
+              {paymentColumns.map((column) => (
+                <th key={column.header}>{column.header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {pendingPayments.map((row) => {
+              const expense = expenseRows.find(
+                (item) => item.name === row.name,
+              );
+              return (
+                <tr key={row.name}>
+                  <td>
+                    {expense ? (
+                      <Link
+                        className="report-cell-link"
+                        to={`/demo/finance/expense/list/${encodeURIComponent(expense.document)}`}
+                      >
+                        {row.name}
+                      </Link>
+                    ) : (
+                      row.name
+                    )}
+                  </td>
+                  <td>{row.issue}</td>
+                  <td>{row.due}</td>
+                  <td>{row.delay}</td>
+                  <td>{row.amount}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -330,15 +385,15 @@ export function CashAccountsPage() {
         filename="kasa-ve-bankalar"
         actions={
           <div className="report-actions">
-            <button>
+            <button type="button" disabled title="Bu demo ortamında devre dışıdır">
               <Landmark /> Banka Hesabı Bağla
             </button>
-            <button>
+            <Link className="report-action-link" to="/demo/finance/cash/accounts/new-cash">
               <Plus /> Kasa Ekle
-            </button>
-            <button>
+            </Link>
+            <Link className="report-action-link" to="/demo/finance/cash/accounts/new-bank">
               <Plus /> Banka Ekle
-            </button>
+            </Link>
           </div>
         }
       />
@@ -514,6 +569,183 @@ export function CashFlowReportPage() {
       </article>
       <h2 className="report-section-title">Yapılacak Tahsilat ve Ödemeler</h2>
       <Table rows={flowTransactions} columns={flowColumns} />
+    </div>
+  );
+}
+
+const accountsBase = "/demo/finance/cash/accounts";
+const banks = [
+  "Garanti BBVA",
+  "Akbank",
+  "İş Bankası",
+  "Yapı Kredi",
+  "Ziraat Bankası",
+  "QNB Finansbank",
+];
+
+function AccountFormActions() {
+  return (
+    <div className="report-form-actions">
+      <Link to={accountsBase}>Vazgeç</Link>
+      <button type="submit">Kaydet</button>
+    </div>
+  );
+}
+
+export function CashAccountFormPage() {
+  return (
+    <div className="report-page">
+      <header className="report-form-head">
+        <div>
+          <FinanceBreadcrumb value="Muhasebe ve Finans / Kasa / Kasa ve Bankalar / Yeni Kasa" />
+          <FinanceBackLink to={accountsBase}>
+            Kasa ve Bankalara Dön
+          </FinanceBackLink>
+          <h1>Yeni Kasa</h1>
+        </div>
+        <AccountFormActions />
+      </header>
+      <form
+        className="ebru-card report-account-form"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <div className="report-account-fields">
+          <label>
+            Hesap İsmi *
+            <input required placeholder="Örn. Merkez Kasa" />
+          </label>
+          <label>
+            Sorumlu Kişi
+            <input placeholder="Örn. Ahmet Yılmaz" />
+          </label>
+          <label>
+            Döviz Cinsi
+            <select defaultValue="TRY">
+              <option value="TRY">₺ - Türk Lirası</option>
+              <option value="USD">$ - Amerikan Doları</option>
+              <option value="EUR">€ - Euro</option>
+            </select>
+          </label>
+          <label>
+            Durum
+            <select defaultValue="active">
+              <option value="active">Aktif</option>
+              <option value="inactive">Pasif</option>
+            </select>
+          </label>
+          <label>
+            Açılış Bakiyesi
+            <input type="number" defaultValue="0" step="0.01" />
+          </label>
+          <label>
+            Açılış Bakiyesi Tarihi
+            <input type="date" />
+          </label>
+          <label className="wide">
+            Açıklama / Notlar
+            <textarea rows={3} />
+          </label>
+        </div>
+        <p className="report-account-hint">
+          Paraşüt tarafında bu kasaya bağlı işlemler, yalnızca bu demo
+          ortamında görüntülenir; gerçek bir muhasebe kaydı oluşturulmaz.
+        </p>
+      </form>
+    </div>
+  );
+}
+
+export function BankAccountFormPage() {
+  return (
+    <div className="report-page">
+      <header className="report-form-head">
+        <div>
+          <FinanceBreadcrumb value="Muhasebe ve Finans / Kasa / Kasa ve Bankalar / Yeni Banka" />
+          <FinanceBackLink to={accountsBase}>
+            Kasa ve Bankalara Dön
+          </FinanceBackLink>
+          <h1>Yeni Banka</h1>
+        </div>
+        <AccountFormActions />
+      </header>
+      <form
+        className="ebru-card report-account-form"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <div className="report-account-fields">
+          <label>
+            Hesap İsmi *
+            <input required placeholder="Örn. Garanti BBVA Ana Hesap" />
+          </label>
+          <label>
+            Banka *
+            <select required defaultValue="">
+              <option value="" disabled>
+                Seçiniz
+              </option>
+              {banks.map((bank) => (
+                <option key={bank}>{bank}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Banka Şubesi
+            <input placeholder="Örn. Levent Şubesi" />
+          </label>
+          <label>
+            Hesap Sahibi / Firma
+            <input placeholder="Örn. Dayan Dişli San. Tic. A.Ş." />
+          </label>
+          <label>
+            Hesap Numarası
+            <input />
+          </label>
+          <label className="wide">
+            IBAN
+            <input placeholder="TR.. .... .... .... .... .... .." />
+          </label>
+          <label>
+            Döviz Cinsi
+            <select defaultValue="TRY">
+              <option value="TRY">₺ - Türk Lirası</option>
+              <option value="USD">$ - Amerikan Doları</option>
+              <option value="EUR">€ - Euro</option>
+            </select>
+          </label>
+          <label>
+            Hesap Türü
+            <select defaultValue="vadesiz">
+              <option value="vadesiz">Vadesiz Hesap</option>
+              <option value="vadeli">Vadeli Hesap</option>
+              <option value="kredi">Kredi Hesabı</option>
+            </select>
+          </label>
+          <label>
+            Durum
+            <select defaultValue="active">
+              <option value="active">Aktif</option>
+              <option value="inactive">Pasif</option>
+            </select>
+          </label>
+          <label>
+            Açılış Bakiyesi
+            <input type="number" defaultValue="0" step="0.01" />
+          </label>
+          <label>
+            Açılış Bakiyesi Tarihi
+            <input type="date" />
+          </label>
+          <label className="wide">
+            Açıklama / Notlar
+            <textarea rows={3} />
+          </label>
+        </div>
+        <p className="report-account-hint">
+          Paraşüt tarafında bu şirket ve bankaya gireceğiniz işlemler bu
+          hesaba otomatik bağlanmayacaktır; bu demo ortamında yalnızca
+          görüntüleme amaçlıdır.
+        </p>
+      </form>
     </div>
   );
 }

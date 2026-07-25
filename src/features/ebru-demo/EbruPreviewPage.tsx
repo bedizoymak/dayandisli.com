@@ -46,15 +46,21 @@ import {
   CollectionReportPage,
   CustomerFormPage,
   CustomerListPage,
+  FinanceCustomerDetailPage,
+  InvoiceDetailPage,
   InvoiceListPage,
 } from "./finance-preview/FinanceIncomePages";
 import {
+  ExpenseDetailPage,
   ExpenseInvoicePage,
   ExpenseListPage,
+  IncomingInvoiceDetailPage,
   IncomingInvoicesPage,
   SimpleExpenseForm,
 } from "./finance-preview/FinanceExpensePages";
 import {
+  BankAccountFormPage,
+  CashAccountFormPage,
   CashAccountsPage,
   CashBankReportPage,
   CashFlowReportPage,
@@ -73,6 +79,7 @@ import {
   ProductsPage,
   StockHistoryPage,
   StockReportPage,
+  SupplierDetailPage,
   SupplierFormPage,
   SuppliersPage,
 } from "./finance-preview/OperationsPages";
@@ -228,7 +235,13 @@ export default function EbruPreviewPage() {
   }, [quickOpen]);
 
   useEffect(() => {
-    if (location.pathname.includes("/reports/")) {
+    if (location.pathname === "/demo") {
+      setActiveView("dashboard");
+    } else if (location.pathname === "/demo/finance") {
+      setActiveView("finance");
+      setOpenSection("finance");
+      setActiveFinancePage("overview");
+    } else if (location.pathname.includes("/reports/")) {
       setActiveView("reports");
       setOpenSection("reports");
     } else if (location.pathname.includes("/sales/")) {
@@ -305,7 +318,7 @@ export default function EbruPreviewPage() {
       setActiveView("finance");
       setOpenSection("finance");
       setExpandedFinanceGroup("cash");
-      if (location.pathname.endsWith("/accounts"))
+      if (location.pathname.includes("/accounts"))
         setActiveFinancePage("cash-accounts");
       else if (location.pathname.endsWith("/checks"))
         setActiveFinancePage("checks");
@@ -372,8 +385,13 @@ export default function EbruPreviewPage() {
                     <button
                       className={`ebru-nav-link ebru-finance-trigger${activeView === "finance" ? " active" : ""}`}
                       onClick={() => {
+                        const isOpen = openSection === "finance";
                         toggleSection("finance");
-                        setActiveView("finance");
+                        if (!isOpen) {
+                          setActiveFinancePage("overview");
+                          setActiveView("finance");
+                          navigate("/demo/finance");
+                        }
                         setMobileOpen(false);
                       }}
                     >
@@ -396,7 +414,7 @@ export default function EbruPreviewPage() {
                           onClick={() => {
                             setActiveFinancePage("overview");
                             setActiveView("finance");
-                            navigate("/demo");
+                            navigate("/demo/finance");
                           }}
                         >
                           Güncel Durum
@@ -764,6 +782,14 @@ export default function EbruPreviewPage() {
           ) : activeView === "finance" ? (
             location.pathname.endsWith("/finance/income/invoices/new") ? (
               <SalesInvoiceForm />
+            ) : /\/finance\/income\/invoices\/[^/]+\/edit$/.test(
+                location.pathname,
+              ) ? (
+              <SalesInvoiceForm mode="edit" />
+            ) : /\/finance\/income\/invoices\/[^/]+$/.test(
+                location.pathname,
+              ) ? (
+              <InvoiceDetailPage />
             ) : location.pathname.endsWith(
                 "/finance/expense/list/new/invoice",
               ) ? (
@@ -792,16 +818,26 @@ export default function EbruPreviewPage() {
               <CustomerFormPage />
             ) : location.pathname.endsWith("/finance/income/customers") ? (
               <CustomerListPage />
+            ) : /\/finance\/income\/customers\/[^/]+$/.test(
+                location.pathname,
+              ) ? (
+              <FinanceCustomerDetailPage />
             ) : location.pathname.endsWith(
                 "/finance/income/collection-report",
               ) ? (
               <CollectionReportPage />
             ) : location.pathname.endsWith("/finance/expense/list") ? (
               <ExpenseListPage />
+            ) : /\/finance\/expense\/list\/[^/]+$/.test(location.pathname) ? (
+              <ExpenseDetailPage />
             ) : location.pathname.endsWith(
                 "/finance/expense/incoming-invoices",
               ) ? (
               <IncomingInvoicesPage />
+            ) : /\/finance\/expense\/incoming-invoices\/[^/]+$/.test(
+                location.pathname,
+              ) ? (
+              <IncomingInvoiceDetailPage />
             ) : location.pathname.endsWith(
                 "/finance/expense/income-expense-report",
               ) ? (
@@ -846,10 +882,22 @@ export default function EbruPreviewPage() {
               <SupplierFormPage />
             ) : location.pathname.endsWith("/finance/purchasing/suppliers") ? (
               <SuppliersPage />
+            ) : /\/finance\/purchasing\/suppliers\/[^/]+$/.test(
+                location.pathname,
+              ) ? (
+              <SupplierDetailPage />
             ) : location.pathname.endsWith("/finance/purchasing/orders/new") ? (
               <OrderFormPage />
             ) : location.pathname.endsWith("/finance/purchasing/orders") ? (
               <OrdersPage />
+            ) : location.pathname.endsWith(
+                "/finance/cash/accounts/new-cash",
+              ) ? (
+              <CashAccountFormPage />
+            ) : location.pathname.endsWith(
+                "/finance/cash/accounts/new-bank",
+              ) ? (
+              <BankAccountFormPage />
             ) : location.pathname.endsWith("/finance/cash/accounts") ? (
               <CashAccountsPage />
             ) : location.pathname.endsWith("/finance/cash/checks") ? (

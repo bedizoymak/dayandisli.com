@@ -1,22 +1,50 @@
+import { useLocation } from "react-router-dom";
 import {
   FinanceFormSection,
   FinanceMetadataPanel,
   FinancePageHeader,
 } from "./FinanceFormComponents";
 import { InvoiceLineItemsTable } from "./InvoiceLineItemsTable";
-import { salesInvoiceDefaults } from "./financeFormData";
+import { salesInvoiceCategories, salesInvoiceDefaults } from "./financeFormData";
+import { invoiceRows } from "./financeIncomeData";
 import "./finance-forms.css";
 
 const incomeBase = "/demo/finance/income/invoices";
-export function SalesInvoiceForm() {
-  const data = salesInvoiceDefaults;
+
+function lastPathSegment(pathname: string, dropTrailing?: string) {
+  const trimmed = dropTrailing
+    ? pathname.replace(new RegExp(`/${dropTrailing}$`), "")
+    : pathname;
+  const segments = trimmed.split("/").filter(Boolean);
+  return decodeURIComponent(segments[segments.length - 1] ?? "");
+}
+
+export function SalesInvoiceForm({ mode = "create" }: { mode?: "create" | "edit" }) {
+  const location = useLocation();
+  const editingNo =
+    mode === "edit" ? lastPathSegment(location.pathname, "edit") : undefined;
+  const editingRow = editingNo
+    ? invoiceRows.find((row) => row.no === editingNo)
+    : undefined;
+  const data = editingRow
+    ? {
+        ...salesInvoiceDefaults,
+        name: `${editingRow.no} Faturası`,
+        customer: editingRow.customer,
+        issueDate: salesInvoiceDefaults.issueDate,
+        dueDate: salesInvoiceDefaults.dueDate,
+      }
+    : salesInvoiceDefaults;
+  const title = editingRow ? `Fatura Düzenle · ${editingRow.no}` : "Yeni Fatura";
+  const cancelTo = editingRow ? `${incomeBase}/${editingRow.no}` : incomeBase;
+
   return (
     <div className="finance-form-page">
       <FinancePageHeader
-        breadcrumb="Muhasebe ve Finans / Gelir Yönetimi / Faturalar / Yeni Fatura"
-        title="Yeni Fatura"
-        cancelTo={incomeBase}
-        backLabel="Faturalara Dön"
+        breadcrumb={`Muhasebe ve Finans / Gelir Yönetimi / Faturalar / ${title}`}
+        title={title}
+        cancelTo={cancelTo}
+        backLabel={editingRow ? "Faturaya Dön" : "Faturalara Dön"}
       />
       <form
         className="finance-form-layout"
@@ -104,6 +132,7 @@ export function SalesInvoiceForm() {
         <FinanceMetadataPanel
           categoryLabel="Fatura Kategorisi"
           category={data.category}
+          categoryOptions={salesInvoiceCategories}
           tags={data.tags}
         />
       </form>

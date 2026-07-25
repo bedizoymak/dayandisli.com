@@ -17,6 +17,14 @@ __pycache__
 .env.local
 .env.*.local
 
+# Local secret-setup backups (never committed)
+tools/local/backups/
+tools/local/*.bak
+
+# Workstation-specific bootstrap artifacts (paths/state tied to this machine)
+tools/local/profile-snippet.ps1
+docs/POST_FORMAT_WORKSTATION_RECOVERY.md
+
 # Playwright
 /playwright-report
 /test-results

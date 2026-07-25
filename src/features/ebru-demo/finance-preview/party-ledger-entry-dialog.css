@@ -1,0 +1,112 @@
+.ledger-trigger {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #246da9;
+  border-radius: 8px;
+  background: #14518a;
+  color: #fff;
+  cursor: pointer;
+}
+.ledger-trigger:hover {
+  background: #1a63a8;
+}
+.ledger-trigger:focus-visible {
+  outline: 2px solid #6eb6ff;
+  outline-offset: 2px;
+}
+.ledger-dialog {
+  background: #0b1929;
+  border-color: #29415b;
+  color: #e7eef6;
+}
+.ledger-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ledger-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: #b9c8d8;
+}
+.ledger-form input,
+.ledger-form select,
+.ledger-form textarea {
+  height: 36px;
+  border-radius: 7px;
+  border: 1px solid #29415b;
+  background: #0f2136;
+  color: #e7eef6;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.ledger-form textarea {
+  height: auto;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.ledger-static input {
+  color: #8fa2b9;
+}
+.ledger-fields.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ledger-error {
+  color: #ff8388;
+  font-size: 12px;
+  margin: 0;
+}
+.ledger-actions {
+  margin-top: 4px;
+}
+.ledger-secondary,
+.ledger-primary {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.ledger-secondary {
+  border: 1px solid #29415b;
+  background: transparent;
+  color: #cbd9e9;
+}
+.ledger-secondary:hover {
+  background: #142b43;
+}
+.ledger-primary {
+  border: 1px solid #246da9;
+  background: #14518a;
+  color: #fff;
+}
+.ledger-primary:hover {
+  background: #1a63a8;
+}
+.ledger-secondary:focus-visible,
+.ledger-primary:focus-visible {
+  outline: 2px solid #6eb6ff;
+  outline-offset: 2px;
+}
+.ledger-success {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.ledger-success-detail {
+  color: #8fa2b9;
+  font-size: 12px;
+  margin: 0;
+}
+
+@media (prefers-color-scheme: light) {
+  .ledger-dialog {
+    background: #ffffff;
+    color: #17222f;
+  }
+}

@@ -50,6 +50,111 @@
 .report-filters svg {
   width: 14px;
 }
+.report-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.report-action-link {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #2a5478;
+  border-radius: 8px;
+  background: #123c63;
+  color: #ddebfa;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  text-decoration: none;
+}
+.report-action-link:hover {
+  background: #164a76;
+}
+.report-action-link:focus-visible {
+  outline: 2px solid #6eb6ff;
+  outline-offset: 2px;
+}
+.report-action-link svg {
+  width: 14px;
+}
+.report-form-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.report-form-head h1 {
+  margin: 6px 0 0;
+  font-size: 26px;
+}
+.report-form-actions {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.report-form-actions a,
+.report-form-actions button {
+  height: 39px;
+  padding: 0 16px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.report-form-actions a {
+  border: 1px solid #2a4058;
+  background: #0e1e30;
+  color: #cbd9e9;
+}
+.report-form-actions button {
+  border: 1px solid #246da9;
+  background: #14518a;
+  color: #fff;
+}
+.report-account-form {
+  padding: 20px;
+}
+.report-account-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.report-account-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #b9c8d8;
+}
+.report-account-fields .wide {
+  grid-column: 1 / -1;
+}
+.report-account-fields input,
+.report-account-fields select,
+.report-account-fields textarea {
+  height: 38px;
+  border-radius: 7px;
+  border: 1px solid #29415b;
+  background: #0f2136;
+  color: #e7eef6;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.report-account-fields textarea {
+  height: auto;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.report-account-hint {
+  margin: 16px 0 0;
+  color: #7f93a9;
+  font-size: 11px;
+}
+@media (max-width: 650px) {
+  .report-account-fields {
+    grid-template-columns: 1fr;
+  }
+}
 .report-filters {
   display: flex;
   align-items: flex-end;
@@ -277,6 +382,19 @@
   padding: 11px 10px;
   border-top: 1px solid #20364d;
   color: #b9c8d8;
+}
+.report-cell-link {
+  color: #65b5ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.report-cell-link:hover {
+  color: #9ccfff;
+}
+.report-cell-link:focus-visible {
+  outline: 2px solid #65b5ff;
+  outline-offset: 2px;
 }
 .report-more {
   margin: 8px 0;

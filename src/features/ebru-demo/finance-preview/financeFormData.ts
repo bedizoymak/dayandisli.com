@@ -1,3 +1,11 @@
+export const salesInvoiceCategories = [
+  "Yurtiçi Satışlar",
+  "İhracat Satışları",
+  "Hizmet Satışları",
+  "Yedek Parça Satışları",
+  "Diğer Satışlar",
+];
+
 export const salesInvoiceDefaults = {
   name: "Temmuz Satış Faturası",
   customer: "ABC Otomotiv A.Ş.",

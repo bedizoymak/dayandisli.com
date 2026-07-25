@@ -1,25 +1,30 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   Download,
   Eye,
   FileInput,
-  MoreHorizontal,
+  Loader2,
   Plus,
   Search,
   Upload,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   FinanceFormSection,
   FinanceMetadataPanel,
+  FinancePageHeader,
 } from "./FinanceFormComponents";
 import { InvoiceLineItemsTable } from "./InvoiceLineItemsTable";
 import {
   FinanceBackLink,
   FinanceBreadcrumb,
   FinanceExportMenu,
+  RowActionsMenu,
+  printReport,
+  type ExportColumn,
 } from "./FinanceNavigationTools";
+import { suppliers } from "./operationsData";
 import {
   expenseFormDefaults,
   expensePaymentStatuses,
@@ -31,6 +36,40 @@ import {
 import "./finance-expense.css";
 
 const base = "/demo/finance/expense/list";
+const incomingBase = "/demo/finance/expense/incoming-invoices";
+const purchasingSuppliersBase = "/demo/finance/purchasing/suppliers";
+
+function lastPathSegment(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  return decodeURIComponent(segments[segments.length - 1] ?? "");
+}
+
+function findSupplierByName(name: string) {
+  return suppliers.find((supplier) => supplier.name === name);
+}
+
+const expenseColumns: ExportColumn<(typeof expenseRows)[number]>[] = [
+  { header: "Kayıt İsmi", value: (row) => row.name },
+  { header: "Tedarikçi / Çalışan", value: (row) => row.party },
+  { header: "Kayıt Türü", value: (row) => row.type },
+  { header: "Düzenleme Tarihi", value: (row) => row.issue },
+  { header: "Belge No", value: (row) => row.document },
+  { header: "Vade Tarihi", value: (row) => row.due },
+  { header: "Toplam Tutar", value: (row) => row.total },
+  { header: "Ödeme Durumu", value: (row) => row.payment },
+  { header: "Durum", value: (row) => row.status },
+];
+
+const incomingInvoiceColumns: ExportColumn<
+  (typeof incomingInvoiceRows)[number]
+>[] = [
+  { header: "Gönderen Ünvan", value: (row) => row.sender },
+  { header: "Fatura No", value: (row) => row.number },
+  { header: "Fatura Türü", value: (row) => row.type },
+  { header: "Fatura Tarihi", value: (row) => row.date },
+  { header: "Fatura Tutarı", value: (row) => row.total },
+  { header: "Durum", value: (row) => row.status },
+];
 
 function PageHeader({
   breadcrumb,
@@ -167,8 +206,52 @@ function TableFrame({ children }: { children: ReactNode }) {
   );
 }
 
-export function ExpenseListPage() {
+function NewExpenseSplitButton() {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const close = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", escape);
+    };
+  }, []);
+  return (
+    <div className="expense-split" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <Plus /> Yeni Gider <ChevronDown />
+      </button>
+      {open && (
+        <div role="menu">
+          {newExpenseActions.map((item) => (
+            <Link
+              key={item.label}
+              role="menuitem"
+              to={item.route}
+              onClick={() => setOpen(false)}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ExpenseListPage() {
   return (
     <div className="expense-page">
       <PageHeader
@@ -180,36 +263,9 @@ export function ExpenseListPage() {
           title="Gider Listesi"
           filename="gider-listesi"
           rows={expenseRows}
-          columns={[
-            { header: "Kayıt İsmi", value: (row) => row.name },
-            { header: "Tedarikçi / Çalışan", value: (row) => row.party },
-            { header: "Kayıt Türü", value: (row) => row.type },
-            { header: "Düzenleme Tarihi", value: (row) => row.issue },
-            { header: "Belge No", value: (row) => row.document },
-            { header: "Vade Tarihi", value: (row) => row.due },
-            { header: "Toplam Tutar", value: (row) => row.total },
-            { header: "Ödeme Durumu", value: (row) => row.payment },
-            { header: "Durum", value: (row) => row.status },
-          ]}
+          columns={expenseColumns}
         />
-        <div className="expense-split">
-          <button type="button" onClick={() => setOpen((value) => !value)}>
-            <Plus /> Yeni Gider <ChevronDown />
-          </button>
-          {open && (
-            <div>
-              {newExpenseActions.map((item) => (
-                <Link
-                  key={item.label}
-                  to={item.route}
-                  onClick={() => setOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        <NewExpenseSplitButton />
       </PageHeader>
       <Filters />
       <TableFrame>
@@ -236,7 +292,12 @@ export function ExpenseListPage() {
             {expenseRows.map((row) => (
               <tr key={row.document}>
                 <td>
-                  <strong>{row.name}</strong>
+                  <Link
+                    className="expense-cell-link"
+                    to={`${base}/${encodeURIComponent(row.document)}`}
+                  >
+                    <strong>{row.name}</strong>
+                  </Link>
                 </td>
                 <td>{row.party}</td>
                 <td>{row.type}</td>
@@ -253,13 +314,25 @@ export function ExpenseListPage() {
                   <Badge>{row.status}</Badge>
                 </td>
                 <td>
-                  <button
-                    className="icon"
-                    type="button"
-                    aria-label="Kayıt işlemleri"
-                  >
-                    <MoreHorizontal />
-                  </button>
+                  <RowActionsMenu
+                    label="Kayıt işlemleri"
+                    actions={[
+                      {
+                        label: "Görüntüle",
+                        href: `${base}/${encodeURIComponent(row.document)}`,
+                      },
+                      {
+                        label: "Dışa Aktar",
+                        onSelect: () =>
+                          printReport(
+                            row.name,
+                            expenseColumns,
+                            [row],
+                            `Kayıt: ${row.name}`,
+                          ),
+                      },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}
@@ -267,6 +340,81 @@ export function ExpenseListPage() {
         </table>
       </TableFrame>
     </div>
+  );
+}
+
+function IncomingInvoiceRow({
+  row,
+}: {
+  row: (typeof incomingInvoiceRows)[number];
+}) {
+  const [downloading, setDownloading] = useState(false);
+  const supplier = findSupplierByName(row.sender);
+  const detailTo = `${incomingBase}/${encodeURIComponent(row.number)}`;
+
+  const download = () => {
+    if (downloading) return;
+    setDownloading(true);
+    window.setTimeout(() => {
+      printReport(
+        `Gelen Fatura ${row.number}`,
+        incomingInvoiceColumns,
+        [row],
+        `Gönderen: ${row.sender}`,
+      );
+      setDownloading(false);
+    }, 350);
+  };
+
+  return (
+    <tr>
+      <td>
+        {supplier ? (
+          <Link
+            className="expense-cell-link"
+            to={`${purchasingSuppliersBase}/${encodeURIComponent(supplier.taxNo)}`}
+          >
+            <strong>{row.sender}</strong>
+          </Link>
+        ) : (
+          <strong>{row.sender}</strong>
+        )}
+      </td>
+      <td>
+        <Link className="expense-cell-link" to={detailTo}>
+          {row.number}
+        </Link>
+      </td>
+      <td>{row.type}</td>
+      <td>{row.date}</td>
+      <td>
+        <strong>{row.total}</strong>
+      </td>
+      <td>
+        <Badge>{row.status}</Badge>
+      </td>
+      <td>
+        <div className="expense-row-actions">
+          <Link to={detailTo} title="Görüntüle">
+            <Eye />
+          </Link>
+          <button type="button" title="Gider Kaydına Aktar">
+            Aktar
+          </button>
+          <button type="button">Eşleştir</button>
+          <button type="button">Reddet</button>
+          <button
+            type="button"
+            title="İndir"
+            disabled={downloading}
+            aria-busy={downloading}
+            onClick={download}
+          >
+            {downloading ? <Loader2 className="expense-spin" /> : <Download />}
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -282,15 +430,14 @@ export function IncomingInvoicesPage() {
           title="Gelen Faturalar"
           filename="gelen-faturalar"
           rows={incomingInvoiceRows}
-          columns={[
-            { header: "Gönderen Ünvan", value: (row) => row.sender },
-            { header: "Fatura No", value: (row) => row.number },
-            { header: "Fatura Türü", value: (row) => row.type },
-            { header: "Fatura Tarihi", value: (row) => row.date },
-            { header: "Fatura Tutarı", value: (row) => row.total },
-            { header: "Durum", value: (row) => row.status },
-          ]}
+          columns={incomingInvoiceColumns}
         />
+        <Link
+          className="expense-primary-link"
+          to="/demo/finance/expense/list/new/invoice?from=incoming"
+        >
+          <Plus /> Yeni Alış Faturası
+        </Link>
         <button type="button">
           <FileInput /> Faturaları İçeri Al
         </button>
@@ -315,35 +462,7 @@ export function IncomingInvoicesPage() {
           </thead>
           <tbody>
             {incomingInvoiceRows.map((row) => (
-              <tr key={row.number}>
-                <td>
-                  <strong>{row.sender}</strong>
-                </td>
-                <td>{row.number}</td>
-                <td>{row.type}</td>
-                <td>{row.date}</td>
-                <td>
-                  <strong>{row.total}</strong>
-                </td>
-                <td>
-                  <Badge>{row.status}</Badge>
-                </td>
-                <td>
-                  <div className="expense-row-actions">
-                    <button type="button" title="Görüntüle">
-                      <Eye />
-                    </button>
-                    <button type="button" title="Gider Kaydına Aktar">
-                      Aktar
-                    </button>
-                    <button type="button">Eşleştir</button>
-                    <button type="button">Reddet</button>
-                    <button type="button" title="İndir">
-                      <Download />
-                    </button>
-                  </div>
-                </td>
-              </tr>
+              <IncomingInvoiceRow row={row} key={row.number} />
             ))}
           </tbody>
         </table>
@@ -352,10 +471,10 @@ export function IncomingInvoicesPage() {
   );
 }
 
-function FormActions() {
+function FormActions({ cancelTo = base }: { cancelTo?: string }) {
   return (
     <div className="expense-form-actions">
-      <Link to={base}>Vazgeç</Link>
+      <Link to={cancelTo}>Vazgeç</Link>
       <button type="button" className="secondary">
         Taslak Kaydet
       </button>
@@ -386,22 +505,26 @@ function FormShell({
   breadcrumb,
   children,
   metadata = true,
+  cancelTo = base,
+  backLabel = "Gider Listesine Dön",
 }: {
   title: string;
   breadcrumb: string;
   children: ReactNode;
   metadata?: boolean;
+  cancelTo?: string;
+  backLabel?: string;
 }) {
   return (
     <div className="finance-form-page expense-form-page">
       <PageHeader
         breadcrumb={breadcrumb}
         title={title}
-        backTo={base}
-        backLabel="Gider Listesine Dön"
+        backTo={cancelTo}
+        backLabel={backLabel}
       />
       <form onSubmit={(event) => event.preventDefault()}>
-        <FormActions />
+        <FormActions cancelTo={cancelTo} />
         <div className={`finance-form-layout${metadata ? "" : " single"}`}>
           <main>{children}</main>
           {metadata && (
@@ -423,12 +546,25 @@ export function ExpenseInvoicePage({
 }: {
   accommodation?: boolean;
 }) {
+  const location = useLocation();
+  const fromIncoming = new URLSearchParams(location.search).get("from") ===
+    "incoming";
   const data = expenseFormDefaults;
-  const title = accommodation ? "Yeni Konaklama Faturası" : "Yeni Fiş / Fatura";
+  const title = accommodation
+    ? "Yeni Konaklama Faturası"
+    : fromIncoming
+      ? "Yeni Alış Faturası"
+      : "Yeni Fiş / Fatura";
+  const parentLabel = fromIncoming ? "Gelen Faturalar" : "Gider Listesi";
+  const cancelTo = fromIncoming ? incomingBase : base;
   return (
     <FormShell
       title={title}
-      breadcrumb={`Muhasebe ve Finans / Gider Yönetimi / Gider Listesi / ${title}`}
+      breadcrumb={`Muhasebe ve Finans / Gider Yönetimi / ${parentLabel} / ${title}`}
+      cancelTo={cancelTo}
+      backLabel={
+        fromIncoming ? "Gelen Faturalara Dön" : "Gider Listesine Dön"
+      }
     >
       <FinanceFormSection title="Fiş / Fatura Bilgileri">
         <div className="finance-fields two">
@@ -557,5 +693,182 @@ export function SimpleExpenseForm({
         <Payment />
       </FinanceFormSection>
     </FormShell>
+  );
+}
+
+function ExpenseNotFound({
+  backTo,
+  backLabel,
+  title,
+  message,
+}: {
+  backTo: string;
+  backLabel: string;
+  title: string;
+  message: string;
+}) {
+  return (
+    <div className="expense-page">
+      <PageHeader
+        breadcrumb="Muhasebe ve Finans / Gider Yönetimi"
+        title={title}
+        backTo={backTo}
+        backLabel={backLabel}
+      />
+      <section className="ebru-card expense-state-panel">
+        <p>{message}</p>
+      </section>
+    </div>
+  );
+}
+
+export function ExpenseDetailPage() {
+  const location = useLocation();
+  const document = lastPathSegment(location.pathname);
+  const row = expenseRows.find((item) => item.document === document);
+
+  if (!row) {
+    return (
+      <ExpenseNotFound
+        backTo={base}
+        backLabel="Gider Listesine Dön"
+        title="Gider Kaydı Bulunamadı"
+        message={`"${document}" belge numaralı bir gider kaydı bulunamadı.`}
+      />
+    );
+  }
+
+  return (
+    <div className="finance-form-page expense-form-page">
+      <PageHeader
+        breadcrumb={`Muhasebe ve Finans / Gider Yönetimi / Gider Listesi / ${row.name}`}
+        title={row.name}
+        backTo={base}
+        backLabel="Gider Listesine Dön"
+      />
+      <section className="ebru-card expense-detail-panel">
+        <div className="finance-fields two">
+          <label>
+            Kayıt İsmi
+            <input readOnly value={row.name} />
+          </label>
+          <label>
+            Tedarikçi / Çalışan
+            <input readOnly value={row.party} />
+          </label>
+          <label>
+            Kayıt Türü
+            <input readOnly value={row.type} />
+          </label>
+          <label>
+            Belge No
+            <input readOnly value={row.document} />
+          </label>
+          <label>
+            Düzenleme Tarihi
+            <input readOnly value={row.issue} />
+          </label>
+          <label>
+            Vade Tarihi
+            <input readOnly value={row.due} />
+          </label>
+          <label>
+            Toplam Tutar
+            <input readOnly value={row.total} />
+          </label>
+          <label>
+            Ödeme Durumu
+            <input readOnly value={row.payment} />
+          </label>
+          <label>
+            Durum
+            <input readOnly value={row.status} />
+          </label>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export function IncomingInvoiceDetailPage() {
+  const location = useLocation();
+  const number = lastPathSegment(location.pathname);
+  const row = incomingInvoiceRows.find((item) => item.number === number);
+
+  if (!row) {
+    return (
+      <ExpenseNotFound
+        backTo={incomingBase}
+        backLabel="Gelen Faturalara Dön"
+        title="Fatura Bulunamadı"
+        message={`"${number}" numaralı bir gelen fatura bulunamadı.`}
+      />
+    );
+  }
+
+  const supplier = findSupplierByName(row.sender);
+
+  return (
+    <div className="finance-form-page expense-form-page">
+      <PageHeader
+        breadcrumb={`Muhasebe ve Finans / Gider Yönetimi / Gelen Faturalar / ${row.number}`}
+        title={`Gelen Fatura ${row.number}`}
+        backTo={incomingBase}
+        backLabel="Gelen Faturalara Dön"
+      />
+      <section className="ebru-card expense-detail-panel">
+        <div className="finance-fields two">
+          <label>
+            Gönderen Ünvan
+            {supplier ? (
+              <Link
+                className="expense-cell-link"
+                to={`${purchasingSuppliersBase}/${encodeURIComponent(supplier.taxNo)}`}
+              >
+                {row.sender}
+              </Link>
+            ) : (
+              <input readOnly value={row.sender} />
+            )}
+          </label>
+          <label>
+            Fatura No
+            <input readOnly value={row.number} />
+          </label>
+          <label>
+            Fatura Türü
+            <input readOnly value={row.type} />
+          </label>
+          <label>
+            Fatura Tarihi
+            <input readOnly value={row.date} />
+          </label>
+          <label>
+            Fatura Tutarı
+            <input readOnly value={row.total} />
+          </label>
+          <label>
+            Durum
+            <input readOnly value={row.status} />
+          </label>
+        </div>
+        <div className="finance-inline-actions">
+          <button
+            type="button"
+            className="finance-text-button"
+            onClick={() =>
+              printReport(
+                `Gelen Fatura ${row.number}`,
+                incomingInvoiceColumns,
+                [row],
+                `Gönderen: ${row.sender}`,
+              )
+            }
+          >
+            PDF Olarak İndir
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }

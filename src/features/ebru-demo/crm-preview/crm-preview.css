@@ -55,6 +55,13 @@
   align-items: center;
   gap: 6px;
 }
+.crm-collection-btn {
+  cursor: pointer;
+}
+.crm-collection-btn:focus-visible {
+  outline: 2px solid #6eb6ff;
+  outline-offset: 2px;
+}
 .crm-back {
   background: #0d1f31;
   border-color: #29415b;

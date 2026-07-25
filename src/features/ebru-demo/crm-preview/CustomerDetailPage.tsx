@@ -21,6 +21,7 @@ import {
 import { CrmPageHeader, StatusBadge } from "./CrmShared";
 import { salesQuotes } from "../sales-preview/salesData";
 import { printQuote } from "../sales-preview/salesUtils";
+import { PartyLedgerEntryDialog } from "../finance-preview/PartyLedgerEntryDialog";
 const parent = "/demo/crm/customers";
 export function CustomerDetailPage() {
   const { customerId } = useParams();
@@ -57,6 +58,16 @@ export function CustomerDetailPage() {
           <MessageCircle />
           WhatsApp
         </a>
+        <PartyLedgerEntryDialog
+          kind="collection"
+          partyLabel="Müşteri"
+          partyName={customer.name}
+          trigger={
+            <button type="button" className="crm-primary crm-collection-btn">
+              Tahsilat Ekle
+            </button>
+          }
+        />
         <Link className="crm-primary" to={`${parent}/${customer.id}/edit`}>
           <Pencil />
           Düzenle

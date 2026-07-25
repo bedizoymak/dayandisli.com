@@ -1,11 +1,15 @@
 import { ReactNode, useState } from "react";
-import { MoreHorizontal, Search } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Search } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import { FinanceFormSection, FinancePageHeader } from "./FinanceFormComponents";
 import {
   FinanceBreadcrumb,
   FinanceExportMenu,
+  RowActionsMenu,
+  downloadCsv,
+  printReport,
   type ExportColumn,
+  type PdfReportExtras,
 } from "./FinanceNavigationTools";
 import {
   agingBuckets,
@@ -17,6 +21,18 @@ import {
 } from "./financeIncomeData";
 import "./finance-income.css";
 
+const incomeInvoicesBase = "/demo/finance/income/invoices";
+const incomeCustomersBase = "/demo/finance/income/customers";
+
+function findCustomerByName(name: string) {
+  return customerRows.find((row) => row.name === name);
+}
+
+function lastPathSegment(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  return decodeURIComponent(segments[segments.length - 1] ?? "");
+}
+
 function IncomeHeader<T>({
   breadcrumb,
   title,
@@ -26,6 +42,7 @@ function IncomeHeader<T>({
   rows,
   columns,
   filename,
+  pdfExtras,
 }: {
   breadcrumb: string;
   title: string;
@@ -35,6 +52,7 @@ function IncomeHeader<T>({
   rows: T[];
   columns: ExportColumn<T>[];
   filename: string;
+  pdfExtras?: PdfReportExtras;
 }) {
   return (
     <header className="income-page-head">
@@ -54,6 +72,7 @@ function IncomeHeader<T>({
           filename={filename}
           rows={rows}
           columns={columns}
+          pdfExtras={pdfExtras}
         />
       </div>
     </header>
@@ -137,14 +156,49 @@ function TableShell({
     </section>
   );
 }
-const RowActions = () => (
-  <button
-    className="income-row-actions"
-    title="Görüntüle · Düzenle · Çoğalt · Dışa Aktar · Arşivle"
-  >
-    <MoreHorizontal />
-  </button>
-);
+const customerColumns: ExportColumn<(typeof customerRows)[number]>[] = [
+  { header: "Müşteri Adı", value: (row) => row.name },
+  { header: "Tür", value: (row) => row.type },
+  { header: "VKN / TCKN", value: (row) => row.taxNo },
+  { header: "E-posta", value: (row) => row.email },
+  { header: "Telefon", value: (row) => row.phone },
+  { header: "Bakiye", value: (row) => row.balance },
+  { header: "Durum", value: (row) => row.status },
+];
+
+const invoiceColumns: ExportColumn<(typeof invoiceRows)[number]>[] = [
+  { header: "Fatura No", value: (row) => row.no },
+  { header: "Müşteri", value: (row) => row.customer },
+  { header: "Fatura Tarihi", value: (row) => row.invoiceDate },
+  { header: "Vade Tarihi", value: (row) => row.dueDate },
+  { header: "Tutar", value: (row) => row.amount },
+  { header: "Tahsilat Durumu", value: (row) => row.collection },
+  { header: "Durum", value: (row) => row.status },
+];
+
+function InvoiceRowActions({ row }: { row: (typeof invoiceRows)[number] }) {
+  const detailTo = `${incomeInvoicesBase}/${encodeURIComponent(row.no)}`;
+  return (
+    <RowActionsMenu
+      actions={[
+        { label: "Görüntüle", href: detailTo },
+        { label: "Düzenle", href: `${detailTo}/edit` },
+        { label: "Çoğalt", href: `${incomeInvoicesBase}/new` },
+        {
+          label: "Dışa Aktar",
+          onSelect: () =>
+            printReport(
+              `Fatura ${row.no}`,
+              invoiceColumns,
+              [row],
+              `Fatura no ${row.no}`,
+            ),
+        },
+        { label: "Arşivle", onSelect: () => undefined },
+      ]}
+    />
+  );
+}
 
 export function InvoiceListPage() {
   const [search, setSearch] = useState("");
@@ -163,15 +217,7 @@ export function InvoiceListPage() {
         newLabel="Yeni Fatura"
         rows={rows}
         filename="faturalar"
-        columns={[
-          { header: "Fatura No", value: (row) => row.no },
-          { header: "Müşteri", value: (row) => row.customer },
-          { header: "Fatura Tarihi", value: (row) => row.invoiceDate },
-          { header: "Vade Tarihi", value: (row) => row.dueDate },
-          { header: "Tutar", value: (row) => row.amount },
-          { header: "Tahsilat Durumu", value: (row) => row.collection },
-          { header: "Durum", value: (row) => row.status },
-        ]}
+        columns={invoiceColumns}
       />
       <FilterBar>
         <label>
@@ -220,28 +266,45 @@ export function InvoiceListPage() {
         ]}
         empty={!rows.length}
       >
-        {rows.map((row) => (
-          <tr key={row.no}>
-            <td>
-              <Link to="/demo/finance/income/invoices/new">
-                {row.no}
-              </Link>
-            </td>
-            <td>{row.customer}</td>
-            <td>{row.invoiceDate}</td>
-            <td>{row.dueDate}</td>
-            <td>{row.amount}</td>
-            <td>
-              <Status>{row.collection}</Status>
-            </td>
-            <td>
-              <Status>{row.status}</Status>
-            </td>
-            <td>
-              <RowActions />
-            </td>
-          </tr>
-        ))}
+        {rows.map((row) => {
+          const customer = findCustomerByName(row.customer);
+          return (
+            <tr key={row.no}>
+              <td>
+                <Link
+                  className="income-cell-link"
+                  to={`${incomeInvoicesBase}/${encodeURIComponent(row.no)}`}
+                >
+                  {row.no}
+                </Link>
+              </td>
+              <td>
+                {customer ? (
+                  <Link
+                    className="income-cell-link"
+                    to={`${incomeCustomersBase}/${encodeURIComponent(customer.taxNo)}`}
+                  >
+                    {row.customer}
+                  </Link>
+                ) : (
+                  row.customer
+                )}
+              </td>
+              <td>{row.invoiceDate}</td>
+              <td>{row.dueDate}</td>
+              <td>{row.amount}</td>
+              <td>
+                <Status>{row.collection}</Status>
+              </td>
+              <td>
+                <Status>{row.status}</Status>
+              </td>
+              <td>
+                <InvoiceRowActions row={row} />
+              </td>
+            </tr>
+          );
+        })}
       </TableShell>
     </div>
   );
@@ -264,15 +327,7 @@ export function CustomerListPage() {
         newLabel="Yeni Müşteri"
         rows={rows}
         filename="musteriler"
-        columns={[
-          { header: "Müşteri Adı", value: (row) => row.name },
-          { header: "Tür", value: (row) => row.type },
-          { header: "VKN / TCKN", value: (row) => row.taxNo },
-          { header: "E-posta", value: (row) => row.email },
-          { header: "Telefon", value: (row) => row.phone },
-          { header: "Bakiye", value: (row) => row.balance },
-          { header: "Durum", value: (row) => row.status },
-        ]}
+        columns={customerColumns}
       />
       <FilterBar>
         <label className="income-search">
@@ -316,7 +371,14 @@ export function CustomerListPage() {
       >
         {rows.map((row) => (
           <tr key={row.taxNo}>
-            <td>{row.name}</td>
+            <td>
+              <Link
+                className="income-cell-link"
+                to={`${incomeCustomersBase}/${encodeURIComponent(row.taxNo)}`}
+              >
+                {row.name}
+              </Link>
+            </td>
             <td>{row.type}</td>
             <td>{row.taxNo}</td>
             <td>{row.email}</td>
@@ -326,7 +388,31 @@ export function CustomerListPage() {
               <Status>{row.status}</Status>
             </td>
             <td>
-              <RowActions />
+              <RowActionsMenu
+                actions={[
+                  {
+                    label: "Görüntüle",
+                    href: `${incomeCustomersBase}/${encodeURIComponent(row.taxNo)}`,
+                  },
+                  {
+                    label: "Dışa Aktar",
+                    onSelect: () =>
+                      printReport(
+                        row.name,
+                        customerColumns,
+                        [row],
+                        `Müşteri: ${row.name}`,
+                      ),
+                  },
+                  {
+                    label: "CSV İndir",
+                    onSelect: () =>
+                      downloadCsv(`musteri-${row.taxNo}`, customerColumns, [
+                        row,
+                      ]),
+                  },
+                ]}
+              />
             </td>
           </tr>
         ))}
@@ -503,6 +589,16 @@ export function CollectionReportPage() {
           { header: "Fatura / Çek", value: (row) => row.document },
           { header: "Tahsilat Tutarı", value: (row) => row.amount },
         ]}
+        pdfExtras={{
+          kpis: collectionKpis,
+          chart: {
+            title: "Tahsilat Yaşlandırması",
+            bars: agingBuckets.map((item) => ({
+              label: item.label,
+              value: item.value,
+            })),
+          },
+        }}
       />
       <section className="income-kpis">
         {collectionKpis.map((item) => (
@@ -571,6 +667,222 @@ export function CollectionReportPage() {
           </tr>
         ))}
       </TableShell>
+    </div>
+  );
+}
+
+function NotFoundState({
+  backTo,
+  backLabel,
+  title,
+  message,
+}: {
+  backTo: string;
+  backLabel: string;
+  title: string;
+  message: string;
+}) {
+  return (
+    <div className="income-page">
+      <FinancePageHeader
+        breadcrumb="Muhasebe ve Finans / Gelir Yönetimi"
+        title={title}
+        cancelTo={backTo}
+        backLabel={backLabel}
+      />
+      <section className="ebru-card income-state-panel">
+        <p>{message}</p>
+      </section>
+    </div>
+  );
+}
+
+export function InvoiceDetailPage() {
+  const location = useLocation();
+  const no = lastPathSegment(location.pathname);
+  const row = invoiceRows.find((item) => item.no === no);
+
+  if (!row) {
+    return (
+      <NotFoundState
+        backTo={incomeInvoicesBase}
+        backLabel="Faturalara Dön"
+        title="Fatura Bulunamadı"
+        message={`"${no}" numaralı bir fatura bulunamadı. Fatura silinmiş veya taşınmış olabilir.`}
+      />
+    );
+  }
+
+  const customer = findCustomerByName(row.customer);
+
+  return (
+    <div className="income-page">
+      <FinancePageHeader
+        breadcrumb={`Muhasebe ve Finans / Gelir Yönetimi / Faturalar / ${row.no}`}
+        title={`Fatura ${row.no}`}
+        cancelTo={incomeInvoicesBase}
+        backLabel="Faturalara Dön"
+      />
+      <section className="ebru-card income-detail-panel">
+        <div className="finance-fields two">
+          <label>
+            Fatura No
+            <input readOnly value={row.no} />
+          </label>
+          <label>
+            Müşteri
+            {customer ? (
+              <Link
+                className="income-cell-link"
+                to={`${incomeCustomersBase}/${encodeURIComponent(customer.taxNo)}`}
+              >
+                {row.customer}
+              </Link>
+            ) : (
+              <input readOnly value={row.customer} />
+            )}
+          </label>
+          <label>
+            Fatura Tarihi
+            <input readOnly value={row.invoiceDate} />
+          </label>
+          <label>
+            Vade Tarihi
+            <input readOnly value={row.dueDate} />
+          </label>
+          <label>
+            Tutar
+            <input readOnly value={row.amount} />
+          </label>
+          <label>
+            Tahsilat Durumu
+            <input readOnly value={row.collection} />
+          </label>
+          <label>
+            Durum
+            <input readOnly value={row.status} />
+          </label>
+        </div>
+        <div className="finance-inline-actions">
+          <Link
+            className="finance-text-button"
+            to={`${incomeInvoicesBase}/${encodeURIComponent(row.no)}/edit`}
+          >
+            Düzenle
+          </Link>
+          <button
+            type="button"
+            className="finance-text-button"
+            onClick={() =>
+              printReport(
+                `Fatura ${row.no}`,
+                invoiceColumns,
+                [row],
+                `Fatura no ${row.no}`,
+              )
+            }
+          >
+            PDF Olarak İndir
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export function FinanceCustomerDetailPage() {
+  const location = useLocation();
+  const taxNo = lastPathSegment(location.pathname);
+  const row = customerRows.find((item) => item.taxNo === taxNo);
+
+  if (!row) {
+    return (
+      <NotFoundState
+        backTo={incomeCustomersBase}
+        backLabel="Müşterilere Dön"
+        title="Müşteri Bulunamadı"
+        message={`"${taxNo}" VKN/TCKN numarasına ait bir müşteri bulunamadı.`}
+      />
+    );
+  }
+
+  const relatedInvoices = invoiceRows.filter(
+    (invoice) => invoice.customer === row.name,
+  );
+
+  return (
+    <div className="income-page">
+      <FinancePageHeader
+        breadcrumb={`Muhasebe ve Finans / Gelir Yönetimi / Müşteriler / ${row.name}`}
+        title={row.name}
+        cancelTo={incomeCustomersBase}
+        backLabel="Müşterilere Dön"
+      />
+      <section className="ebru-card income-detail-panel">
+        <div className="finance-fields two">
+          <label>
+            Müşteri Adı
+            <input readOnly value={row.name} />
+          </label>
+          <label>
+            Tür
+            <input readOnly value={row.type} />
+          </label>
+          <label>
+            VKN / TCKN
+            <input readOnly value={row.taxNo} />
+          </label>
+          <label>
+            E-posta
+            <input readOnly value={row.email} />
+          </label>
+          <label>
+            Telefon
+            <input readOnly value={row.phone} />
+          </label>
+          <label>
+            Bakiye
+            <input readOnly value={row.balance} />
+          </label>
+          <label>
+            Durum
+            <input readOnly value={row.status} />
+          </label>
+        </div>
+      </section>
+      <FinanceFormSection title="Fatura Geçmişi">
+        {relatedInvoices.length ? (
+          <table className="income-subtable">
+            <thead>
+              <tr>
+                <th>Fatura No</th>
+                <th>Fatura Tarihi</th>
+                <th>Tutar</th>
+                <th>Durum</th>
+              </tr>
+            </thead>
+            <tbody>
+              {relatedInvoices.map((invoice) => (
+                <tr key={invoice.no}>
+                  <td>
+                    <Link
+                      className="income-cell-link"
+                      to={`${incomeInvoicesBase}/${encodeURIComponent(invoice.no)}`}
+                    >
+                      {invoice.no}
+                    </Link>
+                  </td>
+                  <td>{invoice.invoiceDate}</td>
+                  <td>{invoice.amount}</td>
+                  <td>{invoice.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="income-state">Bu müşteriye ait fatura bulunamadı.</p>
+        )}
+      </FinanceFormSection>
     </div>
   );
 }

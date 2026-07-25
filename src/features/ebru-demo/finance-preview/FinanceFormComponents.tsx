@@ -53,21 +53,32 @@ export function FinanceFormSection({
 export function FinanceMetadataPanel({
   categoryLabel,
   category,
+  categoryOptions,
   tags,
   showSpender = false,
 }: {
   categoryLabel: string;
   category: string;
+  categoryOptions?: string[];
   tags: string;
   showSpender?: boolean;
 }) {
+  const options = categoryOptions?.length ? categoryOptions : [category];
   return (
     <aside className="ebru-card finance-metadata">
       <h2>Detaylar</h2>
       <label>
         {categoryLabel}
-        <select defaultValue={category}>
-          <option>{category}</option>
+        <select
+          defaultValue={category}
+          required
+          aria-label={categoryLabel}
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
         </select>
       </label>
       <label>

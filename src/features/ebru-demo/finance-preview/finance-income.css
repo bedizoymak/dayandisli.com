@@ -142,9 +142,48 @@ td a {
   border: 0;
   background: transparent;
   color: #8fa2b9;
+  border-radius: 6px;
+  cursor: pointer;
 }
 .income-row-actions svg {
   width: 17px;
+}
+.income-row-actions:hover,
+.income-row-actions:focus-visible {
+  color: #e7eef6;
+  background: #17293d;
+}
+.income-cell-link {
+  color: #64b1ff;
+  text-decoration: none;
+  border-radius: 4px;
+}
+.income-cell-link:hover {
+  text-decoration: underline;
+}
+.income-cell-link:focus-visible {
+  outline: 2px solid #64b1ff;
+  outline-offset: 2px;
+}
+.income-state-panel {
+  padding: 32px;
+  color: #b9c8d8;
+  text-align: center;
+}
+.income-detail-panel {
+  padding: 20px;
+}
+.income-subtable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+.income-subtable th,
+.income-subtable td {
+  border-bottom: 1px solid #1c2e42;
+  padding: 8px 6px;
+  text-align: left;
+  font-size: 12px;
 }
 .income-pagination {
   padding: 11px 13px;

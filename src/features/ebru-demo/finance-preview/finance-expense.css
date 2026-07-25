@@ -51,6 +51,51 @@
   border-color: #2a4058;
   color: #cbd9e9;
 }
+.expense-primary-link {
+  height: 39px;
+  border: 1px solid #246da9;
+  border-radius: 8px;
+  padding: 0 14px;
+  background: #14518a;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-decoration: none;
+}
+.expense-primary-link svg {
+  width: 16px;
+}
+.expense-cell-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.expense-cell-link:hover {
+  text-decoration: underline;
+}
+.expense-cell-link:focus-visible {
+  outline: 2px solid #64b1ff;
+  outline-offset: 2px;
+}
+.expense-spin {
+  width: 15px;
+  animation: expense-spin-rotate 0.8s linear infinite;
+}
+@keyframes expense-spin-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.expense-state-panel {
+  padding: 32px;
+  color: #b9c8d8;
+  text-align: center;
+}
+.expense-detail-panel {
+  padding: 20px;
+}
 .expense-split {
   position: relative;
 }
@@ -161,12 +206,22 @@
   background: #102238;
 }
 .expense-table button.icon,
-.expense-row-actions button {
+.expense-row-actions button,
+.expense-row-actions a {
   border: 0;
   background: transparent;
   color: #6eb6ff;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
-.expense-table button svg {
+.expense-row-actions button:disabled {
+  color: #4a6072;
+  cursor: not-allowed;
+}
+.expense-table button svg,
+.expense-row-actions a svg {
   width: 16px;
 }
 .expense-table-wrap footer {
