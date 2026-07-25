@@ -81,6 +81,15 @@ export type IntegrationTable = "sync_runs" | "sync_errors";
 export interface MirrorResourceDefinition {
   resourceType: string;
   table: MirrorTable;
+  /**
+   * Attribute keys that also have a real typed `numeric` column on `table`
+   * (in addition to living inside the `attributes` jsonb blob), so that
+   * ordering/sorting can read a proper numeric column instead of a text
+   * cast of jsonb. See upsert-resource.ts's numeric-column mirroring and
+   * the trl_balance/gross_total backfill migrations. Leave unset for
+   * resources with no such typed column.
+   */
+  numericAttributeFields?: string[];
 }
 
 export interface MirrorResourceRow {
@@ -151,6 +160,8 @@ export interface SyncResourceOptions {
   endpoint: string;
   table: MirrorTable;
   include?: string[];
+  /** Forwarded to upsertResource's MirrorResourceDefinition — see its docstring. */
+  numericAttributeFields?: string[];
   /**
    * Opt-in only — enables post-run deletion reconciliation (see
    * reconciliation.ts) for resources proven to be complete, direct-list

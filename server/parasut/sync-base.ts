@@ -498,6 +498,7 @@ export async function syncCollection(
   const definition: MirrorResourceDefinition = {
     resourceType: options.resourceType,
     table: options.table,
+    numericAttributeFields: options.numericAttributeFields,
   };
   const pageBudget = options.maxPagesPerInvocation ?? Infinity;
   let pagesThisInvocation = 0;

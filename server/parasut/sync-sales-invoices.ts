@@ -13,6 +13,9 @@ export function syncSalesInvoices(context: SyncContext, options: { concurrencyLo
     table: "sales_invoices",
     endpoint: `/v4/${encodeURIComponent(context.parasutCompanyId)}/sales_invoices`,
     include: ["contact", "details", "payments"],
+    // Keep the typed gross_total column (see the 20260725154949 backfill
+    // migration) populated on every write, not just the one-time backfill.
+    numericAttributeFields: ["gross_total"],
     concurrencyLock: options.concurrencyLock,
     maxPagesPerInvocation: MAX_PAGES_PER_INVOCATION,
   });

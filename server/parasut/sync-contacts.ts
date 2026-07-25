@@ -18,6 +18,9 @@ export function syncContacts(context: SyncContext, options: { concurrencyLock?: 
     resourceType: "contacts",
     table: "contacts",
     endpoint: `/v4/${encodeURIComponent(context.parasutCompanyId)}/contacts`,
+    // Keep the typed balance columns (see the 20260725151238 backfill
+    // migration) populated on every write, not just the one-time backfill.
+    numericAttributeFields: ["trl_balance", "usd_balance", "eur_balance", "gbp_balance"],
     maxPagesPerInvocation: MAX_PAGES_PER_INVOCATION,
     // contacts is a proven, empirically-verified complete direct-list
     // snapshot (see resource-registry.ts) — eligible for deletion

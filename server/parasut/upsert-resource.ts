@@ -42,6 +42,34 @@ function sourceTimestamp(attributes: JsonObject, key: string): string | null {
   return new Date(value).toISOString();
 }
 
+const CANONICAL_DECIMAL_STRING = /^-?\d+(\.\d+)?$/;
+
+/**
+ * Mirrors the same field into its own typed numeric column, verbatim as the
+ * canonical decimal Paraşüt sent (never Turkish-locale-reinterpreted — see
+ * hashResource's docstring on why "." must never be treated as a thousands
+ * separator here). Null/absent/non-canonical values become a null column,
+ * never a silently coerced 0 or NaN.
+ */
+function numericAttributeValue(attributes: JsonObject, key: string): number | null {
+  const value = attributes[key];
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && CANONICAL_DECIMAL_STRING.test(value)) return Number(value);
+  return null;
+}
+
+function numericColumns(
+  definition: MirrorResourceDefinition,
+  attributes: JsonObject,
+): Record<string, number | null> {
+  const fields = definition.numericAttributeFields ?? [];
+  const columns: Record<string, number | null> = {};
+  for (const field of fields) {
+    columns[field] = numericAttributeValue(attributes, field);
+  }
+  return columns;
+}
+
 export async function upsertResource(
   database: MirrorDatabase,
   definition: MirrorResourceDefinition,
@@ -84,7 +112,7 @@ export async function upsertResource(
     return { outcome: "unchanged", payloadHash };
   }
 
-  const row: MirrorResourceRow = {
+  const row: MirrorResourceRow & Record<string, unknown> = {
     company_id: context.companyId,
     parasut_id: resource.id,
     parasut_company_id: context.parasutCompanyId,
@@ -100,6 +128,7 @@ export async function upsertResource(
     last_seen_at: now,
     synced_at: now,
     payload_hash: payloadHash,
+    ...numericColumns(definition, attributes),
   };
 
   if (existing.data) {
