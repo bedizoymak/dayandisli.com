@@ -213,6 +213,12 @@ export function filterModulesByPermission<T extends { requiredPermission?: strin
 }
 
 const ROUTE_PERMISSIONS: Array<[RegExp, string]> = [
+  [/^\/apps\/finance(?:\/|$)/, "finance.view"],
+  [/^\/apps\/crm(?:\/|$)/, "crm.view"],
+  [/^\/apps\/sales(?:\/|$)/, "sales.view"],
+  [/^\/apps\/reports(?:\/|$)/, "reports.view"],
+  [/^\/apps\/settings(?:\/|$)/, "settings.admin"],
+  [/^\/apps$/, "dashboard.view"],
   [/^\/ayarlar(?:\/|$)|^\/settings(?:\/|$)/, "settings.view"],
   [/^\/musteriler|^\/tedarikciler|^\/crm|^\/paydaslar|^\/stakeholders/, "crm.view"],
   [/^\/teklifler|^\/siparisler|^\/satis-faaliyetleri|^\/quotations|^\/sales-orders|^\/sales-activities/, "sales.view"],

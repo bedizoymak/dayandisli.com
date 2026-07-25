@@ -76,11 +76,11 @@ export function getPublicLoginRedirectUrl(location: Location = window.location) 
   return target.toString();
 }
 
-export function buildErpPath(path = "/dashboard") {
+export function buildErpPath(path = "/apps") {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-export function buildErpUrl(path = "/dashboard") {
+export function buildErpUrl(path = "/apps") {
   return `${getErpBaseUrl()}${buildErpPath(path)}`;
 }
 

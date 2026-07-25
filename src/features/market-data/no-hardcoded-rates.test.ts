@@ -25,7 +25,7 @@ describe("no hardcoded financial/weather values in production source", () => {
 
 describe("no API secret in frontend or bundle", () => {
   it("no VITE_-prefixed market-data endpoint variable remains anywhere in the frontend", () => {
-    const source = readSource("src/features/ebru-demo/EbruPreviewPage.tsx");
+    const source = readSource("src/pages/apps/dashboard/DashboardPage.tsx");
     expect(source).not.toMatch(/VITE_MARKET_RATES_ENDPOINT/);
     expect(existsSync(path.join(repoRoot, "src/features/market-rates"))).toBe(false);
   });
@@ -36,7 +36,7 @@ describe("no API secret in frontend or bundle", () => {
       "src/features/market-data/useMarketData.ts",
       "src/features/market-data/format.ts",
       "src/features/market-data/types.ts",
-      "src/features/ebru-demo/EbruPreviewPage.tsx",
+      "src/pages/apps/dashboard/DashboardPage.tsx",
       "src/vite-env.d.ts",
       ".env.example",
     ];
@@ -57,7 +57,7 @@ describe("no API secret in frontend or bundle", () => {
       "src/features/market-data/useMarketData.ts",
       "src/features/market-data/format.ts",
       "src/features/market-data/types.ts",
-      "src/features/ebru-demo/EbruPreviewPage.tsx",
+      "src/pages/apps/dashboard/DashboardPage.tsx",
       "src/vite-env.d.ts",
       ".env.example",
     ];
@@ -96,7 +96,7 @@ describe("no precise coordinates persisted or logged", () => {
 
 describe("no update date/time shown on market or weather cards", () => {
   it("the currency and gold card builders no longer format a rate date or update timestamp", () => {
-    const source = readSource("src/features/ebru-demo/EbruPreviewPage.tsx");
+    const source = readSource("src/pages/apps/dashboard/DashboardPage.tsx");
     expect(source).not.toMatch(/formatCurrencyMeta|formatGoldMeta/);
     expect(source).not.toMatch(/Güncellendi|Güncelleme gecikti/);
   });
@@ -122,16 +122,16 @@ describe("provider names remain visible where intended", () => {
 
 describe("the main dashboard greeting date/time is unchanged", () => {
   it("the greeting still renders {today} · {time} beneath the welcome heading", () => {
-    const source = readSource("src/features/ebru-demo/EbruPreviewPage.tsx");
-    expect(source).toMatch(/className="ebru-date"[^>]*>\s*\{today\}\s*·\s*\{time\}/);
+    const source = readSource("src/pages/apps/dashboard/DashboardPage.tsx");
+    expect(source).toMatch(/className="erp-date"[^>]*>\s*\{today\}\s*·\s*\{time\}/);
   });
 });
 
 describe("the approved card JSX hierarchy and CSS classes are preserved", () => {
-  it("ebru-fx-grid, ebru-fx and ebru-weather markup structure is unchanged", () => {
-    const source = readSource("src/features/ebru-demo/EbruPreviewPage.tsx");
-    expect(source).toMatch(/className="ebru-fx-grid"/);
-    expect(source).toMatch(/className="ebru-fx"/);
-    expect(source).toMatch(/className="ebru-weather"/);
+  it("erp-fx-grid, erp-fx and erp-weather markup structure is unchanged", () => {
+    const source = readSource("src/pages/apps/dashboard/DashboardPage.tsx");
+    expect(source).toMatch(/className="erp-fx-grid"/);
+    expect(source).toMatch(/className="erp-fx"/);
+    expect(source).toMatch(/className="erp-weather"/);
   });
 });
