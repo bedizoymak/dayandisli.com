@@ -80,7 +80,7 @@ export function buildErpPath(path = "/dashboard") {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-export function buildErpUrl(path = "/apps") {
+export function buildErpUrl(path = "/dashboard") {
   return `${getErpBaseUrl()}${buildErpPath(path)}`;
 }
 

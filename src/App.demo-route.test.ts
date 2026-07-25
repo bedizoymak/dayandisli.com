@@ -38,18 +38,12 @@ const requiredRoutes = [
 ];
 
 describe("isolated golden Ebru demo route", () => {
-  it("registers /demo before the canonical /apps wildcard", () => {
-    expect(appSource.indexOf('path="/demo/*"')).toBeGreaterThan(-1);
-    expect(appSource.indexOf('path="/demo/*"')).toBeLessThan(appSource.indexOf('path="/apps/*"'));
-  });
-
-  it("uses the existing ProtectedRoute wrapper", () => {
+  it("registers the /demo route with the existing ProtectedRoute wrapper", () => {
     expect(appSource).toContain('path="/demo/*" element={protectedElement(<EbruDemoPage />)}');
   });
 
-  it("loads the isolated snapshot implementation without changing the canonical route", () => {
+  it("loads the isolated ebru-demo implementation", () => {
     expect(appSource).toContain('import("./features/ebru-demo/EbruPreviewPage")');
-    expect(appSource).toContain('path="/apps/*" element={protectedElement(<EbruPreviewPage />)}');
   });
 
   it.each(requiredRoutes)("keeps the original preview module reachable at %s", (route) => {

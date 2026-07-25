@@ -27,7 +27,7 @@ export function RequireAuth({ children }: ProtectedRouteProps) {
   if (!isAuthenticated || !isAuthorizedERPUser) return <Navigate to="/login" replace state={{ from: location }} />;
 
   const requiredPermission = getRequiredPermissionForPath(location.pathname);
-  if (!hasPermission(requiredPermission)) return <Navigate to="/apps" replace state={{ from: location }} />;
+  if (!hasPermission(requiredPermission)) return <Navigate to="/login" replace state={{ from: location }} />;
 
   return <>{children}</>;
 }

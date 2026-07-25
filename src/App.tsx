@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
@@ -23,7 +23,6 @@ const Hakkimizda = lazy(() => import("./pages/Hakkimizda"));
 const Referanslar = lazy(() => import("./pages/Referanslar"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const EbruPreviewPage = lazy(() => import("./features/ebru-preview/EbruPreviewPage"));
 const EbruDemoPage = lazy(() => import("./features/ebru-demo/EbruPreviewPage"));
 const ShopPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ShopPage })));
 const ProductDetailPage = lazy(() => import("./features/shop").then((module) => ({ default: module.ProductDetailPage })));
@@ -35,49 +34,6 @@ const DynamicCMSPage = lazy(() => import("./features/public-cms/DynamicCMSPage")
 const SitemapPage = lazy(() => import("./features/public-cms/SitemapPage"));
 
 const queryClient = new QueryClient();
-
-function LegacyErpRedirect() {
-  const location = useLocation();
-  const suffix = location.pathname.replace(/^\/erp/, "") || "/";
-  return <Navigate to={`/apps${suffix}${location.search}`} replace />;
-}
-
-// Every real ERP module now lives under the canonical /apps/... hierarchy
-// (see UnifiedErpShell + ERPRoutes). Any pre-migration bare path — /dashboard,
-// /production, /musteriler, /finans/hareketler/:id, etc. — is redirected here
-// to its /apps-prefixed equivalent, preserving the suffix, search, and hash so
-// deep links and query strings keep working.
-function LegacyRootToAppsRedirect() {
-  const location = useLocation();
-  return <Navigate to={`/apps${location.pathname}${location.search}${location.hash}`} replace />;
-}
-
-const LEGACY_PARASUT_ROUTES: Array<[RegExp, string]> = [
-  [/\/satislar\/faturalar|\/sales-invoices|\/invoices/, "/apps/finance/income/invoices"],
-  [/\/satislar\/musteriler|\/customers/, "/apps/finance/income/customers"],
-  [/\/alislar\/faturalar|\/purchase-bills/, "/apps/finance/expense/incoming-invoices"],
-  [/\/alislar\/tedarikciler|\/suppliers/, "/apps/finance/purchasing/suppliers"],
-  [/\/kasa-banka|\/accounts/, "/apps/finance/cash/accounts"],
-  [/\/urunler|\/products/, "/apps/finance/inventory/products"],
-  [/\/stok\/hareketler/, "/apps/finance/inventory/history"],
-  [/\/stok\/mevcut/, "/apps/finance/inventory/report"],
-  [/\/ik\/calisanlar|\/employees/, "/apps/hr/employees"],
-  [/\/ik\/maaslar|\/salaries/, "/apps/hr/salaries"],
-  [/\/satislar\/teklifler/, "/apps/sales/quotes"],
-  [/\/raporlar\/tahsilat|\/tahsilatlar/, "/apps/finance/income/collection-report"],
-  [/\/raporlar\/gelir-gider|\/raporlar/, "/apps/finance/expense/income-expense-report"],
-];
-
-export function resolveLegacyParasutRoute(pathname: string) {
-  const suffix = pathname.replace(/^\/apps\/parasut/, "") || "/";
-  return LEGACY_PARASUT_ROUTES.find(([pattern]) => pattern.test(suffix))?.[1] ?? "/apps";
-}
-
-function LegacyParasutRedirect() {
-  const location = useLocation();
-  const target = resolveLegacyParasutRoute(location.pathname);
-  return <Navigate to={`${target}${location.search}${location.hash}`} replace />;
-}
 
 const protectedElement = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
 
@@ -132,20 +88,7 @@ const AppRoutes = () => {
 
       {exposeErpRoutes && <Route path="/demo/*" element={protectedElement(<EbruDemoPage />)} />}
 
-      {exposeErpRoutes ? (
-          <>
-            <Route path="/apps/ebru-preview/*" element={protectedElement(<Navigate to="/apps" replace />)} />
-            <Route path="/apps/parasut/*" element={protectedElement(<LegacyParasutRedirect />)} />
-            {/* The approved Ebru UI is the one canonical ERP shell. */}
-            <Route path="/apps/*" element={protectedElement(<EbruPreviewPage />)} />
-            <Route path="/teklif-sayfasi" element={protectedElement(<Navigate to="/apps" replace />)} />
-            <Route path="/erp/*" element={protectedElement(<LegacyErpRedirect />)} />
-            {/* Every other pre-migration ERP path redirects to its /apps/... equivalent. */}
-            <Route path="/*" element={protectedElement(<LegacyRootToAppsRedirect />)} />
-          </>
-      ) : (
-        <Route path="/*" element={<NotFound />} />
-      )}
+      <Route path="/*" element={<NotFound />} />
     </Routes>
   );
 };

@@ -32,7 +32,6 @@ function renderRoute(path: string, children: ReactNode = <div>Korunan içerik</d
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/login" element={<div>Giriş sayfası</div>} />
-        <Route path="/apps" element={<div>Uygulamalar sayfası</div>} />
         <Route path="*" element={<ProtectedRoute>{children}</ProtectedRoute>} />
       </Routes>
     </MemoryRouter>,
@@ -72,14 +71,14 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText("Giriş sayfası")).toBeInTheDocument();
   });
 
-  it("redirects users without the route permission to apps", () => {
+  it("redirects users without the route permission to login", () => {
     const hasPermission = vi.fn(() => false);
     setAuthState({ hasPermission });
 
     renderRoute("/finans");
 
     expect(hasPermission).toHaveBeenCalledWith("finance.view");
-    expect(screen.getByText("Uygulamalar sayfası")).toBeInTheDocument();
+    expect(screen.getByText("Giriş sayfası")).toBeInTheDocument();
   });
 
   it("renders protected content for an active ERP user with permission", () => {

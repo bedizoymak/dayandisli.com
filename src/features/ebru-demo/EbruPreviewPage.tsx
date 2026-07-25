@@ -611,7 +611,7 @@ export default function EbruPreviewPage() {
             })}
           </nav>
           <div className="ebru-sidebar-bottom">
-            <Link to="/apps" className="ebru-footer-link">
+            <Link to="/" className="ebru-footer-link">
               <CircleHelp />
               <span>Yardım &amp; Destek</span>
             </Link>

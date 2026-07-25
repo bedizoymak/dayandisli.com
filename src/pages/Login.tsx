@@ -84,7 +84,7 @@ export default function Login() {
         metadata: { email: userEmail },
       });
 
-      const redirectPath = "/apps";
+      const redirectPath = "/dashboard";
       localStorage.removeItem("auth_redirect_path");
       navigate(redirectPath, { replace: true });
     } catch {

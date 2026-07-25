@@ -68,7 +68,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-[#111827] text-slate-100">
       <div className="border-b border-white/10 px-5 py-5">
-        <Link to="/apps" onClick={onNavigate} className="flex items-center gap-3">
+        <Link to="/" onClick={onNavigate} className="flex items-center gap-3">
           <img src={`${import.meta.env.BASE_URL}logo-header.png`} alt="Dayan Dişli" className="h-10 w-auto rounded bg-white px-2 py-1" />
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-300">ERP</p>
@@ -153,9 +153,6 @@ export default function AdminLayout({ title, description, children }: AdminLayou
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/apps">Uygulamalar</Link>
-                </Button>
                 <Button variant="ghost" size="icon" title="Yetki" className="hidden md:inline-flex">
                   <Shield className="h-4 w-4" />
                 </Button>

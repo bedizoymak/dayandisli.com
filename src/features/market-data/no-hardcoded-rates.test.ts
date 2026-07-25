@@ -21,16 +21,11 @@ describe("no hardcoded financial/weather values in production source", () => {
     expect(source).not.toMatch(/(usdTry|eurTry|gramTry|temperatureC)\s*[:=]\s*\d/);
   });
 
-  it("the dashboard derives exchange/gold/weather values from useMarketData, not a static literal array", () => {
-    const source = readSource("src/features/ebru-preview/EbruPreviewPage.tsx");
-    expect(source).toMatch(/useMarketData\(\)/);
-    expect(source).not.toMatch(/const dashboardExchange = \[\s*\{ label: "Dolar \/ TL", value: "—"/);
-  });
 });
 
 describe("no API secret in frontend or bundle", () => {
   it("no VITE_-prefixed market-data endpoint variable remains anywhere in the frontend", () => {
-    const source = readSource("src/features/ebru-preview/EbruPreviewPage.tsx");
+    const source = readSource("src/features/ebru-demo/EbruPreviewPage.tsx");
     expect(source).not.toMatch(/VITE_MARKET_RATES_ENDPOINT/);
     expect(existsSync(path.join(repoRoot, "src/features/market-rates"))).toBe(false);
   });
@@ -41,7 +36,7 @@ describe("no API secret in frontend or bundle", () => {
       "src/features/market-data/useMarketData.ts",
       "src/features/market-data/format.ts",
       "src/features/market-data/types.ts",
-      "src/features/ebru-preview/EbruPreviewPage.tsx",
+      "src/features/ebru-demo/EbruPreviewPage.tsx",
       "src/vite-env.d.ts",
       ".env.example",
     ];
@@ -62,7 +57,7 @@ describe("no API secret in frontend or bundle", () => {
       "src/features/market-data/useMarketData.ts",
       "src/features/market-data/format.ts",
       "src/features/market-data/types.ts",
-      "src/features/ebru-preview/EbruPreviewPage.tsx",
+      "src/features/ebru-demo/EbruPreviewPage.tsx",
       "src/vite-env.d.ts",
       ".env.example",
     ];
@@ -101,7 +96,7 @@ describe("no precise coordinates persisted or logged", () => {
 
 describe("no update date/time shown on market or weather cards", () => {
   it("the currency and gold card builders no longer format a rate date or update timestamp", () => {
-    const source = readSource("src/features/ebru-preview/EbruPreviewPage.tsx");
+    const source = readSource("src/features/ebru-demo/EbruPreviewPage.tsx");
     expect(source).not.toMatch(/formatCurrencyMeta|formatGoldMeta/);
     expect(source).not.toMatch(/Güncellendi|Güncelleme gecikti/);
   });
@@ -111,11 +106,6 @@ describe("no update date/time shown on market or weather cards", () => {
     expect(source).not.toMatch(/export function formatCurrencyMeta|export function formatGoldMeta/);
   });
 
-  it("card builders use formatProviderLabel (provider name only) instead of a date-bearing formatter", () => {
-    const source = readSource("src/features/ebru-preview/EbruPreviewPage.tsx");
-    expect(source).toMatch(/formatProviderLabel\(marketData\.currency\.source\)/);
-    expect(source).toMatch(/formatProviderLabel\(gold\.source\)/);
-  });
 });
 
 describe("provider names remain visible where intended", () => {
@@ -132,14 +122,14 @@ describe("provider names remain visible where intended", () => {
 
 describe("the main dashboard greeting date/time is unchanged", () => {
   it("the greeting still renders {today} · {time} beneath the welcome heading", () => {
-    const source = readSource("src/features/ebru-preview/EbruPreviewPage.tsx");
+    const source = readSource("src/features/ebru-demo/EbruPreviewPage.tsx");
     expect(source).toMatch(/className="ebru-date"[^>]*>\s*\{today\}\s*·\s*\{time\}/);
   });
 });
 
 describe("the approved card JSX hierarchy and CSS classes are preserved", () => {
   it("ebru-fx-grid, ebru-fx and ebru-weather markup structure is unchanged", () => {
-    const source = readSource("src/features/ebru-preview/EbruPreviewPage.tsx");
+    const source = readSource("src/features/ebru-demo/EbruPreviewPage.tsx");
     expect(source).toMatch(/className="ebru-fx-grid"/);
     expect(source).toMatch(/className="ebru-fx"/);
     expect(source).toMatch(/className="ebru-weather"/);

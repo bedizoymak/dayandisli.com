@@ -119,7 +119,7 @@ export function ShopOrdersPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Button asChild variant="ghost" size="icon">
-              <Link to="/apps">
+              <Link to="/shop">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
             </Button>

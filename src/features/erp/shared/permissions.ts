@@ -1,4 +1,3 @@
-import { erpApplications } from "../apps/applicationRegistry";
 import { getCurrentERPUser } from "./erpApi";
 import { ERPRole, ERPUser } from "./types";
 
@@ -35,11 +34,6 @@ export const ROLE_LABELS: Record<ERPRole, string> = {
   viewer: "Misafir",
 };
 
-const allApplicationPermissions = erpApplications.flatMap((app) => [
-  app.permissionKey,
-  ...app.modules.map((module) => module.permissionKey),
-]).filter(Boolean) as string[];
-
 export const PERMISSION_CATALOG = Array.from(
   new Set([
     "system.manage",
@@ -53,7 +47,6 @@ export const PERMISSION_CATALOG = Array.from(
     "permissions.manage",
     "dashboard.view",
     "settings.admin",
-    ...allApplicationPermissions,
     "sales.create",
     "sales.edit",
     "sales.export",
@@ -79,6 +72,19 @@ export const PERMISSION_CATALOG = Array.from(
     "parasut.sync.view",
     "accounting.contacts.create",
     "accounting.outbound.view",
+    "website.view",
+    "commerce.view",
+    "crm.view",
+    "sales.view",
+    "finance.view",
+    "inventory.view",
+    "purchasing.view",
+    "production.view",
+    "quality.view",
+    "maintenance.view",
+    "hr.view",
+    "reports.view",
+    "settings.view",
   ])
 ).sort();
 
@@ -202,36 +208,11 @@ export function canViewReports(user: ERPUser | null) {
   return hasRole(user, ["admin", "planner", "finance", "viewer"]) || hasPermission(user, "reports.view");
 }
 
-export function filterApplicationsByPermission(user: ERPUser | null) {
-  return erpApplications.filter((app) => hasPermission(user, app.permissionKey));
-}
-
 export function filterModulesByPermission<T extends { requiredPermission?: string; visible?: boolean }>(modules: T[], user: ERPUser | null) {
   return modules.filter((module) => module.visible !== false && hasPermission(user, module.requiredPermission));
 }
 
 const ROUTE_PERMISSIONS: Array<[RegExp, string]> = [
-  [/^\/apps\/parasut\/senkronizasyon/, "parasut.sync.view"],
-  [/^\/apps\/parasut\/sistem\/isler/, "parasut.sync.view"],
-  [/^\/apps\/parasut/, "parasut.view"],
-  [/^\/apps\/calculator(?:\/|$)/, "production.view"],
-  [/^\/apps\/shop-orders(?:\/|$)/, "commerce.view"],
-  [/^\/apps\/settings/, "settings.view"],
-  [/^\/apps\/website/, "website.view"],
-  [/^\/apps\/crm/, "crm.view"],
-  [/^\/apps\/sales/, "sales.view"],
-  [/^\/apps\/commerce/, "commerce.view"],
-  [/^\/apps\/inventory/, "inventory.view"],
-  [/^\/apps\/purchasing/, "purchasing.view"],
-  [/^\/apps\/production/, "production.view"],
-  [/^\/apps\/repair/, "production.view"],
-  [/^\/apps\/maintenance/, "maintenance.view"],
-  [/^\/apps\/quality/, "quality.view"],
-  [/^\/apps\/accounting/, "finance.view"],
-  [/^\/apps\/invoicing/, "finance.view"],
-  [/^\/apps\/expenses/, "finance.view"],
-  [/^\/apps\/reports/, "reports.view"],
-  [/^\/apps\/hr/, "hr.view"],
   [/^\/ayarlar(?:\/|$)|^\/settings(?:\/|$)/, "settings.view"],
   [/^\/musteriler|^\/tedarikciler|^\/crm|^\/paydaslar|^\/stakeholders/, "crm.view"],
   [/^\/teklifler|^\/siparisler|^\/satis-faaliyetleri|^\/quotations|^\/sales-orders|^\/sales-activities/, "sales.view"],
@@ -254,22 +235,9 @@ const ROUTE_PERMISSIONS: Array<[RegExp, string]> = [
 ];
 
 export function getRequiredPermissionForPath(pathname: string) {
-  const normalized = pathname.replace(/^\/erp/, "") || "/";
+  const normalized = pathname || "/";
   const directMatch = ROUTE_PERMISSIONS.find(([pattern]) => pattern.test(normalized));
   if (directMatch) return directMatch[1];
-
-  // Real ERP module pages now mount under the unified /apps/* shell (e.g.
-  // /apps/finans, /apps/musteriler, /apps/work-orders) without their own
-  // dedicated /apps/... entry above — those entries only exist for the
-  // application-registry's own synthetic /apps/<id> routes (sales, invoicing,
-  // accounting, ...). Retry with the /apps prefix stripped so nested shell
-  // routes resolve to exactly the same permission as their pre-migration bare
-  // path, instead of silently falling back to the permissive dashboard.view.
-  if (normalized === "/apps" || normalized.startsWith("/apps/")) {
-    const withoutApps = normalized.replace(/^\/apps/, "") || "/";
-    const fallbackMatch = ROUTE_PERMISSIONS.find(([pattern]) => pattern.test(withoutApps));
-    if (fallbackMatch) return fallbackMatch[1];
-  }
 
   return "dashboard.view";
 }
