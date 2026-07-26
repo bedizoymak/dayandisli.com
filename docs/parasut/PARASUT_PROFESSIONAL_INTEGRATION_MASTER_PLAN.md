@@ -921,9 +921,11 @@ Any one of these being missing keeps the gate closed.
 |---|---|---|
 | Scope | Offline mapper implementation; fixture-based unit tests; read-only live aggregate comparison; shadow derivation from `raw_payload`; mismatch reporting | Activating any of the above against production — writing, syncing, backfilling, deploying |
 | Database writes | **None** — `INSERT`/`UPDATE`/`DELETE`/`UPSERT`/sync/backfill/deploy are all out of scope | The entire point of this phase |
-| Status | **SAFE_TO_BEGIN** | **BLOCKED**, gated by §15.3, requires explicit owner approval per item 12 |
+| Status | **SAFE_TO_BEGIN** *(superseded — see note below)* | **BLOCKED**, gated by §15.3, requires explicit owner approval per item 12 |
 
-Phase 2A work (e.g., building out `deriveTypedRow()` call sites in a branch, writing tests against fixture JSON, running the dry-run comparator against a read replica or read-only production query) does not touch production data and is not blocked by D8 remaining unresolved. **This document does not implement any Phase 2A work — that begins only when explicitly instructed separately.**
+> **Status correction (post-Phase-1-completion):** the `SAFE_TO_BEGIN` assessment above describes Phase 2A's theoretical *safety* (it involves no production writes) and remains valid as an analysis. It is **not** a standing green light. The document's authoritative, current status — set by the header and §16.12 — is **Phase 2 / Phase 2A: DO NOT BEGIN**, because beginning Phase 2 work requires a separate, explicit instruction each time, which has not been given. Do not treat this table row as active authorization.
+
+Phase 2A work (e.g., building out `deriveTypedRow()` call sites in a branch, writing tests against fixture JSON, running the dry-run comparator against a read replica or read-only production query) does not touch production data and is not blocked by D8 remaining unresolved. **This document does not implement any Phase 2A work — that begins only when explicitly instructed separately, and as of this document's current status, has not been.**
 
 ### 15.5 External-evidence reopening rule for D8
 
@@ -936,13 +938,15 @@ D8 should be reopened — and only reopened — if genuinely new evidence become
 
 **The absence of this evidence in the current repository is not proof that no historical writer ever existed.** §14.5 demonstrates only that no *currently reachable* artifact explains the population — a closed, honest, but bounded claim. Do not overstate it as "proven manual/untracked" without one of the evidence types above.
 
-### 15.6 Final governance status (exact wording)
+### 15.6 Final governance status (exact wording) — SUPERSEDED, see §16.12 for the current authoritative status
 
-- **Phase 1 audit: `COMPLETE_WITH_ACCEPTED_UNRESOLVED_RISK`**
-- **D8 historical provenance: `UNRESOLVED`**
-- **Phase 2A (read-only/offline work): `SAFE_TO_BEGIN`**
-- **Phase 2B (production-writing work): `BLOCKED`**
-- **Production synchronization/backfill: `PROHIBITED_PENDING_OWNER_APPROVAL`**
+> This subsection reflects the governance snapshot at the time §15 was written (before Phase 1 completed). It is retained for history. **The current, authoritative status is set by the header and §16.12: Phase 1: PASS, Phase 2 / Phase 2A: DO NOT BEGIN.**
+
+- Phase 1 audit: `COMPLETE_WITH_ACCEPTED_UNRESOLVED_RISK` *(as of §15; now superseded by §16.12's `PASS`)*
+- D8 historical provenance: `UNRESOLVED` *(still current — unchanged by Phase 1 completion)*
+- Phase 2A (read-only/offline work): ~~`SAFE_TO_BEGIN`~~ **superseded — current status is `DO NOT BEGIN` (§16.12)**
+- Phase 2B (production-writing work): `BLOCKED` *(still current)*
+- Production synchronization/backfill: `PROHIBITED_PENDING_OWNER_APPROVAL` *(still current)*
 
 ---
 
