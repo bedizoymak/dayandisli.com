@@ -1,0 +1,1831 @@
+[
+  {
+    "order": 1,
+    "resource": "accounts",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/AccountAttributes",
+      "wrapperSchema": "#/definitions/Account"
+    },
+    "officialAttributeCount": 16,
+    "officialRelationshipCount": 0,
+    "migrationColumnCount": 13,
+    "liveColumnCount": 13,
+    "liveTableFound": true,
+    "exactMatches": 13,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "extraMigrationColumns": [],
+    "extraLiveColumns": [],
+    "relationshipVerification": [],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      }
+    ]
+  },
+  {
+    "order": 2,
+    "resource": "bank_fees",
+    "topology": "unsupported-live-404",
+    "evidence": {
+      "attributesSchema": "#/definitions/BankFeeAttributes",
+      "wrapperSchema": "#/definitions/BankFee"
+    },
+    "officialAttributeCount": 12,
+    "officialRelationshipCount": 2,
+    "migrationColumnCount": 11,
+    "liveColumnCount": 11,
+    "liveTableFound": true,
+    "exactMatches": 9,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "category_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "tags",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "category_parasut_id",
+      "tags"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "category_parasut_id",
+        "impliedRelationshipKey": "category",
+        "officialSpecEvidence": "BankFee.relationships.category -> type \"item_categories\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "tags",
+        "impliedRelationshipKey": "tags",
+        "officialSpecEvidence": "BankFee.relationships.tags -> type \"tags\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      }
+    ]
+  },
+  {
+    "order": 3,
+    "resource": "contacts",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/ContactAttributes",
+      "wrapperSchema": "#/definitions/Contact"
+    },
+    "officialAttributeCount": 26,
+    "officialRelationshipCount": 3,
+    "migrationColumnCount": 26,
+    "liveColumnCount": 26,
+    "liveTableFound": true,
+    "exactMatches": 23,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "category_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "contact_portal_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "contact_people",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "category_parasut_id",
+      "contact_portal_parasut_id",
+      "contact_people"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "category_parasut_id",
+        "impliedRelationshipKey": "category",
+        "officialSpecEvidence": "Contact.relationships.category -> type \"item_categories\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "contact_portal_parasut_id",
+        "impliedRelationshipKey": "contact_portal",
+        "officialSpecEvidence": "Contact.relationships.contact_portal -> type \"contact_portals\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "contact_people",
+        "impliedRelationshipKey": "contact_people",
+        "officialSpecEvidence": "Contact.relationships.contact_people -> type \"contact_people\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [
+      "invoicing_preferences"
+    ],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 4,
+    "resource": "e_archives",
+    "topology": "unsupported-live-404",
+    "evidence": {
+      "attributesSchema": "#/definitions/EArchiveAttributes",
+      "wrapperSchema": "#/definitions/EArchive"
+    },
+    "officialAttributeCount": 11,
+    "officialRelationshipCount": 1,
+    "migrationColumnCount": 10,
+    "liveColumnCount": 10,
+    "liveTableFound": true,
+    "exactMatches": 9,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "sales_invoice_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "sales_invoice_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "sales_invoice_parasut_id",
+        "impliedRelationshipKey": "sales_invoice",
+        "officialSpecEvidence": "EArchive.relationships.sales_invoice -> type \"sales_invoices\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 5,
+    "resource": "e_invoice_inboxes",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/EInvoiceInboxAttributes",
+      "wrapperSchema": "#/definitions/EInvoiceInbox"
+    },
+    "officialAttributeCount": 8,
+    "officialRelationshipCount": 0,
+    "migrationColumnCount": 6,
+    "liveColumnCount": 6,
+    "liveTableFound": true,
+    "exactMatches": 6,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [],
+    "extraLiveColumns": [],
+    "relationshipVerification": [],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 6,
+    "resource": "e_invoices",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/EInvoiceAttributes",
+      "wrapperSchema": "#/definitions/EInvoice"
+    },
+    "officialAttributeCount": 25,
+    "officialRelationshipCount": 1,
+    "migrationColumnCount": 24,
+    "liveColumnCount": 24,
+    "liveTableFound": true,
+    "exactMatches": 23,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "invoice_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "invoice_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "invoice_parasut_id",
+        "impliedRelationshipKey": "invoice",
+        "officialSpecEvidence": "EInvoice.relationships.invoice -> type \"sales_invoices\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      }
+    ]
+  },
+  {
+    "order": 7,
+    "resource": "e_smms",
+    "topology": "unsupported-live-404",
+    "evidence": {
+      "attributesSchema": "#/definitions/ESmmAttributes",
+      "wrapperSchema": "#/definitions/ESmm"
+    },
+    "officialAttributeCount": 8,
+    "officialRelationshipCount": 1,
+    "migrationColumnCount": 7,
+    "liveColumnCount": 7,
+    "liveTableFound": true,
+    "exactMatches": 6,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "sales_invoice_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "sales_invoice_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "sales_invoice_parasut_id",
+        "impliedRelationshipKey": "sales_invoice",
+        "officialSpecEvidence": "ESmm.relationships.sales_invoice -> type \"sales_invoices\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 8,
+    "resource": "employees",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/EmployeeAttributes",
+      "wrapperSchema": "#/definitions/Employee"
+    },
+    "officialAttributeCount": 11,
+    "officialRelationshipCount": 3,
+    "migrationColumnCount": 11,
+    "liveColumnCount": 11,
+    "liveTableFound": true,
+    "exactMatches": 8,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "category_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "managed_by_user_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "managed_by_user_role_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "category_parasut_id",
+      "managed_by_user_parasut_id",
+      "managed_by_user_role_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "category_parasut_id",
+        "impliedRelationshipKey": "category",
+        "officialSpecEvidence": "Employee.relationships.category -> type \"item_categories\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "managed_by_user_parasut_id",
+        "impliedRelationshipKey": "managed_by_user",
+        "officialSpecEvidence": "Employee.relationships.managed_by_user -> type \"users\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "managed_by_user_role_parasut_id",
+        "impliedRelationshipKey": "managed_by_user_role",
+        "officialSpecEvidence": "Employee.relationships.managed_by_user_role -> type \"user_roles\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 9,
+    "resource": "inventory_levels",
+    "topology": "nested-singular-parent",
+    "evidence": {
+      "attributesSchema": "#/definitions/InventoryLevelAttributes",
+      "wrapperSchema": "#/definitions/InventoryLevel"
+    },
+    "officialAttributeCount": 5,
+    "officialRelationshipCount": 2,
+    "migrationColumnCount": 5,
+    "liveColumnCount": 5,
+    "liveTableFound": true,
+    "exactMatches": 3,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "product_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "warehouse_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "product_parasut_id",
+      "warehouse_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "product_parasut_id",
+        "impliedRelationshipKey": "product",
+        "officialSpecEvidence": "InventoryLevel.relationships.product -> type \"products\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "warehouse_parasut_id",
+        "impliedRelationshipKey": "warehouse",
+        "officialSpecEvidence": "InventoryLevel.relationships.warehouse -> type \"warehouses\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 10,
+    "resource": "item_categories",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/ItemCategoryAttributes",
+      "wrapperSchema": "#/definitions/ItemCategory"
+    },
+    "officialAttributeCount": 8,
+    "officialRelationshipCount": 2,
+    "migrationColumnCount": 8,
+    "liveColumnCount": 8,
+    "liveTableFound": true,
+    "exactMatches": 6,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "parent_category_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "subcategories",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "parent_category_parasut_id",
+      "subcategories"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "parent_category_parasut_id",
+        "impliedRelationshipKey": "parent_category",
+        "officialSpecEvidence": "ItemCategory.relationships.parent_category -> type \"item_categories\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "subcategories",
+        "impliedRelationshipKey": "subcategories",
+        "officialSpecEvidence": "ItemCategory.relationships.subcategories -> type \"item_categories\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 11,
+    "resource": "payments",
+    "topology": "nested-included",
+    "evidence": {
+      "attributesSchema": "#/definitions/PaymentAttributes",
+      "wrapperSchema": "#/definitions/Payment"
+    },
+    "officialAttributeCount": 6,
+    "officialRelationshipCount": 2,
+    "migrationColumnCount": 6,
+    "liveColumnCount": 6,
+    "liveTableFound": true,
+    "exactMatches": 4,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "payable_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "transaction_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "payable_parasut_id",
+      "transaction_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "payable_parasut_id",
+        "impliedRelationshipKey": "payable",
+        "officialSpecEvidence": "Payment.relationships.payable -> type \"sales_invoices\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "transaction_parasut_id",
+        "impliedRelationshipKey": "transaction",
+        "officialSpecEvidence": "Payment.relationships.transaction -> type \"transactions\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "currency",
+        "note": "currency code, JSON Schema type=number, expected PG family=text (not numeric)",
+        "migrationPgType": "numeric",
+        "livePgType": "numeric",
+        "flag": "SUSPICIOUS: classified numeric"
+      }
+    ]
+  },
+  {
+    "order": 12,
+    "resource": "products",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/ProductAttributes",
+      "wrapperSchema": "#/definitions/Product"
+    },
+    "officialAttributeCount": 26,
+    "officialRelationshipCount": 2,
+    "migrationColumnCount": 25,
+    "liveColumnCount": 25,
+    "liveTableFound": true,
+    "exactMatches": 23,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "inventory_levels_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "category_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "inventory_levels_parasut_id",
+      "category_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "inventory_levels_parasut_id",
+        "impliedRelationshipKey": "inventory_levels",
+        "officialSpecEvidence": "Product.relationships.inventory_levels -> type \"inventory_levels\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "category_parasut_id",
+        "impliedRelationshipKey": "category",
+        "officialSpecEvidence": "Product.relationships.category -> type \"item_categories\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      },
+      {
+        "field": "buying_currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      }
+    ]
+  },
+  {
+    "order": 13,
+    "resource": "purchase_bill_details",
+    "topology": "nested-included",
+    "evidence": {
+      "attributesSchema": "#/definitions/PurchaseBillDetailAttributes",
+      "wrapperSchema": "#/definitions/PurchaseBillDetail"
+    },
+    "officialAttributeCount": 14,
+    "officialRelationshipCount": 2,
+    "migrationColumnCount": 14,
+    "liveColumnCount": 14,
+    "liveTableFound": true,
+    "exactMatches": 12,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "warehouse_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "product_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "warehouse_parasut_id",
+      "product_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "warehouse_parasut_id",
+        "impliedRelationshipKey": "warehouse",
+        "officialSpecEvidence": "PurchaseBillDetail.relationships.warehouse -> type \"warehouses\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "product_parasut_id",
+        "impliedRelationshipKey": "product",
+        "officialSpecEvidence": "PurchaseBillDetail.relationships.product -> type \"products\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 14,
+    "resource": "purchase_bills",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/PurchaseBillAttributes",
+      "wrapperSchema": "#/definitions/PurchaseBill"
+    },
+    "officialAttributeCount": 30,
+    "officialRelationshipCount": 9,
+    "migrationColumnCount": 36,
+    "liveColumnCount": 36,
+    "liveTableFound": true,
+    "exactMatches": 27,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "category_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "spender_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "supplier_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "details",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "payments",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "tags",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "recurrence_plan_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "active_e_document_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "pay_to_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "category_parasut_id",
+      "spender_parasut_id",
+      "supplier_parasut_id",
+      "details",
+      "payments",
+      "tags",
+      "recurrence_plan_parasut_id",
+      "active_e_document_parasut_id",
+      "pay_to_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "category_parasut_id",
+        "impliedRelationshipKey": "category",
+        "officialSpecEvidence": "PurchaseBill.relationships.category -> type \"item_categories\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "spender_parasut_id",
+        "impliedRelationshipKey": "spender",
+        "officialSpecEvidence": "PurchaseBill.relationships.spender -> type \"employees\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "supplier_parasut_id",
+        "impliedRelationshipKey": "supplier",
+        "officialSpecEvidence": "PurchaseBill.relationships.supplier -> type \"contacts\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "details",
+        "impliedRelationshipKey": "details",
+        "officialSpecEvidence": "PurchaseBill.relationships.details -> type \"purchase_bill_details\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "payments",
+        "impliedRelationshipKey": "payments",
+        "officialSpecEvidence": "PurchaseBill.relationships.payments -> type \"payments\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "tags",
+        "impliedRelationshipKey": "tags",
+        "officialSpecEvidence": "PurchaseBill.relationships.tags -> type \"tags\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "recurrence_plan_parasut_id",
+        "impliedRelationshipKey": "recurrence_plan",
+        "officialSpecEvidence": "PurchaseBill.relationships.recurrence_plan -> type \"recurrence_plans\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "active_e_document_parasut_id",
+        "impliedRelationshipKey": "active_e_document",
+        "officialSpecEvidence": "PurchaseBill.relationships.active_e_document -> type \"e_invoices\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "pay_to_parasut_id",
+        "impliedRelationshipKey": "pay_to",
+        "officialSpecEvidence": "PurchaseBill.relationships.pay_to -> type \"contacts\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      }
+    ]
+  },
+  {
+    "order": 15,
+    "resource": "salaries",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/SalaryAttributes",
+      "wrapperSchema": "#/definitions/Salary"
+    },
+    "officialAttributeCount": 12,
+    "officialRelationshipCount": 3,
+    "migrationColumnCount": 12,
+    "liveColumnCount": 12,
+    "liveTableFound": true,
+    "exactMatches": 9,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "employee_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "category_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "tags",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "employee_parasut_id",
+      "category_parasut_id",
+      "tags"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "employee_parasut_id",
+        "impliedRelationshipKey": "employee",
+        "officialSpecEvidence": "Salary.relationships.employee -> type \"employees\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "category_parasut_id",
+        "impliedRelationshipKey": "category",
+        "officialSpecEvidence": "Salary.relationships.category -> type \"item_categories\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "tags",
+        "impliedRelationshipKey": "tags",
+        "officialSpecEvidence": "Salary.relationships.tags -> type \"tags\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      }
+    ]
+  },
+  {
+    "order": 16,
+    "resource": "sales_invoice_details",
+    "topology": "nested-included",
+    "evidence": {
+      "attributesSchema": "#/definitions/SalesInvoiceDetailAttributes",
+      "wrapperSchema": "#/definitions/SalesInvoiceDetail"
+    },
+    "officialAttributeCount": 16,
+    "officialRelationshipCount": 2,
+    "migrationColumnCount": 16,
+    "liveColumnCount": 16,
+    "liveTableFound": true,
+    "exactMatches": 14,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "warehouse_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "product_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "warehouse_parasut_id",
+      "product_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "warehouse_parasut_id",
+        "impliedRelationshipKey": "warehouse",
+        "officialSpecEvidence": "SalesInvoiceDetail.relationships.warehouse -> type \"warehouses\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "product_parasut_id",
+        "impliedRelationshipKey": "product",
+        "officialSpecEvidence": "SalesInvoiceDetail.relationships.product -> type \"products\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 17,
+    "resource": "sales_invoices",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/SalesInvoiceAttributes",
+      "wrapperSchema": "#/definitions/SalesInvoice"
+    },
+    "officialAttributeCount": 47,
+    "officialRelationshipCount": 9,
+    "migrationColumnCount": 53,
+    "liveColumnCount": 53,
+    "liveTableFound": true,
+    "exactMatches": 44,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "category_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "contact_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "details",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "payments",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "tags",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "sales_offer_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "sharings",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "recurrence_plan_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "active_e_document_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "category_parasut_id",
+      "contact_parasut_id",
+      "details",
+      "payments",
+      "tags",
+      "sales_offer_parasut_id",
+      "sharings",
+      "recurrence_plan_parasut_id",
+      "active_e_document_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "category_parasut_id",
+        "impliedRelationshipKey": "category",
+        "officialSpecEvidence": "SalesInvoice.relationships.category -> type \"item_categories\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "contact_parasut_id",
+        "impliedRelationshipKey": "contact",
+        "officialSpecEvidence": "SalesInvoice.relationships.contact -> type \"contacts\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "details",
+        "impliedRelationshipKey": "details",
+        "officialSpecEvidence": "SalesInvoice.relationships.details -> type \"sales_invoice_details\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "payments",
+        "impliedRelationshipKey": "payments",
+        "officialSpecEvidence": "SalesInvoice.relationships.payments -> type \"payments\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "tags",
+        "impliedRelationshipKey": "tags",
+        "officialSpecEvidence": "SalesInvoice.relationships.tags -> type \"tags\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "sales_offer_parasut_id",
+        "impliedRelationshipKey": "sales_offer",
+        "officialSpecEvidence": "SalesInvoice.relationships.sales_offer -> type \"sales_offers\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "sharings",
+        "impliedRelationshipKey": "sharings",
+        "officialSpecEvidence": "SalesInvoice.relationships.sharings -> type \"sharings\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "recurrence_plan_parasut_id",
+        "impliedRelationshipKey": "recurrence_plan",
+        "officialSpecEvidence": "SalesInvoice.relationships.recurrence_plan -> type \"recurrence_plans\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "active_e_document_parasut_id",
+        "impliedRelationshipKey": "active_e_document",
+        "officialSpecEvidence": "SalesInvoice.relationships.active_e_document -> type \"e_archives\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [
+      "payer_tax_numbers",
+      "e_document_accounts"
+    ],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      }
+    ]
+  },
+  {
+    "order": 18,
+    "resource": "sales_offers",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/SalesOfferAttributes",
+      "wrapperSchema": "#/definitions/SalesOffers"
+    },
+    "officialAttributeCount": 35,
+    "officialRelationshipCount": 5,
+    "migrationColumnCount": 39,
+    "liveColumnCount": 39,
+    "liveTableFound": true,
+    "exactMatches": 34,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "archived"
+    ],
+    "missingLiveColumns": [
+      "archived"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "sales_invoice_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "contact_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "details",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "activities",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "sharings",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "sales_invoice_parasut_id",
+      "contact_parasut_id",
+      "details",
+      "activities",
+      "sharings"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "sales_invoice_parasut_id",
+        "impliedRelationshipKey": "sales_invoice",
+        "officialSpecEvidence": "SalesOffers.relationships.sales_invoice -> type \"sales_invoices\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "contact_parasut_id",
+        "impliedRelationshipKey": "contact",
+        "officialSpecEvidence": "SalesOffers.relationships.contact -> type \"contacts\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "details",
+        "impliedRelationshipKey": "details",
+        "officialSpecEvidence": "SalesOffers.relationships.details -> type \"sales_offer_details\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "activities",
+        "impliedRelationshipKey": "activities",
+        "officialSpecEvidence": "SalesOffers.relationships.activities -> type \"activities\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "sharings",
+        "impliedRelationshipKey": "sharings",
+        "officialSpecEvidence": "SalesOffers.relationships.sharings -> type \"sharings\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      }
+    ]
+  },
+  {
+    "order": 19,
+    "resource": "sales_offers_details",
+    "topology": "nested-included-unregistered",
+    "evidence": {
+      "attributesSchema": "#/definitions/SalesOffersDetailAttributes",
+      "wrapperSchema": "#/definitions/SalesOffersDetails"
+    },
+    "officialAttributeCount": 24,
+    "officialRelationshipCount": 1,
+    "migrationColumnCount": 23,
+    "liveColumnCount": 23,
+    "liveTableFound": true,
+    "exactMatches": 22,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "product_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "product_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "product_parasut_id",
+        "impliedRelationshipKey": "product",
+        "officialSpecEvidence": "SalesOffersDetails.relationships.product -> type \"products\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 20,
+    "resource": "shipment_documents",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/ShipmentDocumentAttributes",
+      "wrapperSchema": "#/definitions/ShipmentDocument"
+    },
+    "officialAttributeCount": 14,
+    "officialRelationshipCount": 4,
+    "migrationColumnCount": 15,
+    "liveColumnCount": 15,
+    "liveTableFound": true,
+    "exactMatches": 11,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "contact_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "tags",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "stock_movements",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "invoices",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "contact_parasut_id",
+      "tags",
+      "stock_movements",
+      "invoices"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "contact_parasut_id",
+        "impliedRelationshipKey": "contact",
+        "officialSpecEvidence": "ShipmentDocument.relationships.contact -> type \"contacts\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "tags",
+        "impliedRelationshipKey": "tags",
+        "officialSpecEvidence": "ShipmentDocument.relationships.tags -> type \"tags\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "stock_movements",
+        "impliedRelationshipKey": "stock_movements",
+        "officialSpecEvidence": "ShipmentDocument.relationships.stock_movements -> type \"stock_movements\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "invoices",
+        "impliedRelationshipKey": "invoices",
+        "officialSpecEvidence": "ShipmentDocument.relationships.invoices -> type \"sales_invoices\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 21,
+    "resource": "stock_movements",
+    "topology": "unsupported-live-500",
+    "evidence": {
+      "attributesSchema": "#/definitions/StockMovementAttributes",
+      "wrapperSchema": "#/definitions/StockMovement"
+    },
+    "officialAttributeCount": 5,
+    "officialRelationshipCount": 4,
+    "migrationColumnCount": 7,
+    "liveColumnCount": 7,
+    "liveTableFound": true,
+    "exactMatches": 3,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "warehouse_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "product_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "source_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "contact_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "warehouse_parasut_id",
+      "product_parasut_id",
+      "source_parasut_id",
+      "contact_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "warehouse_parasut_id",
+        "impliedRelationshipKey": "warehouse",
+        "officialSpecEvidence": "StockMovement.relationships.warehouse -> type \"warehouses\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "product_parasut_id",
+        "impliedRelationshipKey": "product",
+        "officialSpecEvidence": "StockMovement.relationships.product -> type \"products\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "source_parasut_id",
+        "impliedRelationshipKey": "source",
+        "officialSpecEvidence": "StockMovement.relationships.source -> type \"shipment_documents\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "contact_parasut_id",
+        "impliedRelationshipKey": "contact",
+        "officialSpecEvidence": "StockMovement.relationships.contact -> type \"contacts\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 22,
+    "resource": "stock_update_details",
+    "topology": "nested-included-blocked",
+    "evidence": {
+      "attributesSchema": "#/definitions/StockUpdateDetailAttributes",
+      "wrapperSchema": "#/definitions/StockUpdateDetail"
+    },
+    "officialAttributeCount": 4,
+    "officialRelationshipCount": 2,
+    "migrationColumnCount": 4,
+    "liveColumnCount": 4,
+    "liveTableFound": true,
+    "exactMatches": 2,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "warehouse_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "product_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "warehouse_parasut_id",
+      "product_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "warehouse_parasut_id",
+        "impliedRelationshipKey": "warehouse",
+        "officialSpecEvidence": "StockUpdateDetail.relationships.warehouse -> type \"warehouses\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "product_parasut_id",
+        "impliedRelationshipKey": "product",
+        "officialSpecEvidence": "StockUpdateDetail.relationships.product -> type \"products\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 23,
+    "resource": "stock_updates",
+    "topology": "unsupported-live-500",
+    "evidence": {
+      "attributesSchema": "#/definitions/StockUpdateAttributes",
+      "wrapperSchema": "#/definitions/StockUpdate"
+    },
+    "officialAttributeCount": 2,
+    "officialRelationshipCount": 1,
+    "migrationColumnCount": 1,
+    "liveColumnCount": 1,
+    "liveTableFound": true,
+    "exactMatches": 0,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "details",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "details"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "details",
+        "impliedRelationshipKey": "details",
+        "officialSpecEvidence": "StockUpdate.relationships.details -> type \"stock_update_details\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 24,
+    "resource": "tags",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/TagAttributes",
+      "wrapperSchema": "#/definitions/Tag"
+    },
+    "officialAttributeCount": 3,
+    "officialRelationshipCount": 0,
+    "migrationColumnCount": 1,
+    "liveColumnCount": 1,
+    "liveTableFound": true,
+    "exactMatches": 1,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [],
+    "extraLiveColumns": [],
+    "relationshipVerification": [],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 25,
+    "resource": "taxes",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/TaxAttributes",
+      "wrapperSchema": "#/definitions/Tax"
+    },
+    "officialAttributeCount": 10,
+    "officialRelationshipCount": 2,
+    "migrationColumnCount": 9,
+    "liveColumnCount": 9,
+    "liveTableFound": true,
+    "exactMatches": 7,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "category_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "tags",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "category_parasut_id",
+      "tags"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "category_parasut_id",
+        "impliedRelationshipKey": "category",
+        "officialSpecEvidence": "Tax.relationships.category -> type \"item_categories\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "tags",
+        "impliedRelationshipKey": "tags",
+        "officialSpecEvidence": "Tax.relationships.tags -> type \"tags\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 26,
+    "resource": "trackable_jobs",
+    "topology": "nested-single-record",
+    "evidence": {
+      "attributesSchema": "#/definitions/TrackableJobAttributes",
+      "wrapperSchema": "#/definitions/TrackableJob"
+    },
+    "officialAttributeCount": 2,
+    "officialRelationshipCount": 0,
+    "migrationColumnCount": 2,
+    "liveColumnCount": 2,
+    "liveTableFound": true,
+    "exactMatches": 2,
+    "typeMismatches": [],
+    "missingMigrationColumns": [],
+    "missingLiveColumns": [],
+    "extraMigrationColumns": [],
+    "extraLiveColumns": [],
+    "relationshipVerification": [],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  },
+  {
+    "order": 27,
+    "resource": "transactions",
+    "topology": "nested-single-record",
+    "evidence": {
+      "attributesSchema": "#/definitions/TransactionAttributes",
+      "wrapperSchema": "#/definitions/Transaction"
+    },
+    "officialAttributeCount": 10,
+    "officialRelationshipCount": 3,
+    "migrationColumnCount": 11,
+    "liveColumnCount": 11,
+    "liveTableFound": true,
+    "exactMatches": 8,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "debit_account_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "credit_account_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      },
+      {
+        "name": "payments",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "debit_account_parasut_id",
+      "credit_account_parasut_id",
+      "payments"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "debit_account_parasut_id",
+        "impliedRelationshipKey": "debit_account",
+        "officialSpecEvidence": "Transaction.relationships.debit_account -> type \"accounts\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "credit_account_parasut_id",
+        "impliedRelationshipKey": "credit_account",
+        "officialSpecEvidence": "Transaction.relationships.credit_account -> type \"accounts\"",
+        "status": "VERIFIED_FROM_SPEC"
+      },
+      {
+        "migrationColumn": "payments",
+        "impliedRelationshipKey": "payments",
+        "officialSpecEvidence": "Transaction.relationships.payments -> type \"payments\" (array)",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": [
+      {
+        "field": "debit_currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      },
+      {
+        "field": "credit_currency",
+        "note": "currency code, JSON Schema type=string, expected PG family=text (not numeric)",
+        "migrationPgType": "text",
+        "livePgType": "text",
+        "flag": "OK"
+      }
+    ]
+  },
+  {
+    "order": 28,
+    "resource": "warehouses",
+    "topology": "direct-list",
+    "evidence": {
+      "attributesSchema": "#/definitions/WarehouseAttributes",
+      "wrapperSchema": "#/definitions/Warehouse"
+    },
+    "officialAttributeCount": 8,
+    "officialRelationshipCount": 1,
+    "migrationColumnCount": 6,
+    "liveColumnCount": 6,
+    "liveTableFound": true,
+    "exactMatches": 5,
+    "typeMismatches": [],
+    "missingMigrationColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "missingLiveColumns": [
+      "created_at",
+      "updated_at",
+      "archived"
+    ],
+    "extraMigrationColumns": [
+      {
+        "name": "inventory_levels_parasut_id",
+        "kind": "relationship",
+        "note": "relationship-shaped column, checked against official relationships separately"
+      }
+    ],
+    "extraLiveColumns": [
+      "inventory_levels_parasut_id"
+    ],
+    "relationshipVerification": [
+      {
+        "migrationColumn": "inventory_levels_parasut_id",
+        "impliedRelationshipKey": "inventory_levels",
+        "officialSpecEvidence": "Warehouse.relationships.inventory_levels -> type \"inventory_levels\"",
+        "status": "VERIFIED_FROM_SPEC"
+      }
+    ],
+    "reclassifiedAsAttribute": [],
+    "officialRelationshipsNotInMigration": [],
+    "suspiciousMappingsValidated": []
+  }
+]

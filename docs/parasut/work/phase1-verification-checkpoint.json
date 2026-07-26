@@ -1,0 +1,672 @@
+{
+  "version": 1,
+  "createdAt": "2026-07-26T06:15:31.482Z",
+  "updatedAt": "2026-07-26T06:15:31.586Z",
+  "entries": {
+    "accounts": {
+      "resource": "accounts",
+      "resourceNumber": 1,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/AccountAttributes",
+        "wrapperComponent": "#/definitions/Account"
+      },
+      "officialAttributeCount": 16,
+      "officialRelationshipCount": 0,
+      "paginationEvidence": {
+        "path": "/{company_id}/accounts",
+        "operationId": "listAccounts",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.482Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "bank_fees": {
+      "resource": "bank_fees",
+      "resourceNumber": 2,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/BankFeeAttributes",
+        "wrapperComponent": "#/definitions/BankFee"
+      },
+      "officialAttributeCount": 12,
+      "officialRelationshipCount": 2,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.484Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "contacts": {
+      "resource": "contacts",
+      "resourceNumber": 3,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/ContactAttributes",
+        "wrapperComponent": "#/definitions/Contact"
+      },
+      "officialAttributeCount": 26,
+      "officialRelationshipCount": 3,
+      "paginationEvidence": {
+        "path": "/{company_id}/contacts",
+        "operationId": "listContacts",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.488Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "e_archives": {
+      "resource": "e_archives",
+      "resourceNumber": 4,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/EArchiveAttributes",
+        "wrapperComponent": "#/definitions/EArchive"
+      },
+      "officialAttributeCount": 11,
+      "officialRelationshipCount": 1,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.491Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "e_invoice_inboxes": {
+      "resource": "e_invoice_inboxes",
+      "resourceNumber": 5,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/EInvoiceInboxAttributes",
+        "wrapperComponent": "#/definitions/EInvoiceInbox"
+      },
+      "officialAttributeCount": 8,
+      "officialRelationshipCount": 0,
+      "paginationEvidence": {
+        "path": "/{company_id}/e_invoice_inboxes",
+        "operationId": "listEInvoiceInboxes",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.494Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "e_invoices": {
+      "resource": "e_invoices",
+      "resourceNumber": 6,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/EInvoiceAttributes",
+        "wrapperComponent": "#/definitions/EInvoice"
+      },
+      "officialAttributeCount": 25,
+      "officialRelationshipCount": 1,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.499Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "e_smms": {
+      "resource": "e_smms",
+      "resourceNumber": 7,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/ESmmAttributes",
+        "wrapperComponent": "#/definitions/ESmm"
+      },
+      "officialAttributeCount": 8,
+      "officialRelationshipCount": 1,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.504Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "employees": {
+      "resource": "employees",
+      "resourceNumber": 8,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/EmployeeAttributes",
+        "wrapperComponent": "#/definitions/Employee"
+      },
+      "officialAttributeCount": 11,
+      "officialRelationshipCount": 3,
+      "paginationEvidence": {
+        "path": "/{company_id}/employees",
+        "operationId": "listEmployees",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.506Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "inventory_levels": {
+      "resource": "inventory_levels",
+      "resourceNumber": 9,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/InventoryLevelAttributes",
+        "wrapperComponent": "#/definitions/InventoryLevel"
+      },
+      "officialAttributeCount": 5,
+      "officialRelationshipCount": 2,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.509Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "item_categories": {
+      "resource": "item_categories",
+      "resourceNumber": 10,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/ItemCategoryAttributes",
+        "wrapperComponent": "#/definitions/ItemCategory"
+      },
+      "officialAttributeCount": 8,
+      "officialRelationshipCount": 2,
+      "paginationEvidence": {
+        "path": "/{company_id}/item_categories",
+        "operationId": "listItemCategories",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.512Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "payments": {
+      "resource": "payments",
+      "resourceNumber": 11,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/PaymentAttributes",
+        "wrapperComponent": "#/definitions/Payment"
+      },
+      "officialAttributeCount": 6,
+      "officialRelationshipCount": 2,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.516Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "products": {
+      "resource": "products",
+      "resourceNumber": 12,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/ProductAttributes",
+        "wrapperComponent": "#/definitions/Product"
+      },
+      "officialAttributeCount": 26,
+      "officialRelationshipCount": 2,
+      "paginationEvidence": {
+        "path": "/{company_id}/products",
+        "operationId": "listProducts",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.519Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "purchase_bill_details": {
+      "resource": "purchase_bill_details",
+      "resourceNumber": 13,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/PurchaseBillDetailAttributes",
+        "wrapperComponent": "#/definitions/PurchaseBillDetail"
+      },
+      "officialAttributeCount": 14,
+      "officialRelationshipCount": 2,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.522Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "purchase_bills": {
+      "resource": "purchase_bills",
+      "resourceNumber": 14,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/PurchaseBillAttributes",
+        "wrapperComponent": "#/definitions/PurchaseBill"
+      },
+      "officialAttributeCount": 30,
+      "officialRelationshipCount": 9,
+      "paginationEvidence": {
+        "path": "/{company_id}/purchase_bills",
+        "operationId": "listPurchaseBills",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.526Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "salaries": {
+      "resource": "salaries",
+      "resourceNumber": 15,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/SalaryAttributes",
+        "wrapperComponent": "#/definitions/Salary"
+      },
+      "officialAttributeCount": 12,
+      "officialRelationshipCount": 3,
+      "paginationEvidence": {
+        "path": "/{company_id}/salaries",
+        "operationId": "listSalaries",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.528Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "sales_invoice_details": {
+      "resource": "sales_invoice_details",
+      "resourceNumber": 16,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/SalesInvoiceDetailAttributes",
+        "wrapperComponent": "#/definitions/SalesInvoiceDetail"
+      },
+      "officialAttributeCount": 16,
+      "officialRelationshipCount": 2,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.532Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "sales_invoices": {
+      "resource": "sales_invoices",
+      "resourceNumber": 17,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/SalesInvoiceAttributes",
+        "wrapperComponent": "#/definitions/SalesInvoice"
+      },
+      "officialAttributeCount": 47,
+      "officialRelationshipCount": 9,
+      "paginationEvidence": {
+        "path": "/{company_id}/sales_invoices",
+        "operationId": "listSalesInvoices",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.535Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "sales_offers": {
+      "resource": "sales_offers",
+      "resourceNumber": 18,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/SalesOfferAttributes",
+        "wrapperComponent": "#/definitions/SalesOffers"
+      },
+      "officialAttributeCount": 35,
+      "officialRelationshipCount": 5,
+      "paginationEvidence": {
+        "path": "/{company_id}/sales_offers",
+        "operationId": "listSalesOffers",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": false,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.539Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "sales_offers_details": {
+      "resource": "sales_offers_details",
+      "resourceNumber": 19,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/SalesOffersDetailAttributes",
+        "wrapperComponent": "#/definitions/SalesOffersDetails"
+      },
+      "officialAttributeCount": 24,
+      "officialRelationshipCount": 1,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.543Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "shipment_documents": {
+      "resource": "shipment_documents",
+      "resourceNumber": 20,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/ShipmentDocumentAttributes",
+        "wrapperComponent": "#/definitions/ShipmentDocument"
+      },
+      "officialAttributeCount": 14,
+      "officialRelationshipCount": 4,
+      "paginationEvidence": {
+        "path": "/{company_id}/shipment_documents",
+        "operationId": "listShipmentDocuments",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.547Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "stock_movements": {
+      "resource": "stock_movements",
+      "resourceNumber": 21,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/StockMovementAttributes",
+        "wrapperComponent": "#/definitions/StockMovement"
+      },
+      "officialAttributeCount": 5,
+      "officialRelationshipCount": 4,
+      "paginationEvidence": {
+        "path": "/{company_id}/stock_movements",
+        "operationId": "listStockMovements",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.553Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "stock_update_details": {
+      "resource": "stock_update_details",
+      "resourceNumber": 22,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/StockUpdateDetailAttributes",
+        "wrapperComponent": "#/definitions/StockUpdateDetail"
+      },
+      "officialAttributeCount": 4,
+      "officialRelationshipCount": 2,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.557Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "stock_updates": {
+      "resource": "stock_updates",
+      "resourceNumber": 23,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/StockUpdateAttributes",
+        "wrapperComponent": "#/definitions/StockUpdate"
+      },
+      "officialAttributeCount": 2,
+      "officialRelationshipCount": 1,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.561Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "tags": {
+      "resource": "tags",
+      "resourceNumber": 24,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/TagAttributes",
+        "wrapperComponent": "#/definitions/Tag"
+      },
+      "officialAttributeCount": 3,
+      "officialRelationshipCount": 0,
+      "paginationEvidence": {
+        "path": "/{company_id}/tags",
+        "operationId": "listTags",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.567Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "taxes": {
+      "resource": "taxes",
+      "resourceNumber": 25,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/TaxAttributes",
+        "wrapperComponent": "#/definitions/Tax"
+      },
+      "officialAttributeCount": 10,
+      "officialRelationshipCount": 2,
+      "paginationEvidence": {
+        "path": "/{company_id}/taxes",
+        "operationId": "listTaxes",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.571Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "trackable_jobs": {
+      "resource": "trackable_jobs",
+      "resourceNumber": 26,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/TrackableJobAttributes",
+        "wrapperComponent": "#/definitions/TrackableJob"
+      },
+      "officialAttributeCount": 2,
+      "officialRelationshipCount": 0,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.575Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "transactions": {
+      "resource": "transactions",
+      "resourceNumber": 27,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/TransactionAttributes",
+        "wrapperComponent": "#/definitions/Transaction"
+      },
+      "officialAttributeCount": 10,
+      "officialRelationshipCount": 3,
+      "paginationEvidence": null,
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.579Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    },
+    "warehouses": {
+      "resource": "warehouses",
+      "resourceNumber": 28,
+      "totalResources": 28,
+      "status": "COMPLETE",
+      "openApiComponents": {
+        "attributesComponent": "#/definitions/WarehouseAttributes",
+        "wrapperComponent": "#/definitions/Warehouse"
+      },
+      "officialAttributeCount": 8,
+      "officialRelationshipCount": 1,
+      "paginationEvidence": {
+        "path": "/{company_id}/warehouses",
+        "operationId": "listWarehouses",
+        "hasPageNumberParam": true,
+        "hasPageSizeParam": true,
+        "responseHasMeta": true,
+        "responseHasDataArray": true
+      },
+      "migrationComparisonStatus": "COMPLETE",
+      "productionComparisonStatus": "COMPLETE",
+      "errors": [],
+      "timestamp": "2026-07-26T06:15:31.586Z",
+      "openApiInputHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+      "migrationInputHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+      "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0"
+    }
+  }
+}

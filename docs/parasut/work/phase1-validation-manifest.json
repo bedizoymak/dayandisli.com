@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-07-26T06:15:31.592Z",
+  "inputs": {
+    "openApiSpecHash": "7ac65c0af5b66a05ae9ed6eaae90c977597268d6bbdb8695509ec523716bcb45",
+    "migrationSqlHash": "6d361f3d5f5d7ff4f075f6aa4cf82be118b2bc76571f9b1e87ed1ec3fd13e238",
+    "productionSnapshotHash": "00e296b953d0c7f8d3b30451551b2320b06d9cdb1ad8941023df0cab3c6e71e0",
+    "productionSnapshotCapturedAt": "2026-07-26T06:15:29.232Z",
+    "productionAccessBlocked": null
+  },
+  "resourcesCompleted": 28,
+  "resourcesBlocked": 0,
+  "resourcesTotal": 28,
+  "totals": {
+    "officialAttributes": 398,
+    "officialRelationships": 67,
+    "exactMatch": 334,
+    "explicitCompatibleRedirect": 64,
+    "incompatibleRedirect": 0,
+    "missingMigration": 0,
+    "missingProduction": 0,
+    "migrationMismatch": 0,
+    "productionMismatch": 0,
+    "fullyVerifiedRel": 67,
+    "jsonOnlyRel": 0,
+    "missingMigrationRel": 0,
+    "missingProductionRel": 0,
+    "unverifiedRel": 0,
+    "genuineExtraMigration": 0,
+    "genuineExtraProduction": 0
+  },
+  "invariantChecks": {
+    "completedPlusBlockedEquals28": true,
+    "attributeSumMatches": true,
+    "relationshipSumMatches": true,
+    "freshProductionSnapshotUsed": true
+  }
+}
