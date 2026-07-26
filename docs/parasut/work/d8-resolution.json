@@ -1,0 +1,921 @@
+{
+  "generatedAt": "2026-07-26T07:52:52.000Z",
+  "totalFields": 151,
+  "summary": {
+    "ALREADY_IMPLEMENTED_CORRECTLY_MAPPED": 0,
+    "INTENTIONALLY_RAW_PAYLOAD_ONLY": 0,
+    "REQUIRES_TYPED_COLUMN_MAPPING": 151,
+    "REQUIRES_EXPLICIT_TRANSFORMATION": 0,
+    "UNSUPPORTED_READ_ONLY": 0,
+    "WRITE_PATH_PROHIBITED": 0,
+    "GENUINELY_UNRESOLVED_MISSING_DOCS": 0
+  },
+  "resolutions": [
+    {
+      "resource": "accounts",
+      "attribute": "last_used_at",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'accounts' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "accounts",
+      "attribute": "balance",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'accounts' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "accounts",
+      "attribute": "account_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'accounts' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "accounts",
+      "attribute": "bank_branch",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'accounts' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "accounts",
+      "attribute": "iban",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'accounts' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "external_id",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "uuid",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "env_uuid",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "from_address",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "from_vkn",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "to_address",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "to_vkn",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "direction",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "note",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "response_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "contact_name",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "scenario",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "status",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "issue_date",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "is_expired",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "is_answerable",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "net_total",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "currency",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "e_invoices",
+      "attribute": "item_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'e_invoices' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "employees",
+      "attribute": "balance",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'employees' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "employees",
+      "attribute": "trl_balance",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'employees' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "employees",
+      "attribute": "usd_balance",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'employees' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "employees",
+      "attribute": "eur_balance",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'employees' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "employees",
+      "attribute": "gbp_balance",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'employees' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "employees",
+      "attribute": "name",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'employees' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "products",
+      "attribute": "sales_invoice_details_count",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "purchase_invoice_details_count",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "list_price_in_trl",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "buying_price_in_trl",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "stock_count",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "code",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "name",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "vat_rate",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "sales_excise_duty",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "sales_excise_duty_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "purchase_excise_duty",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "purchase_excise_duty_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "unit",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "communications_tax_rate",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "list_price",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "currency",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "buying_price",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "buying_currency",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "inventory_tracking",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "products",
+      "attribute": "initial_stock_count",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'products' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "total_paid",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "gross_total",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "total_excise_duty",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "total_communications_tax",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "total_vat",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "total_vat_withholding",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "total_discount",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "total_invoice_discount",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "remaining",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "remaining_in_trl",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "payment_status",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "is_detailed",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "sharings_count",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "e_invoices_count",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "remaining_reimbursement",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "remaining_reimbursement_in_trl",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "item_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "description",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "issue_date",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "due_date",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "invoice_no",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "currency",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "exchange_rate",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "net_total",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "withholding_rate",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "invoice_discount_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "purchase_bills",
+      "attribute": "invoice_discount",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'purchase_bills' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "invoice_no",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "net_total",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "withholding",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "total_excise_duty",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "total_communications_tax",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "total_vat",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "total_vat_withholding",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "total_discount",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "total_invoice_discount",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "before_taxes_total",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "remaining",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "remaining_in_trl",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "payment_status",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "item_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "description",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "issue_date",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "due_date",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "currency",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "exchange_rate",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "withholding_rate",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "invoice_discount_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "invoice_discount",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "billing_address",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "billing_postal_code",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "billing_phone",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "billing_fax",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "tax_office",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "tax_number",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "city",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "district",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "is_abroad",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "shipment_included",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "cash_sale",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "payer_tax_numbers",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "invoice_note",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_invoices",
+      "attribute": "append_contact_balance",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute (Phase 1 §16.4), correctly-typed migration/production column exists (Phase 1: 0 missing, 0 mismatches), registered in field-mapping-registry.ts, deriveTypedRow-ready (offline-mapper.ts). A sync wrapper exists for 'sales_invoices' but does not currently include this field in numericAttributeFields. Historical live values (if any) were not written by any current code path — resolved as a present-day mapping gap, not a provenance mystery. Wiring requires a production write (Phase 2B), not currently authorized."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "content",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "contact_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "sharings_count",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "status",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "display_exchange_rate_in_pdf",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "net_total",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "gross_total",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "withholding",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "total_excise_duty",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "total_communications_tax",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "total_accommodation_tax",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "total_vat",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "total_vat_withholding",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "vat_withholding",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "total_discount",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "total_invoice_discount",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "description",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "issue_date",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "due_date",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "currency",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "exchange_rate",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "withholding_rate",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "invoice_discount_type",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "invoice_discount",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "billing_address",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "tax_office",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "tax_number",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "sales_offers",
+      "attribute": "is_abroad",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'sales_offers' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "shipment_documents",
+      "attribute": "print_note",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'shipment_documents' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "shipment_documents",
+      "attribute": "inflow",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'shipment_documents' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "shipment_documents",
+      "attribute": "description",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'shipment_documents' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "shipment_documents",
+      "attribute": "city",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'shipment_documents' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "shipment_documents",
+      "attribute": "district",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'shipment_documents' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "shipment_documents",
+      "attribute": "address",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'shipment_documents' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "shipment_documents",
+      "attribute": "issue_date",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'shipment_documents' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "shipment_documents",
+      "attribute": "shipment_date",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'shipment_documents' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "shipment_documents",
+      "attribute": "procurement_number",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'shipment_documents' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    },
+    {
+      "resource": "warehouses",
+      "attribute": "name",
+      "category": "REQUIRES_TYPED_COLUMN_MAPPING",
+      "reasoning": "Official OpenAPI attribute, correctly-typed column exists, registered and deriveTypedRow-ready. No sync wrapper currently exists for resource 'warehouses' at all — mapping requires both a new sync wrapper AND typed-column wiring, both production-writing changes. Not currently authorized (Phase 2B)."
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Paraşüt Integration — Professional Master Plan
 
-**Status:** **Phase 1: PASS** (§16 — final authoritative verification, permanent tested tooling, fresh production snapshot, all acceptance invariants hold). **Phase 2: DO NOT BEGIN** — Phase 1 passing does not authorize Phase 2; a separate explicit instruction is required, and D8 (§14, 151 fields with no attributable writer) remains a distinct, separately-tracked open item that Phase 1 passing does not resolve.
+**Status:** **Phase 1: PASS** (§16 — final authoritative verification, permanent tested tooling, fresh production snapshot, all acceptance invariants hold). **D8 (§17): RESOLVED as engineering classification** — all 151 fields classified `REQUIRES_TYPED_COLUMN_MAPPING`, ready for Phase 2B, not implemented pending write authorization; historical provenance specifically remains separately unresolved and is no longer a blocker. **Phase 2: DO NOT BEGIN** — Phase 1 passing does not by itself authorize Phase 2; a separate explicit instruction is required each time.
 **Date:** 2026-07-26
 **IMPORTANT — read §16 first.** Sections 0–15 below are the **historical record of how this document arrived at its final state**, including passes that were later found to contain real defects (a migration-derived-only field count that was not authoritative OpenAPI evidence, and a classification bug that mislabeled 67 relationship-backed columns as unexplained extras). Those specific claims are **superseded by §16** and must not be cited as current evidence on their own. Sections 0–15 remain otherwise valid for what they document (D8, Phase 2A tooling, governance decisions) — only the "401-field migration-derived matrix presented as authoritative" framing and the "67 extra columns" finding are retracted, both corrected in §16.
 
@@ -1035,11 +1035,44 @@ Captured **during this run**, not reused from an earlier pass: `docs/parasut/wor
 
 `docs/parasut/PARASUT_LIVE_OPENAPI_VERIFICATION_CHECKPOINT.md` and `docs/parasut/work/PARASUT_OPENAPI_AUTHORITATIVE_VERIFICATION_CHECKPOINT.md` (and their accompanying `*_report.json`/`*_checkpoints.json`) are earlier, audited-and-corrected passes. Both now carry an explicit superseded banner at the top of the file. They are retained for history, not as evidence.
 
-### 16.11 D8 status, unchanged
+### 16.11 D8 status — see §17, resolved as engineering work
 
-D8 (§14 — 151 fields with population but no attributable writer) is **not addressed by this section** and remains `ACCEPTED_UNRESOLVED_PROVENANCE_RISK` per §15.2. Phase 1 passing on the OpenAPI/migration/production field-matrix question is independent of D8's resolution.
+D8's **historical provenance** (who/what originally wrote the 151 fields' live values) is explicitly not resolved and, per §15.5, cannot be from inside this repository — that narrow question remains open, unchanged. D8's **practical implementation status**, which is what actually gates further engineering work, is resolved in §17.
 
 ### 16.12 Final status
 
 - **Phase 1: PASS** — 28/28 resources complete, all acceptance invariants hold, fresh production snapshot used, all tests/typecheck/lint clean, no unresolved critical mapping or type mismatch.
-- **Phase 2: DO NOT BEGIN** in this execution — Phase 1 PASS is necessary but was not, by itself, treated as sufficient authorization here; Phase 2 requires a separate explicit instruction, and D8 remains a distinct open risk to weigh regardless of Phase 1's status.
+- **Phase 2: DO NOT BEGIN** in this execution — Phase 1 PASS is necessary but was not, by itself, treated as sufficient authorization here; Phase 2 requires a separate explicit instruction each time.
+
+---
+
+## 17. D8 Resolution — Engineering Classification (supersedes §14–§15's "UNRESOLVED" framing)
+
+Per explicit instruction, D8's *historical authorship* is not required to resolve it as an engineering matter — present-day repository evidence is sufficient. This section reclassifies all 151 fields using that evidence.
+
+### 17.1 Method
+
+Implemented in `server/parasut/verification/d8-resolution.ts` (+ `.test.ts`, 7 tests, all passing) and generated to `docs/parasut/work/d8-resolution.json`. For each of the 151 fields (list carried forward verbatim from §14.5's accepted evidence, not re-derived or re-queried), classification is computed from:
+- the accepted §16.4 OpenAPI extraction (all 151 are confirmed official attributes, EXACT_MATCH or EXPLICIT_COMPATIBLE_REDIRECT — none are missing or type-mismatched);
+- the canonical field-mapping registry (`field-mapping-registry.ts`) — confirmed present for all 151, correctly typed, `deriveTypedRow`-ready;
+- the actual current write path (`upsert-resource.ts` + each `sync-*.ts` wrapper's `numericAttributeFields`) — confirmed none of the 151 is currently written by any production code path;
+- whether a sync wrapper exists at all for the field's resource (5 of the 9 D8 resources have one; `e_invoices`, `employees`, `sales_offers`, `shipment_documents`, `warehouses` do not).
+
+No Paraşüt endpoint was called and no business/customer value was read to produce this classification.
+
+### 17.2 Result
+
+**All 151 fields: `REQUIRES_TYPED_COLUMN_MAPPING`.** 0 in every other category (already-implemented, raw-payload-only-by-design, needs-explicit-transformation, unsupported, genuinely-unresolved-missing-docs). The schema is correct, the registry is correct, the mapper (`deriveTypedRow`/`offline-mapper.ts`) already exists and is tested — the only remaining step for every one of these 151 fields is wiring that mapper into the production write path, which is itself a production-write change.
+
+**Practical consequence:** D8 is no longer an open *unknown* — it is a fully-classified, uniform, well-understood backlog item. It is **not** implemented in this pass because doing so requires a production write, which remains `WRITE_PATH_PROHIBITED` under current authorization (§15.3's gate, Phase 2B). This is a deliberate stop at the authorization boundary, not a capability gap.
+
+### 17.3 Historical provenance — separated, explicitly still open
+
+The narrow question "what wrote the pre-existing live values for these 151 fields before any current code touched them" remains unanswered and is **not** claimed to be resolved here — §15.5's external-evidence reopening rule still applies to that specific question if it ever matters (e.g., before deciding whether Phase 2B's mapper write would silently overwrite something worth preserving). It is no longer a blocker for engineering planning, per instruction.
+
+### 17.4 Updated D8 status
+
+- D8 implementation classification: **RESOLVED** (151/151 classified, 0 genuinely unresolved)
+- D8 historical provenance: **still unresolved**, explicitly separated, not a blocker
+- D8 as a Phase 1 blocker: **removed** — Phase 1 was already PASS (§16); this closes D8 as the last open pre-Phase-2 planning question
+- D8 as a Phase 2B backlog item: **151 fields queued**, `WRITE_PATH_PROHIBITED` pending owner approval (§15.3)
