@@ -1,6 +1,6 @@
 # Paraşüt Integration — Professional Master Plan
 
-**Status:** **Phase 1: PASS** (§16 — final authoritative verification, permanent tested tooling, fresh production snapshot, all acceptance invariants hold). **D8 (§17): RESOLVED as engineering classification** — all 151 fields classified `REQUIRES_TYPED_COLUMN_MAPPING`, ready for Phase 2B, not implemented pending write authorization; historical provenance specifically remains separately unresolved and is no longer a blocker. **Phase 2: DO NOT BEGIN** — Phase 1 passing does not by itself authorize Phase 2; a separate explicit instruction is required each time.
+**Status:** **Phase 1: PASS** (§16). **D8 (§17): RESOLVED as engineering classification.** **Phase 2B local implementation: COMPLETE for 5 of 9 D8 resources / 88 of 151 D8 fields (§18)**, owner-authorized, gated `PARASUT_TYPED_MAPPING_ENABLED` default-disabled, scope-confined, idempotent, rollback-rehearsed, all focused tests passing. **Production deployment/activation/live Paraşüt writes: NOT AUTHORIZED.** Remaining 63 D8 fields (5 resources with no existing sync wrapper) deferred — building new production entry points was out of this authorization's scope.
 **Date:** 2026-07-26
 **IMPORTANT — read §16 first.** Sections 0–15 below are the **historical record of how this document arrived at its final state**, including passes that were later found to contain real defects (a migration-derived-only field count that was not authoritative OpenAPI evidence, and a classification bug that mislabeled 67 relationship-backed columns as unexplained extras). Those specific claims are **superseded by §16** and must not be cited as current evidence on their own. Sections 0–15 remain otherwise valid for what they document (D8, Phase 2A tooling, governance decisions) — only the "401-field migration-derived matrix presented as authoritative" framing and the "67 extra columns" finding are retracted, both corrected in §16.
 
@@ -1075,4 +1075,78 @@ The narrow question "what wrote the pre-existing live values for these 151 field
 - D8 implementation classification: **RESOLVED** (151/151 classified, 0 genuinely unresolved)
 - D8 historical provenance: **still unresolved**, explicitly separated, not a blocker
 - D8 as a Phase 1 blocker: **removed** — Phase 1 was already PASS (§16); this closes D8 as the last open pre-Phase-2 planning question
-- D8 as a Phase 2B backlog item: **151 fields queued**, `WRITE_PATH_PROHIBITED` pending owner approval (§15.3)
+- D8 as a Phase 2B backlog item: **superseded by §18** — owner authorization was granted; 88 of the 151 fields (5 resources with an existing sync wrapper) are now wired, gated, and tested
+
+---
+
+## 18. Phase 2B Local Implementation (owner-authorized)
+
+**Authorization scope, exactly as granted:** repository code/documentation changes to wire the typed-field mapper into the production write-path implementation. **Explicitly not authorized:** production deployment, production database/schema writes, live Paraşüt API calls, live customer-data mutations. Everything in this section is local: no production system was touched.
+
+### 18.1 Implementation scope and files
+
+| File | Change |
+|---|---|
+| `server/parasut/typed-mapping-gate.ts` (new, + `.test.ts`, 9 tests) | The single write-enable gate: `shouldUseTypedMapping(resourceType, env)` = `isTypedMappingEnabled(env) && isResourceInTypedMappingScope(resourceType)`. Enabled only by the exact literal `PARASUT_TYPED_MAPPING_ENABLED="1"` — absent, empty, or any other value keeps it disabled. |
+| `server/parasut/upsert-resource.ts` (modified, + `upsert-resource-typed-mapping.test.ts`, 15 tests) | Row-building now calls the gate; when enabled and in scope, typed columns come from `deriveOfflineRow()` (the existing, already-tested Phase 2A pure mapper) instead of the legacy numeric-only path. When disabled (the default) or out of scope, behavior is byte-for-byte identical to before this change — confirmed by tests. |
+| `server/parasut/phase2a-write-guard.test.ts` (2 assertions updated) | The Phase 2A-era invariant "the write path must never import the registry/mapper" is legitimately superseded by this authorized change; replaced with the correct current invariant — the write path may import them **only** through the gated `typed-mapping-gate.ts`, never unconditionally, and `sync-base.ts` (the generic per-resource orchestrator) still must not import them directly. |
+
+### 18.2 Resources covered vs. deferred (explicit scope confinement, not a knowledge gap)
+
+**Wired (5 resources — every one with an existing production sync wrapper):** `accounts`, `contacts`, `products`, `sales_invoices`, `purchase_bills`. This covers **88 of the 151 D8 fields** (accounts 5 + products 20 + purchase_bills 27 + sales_invoices 36) plus every other previously-`COLUMN_EXISTS_BUT_NOT_MAPPED` field on those 5 resources (all 5 already had a write path; the gate now lets that path map everything the registry knows, not just the small `numericAttributeFields` subset).
+
+**Explicitly deferred (63 D8 fields, 5 resources — `e_invoices`, `employees`, `sales_offers`, `shipment_documents`, `warehouses`):** none of these has an existing sync wrapper at all. Wiring typed mapping for them would require building a brand-new production sync entry point, not extending an existing one — genuinely new write surface area, which this specific authorization ("wire the mapper into the production write-path **implementation**") does not clearly cover and which was not attempted. This is a scope decision, not a missing-mapping-evidence failure — the registry and mapper already cover these fields correctly (§16.4, §17); only a wrapper to invoke them is missing.
+
+### 18.3 Safety guards
+
+- **Default-disabled**, confirmed by test: absent env var, empty string, or any value other than the literal `"1"` all resolve to disabled (`typed-mapping-gate.test.ts`).
+- **Scope-confined**: even when enabled, only the 5 listed resources are affected; an enabled-but-out-of-scope resource (tested with `e_invoices`) falls back to the legacy path untouched.
+- **Fail-closed for unknown resources**: an unregistered resource name never triggers typed mapping, gate enabled or not.
+- **No dynamic SQL identifiers**: both the resource allowlist and every column name come from compile-time-constant sources (`TYPED_MAPPING_SCOPED_RESOURCES`, `FIELD_MAPPING_REGISTRY`) — nothing from the payload or request ever becomes a table/column identifier.
+- **Envelope/raw_payload preservation**: unconditional, unaffected by the gate (tested).
+- **Redirect transformations** (`created_at`→`source_created_at` etc.) unchanged and still validated (tested).
+- **Null vs. missing distinguishability**: preserved in the typed output (tested).
+- **RLS/tenant/company scoping**: unchanged — `upsertResource` still scopes every lookup/write by `parasut_company_id`/`resource_type`/`parasut_id`, exactly as before; a same-`parasut_id`-different-tenant test confirms two distinct rows, never merged.
+- **Diagnosability without secret/payload exposure**: unchanged — errors still surface via the existing `throw new Error(result.error.message ...)` path; no new logging was added, so no new exposure surface either.
+
+### 18.4 Idempotency
+
+**Strategy:** unchanged from the pre-existing design, confirmed to still hold with typed mapping enabled — the content-hash short-circuit (`payload_hash` comparison against the canonicalized resource) is the idempotency key. An unchanged payload updates only `last_seen_at`, never rewrites typed columns; a changed payload re-derives and rewrites the full row exactly once.
+
+**Focused test result:** `npx vitest run server/parasut/upsert-resource-typed-mapping.test.ts` — **exit 0, 15/15 passed**, including: same-object-twice produces no duplicate and no typed-column rewrite; changed payload updates only the mapped fields; simulated-failure retry converges to exactly one row; cross-resource table isolation; cross-tenant isolation; type-mismatch guard preserved.
+
+### 18.5 Rollback design and local rehearsal
+
+**Design:**
+- Immediate lever: unset or change `PARASUT_TYPED_MAPPING_ENABLED` in the deployment environment — no code change or redeploy needed to stop new typed writes.
+- Code-level rollback: revert the commit(s) listed in §18.6.
+- Partial-processing detection: `sync_runs`/`sync_errors` (unchanged by this pass) already record per-resource run status; a run that fails mid-way is visible there exactly as before.
+- Retry-after-rollback: the content-hash guard means a retry after rollback is always safe — it either finds an unchanged hash (no-op) or a changed one (re-derives with whatever mapping is currently active).
+- **What rollback does NOT do**: it does not retroactively strip already-written typed values from rows written while the gate was on — an upsert is additive/idempotent by design, never destructive, so reverting the flag is itself never a destructive operation. Documented and verified by test (§18.5's rehearsal below), not assumed.
+- Post-a-future-authorized-deployment checks (for the record, not performed here): confirm `PARASUT_TYPED_MAPPING_ENABLED` is unset in production until explicitly authorized; confirm the 5 scoped resources' next sync run shows the expected typed-column population via read-only `information_schema`/aggregate queries (the same method Phase 1 used); confirm no unexpected resource outside the 5-resource scope was affected.
+
+**Local rehearsal (no production access used):** `upsert-resource-typed-mapping.test.ts`'s two rollback tests — (1) enable → write → disable → write a second, different resource → confirms the second write reverts to legacy behavior while the first row's typed values remain intact; (2) enable → write → disable → re-process the *same* unchanged resource → confirms exactly one additional write occurs (`last_seen_at` only), proving the content-hash guard, not the gate, governs whether an existing row is touched. Both pass (included in the 15/15 above).
+
+### 18.6 Exact focused validation commands and results
+
+| Command | Direct exit code |
+|---|---|
+| `npx vitest run server/parasut/typed-mapping-gate.test.ts server/parasut/upsert-resource-typed-mapping.test.ts` | 0 (23/23 passed) |
+| `npx vitest run server/parasut/phase2a-write-guard.test.ts` (updated invariant) | 0 (8/8 passed) |
+| `npx vitest run server/parasut/upsert-resource-balance.test.ts server/parasut/sync-engine.test.ts server/parasut/sync-reconciliation.test.ts` (directly affected pre-existing tests) | 0 (37/37 passed, unchanged results) |
+| `npx vitest run server/parasut` (one consolidated confirmation run) | 0 (33 files, 407 tests passed) |
+| `npx tsc --noEmit` | 0 |
+| `npx eslint <changed files>` | 0 |
+| Whitespace validation, all new/modified files | 0 issues |
+
+### 18.7 Operations explicitly NOT performed
+
+No live Paraşüt API call. No Paraşüt write. No production database write. No production schema/migration execution. No production Edge Function deployment. No application deployment. No secret/credential/business-payload exposure in any artifact or output. `PARASUT_TYPED_MAPPING_ENABLED` was never set in any real environment — only ever passed as an in-memory test fixture value.
+
+### 18.8 Status (precise separation, per instruction)
+
+- **Phase 2B local implementation: COMPLETE** for the 5 in-scope resources (88 of 151 D8 fields wired; all other previously-unmapped fields on those same 5 resources also now covered). Implementation and all focused tests pass.
+- **Production deployment: NOT AUTHORIZED.**
+- **Production activation (setting `PARASUT_TYPED_MAPPING_ENABLED=1` anywhere real): NOT AUTHORIZED.**
+- **Live Paraşüt write validation: NOT AUTHORIZED.**
+- **Remaining 63 D8 fields (5 resources with no existing sync wrapper): DEFERRED** — needs a new sync-wrapper-building decision, a larger scope than "wire an existing path," not attempted under this authorization.

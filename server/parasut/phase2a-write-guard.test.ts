@@ -49,11 +49,23 @@ describe("Phase 2A write guard — static source check", () => {
     expect(source).not.toMatch(/from ["']\.\/sync-base\.ts["']/);
   });
 
-  it("field-mapping-registry.ts is never imported by the production write path", () => {
+  // Phase 2B (explicitly authorized) legitimately supersedes the Phase 2A-era
+  // invariant that used to live here ("the write path must never import the
+  // registry/mapper at all"). The correct current invariant is narrower and
+  // stronger: the write path MAY import them, but only through the gated,
+  // scope-confined typed-mapping-gate.ts — never unconditionally, and
+  // sync-base.ts (which orchestrates every resource, including out-of-scope
+  // ones) still must not import them directly, since scoping is enforced
+  // inside upsert-resource.ts alone.
+  it("upsert-resource.ts imports the registry/mapper only through the gated typed-mapping-gate.ts module, never unconditionally", () => {
     const upsertSource = readFileSync("server/parasut/upsert-resource.ts", "utf8");
+    expect(upsertSource).toMatch(/from ["']\.\/typed-mapping-gate\.ts["']/);
+    expect(upsertSource).toMatch(/shouldUseTypedMapping/);
+  });
+
+  it("sync-base.ts (the generic per-resource orchestrator) still does not import the registry/mapper directly — scoping stays confined to upsert-resource.ts alone", () => {
     const syncBaseSource = readFileSync("server/parasut/sync-base.ts", "utf8");
-    expect(upsertSource).not.toMatch(/field-mapping-registry|offline-mapper|shadow-comparison/);
-    expect(syncBaseSource).not.toMatch(/field-mapping-registry|offline-mapper|shadow-comparison/);
+    expect(syncBaseSource).not.toMatch(/field-mapping-registry|offline-mapper|shadow-comparison|typed-mapping-gate/);
   });
 
   it("no sync-*.ts production wrapper imports the Phase 2A modules", () => {

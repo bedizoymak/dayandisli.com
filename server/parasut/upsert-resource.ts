@@ -8,6 +8,8 @@ import type {
   UpsertResult,
 } from "./types.ts";
 import { PARASUT_MIRROR_SCHEMA } from "./types.ts";
+import { deriveOfflineRow } from "./offline-mapper.ts";
+import { shouldUseTypedMapping } from "./typed-mapping-gate.ts";
 
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -70,6 +72,31 @@ function numericColumns(
   return columns;
 }
 
+/**
+ * Phase 2B: typed-column values driven by the canonical field-mapping
+ * registry (server/parasut/field-mapping-registry.ts), via the same pure
+ * deriveOfflineRow() already used and tested in Phase 2A — no new
+ * conversion logic is introduced here, only wiring.
+ *
+ * Gated by shouldUseTypedMapping(): disabled by default (§ typed-mapping-gate.ts),
+ * and even when enabled, scope-confined to TYPED_MAPPING_SCOPED_RESOURCES —
+ * both the resource allowlist and the column set come only from static,
+ * compile-time-constant sources (the registry), never from any dynamic or
+ * request-supplied identifier, so no unknown property can reach a SQL
+ * column/table name.
+ *
+ * When disabled or out of scope, returns {} — the row falls back to
+ * exactly the legacy numericColumns()-only behavior, byte-for-byte
+ * unchanged from before this function existed.
+ */
+function typedRegistryColumns(
+  resource: JsonApiResource,
+  env?: Record<string, string | undefined>,
+): Record<string, unknown> {
+  if (!shouldUseTypedMapping(resource.type, env)) return {};
+  return { ...deriveOfflineRow(resource).values };
+}
+
 export async function upsertResource(
   database: MirrorDatabase,
   definition: MirrorResourceDefinition,
@@ -79,6 +106,8 @@ export async function upsertResource(
     parasutCompanyId: string;
     included?: JsonApiResource[];
     now?: Date;
+    /** Injectable for tests; defaults to process.env. See typed-mapping-gate.ts. */
+    typedMappingEnv?: Record<string, string | undefined>;
   },
 ): Promise<UpsertResult> {
   if (!resource.id || resource.type !== definition.resourceType) {
@@ -112,6 +141,15 @@ export async function upsertResource(
     return { outcome: "unchanged", payloadHash };
   }
 
+  // Typed-column source of truth for this write: the registry-driven
+  // mapper when Phase 2B's gate is enabled AND this resource is in scope;
+  // otherwise (the default) the original numeric-only mapping, unchanged.
+  // Never both — deriveOfflineRow's column set is already a strict
+  // superset of numericColumns() for every scoped resource, so merging
+  // would only risk divergent values from two independent code paths.
+  const typedColumns = typedRegistryColumns(resource, context.typedMappingEnv);
+  const mappedColumns = Object.keys(typedColumns).length > 0 ? typedColumns : numericColumns(definition, attributes);
+
   const row: MirrorResourceRow & Record<string, unknown> = {
     company_id: context.companyId,
     parasut_id: resource.id,
@@ -128,7 +166,7 @@ export async function upsertResource(
     last_seen_at: now,
     synced_at: now,
     payload_hash: payloadHash,
-    ...numericColumns(definition, attributes),
+    ...mappedColumns,
   };
 
   if (existing.data) {
