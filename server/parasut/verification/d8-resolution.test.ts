@@ -22,10 +22,16 @@ describe("D8 resolution — 151-field classification against accepted evidence",
     expect(result.reasoning).toContain("sync wrapper exists for 'accounts'");
   });
 
-  it("classifies a field with no sync wrapper at all with different, accurate reasoning", () => {
+  it("classifies a field from one of the 5 newly-wrapped resources with wrapper-aware reasoning, now that a sync wrapper exists for every D8 resource", () => {
     const result = classifyD8Field("e_invoices.external_id");
     expect(result.category).toBe("REQUIRES_TYPED_COLUMN_MAPPING");
-    expect(result.reasoning).toContain("No sync wrapper currently exists for resource 'e_invoices'");
+    expect(result.reasoning).toContain("sync wrapper exists for 'e_invoices'");
+  });
+
+  it("every resource appearing in D8_FIELD_KEYS now has a sync wrapper — no D8 field falls into the no-wrapper-at-all reasoning branch", () => {
+    const resolutions = resolveAllD8Fields();
+    const noWrapperReasoning = resolutions.filter((r) => r.reasoning.includes("No sync wrapper currently exists"));
+    expect(noWrapperReasoning).toEqual([]);
   });
 
   it("resolves all 151 fields without throwing and without any GENUINELY_UNRESOLVED_MISSING_DOCS result (registry coverage is complete)", () => {

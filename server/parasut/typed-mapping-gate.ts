@@ -9,12 +9,11 @@
 
 /**
  * Scope-confined: only resources with an EXISTING production sync wrapper
- * (server/parasut/sync-*.ts) are eligible. Building new sync wrappers for
- * currently-unwrapped resources (e_invoices, employees, sales_offers,
- * shipment_documents, warehouses) is explicitly out of scope for this
- * change — it would introduce new production write surface area, not just
- * extend an existing one, and is deferred pending separate authorization.
- * See docs/parasut/PARASUT_PROFESSIONAL_INTEGRATION_MASTER_PLAN.md §18.
+ * (server/parasut/sync-*.ts) are eligible. Adding a resource here requires
+ * the corresponding sync-*.ts wrapper to already exist — this set is what
+ * keeps the typed-mapping write path from reaching resources that have no
+ * real synchronization boundary yet.
+ * See docs/parasut/PARASUT_PROFESSIONAL_INTEGRATION_MASTER_PLAN.md §18/§19.
  */
 export const TYPED_MAPPING_SCOPED_RESOURCES: ReadonlySet<string> = new Set([
   "accounts",
@@ -22,6 +21,11 @@ export const TYPED_MAPPING_SCOPED_RESOURCES: ReadonlySet<string> = new Set([
   "products",
   "sales_invoices",
   "purchase_bills",
+  "e_invoices",
+  "employees",
+  "sales_offers",
+  "shipment_documents",
+  "warehouses",
 ]);
 
 export function isResourceInTypedMappingScope(resourceType: string): boolean {

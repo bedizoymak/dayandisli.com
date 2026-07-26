@@ -23,21 +23,32 @@ describe("typed-mapping-gate — default-disabled safety invariant", () => {
 });
 
 describe("typed-mapping-gate — scope confinement", () => {
-  it("scopes exactly the 5 resources with an existing production sync wrapper", () => {
+  it("scopes exactly the 10 resources with an existing production sync wrapper", () => {
     expect([...TYPED_MAPPING_SCOPED_RESOURCES].sort()).toEqual(
-      ["accounts", "contacts", "products", "purchase_bills", "sales_invoices"].sort(),
+      [
+        "accounts",
+        "contacts",
+        "products",
+        "purchase_bills",
+        "sales_invoices",
+        "e_invoices",
+        "employees",
+        "sales_offers",
+        "shipment_documents",
+        "warehouses",
+      ].sort(),
     );
   });
 
-  it("excludes every resource without an existing sync wrapper, including all D8 resources that lack one", () => {
-    for (const outOfScope of ["e_invoices", "employees", "sales_offers", "shipment_documents", "warehouses", "bank_fees", "tags"]) {
+  it("excludes every resource without an existing sync wrapper", () => {
+    for (const outOfScope of ["bank_fees", "tags", "salaries", "risky_customers"]) {
       expect(isResourceInTypedMappingScope(outOfScope), outOfScope).toBe(false);
     }
   });
 
   it("shouldUseTypedMapping requires BOTH enabled AND in-scope — neither alone is sufficient", () => {
     expect(shouldUseTypedMapping("contacts", { PARASUT_TYPED_MAPPING_ENABLED: "0" })).toBe(false); // in scope, disabled
-    expect(shouldUseTypedMapping("e_invoices", { PARASUT_TYPED_MAPPING_ENABLED: "1" })).toBe(false); // enabled, out of scope
+    expect(shouldUseTypedMapping("bank_fees", { PARASUT_TYPED_MAPPING_ENABLED: "1" })).toBe(false); // enabled, out of scope
     expect(shouldUseTypedMapping("contacts", { PARASUT_TYPED_MAPPING_ENABLED: "1" })).toBe(true); // both
   });
 

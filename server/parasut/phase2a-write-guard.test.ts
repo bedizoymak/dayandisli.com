@@ -75,6 +75,11 @@ describe("Phase 2A write guard — static source check", () => {
       "server/parasut/sync-accounts.ts",
       "server/parasut/sync-sales-invoices.ts",
       "server/parasut/sync-purchase-bills.ts",
+      "server/parasut/sync-e-invoices.ts",
+      "server/parasut/sync-employees.ts",
+      "server/parasut/sync-sales-offers.ts",
+      "server/parasut/sync-shipment-documents.ts",
+      "server/parasut/sync-warehouses.ts",
     ];
     for (const wrapper of wrappers) {
       const source = readFileSync(wrapper, "utf8");

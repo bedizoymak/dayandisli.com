@@ -77,7 +77,18 @@ export const D8_FIELD_KEYS: readonly string[] = [
   "warehouses.name",
 ];
 
-const RESOURCES_WITH_SYNC_WRAPPER = new Set(["accounts", "contacts", "products", "sales_invoices", "purchase_bills"]);
+const RESOURCES_WITH_SYNC_WRAPPER = new Set([
+  "accounts",
+  "contacts",
+  "products",
+  "sales_invoices",
+  "purchase_bills",
+  "e_invoices",
+  "employees",
+  "sales_offers",
+  "shipment_documents",
+  "warehouses",
+]);
 
 /**
  * Practical, present-day classification — no historical-authorship claim.

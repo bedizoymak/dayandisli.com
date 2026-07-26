@@ -128,11 +128,30 @@ describe("upsert-resource — Phase 2B typed mapping, gate ENABLED and IN SCOPE"
 
   it("falls back to legacy numeric-only mapping for an ENABLED but OUT-OF-SCOPE resource (fail closed)", async () => {
     const { database, writes } = fakeDatabase();
-    const resource: JsonApiResource = { id: "1", type: "e_invoices", attributes: { external_id: "ext-1", net_total: "50.0" }, relationships: {} };
-    await upsertResource(database, { resourceType: "e_invoices", table: "e_invoices", numericAttributeFields: ["net_total"] }, resource, context({ PARASUT_TYPED_MAPPING_ENABLED: "1" }));
+    const resource: JsonApiResource = { id: "1", type: "bank_fees", attributes: { description: "fee", amount: "50.0" }, relationships: {} };
+    await upsertResource(database, { resourceType: "bank_fees", table: "bank_fees", numericAttributeFields: ["amount"] }, resource, context({ PARASUT_TYPED_MAPPING_ENABLED: "1" }));
     const insert = writes.find((w) => w.op === "insert")!;
-    expect(insert.row.external_id).toBeUndefined(); // not scoped in, never written
-    expect(insert.row.net_total).toBe(50); // legacy path still applies
+    expect(insert.row.description).toBeUndefined(); // not scoped in, never written
+    expect(insert.row.amount).toBe(50); // legacy path still applies
+  });
+
+  it("writes the full registry-mapped typed columns for each of the 5 newly-scoped resources (e_invoices, employees, sales_offers, shipment_documents, warehouses)", async () => {
+    const cases: Array<{ type: string; attributes: Record<string, unknown>; expect: Record<string, unknown> }> = [
+      { type: "e_invoices", attributes: { external_id: "ext-1", net_total: "50.0", currency: "TRL" }, expect: { external_id: "ext-1", net_total: 50, currency: "TRL" } },
+      { type: "employees", attributes: { name: "Fixture Employee", trl_balance: "10.0" }, expect: { name: "Fixture Employee", trl_balance: 10 } },
+      { type: "sales_offers", attributes: { net_total: "25.0", status: "draft" }, expect: { net_total: 25, status: "draft" } },
+      { type: "shipment_documents", attributes: { description: "fixture shipment", city: "Istanbul" }, expect: { description: "fixture shipment", city: "Istanbul" } },
+      { type: "warehouses", attributes: { name: "Fixture Warehouse" }, expect: { name: "Fixture Warehouse" } },
+    ];
+    for (const testCase of cases) {
+      const { database, writes } = fakeDatabase();
+      const resource: JsonApiResource = { id: "1", type: testCase.type, attributes: testCase.attributes, relationships: {} };
+      await upsertResource(database, { resourceType: testCase.type, table: testCase.type }, resource, context({ PARASUT_TYPED_MAPPING_ENABLED: "1" }));
+      const insert = writes.find((w) => w.op === "insert")!;
+      for (const [key, value] of Object.entries(testCase.expect)) {
+        expect(insert.row[key], `${testCase.type}.${key}`).toBe(value);
+      }
+    }
   });
 
   it("preserves raw_payload and the envelope unconditionally, regardless of the gate", async () => {

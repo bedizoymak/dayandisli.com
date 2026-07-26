@@ -1150,3 +1150,79 @@ No live Paraşüt API call. No Paraşüt write. No production database write. No
 - **Production activation (setting `PARASUT_TYPED_MAPPING_ENABLED=1` anywhere real): NOT AUTHORIZED.**
 - **Live Paraşüt write validation: NOT AUTHORIZED.**
 - **Remaining 63 D8 fields (5 resources with no existing sync wrapper): DEFERRED** — needs a new sync-wrapper-building decision, a larger scope than "wire an existing path," not attempted under this authorization.
+
+## 19. Phase 2B Remaining Scope — new sync entry points (owner-authorized)
+
+Continuation of §18 under a second, explicit owner authorization scoped to exactly the deferral noted in §18.7/§18.8: building the missing synchronization entry points for the 5 resources that had no sync wrapper at all, and wiring their remaining D8 fields the same way §18 wired the first 5 resources. Same boundary as §18: local repository implementation only; production deployment, activation, database writes, live Paraşüt API calls, and live data mutation remain **NOT AUTHORIZED**.
+
+### 19.1 New synchronization entry points
+
+Five new files, each following the exact `sync-products.ts` convention already in production use (`server/parasut/sync-*.ts` → thin `syncCollection` configuration):
+
+| Resource | File | Table | Endpoint |
+|---|---|---|---|
+| `e_invoices` | `server/parasut/sync-e-invoices.ts` | `e_invoices` | `/v4/{company}/e_invoices` |
+| `employees` | `server/parasut/sync-employees.ts` | `employees` | `/v4/{company}/employees` |
+| `sales_offers` | `server/parasut/sync-sales-offers.ts` | `sales_offers` | `/v4/{company}/sales_offers` |
+| `shipment_documents` | `server/parasut/sync-shipment-documents.ts` | `shipment_documents` | `/v4/{company}/shipment_documents` |
+| `warehouses` | `server/parasut/sync-warehouses.ts` | `warehouses` | `/v4/{company}/warehouses` |
+
+Each wrapper: declares its `resourceType`/`table`/`endpoint` statically (never derived from payload input), leaves `reconcile` unset (fail-closed — only `contacts` has empirically-confirmed deletion-detection semantics; none of these 5 does), and sets a bounded `maxPagesPerInvocation` matched to the resource's confirmed live row count (`resource-registry.ts`: e_invoices ~1,626 rows/66 pages → 10; the other four are single-page → 4). All write behavior (idempotent content-hash upsert, tenant scope enforcement, raw-payload preservation, missing/null/explicit-empty distinction, permitted-columns-only writes) is inherited unchanged from the existing, already-tested `syncCollection`/`upsertResource` engine — nothing in that engine was modified.
+
+**Not done, deliberately:** none of the 5 new wrappers was added to `scripts/run-parasut-sync-production.ts`'s active `RESOURCE_ORDER`. Doing so would change what the already-authorized production entry point actually does on its next real invocation — that crosses from "local implementation" into "production activation," which this authorization does not cover. The wrapper functions exist, are exported, and are unit-tested, but nothing in the repository currently calls them from a production-reachable path.
+
+### 19.2 Typed-mapping scope extension
+
+`server/parasut/typed-mapping-gate.ts`'s `TYPED_MAPPING_SCOPED_RESOURCES` now includes all 10 resources with a sync wrapper (the original 5 plus these 5). The gate remains default-disabled and requires the exact literal `PARASUT_TYPED_MAPPING_ENABLED === "1"` — unchanged from §18; only the scope set grew. `upsert-resource.ts` itself required no changes: it dispatches purely on `resource.type` through `shouldUseTypedMapping`, so extending the scope set alone is sufficient to reach these 5 resources' registry-mapped fields once the gate is enabled.
+
+### 19.3 D8 field accounting — all 151 fields, exactly once
+
+`server/parasut/verification/d8-resolution.ts`'s `RESOURCES_WITH_SYNC_WRAPPER` now lists all 9 D8-bearing resources (all of them now have a wrapper). Re-running `resolveAllD8Fields()`/`summarizeD8Resolution()` against the accepted registry (`field-mapping-registry.ts`, unchanged) gives:
+
+| Category | Count |
+|---|---|
+| `REQUIRES_TYPED_COLUMN_MAPPING` (registry-ready, wrapper exists, gate wiring in place, activation not authorized) | 151 |
+| `GENUINELY_UNRESOLVED_MISSING_DOCS` | 0 |
+| all other categories | 0 |
+
+**Previously wired (§18):** 88/151 (accounts, contacts, products, sales_invoices, purchase_bills). **Newly wired this pass:** all remaining 63/151, across e_invoices (23), employees (6), sales_offers (21), shipment_documents (9), warehouses (1) — every field in the accepted D8 list now has both a real sync entry point AND a registry-mapped, `deriveOfflineRow`-reachable typed column. **Total wired (reachable + registry-mapped, pending activation):** 151/151. **Intentionally excluded:** 0. **Table/column-blocked:** 0 — Phase 1 already confirmed 0 missing columns and 0 type mismatches across all 398 official attributes, so no new schema evidence was needed. **Unresolved:** 0. All 151 accounted for exactly once (verified by `d8-resolution.test.ts`: `total === 151`, no duplicates in `D8_FIELD_KEYS`).
+
+"Wired" here means the field is reachable through the implemented synchronization boundary (a real `sync-*.ts` wrapper feeding `upsertResource`) **and** covered by a focused test proving the typed value is actually written when the gate is enabled — not merely present in the registry. See §19.4.
+
+`employees` caveat (unchanged from earlier evidence, restated for clarity): the live API additionally returns `tckn`, `employment_start_date`, `employment_end_date`, `phone`, and relationships `activities`/`comments`/`tags`, none of which are in the official OpenAPI `EmployeeAttributes` schema, the migration, or the D8 151-field list. These are out of this task's scope entirely — not part of D8, not in the registry — and remain raw-payload-only; no classification or wiring decision was made for them here.
+
+Regenerated artifact: `docs/parasut/work/d8-resolution.json` (151 resolutions, same summary shape as above).
+
+### 19.4 Tests added/updated
+
+- `server/parasut/typed-mapping-gate.test.ts`: scope assertion extended to the 10-resource set; out-of-scope example resources changed to genuinely-unwrapped names (`bank_fees`, `tags`, `salaries`, `risky_customers`).
+- `server/parasut/upsert-resource-typed-mapping.test.ts`: the old "e_invoices falls back to legacy mapping, out of scope" test was rewritten against `bank_fees` (still genuinely out of scope) since e_invoices is no longer a valid out-of-scope example; added a new test proving all 5 newly-scoped resources (e_invoices, employees, sales_offers, shipment_documents, warehouses) write their full registry-mapped typed columns when the gate is enabled.
+- `server/parasut/sync-remaining-resources.test.ts` (new): proves each of the 5 new wrappers calls `syncCollection` with the correct static `resourceType`/`table`/`endpoint` and no `reconcile`, with `syncCollection` itself mocked out (no network, no database).
+- `server/parasut/phase2a-write-guard.test.ts`: the "no sync-*.ts wrapper imports the Phase 2A modules directly" list extended to include the 5 new wrapper files.
+- `server/parasut/verification/d8-resolution.test.ts`: the now-obsolete "no sync wrapper exists" example (previously `e_invoices.external_id`) was replaced — that premise is no longer true — with an assertion that no D8 field falls into the no-wrapper reasoning branch at all.
+
+### 19.5 Idempotency, tenant scope, and rollback (local, mocks/fixtures only)
+
+Covered by the existing, unmodified `upsert-resource-typed-mapping.test.ts` idempotency/tenant-scope/rollback suite (§18.5's tests), which exercises the same `upsertResource` function these 5 resources now also pass through — no resource-specific idempotency logic exists to separately test; the content-hash short-circuit, tenant-scoped row identity, and rollback semantics (disabling the gate stops new typed writes; previously-written rows are never retroactively stripped) apply uniformly regardless of resource type. No production or live data was used.
+
+### 19.6 Focused validation (direct exit codes)
+
+| Check | Result |
+|---|---|
+| `vitest run server/parasut/typed-mapping-gate.test.ts server/parasut/upsert-resource-typed-mapping.test.ts server/parasut/sync-remaining-resources.test.ts server/parasut/phase2a-write-guard.test.ts` | 37/37 passed |
+| `vitest run server/parasut` (full directory, not the Phase 1 campaign) | 414/414 passed, 34/34 files |
+| `tsc --noEmit` | exit 0 |
+| `eslint` on new/modified files | exit 0 |
+| Whitespace validation, all new/modified files | 0 issues |
+
+### 19.7 Operations explicitly NOT performed
+
+No live Paraşüt API call. No Paraşüt write. No production database read of business rows or write. No production schema/migration execution. No Edge Function deployment. No application deployment. No production flag activation — `PARASUT_TYPED_MAPPING_ENABLED` was never set outside in-memory test fixtures. The 5 new wrappers were **not** added to `scripts/run-parasut-sync-production.ts`'s `RESOURCE_ORDER` (§19.1) — no change to what production actually runs next. No secret/credential/business-payload exposure.
+
+### 19.8 Status (precise separation, per instruction)
+
+- **Phase 2B local implementation: COMPLETE** for all 10 resources with a sync wrapper — all 151/151 D8 fields are now reachable through a real synchronization boundary, registry-mapped, and test-covered pending activation.
+- **Production deployment: NOT AUTHORIZED.**
+- **Production activation (setting `PARASUT_TYPED_MAPPING_ENABLED=1` anywhere real, or adding the new wrappers to the production `RESOURCE_ORDER`): NOT AUTHORIZED.**
+- **Live Paraşüt write validation: NOT AUTHORIZED.**
+- **Remaining D8 fields: none.** 151/151 accounted for, 0 unresolved, 0 blocked.
