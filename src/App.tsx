@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/features/shop/CartContext";
 import { SHOP_FEATURE_ENABLED } from "@/features/shop/config";
@@ -122,6 +122,10 @@ export const AppRoutes = () => {
             <Route path="/referanslar" element={<Referanslar />} />
             <Route path="/site-haritasi" element={<SitemapPage />} />
           </>
+      )}
+
+      {exposeErpRoutes && !exposePublicRoutes && (
+        <Route path="/" element={<Navigate to="/apps" replace />} />
       )}
 
       <Route path="/login" element={exposeErpRoutes ? <Login /> : <PublicDomainErpRedirect />} />

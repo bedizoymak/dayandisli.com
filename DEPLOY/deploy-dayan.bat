@@ -91,7 +91,7 @@ exit /b 1
 if exist "%~1" (
   echo Deploy environment loaded: %~1
   for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%~1") do (
-    if not "%%A"=="" set "%%A=%%B"
+    if not "%%A"=="" if not "%%B"=="" set "%%A=%%B"
   )
 )
 exit /b 0
