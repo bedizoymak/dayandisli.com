@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Search } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { FinanceFormSection, FinancePageHeader } from "./FinanceFormComponents";
 import {
   FinanceBreadcrumb,
@@ -15,17 +15,17 @@ import {
   agingBuckets,
   collectionKpis,
   collectionRows,
-  customerFormDefaults,
-  customerRows,
   invoiceRows,
 } from "./financeIncomeData";
+import { crmCustomers } from "../crm/crmCustomerData";
 import "./finance-income.css";
 
 const incomeInvoicesBase = "/apps/finance/income/invoices";
 const incomeCustomersBase = "/apps/finance/income/customers";
+const crmCustomersBase = "/apps/crm/customers";
 
-function findCustomerByName(name: string) {
-  return customerRows.find((row) => row.name === name);
+function findCrmCustomer(customerId?: string) {
+  return customerId ? crmCustomers.find((row) => row.id === customerId) : undefined;
 }
 
 function IncomeHeader<T>({
@@ -151,14 +151,13 @@ function TableShell({
     </section>
   );
 }
-const customerColumns: ExportColumn<(typeof customerRows)[number]>[] = [
+const customerColumns: ExportColumn<(typeof crmCustomers)[number]>[] = [
   { header: "Müşteri Adı", value: (row) => row.name },
   { header: "Tür", value: (row) => row.type },
   { header: "VKN / TCKN", value: (row) => row.taxNo },
   { header: "E-posta", value: (row) => row.email },
   { header: "Telefon", value: (row) => row.phone },
   { header: "Bakiye", value: (row) => row.balance },
-  { header: "Durum", value: (row) => row.status },
 ];
 
 const invoiceColumns: ExportColumn<(typeof invoiceRows)[number]>[] = [
@@ -262,7 +261,7 @@ export function InvoiceListPage() {
         empty={!rows.length}
       >
         {rows.map((row) => {
-          const customer = findCustomerByName(row.customer);
+          const customer = findCrmCustomer(row.customerId);
           return (
             <tr key={row.no}>
               <td>
@@ -275,10 +274,7 @@ export function InvoiceListPage() {
               </td>
               <td>
                 {customer ? (
-                  <Link
-                    className="income-cell-link"
-                    to={`${incomeCustomersBase}/${encodeURIComponent(customer.taxNo)}`}
-                  >
+                  <Link className="income-cell-link" to={`${crmCustomersBase}/${customer.id}`}>
                     {row.customer}
                   </Link>
                 ) : (
@@ -307,7 +303,7 @@ export function InvoiceListPage() {
 
 export function CustomerListPage() {
   const [search, setSearch] = useState("");
-  const rows = customerRows.filter((row) =>
+  const rows = crmCustomers.filter((row) =>
     `${row.name} ${row.taxNo}`
       .toLocaleLowerCase("tr-TR")
       .includes(search.toLocaleLowerCase("tr-TR")),
@@ -317,8 +313,8 @@ export function CustomerListPage() {
       <IncomeHeader
         breadcrumb="Muhasebe ve Finans / Gelir Yönetimi / Müşteriler"
         title="Müşteriler"
-        subtitle="Müşteri hesaplarını görüntüleyin ve yönetin."
-        newTo="/apps/finance/income/customers/new"
+        subtitle="Müşteri hesaplarını görüntüleyin ve yönetin. (Müşteri İlişkileri modülüyle ortak kayıt.)"
+        newTo="/apps/crm/customers/new"
         newLabel="Yeni Müşteri"
         rows={rows}
         filename="musteriler"
@@ -332,14 +328,6 @@ export function CustomerListPage() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Ad veya VKN / TCKN ara"
           />
-        </label>
-        <label>
-          Durum
-          <select>
-            <option>Tümü</option>
-            <option>Aktif</option>
-            <option>Pasif</option>
-          </select>
         </label>
         <label>
           Bakiye Durumu
@@ -359,7 +347,6 @@ export function CustomerListPage() {
           "E-posta",
           "Telefon",
           "Bakiye",
-          "Durum",
           "İşlemler",
         ]}
         empty={!rows.length}
@@ -369,7 +356,7 @@ export function CustomerListPage() {
             <td>
               <Link
                 className="income-cell-link"
-                to={`${incomeCustomersBase}/${encodeURIComponent(row.taxNo)}`}
+                to={`${crmCustomersBase}/${row.id}`}
               >
                 {row.name}
               </Link>
@@ -380,14 +367,11 @@ export function CustomerListPage() {
             <td>{row.phone}</td>
             <td>{row.balance}</td>
             <td>
-              <Status>{row.status}</Status>
-            </td>
-            <td>
               <RowActionsMenu
                 actions={[
                   {
                     label: "Görüntüle",
-                    href: `${incomeCustomersBase}/${encodeURIComponent(row.taxNo)}`,
+                    href: `${crmCustomersBase}/${row.id}`,
                   },
                   {
                     label: "Dışa Aktar",
@@ -416,154 +400,12 @@ export function CustomerListPage() {
   );
 }
 
+// Müşteri oluşturma artık tek kaynak: Müşteri İlişkileri (CRM) modülündeki
+// /apps/crm/customers/new sayfası. Bu route sadece eski bağlantılar/yer
+// imleri için geriye dönük bir yönlendirme olarak korunuyor.
 export function CustomerFormPage() {
-  const data = customerFormDefaults;
-  return (
-    <div className="finance-form-page">
-      <FinancePageHeader
-        breadcrumb="Muhasebe ve Finans / Gelir Yönetimi / Müşteriler / Yeni Müşteri"
-        title="Yeni Müşteri"
-        cancelTo="/apps/finance/income/customers"
-        backLabel="Müşterilere Dön"
-      />
-      <form
-        className="customer-form"
-        onSubmit={(event) => event.preventDefault()}
-      >
-        <FinanceFormSection title="Temel Bilgiler">
-          <div className="finance-fields two">
-            <label>
-              VKN / TCKN
-              <input defaultValue={data.taxNo} />
-            </label>
-            <fieldset>
-              <legend>Tür</legend>
-              <label>
-                <input type="radio" name="customerType" defaultChecked /> Tüzel
-                Kişi
-              </label>
-              <label>
-                <input type="radio" name="customerType" /> Gerçek Kişi
-              </label>
-            </fieldset>
-            <label>
-              Firma Ünvanı
-              <input defaultValue={data.companyName} />
-            </label>
-            <label>
-              Kısa İsim
-              <input defaultValue={data.shortName} />
-            </label>
-            <label>
-              Vergi Dairesi
-              <input defaultValue={data.taxOffice} />
-            </label>
-            <label>
-              Kategori
-              <select defaultValue={data.category}>
-                <option>{data.category}</option>
-              </select>
-            </label>
-          </div>
-        </FinanceFormSection>
-        <FinanceFormSection title="İletişim Bilgileri">
-          <div className="finance-fields two">
-            <label>
-              E-posta Adresi
-              <input type="email" defaultValue={data.email} />
-            </label>
-            <label>
-              Telefon Numarası
-              <input defaultValue={data.phone} />
-            </label>
-            <label>
-              Faks Numarası
-              <input defaultValue={data.fax} />
-            </label>
-            <label className="finance-check">
-              <input type="checkbox" /> Adres Yurt Dışında
-            </label>
-            <label className="wide">
-              Açık Adres
-              <textarea defaultValue={data.address} />
-            </label>
-            <label>
-              Posta Kodu
-              <input defaultValue={data.postalCode} />
-            </label>
-            <label>
-              İlçe
-              <input defaultValue={data.district} />
-            </label>
-            <label>
-              İl
-              <input defaultValue={data.city} />
-            </label>
-          </div>
-        </FinanceFormSection>
-        <FinanceFormSection title="Finansal Bilgiler">
-          <div className="finance-fields two">
-            <label className="wide">
-              IBAN Numarası
-              <input defaultValue={data.iban} />
-            </label>
-            <button type="button" className="finance-text-button">
-              ＋ Yeni IBAN Ekle
-            </button>
-            <label>
-              Fiyat Listesi
-              <select defaultValue={data.priceList}>
-                <option>{data.priceList}</option>
-              </select>
-            </label>
-            <fieldset>
-              <legend>Döviz Kuru</legend>
-              <label>
-                <input type="radio" name="currencySide" /> Alış
-              </label>
-              <label>
-                <input type="radio" name="currencySide" defaultChecked /> Satış
-              </label>
-            </fieldset>
-            <label>
-              Açılış Bakiyesi
-              <input type="number" defaultValue={data.openingBalance} />
-            </label>
-            <label className="finance-check">
-              <input type="checkbox" /> Açılış Bakiyesi Var
-            </label>
-          </div>
-        </FinanceFormSection>
-        <FinanceFormSection title="Yetkili Kişiler">
-          {data.contacts.map((contact) => (
-            <div className="finance-fields two" key={contact.email}>
-              <label>
-                Yetkili Kişi Adı
-                <input defaultValue={contact.name} />
-              </label>
-              <label>
-                E-posta
-                <input defaultValue={contact.email} />
-              </label>
-              <label>
-                Telefon
-                <input defaultValue={contact.phone} />
-              </label>
-              <label>
-                Notlar
-                <input defaultValue={contact.note} />
-              </label>
-            </div>
-          ))}
-          <button type="button" className="finance-text-button">
-            ＋ Yeni Yetkili Ekle
-          </button>
-        </FinanceFormSection>
-      </form>
-    </div>
-  );
+  return <Navigate to="/apps/crm/customers/new" replace />;
 }
-
 export function CollectionReportPage() {
   const max = Math.max(...agingBuckets.map((item) => item.value));
   return (
@@ -652,15 +494,26 @@ export function CollectionReportPage() {
           "Tahsilat Tutarı",
         ]}
       >
-        {collectionRows.map((row) => (
-          <tr key={row.document}>
-            <td>{row.collectionDate}</td>
-            <td>{row.documentDate}</td>
-            <td>{row.party}</td>
-            <td>{row.document}</td>
-            <td>{row.amount}</td>
-          </tr>
-        ))}
+        {collectionRows.map((row) => {
+          const party = findCrmCustomer(row.partyId);
+          return (
+            <tr key={row.document}>
+              <td>{row.collectionDate}</td>
+              <td>{row.documentDate}</td>
+              <td>
+                {party ? (
+                  <Link className="income-cell-link" to={`${crmCustomersBase}/${party.id}`}>
+                    {row.party}
+                  </Link>
+                ) : (
+                  row.party
+                )}
+              </td>
+              <td>{row.document}</td>
+              <td>{row.amount}</td>
+            </tr>
+          );
+        })}
       </TableShell>
     </div>
   );
@@ -706,7 +559,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
     );
   }
 
-  const customer = findCustomerByName(row.customer);
+  const customer = findCrmCustomer(row.customerId);
 
   return (
     <div className="income-page">
@@ -725,10 +578,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           <label>
             Müşteri
             {customer ? (
-              <Link
-                className="income-cell-link"
-                to={`${incomeCustomersBase}/${encodeURIComponent(customer.taxNo)}`}
-              >
+              <Link className="income-cell-link" to={`${crmCustomersBase}/${customer.id}`}>
                 {row.customer}
               </Link>
             ) : (
@@ -783,97 +633,22 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
   );
 }
 
+// Müşteri kartı artık tek kaynak: Müşteri İlişkileri (CRM) modülündeki
+// /apps/crm/customers/:id sayfası. Bu route sadece eski bağlantılar/yer
+// imleri için geriye dönük bir yönlendirme olarak korunuyor.
 export function FinanceCustomerDetailPage({ customerId }: { customerId?: string }) {
-  const row = customerId ? customerRows.find((item) => item.taxNo === customerId) : undefined;
+  const customer = findCrmCustomer(customerId);
 
-  if (!customerId || !row) {
+  if (!customerId || !customer) {
     return (
       <NotFoundState
         backTo={incomeCustomersBase}
         backLabel="Müşterilere Dön"
         title="Müşteri Bulunamadı"
-        message={`"${customerId ?? ""}" VKN/TCKN numarasına ait bir müşteri bulunamadı.`}
+        message={`"${customerId ?? ""}" kimliğine ait bir müşteri bulunamadı.`}
       />
     );
   }
 
-  const relatedInvoices = invoiceRows.filter(
-    (invoice) => invoice.customer === row.name,
-  );
-
-  return (
-    <div className="income-page">
-      <FinancePageHeader
-        breadcrumb={`Muhasebe ve Finans / Gelir Yönetimi / Müşteriler / ${row.name}`}
-        title={row.name}
-        cancelTo={incomeCustomersBase}
-        backLabel="Müşterilere Dön"
-      />
-      <section className="erp-card income-detail-panel">
-        <div className="finance-fields two">
-          <label>
-            Müşteri Adı
-            <input readOnly value={row.name} />
-          </label>
-          <label>
-            Tür
-            <input readOnly value={row.type} />
-          </label>
-          <label>
-            VKN / TCKN
-            <input readOnly value={row.taxNo} />
-          </label>
-          <label>
-            E-posta
-            <input readOnly value={row.email} />
-          </label>
-          <label>
-            Telefon
-            <input readOnly value={row.phone} />
-          </label>
-          <label>
-            Bakiye
-            <input readOnly value={row.balance} />
-          </label>
-          <label>
-            Durum
-            <input readOnly value={row.status} />
-          </label>
-        </div>
-      </section>
-      <FinanceFormSection title="Fatura Geçmişi">
-        {relatedInvoices.length ? (
-          <table className="income-subtable">
-            <thead>
-              <tr>
-                <th>Fatura No</th>
-                <th>Fatura Tarihi</th>
-                <th>Tutar</th>
-                <th>Durum</th>
-              </tr>
-            </thead>
-            <tbody>
-              {relatedInvoices.map((invoice) => (
-                <tr key={invoice.no}>
-                  <td>
-                    <Link
-                      className="income-cell-link"
-                      to={`${incomeInvoicesBase}/${encodeURIComponent(invoice.no)}`}
-                    >
-                      {invoice.no}
-                    </Link>
-                  </td>
-                  <td>{invoice.invoiceDate}</td>
-                  <td>{invoice.amount}</td>
-                  <td>{invoice.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="income-state">Bu müşteriye ait fatura bulunamadı.</p>
-        )}
-      </FinanceFormSection>
-    </div>
-  );
+  return <Navigate to={`${crmCustomersBase}/${customer.id}`} replace />;
 }

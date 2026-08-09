@@ -17,7 +17,7 @@ export const expenseRows = [
 ];
 
 export const incomingInvoiceRows = [
-  { sender: "Anadolu Rulman San. A.Ş.", number: "ARS20260000418", type: "Ticari e-Fatura", date: "15.07.2026", total: "₺186.720", status: "Onay Bekliyor" },
+  { sender: "Anadolu Rulman A.Ş.", number: "ARS20260000418", type: "Ticari e-Fatura", date: "15.07.2026", total: "₺186.720", status: "Onay Bekliyor" },
   { sender: "Marmara Metal A.Ş.", number: "MMA20260001842", type: "Temel e-Fatura", date: "14.07.2026", total: "₺284.400", status: "Kabul Edildi" },
   { sender: "Kent Enerji", number: "KEA20260009214", type: "e-Arşiv", date: "11.07.2026", total: "₺42.680", status: "Gider Kaydına Aktarıldı" },
   { sender: "Teknik Hırdavat Ltd.", number: "THL20260000671", type: "İade", date: "09.07.2026", total: "-₺8.940", status: "Reddedildi" },

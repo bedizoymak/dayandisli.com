@@ -46,7 +46,7 @@ export const products: ProductRef[] = [
 export const dispatches = [
   {
     no: "IRS-2026-0084",
-    party: "Atlas Makine",
+    party: "Atlas Makine Sanayi A.Ş.",
     type: "Giden",
     date: "16.07.2026",
     quantity: "24 Adet",
@@ -104,10 +104,13 @@ export const suppliers = [
     contact: "Derya Ak",
   },
 ];
+// customerId references crmCustomers (src/features/crm/crmCustomerData.ts) —
+// the CRM customer list is the single source of truth for customer identity.
 export const orders = [
   {
     no: "SIP-2026-0072",
-    customer: "Atlas Makine",
+    customer: "Atlas Makine Sanayi A.Ş.",
+    customerId: "atlas-makine",
     orderDate: "16.07.2026",
     delivery: "05.08.2026",
     status: "Üretimde",
@@ -116,7 +119,8 @@ export const orders = [
   },
   {
     no: "SIP-2026-0068",
-    customer: "Eksen Otomotiv",
+    customer: "Eksen Otomotiv Ltd.",
+    customerId: "eksen-otomotiv",
     orderDate: "10.07.2026",
     delivery: "28.07.2026",
     status: "Onaylandı",

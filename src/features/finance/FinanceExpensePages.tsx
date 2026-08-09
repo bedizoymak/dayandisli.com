@@ -294,7 +294,18 @@ export function ExpenseListPage() {
                     <strong>{row.name}</strong>
                   </Link>
                 </td>
-                <td>{row.party}</td>
+                <td>
+                  {(() => {
+                    const supplier = findSupplierByName(row.party);
+                    return supplier ? (
+                      <Link className="expense-cell-link" to={`${purchasingSuppliersBase}/${encodeURIComponent(supplier.taxNo)}`}>
+                        {row.party}
+                      </Link>
+                    ) : (
+                      row.party
+                    );
+                  })()}
+                </td>
                 <td>{row.type}</td>
                 <td>{row.issue}</td>
                 <td>{row.document}</td>
@@ -747,7 +758,16 @@ export function ExpenseDetailPage({ expenseId }: { expenseId?: string }) {
           </label>
           <label>
             Tedarikçi / Çalışan
-            <input readOnly value={row.party} />
+            {(() => {
+              const supplier = findSupplierByName(row.party);
+              return supplier ? (
+                <Link className="expense-cell-link" to={`${purchasingSuppliersBase}/${encodeURIComponent(supplier.taxNo)}`}>
+                  {row.party}
+                </Link>
+              ) : (
+                <input readOnly value={row.party} />
+              );
+            })()}
           </label>
           <label>
             Kayıt Türü

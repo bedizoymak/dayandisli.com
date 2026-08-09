@@ -298,6 +298,29 @@
   right: 0;
   width: 210px;
 }
+.erp-notifications-popover {
+  width: 300px;
+  padding: 10px 13px;
+}
+.erp-notifications-popover .erp-notification strong {
+  font-size: 12px;
+}
+.erp-notifications-popover .erp-notification p {
+  font-size: 11px;
+}
+.erp-notifications-popover .erp-notification time {
+  font-size: 10px;
+}
+.erp-notification-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+.erp-notification-link:hover {
+  background: #173553;
+}
 .erp-user-menu-wrap {
   position: relative;
 }

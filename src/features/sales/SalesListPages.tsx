@@ -194,13 +194,24 @@ export function SalesOrdersPage() {
       <Table headers={orderColumns.map((c) => c.header).concat("İşlemler")}>
         {salesOrders.map((o) => (
           <tr key={o.id}>
-            {orderColumns.map((c) => (
-              <td key={c.header}>{c.value(o)}</td>
-            ))}
+            {orderColumns.map((c) =>
+              c.header === "Sipariş No" ? (
+                <td key={c.header}>
+                  <Link to={`${root}/orders/${o.id}`}>{c.value(o)}</Link>
+                </td>
+              ) : (
+                <td key={c.header}>{c.value(o)}</td>
+              ),
+            )}
             <td>
-              <button title="Görüntüle · Düzenle · Fatura Oluştur · Üretime Aktar · İndir">
-                <MoreHorizontal />
-              </button>
+              <div className="sales-row-actions">
+                <Link title="Görüntüle" to={`${root}/orders/${o.id}`}>
+                  <Eye />
+                </Link>
+                <button title="Düzenle · Fatura Oluştur · Üretime Aktar · İndir">
+                  <MoreHorizontal />
+                </button>
+              </div>
             </td>
           </tr>
         ))}

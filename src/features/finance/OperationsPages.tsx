@@ -18,11 +18,24 @@ import {
   stockMovements,
   suppliers,
 } from "./operationsData";
+import { crmCustomers } from "../crm/crmCustomerData";
 import "./operations-pages.css";
 
 const suppliersBase = "/apps/finance/purchasing/suppliers";
 
 const root = "/apps/finance";
+
+// "Giden" dispatches ship to a customer (CRM is the single source of truth for
+// customers); "Gelen" dispatches arrive from a supplier. Resolve a matching
+// detail route by name where possible so the party name stays clickable.
+function resolvePartyLink(party: string, dispatchType: string): string | undefined {
+  if (dispatchType === "Giden") {
+    const customer = crmCustomers.find((row) => row.name === party);
+    return customer ? `/apps/crm/customers/${customer.id}` : undefined;
+  }
+  const supplier = suppliers.find((row) => row.name === party);
+  return supplier ? `${suppliersBase}/${encodeURIComponent(supplier.taxNo)}` : undefined;
+}
 function Header({
   breadcrumb,
   title,
@@ -149,14 +162,108 @@ export function ProductsPage() {
       />
       <div className="ops-toolbar">
         <Filters />
-        <button>Stok Güncelle</button>
+        <button type="button" disabled title="Bu demo ortamında devre dışıdır">
+          Stok Güncelle
+        </button>
       </div>
-      <Table
-        rows={products}
-        columns={productColumns}
-        title="Hizmet ve Ürünler"
-        filename="hizmet-urunler"
-      />
+      <div className="ops-export">
+        <FinanceExportMenu
+          rows={products}
+          columns={productColumns}
+          title="Hizmet ve Ürünler"
+          filename="hizmet-urunler"
+        />
+      </div>
+      <div className="erp-card ops-table">
+        <table>
+          <thead>
+            <tr>
+              {productColumns.map((column) => (
+                <th key={column.header}>{column.header}</th>
+              ))}
+              <th>İşlemler</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((row) => (
+              <tr key={row.id}>
+                <td>
+                  <Link className="ops-cell-link" to={`${root}/inventory/products/${row.id}`}>
+                    {row.name}
+                  </Link>
+                </td>
+                {productColumns.slice(1).map((column) => (
+                  <td key={column.header}>{column.value(row)}</td>
+                ))}
+                <td>
+                  <RowActionsMenu
+                    actions={[
+                      { label: "Görüntüle", href: `${root}/inventory/products/${row.id}` },
+                      {
+                        label: "Dışa Aktar",
+                        onSelect: () =>
+                          printReport(row.name, productColumns, [row], `Ürün: ${row.name}`),
+                      },
+                    ]}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+export function ProductDetailPage({ productId }: { productId?: string }) {
+  const product = productId ? products.find((row) => row.id === productId) : undefined;
+
+  if (!productId || !product) {
+    return (
+      <div className="ops-page">
+        <Header breadcrumb="Muhasebe ve Finans / Stok Yönetimi / Hizmet ve Ürünler" title="Ürün Bulunamadı" />
+        <FinanceBackLink to={`${root}/inventory/products`}>Ürünlere Dön</FinanceBackLink>
+        <p className="ops-empty">"{productId ?? ""}" kimlikli bir ürün bulunamadı.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ops-page">
+      <Header breadcrumb={`Muhasebe ve Finans / Stok Yönetimi / Hizmet ve Ürünler / ${product.name}`} title={product.name} />
+      <FinanceBackLink to={`${root}/inventory/products`}>Ürünlere Dön</FinanceBackLink>
+      <section className="erp-card ops-supplier-card">
+        <header className="ops-supplier-head">
+          <div>
+            <h2>{product.name}</h2>
+            <span>{product.code}</span>
+          </div>
+        </header>
+        <div className="ops-supplier-grid">
+          <div>
+            <h3>Stok</h3>
+            <dl>
+              <div>
+                <dt>Stok Adedi</dt>
+                <dd>{product.stock}</dd>
+              </div>
+            </dl>
+          </div>
+          <div>
+            <h3>Fiyatlandırma</h3>
+            <dl>
+              <div>
+                <dt>Alış Fiyatı</dt>
+                <dd>₺{product.purchase}</dd>
+              </div>
+              <div>
+                <dt>Satış Fiyatı</dt>
+                <dd>₺{product.sale}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -291,12 +398,121 @@ export function DispatchesPage({ type }: { type: "incoming" | "outgoing" }) {
         }}
       />
       <Filters />
-      <Table
-        rows={rows}
-        columns={dispatchColumns}
-        title={title}
-        filename={slug}
-      />
+      <div className="ops-export">
+        <FinanceExportMenu rows={rows} columns={dispatchColumns} title={title} filename={slug} />
+      </div>
+      <div className="erp-card ops-table">
+        <table>
+          <thead>
+            <tr>
+              {dispatchColumns.map((column) => (
+                <th key={column.header}>{column.header}</th>
+              ))}
+              <th>İşlemler</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.no}>
+                <td>
+                  <Link className="ops-cell-link" to={`${root}/inventory/${slug}/${encodeURIComponent(row.no)}`}>
+                    {row.no}
+                  </Link>
+                </td>
+                {dispatchColumns.slice(1).map((column) => {
+                  if (column.header !== "Müşteri / Tedarikçi") {
+                    return <td key={column.header}>{column.value(row)}</td>;
+                  }
+                  const partyLink = resolvePartyLink(row.party, row.type);
+                  return (
+                    <td key={column.header}>
+                      {partyLink ? (
+                        <Link className="ops-cell-link" to={partyLink}>
+                          {row.party}
+                        </Link>
+                      ) : (
+                        row.party
+                      )}
+                    </td>
+                  );
+                })}
+                <td>
+                  <RowActionsMenu
+                    actions={[
+                      { label: "Görüntüle", href: `${root}/inventory/${slug}/${encodeURIComponent(row.no)}` },
+                      {
+                        label: "Dışa Aktar",
+                        onSelect: () => printReport(row.no, dispatchColumns, [row], `İrsaliye: ${row.no}`),
+                      },
+                    ]}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+export function DispatchDetailPage({ type, dispatchNo }: { type: "incoming" | "outgoing"; dispatchNo?: string }) {
+  const incoming = type === "incoming";
+  const title = incoming ? "Gelen İrsaliyeler" : "Giden İrsaliyeler";
+  const slug = incoming ? "incoming-dispatches" : "outgoing-dispatches";
+  const dispatch = dispatchNo
+    ? dispatches.find((row) => row.no === dispatchNo && row.type === (incoming ? "Gelen" : "Giden"))
+    : undefined;
+
+  if (!dispatchNo || !dispatch) {
+    return (
+      <div className="ops-page">
+        <Header breadcrumb={`Muhasebe ve Finans / Stok Yönetimi / ${title}`} title="İrsaliye Bulunamadı" />
+        <FinanceBackLink to={`${root}/inventory/${slug}`}>İrsaliyelere Dön</FinanceBackLink>
+        <p className="ops-empty">"{dispatchNo ?? ""}" numaralı bir irsaliye bulunamadı.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ops-page">
+      <Header breadcrumb={`Muhasebe ve Finans / Stok Yönetimi / ${title} / ${dispatch.no}`} title={dispatch.no} />
+      <FinanceBackLink to={`${root}/inventory/${slug}`}>İrsaliyelere Dön</FinanceBackLink>
+      <section className="erp-card ops-supplier-card">
+        <header className="ops-supplier-head">
+          <div>
+            <h2>{dispatch.no}</h2>
+            <span>{dispatch.party}</span>
+          </div>
+        </header>
+        <div className="ops-supplier-grid">
+          <div>
+            <h3>İrsaliye Bilgileri</h3>
+            <dl>
+              <div>
+                <dt>Müşteri / Tedarikçi</dt>
+                <dd>
+                  {(() => {
+                    const partyLink = resolvePartyLink(dispatch.party, dispatch.type);
+                    return partyLink ? <Link to={partyLink}>{dispatch.party}</Link> : dispatch.party;
+                  })()}
+                </dd>
+              </div>
+              <div>
+                <dt>Tarih</dt>
+                <dd>{dispatch.date}</dd>
+              </div>
+              <div>
+                <dt>Miktar</dt>
+                <dd>{dispatch.quantity}</dd>
+              </div>
+              <div>
+                <dt>Durum</dt>
+                <dd>{dispatch.status}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -712,12 +928,133 @@ export function OrdersPage() {
         }}
       />
       <Filters />
-      <Table
-        rows={orders}
-        columns={orderColumns}
-        title="Siparişler"
-        filename="siparisler"
-      />
+      <div className="ops-export">
+        <FinanceExportMenu
+          rows={orders}
+          columns={orderColumns}
+          title="Siparişler"
+          filename="siparisler"
+        />
+      </div>
+      <div className="erp-card ops-table">
+        <table>
+          <thead>
+            <tr>
+              {orderColumns.map((column) => (
+                <th key={column.header}>{column.header}</th>
+              ))}
+              <th>İşlemler</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((row) => (
+              <tr key={row.no}>
+                <td>
+                  <Link className="ops-cell-link" to={`${root}/purchasing/orders/${encodeURIComponent(row.no)}`}>
+                    {row.no}
+                  </Link>
+                </td>
+                {orderColumns.slice(1).map((column) =>
+                  column.header === "Müşteri" && row.customerId ? (
+                    <td key={column.header}>
+                      <Link className="ops-cell-link" to={`/apps/crm/customers/${row.customerId}`}>
+                        {column.value(row)}
+                      </Link>
+                    </td>
+                  ) : (
+                    <td key={column.header}>{column.value(row)}</td>
+                  ),
+                )}
+                <td>
+                  <RowActionsMenu
+                    actions={[
+                      {
+                        label: "Görüntüle",
+                        href: `${root}/purchasing/orders/${encodeURIComponent(row.no)}`,
+                      },
+                      {
+                        label: "Dışa Aktar",
+                        onSelect: () =>
+                          printReport(row.no, orderColumns, [row], `Sipariş: ${row.no}`),
+                      },
+                    ]}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+export function OrderDetailPage({ orderNo }: { orderNo?: string }) {
+  const order = orderNo ? orders.find((row) => row.no === orderNo) : undefined;
+
+  if (!orderNo || !order) {
+    return (
+      <div className="ops-page">
+        <Header breadcrumb="Muhasebe ve Finans / Satın Alma / Siparişler" title="Sipariş Bulunamadı" />
+        <FinanceBackLink to={`${root}/purchasing/orders`}>Siparişlere Dön</FinanceBackLink>
+        <p className="ops-empty">"{orderNo ?? ""}" numaralı bir sipariş bulunamadı.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ops-page">
+      <Header breadcrumb={`Muhasebe ve Finans / Satın Alma / Siparişler / ${order.no}`} title={order.no} />
+      <FinanceBackLink to={`${root}/purchasing/orders`}>Siparişlere Dön</FinanceBackLink>
+      <section className="erp-card ops-supplier-card">
+        <header className="ops-supplier-head">
+          <div>
+            <h2>{order.no}</h2>
+            <span>{order.customer}</span>
+          </div>
+        </header>
+        <div className="ops-supplier-grid">
+          <div>
+            <h3>Sipariş Bilgileri</h3>
+            <dl>
+              <div>
+                <dt>Müşteri</dt>
+                <dd>
+                  {order.customerId ? (
+                    <Link to={`/apps/crm/customers/${order.customerId}`}>{order.customer}</Link>
+                  ) : (
+                    order.customer
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Sipariş Tarihi</dt>
+                <dd>{order.orderDate}</dd>
+              </div>
+              <div>
+                <dt>Termin Tarihi</dt>
+                <dd>{order.delivery}</dd>
+              </div>
+            </dl>
+          </div>
+          <div>
+            <h3>Durum ve Tutar</h3>
+            <dl>
+              <div>
+                <dt>Durum</dt>
+                <dd>{order.status}</dd>
+              </div>
+              <div>
+                <dt>Toplam</dt>
+                <dd>{order.total}</dd>
+              </div>
+              <div>
+                <dt>İlgili Fatura</dt>
+                <dd>{order.invoice ?? "—"}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

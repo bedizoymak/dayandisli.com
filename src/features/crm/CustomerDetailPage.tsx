@@ -309,9 +309,9 @@ function InvoiceHistory() {
                   <StatusBadge>{r.status}</StatusBadge>
                 </td>
                 <td>
-                  <button title="Görüntüle">
+                  <Link title="Görüntüle" to={`/apps/finance/income/invoices/${encodeURIComponent(r.no)}`}>
                     <Eye />
-                  </button>
+                  </Link>
                   <button title="İndir">
                     <Download />
                   </button>

@@ -11,7 +11,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { crmCustomers } from "../crm/crmCustomerData";
 import { products } from "../finance/operationsData";
-import { salesQuotes } from "./salesData";
+import { salesOrders, salesQuotes } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
 import { customerName, openQuotePreview, printQuote } from "./salesUtils";
 import type { QuoteLine, SalesQuote } from "./salesTypes";
@@ -501,6 +501,111 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
     </div>
   );
 }
+export function SalesOrderDetailPage({ orderId }: { orderId?: string }) {
+  const o = salesOrders.find((x) => x.id === orderId);
+  if (!o) {
+    return (
+      <div className="sales-page">
+        <SalesHeader section="Siparişler" current="Sipariş bulunamadı" title="Sipariş bulunamadı" subtitle={`"${orderId}" kimlikli sipariş kaydı bulunamadı.`}>
+          <Link className="sales-back" to={`${root}/orders`}>
+            ← Siparişlere Dön
+          </Link>
+        </SalesHeader>
+      </div>
+    );
+  }
+  const sourceQuote = salesQuotes.find((q) => q.id === o.sourceQuoteId);
+  return (
+    <div className="sales-page">
+      <SalesHeader
+        section="Siparişler"
+        current="Sipariş Detayı"
+        title={o.no}
+        subtitle={`${customerName(o.customerId)} · ${o.project}`}
+      >
+        <SalesStatus>{o.status}</SalesStatus>
+        <Link className="sales-back" to={`${root}/orders`}>
+          ← Siparişlere Dön
+        </Link>
+      </SalesHeader>
+      <section className="sales-detail-grid">
+        <article className="erp-card">
+          <h2>Müşteri ve Sipariş Bilgileri</h2>
+          <p>
+            <span>Müşteri</span>
+            <Link className="sales-customer-link" to={`/apps/crm/customers/${o.customerId}`}>
+              {customerName(o.customerId)}
+            </Link>
+          </p>
+          <p>
+            <span>Proje</span>
+            <b>{o.project}</b>
+          </p>
+          <p>
+            <span>Sipariş Tarihi</span>
+            <b>{o.orderDate}</b>
+          </p>
+          <p>
+            <span>Termin Tarihi</span>
+            <b>{o.dueDate}</b>
+          </p>
+          <p>
+            <span>Toplam</span>
+            <b>{o.total}</b>
+          </p>
+        </article>
+        <article className="erp-card">
+          <h2>Kaynak</h2>
+          <p>
+            <span>Kaynak Teklif</span>
+            {sourceQuote ? (
+              <Link className="sales-customer-link" to={`${root}/quotes/${sourceQuote.id}`}>
+                {o.sourceQuoteNo}
+              </Link>
+            ) : (
+              <b>Manuel sipariş</b>
+            )}
+          </p>
+        </article>
+      </section>
+      {sourceQuote && (
+        <section className="erp-card sales-detail-lines">
+          <h2>Ürün / Hizmet Satırları</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Kod</th>
+                <th>Ürün/Hizmet</th>
+                <th>Miktar</th>
+                <th>Birim Fiyat</th>
+                <th>KDV</th>
+                <th>Toplam</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sourceQuote.lines.map((l) => (
+                <tr key={l.productServiceId}>
+                  <td>{l.code}</td>
+                  <td>{l.name}</td>
+                  <td>
+                    {l.quantity} {l.unit}
+                  </td>
+                  <td>
+                    {l.unitPrice.toLocaleString("tr-TR")} {sourceQuote.currency}
+                  </td>
+                  <td>%{l.vat}</td>
+                  <td>
+                    {(l.quantity * l.unitPrice * (1 + l.vat / 100)).toLocaleString("tr-TR")} {sourceQuote.currency}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+    </div>
+  );
+}
 export function SalesOrderFormPage() {
   const [params] = useSearchParams();
   const source = salesQuotes.find((q) => q.id === params.get("sourceQuoteId"));
@@ -522,7 +627,7 @@ export function SalesOrderFormPage() {
             <label>
               Müşteri
               <input
-                value={source ? customerName(source.customerId) : ""}
+                defaultValue={source ? customerName(source.customerId) : ""}
                 readOnly={!!source}
               />
             </label>
@@ -532,11 +637,11 @@ export function SalesOrderFormPage() {
             </label>
             <label>
               İlgili Kişi
-              <input value={source?.contact ?? ""} readOnly={!!source} />
+              <input defaultValue={source?.contact ?? ""} readOnly={!!source} />
             </label>
             <label>
               Proje
-              <input value={source?.project ?? ""} readOnly={!!source} />
+              <input defaultValue={source?.project ?? ""} readOnly={!!source} />
             </label>
             <label>
               Sipariş Tarihi

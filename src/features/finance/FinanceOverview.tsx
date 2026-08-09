@@ -6,7 +6,7 @@ import {
   Plus,
   RefreshCw,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FinanceBreadcrumb } from "./FinanceNavigationTools";
 import { financeOverviewData } from "./financeNavigation";
 import "./finance-overview.css";
@@ -79,6 +79,7 @@ function SummaryPanel({
 }
 
 export function FinanceOverview() {
+  const navigate = useNavigate();
   return (
     <div className="finance-overview">
       <header className="finance-page-heading">
@@ -94,7 +95,9 @@ export function FinanceOverview() {
           <Link to="/apps/finance/expense/list/new/invoice">
             − Ödeme Ekle
           </Link>
-          <button className="primary">＋ Gelir / Gider Ekle</button>
+          <button className="primary" type="button" disabled title="Tahsilat veya ödeme eklemek için soldaki bağlantıları kullanın">
+            ＋ Gelir / Gider Ekle
+          </button>
         </div>
       </header>
       <section className="finance-layout">
@@ -114,7 +117,7 @@ export function FinanceOverview() {
           <article className="erp-card finance-bank-panel">
             <div className="finance-panel-head">
               <h2>Kasa ve Bankalar</h2>
-              <button>
+              <button type="button" onClick={() => navigate("/apps/finance/cash/accounts")}>
                 Kasa ve Bankalar sayfasına git <ChevronRight />
               </button>
             </div>
@@ -127,7 +130,7 @@ export function FinanceOverview() {
                   <small>{account.detail}</small>
                 </div>
               ))}
-              <button className="finance-connect">
+              <button className="finance-connect" type="button" disabled title="Bu demo ortamında devre dışıdır">
                 <Plus />
                 Yeni Hesap Bağla
               </button>
@@ -139,7 +142,7 @@ export function FinanceOverview() {
                 <h2>Önümüzdeki 12 Haftanın Nakit Akışı</h2>
                 <p>Planlanan tahsilat ve ödemelere göre tahmini bakiye.</p>
               </div>
-              <button>
+              <button type="button" onClick={() => navigate("/apps/finance/cash/cash-flow-report")}>
                 Nakit Akışı Raporuna Git <ChevronRight />
               </button>
             </div>
@@ -196,7 +199,9 @@ export function FinanceOverview() {
         <aside className="erp-card finance-timeline-panel">
           <div className="finance-panel-head">
             <h2>Finans Takvimi</h2>
-            <button>Tümünü Gör</button>
+            <button type="button" disabled title="Takvim görünümü için üst menüdeki takvim simgesini kullanın">
+              Tümünü Gör
+            </button>
           </div>
           <div className="finance-timeline">
             {financeOverviewData.timeline.map((item, index) => (

@@ -25,7 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { useErpIdentity } from "@/features/erp-shell/erpIdentity";
-import { calendarEvents } from "@/features/dashboard/dashboardData";
+import { calendarEvents, systemNotifications } from "@/features/dashboard/dashboardData";
 import { quickActions, searchRoutes, sidebarItems } from "@/features/erp-shell/shellNavigationData";
 import { financeNavigation } from "@/features/finance/financeNavigation";
 import { crmSubmenu } from "@/features/crm/crmCustomerData";
@@ -72,13 +72,15 @@ export default function ErpLayout() {
   const [query, setQuery] = useState("");
   const [quickOpen, setQuickOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [openSection, setOpenSection] = useState<string | null>(sectionForPath(location.pathname) ?? "finance");
-  const [expandedFinanceGroup, setExpandedFinanceGroup] = useState<string | null>(financeGroupForPath(location.pathname) ?? "income");
+  const [openSection, setOpenSection] = useState<string | null>(sectionForPath(location.pathname));
+  const [expandedFinanceGroup, setExpandedFinanceGroup] = useState<string | null>(financeGroupForPath(location.pathname));
   const [now, setNow] = useState(() => new Date());
   const searchRef = useRef<HTMLInputElement>(null);
   const quickMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   const quickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeSection = sectionForPath(location.pathname);
@@ -101,6 +103,7 @@ export default function ErpLayout() {
       if (event.key === "Escape") {
         setQuickOpen(false);
         setUserMenuOpen(false);
+        setNotificationsOpen(false);
         setCalendarOpen(false);
         setQuery("");
       }
@@ -109,6 +112,7 @@ export default function ErpLayout() {
       const target = event.target as Node;
       if (!quickMenuRef.current?.contains(target)) setQuickOpen(false);
       if (!userMenuRef.current?.contains(target)) setUserMenuOpen(false);
+      if (!notificationsRef.current?.contains(target)) setNotificationsOpen(false);
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onPointerDown);
@@ -397,10 +401,47 @@ export default function ErpLayout() {
                   </div>
                 )}
               </div>
-              <button className="erp-icon-btn" aria-label="Bildirimler">
-                <Bell />
-                <span className="erp-badge">3</span>
-              </button>
+              <div className="erp-quick-wrap" ref={notificationsRef}>
+                <button
+                  className="erp-icon-btn"
+                  onClick={() => setNotificationsOpen((value) => !value)}
+                  aria-label="Bildirimler"
+                  aria-expanded={notificationsOpen}
+                >
+                  <Bell />
+                  <span className="erp-badge">{systemNotifications.length}</span>
+                </button>
+                {notificationsOpen && (
+                  <div className="erp-popover erp-notifications-popover">
+                    {systemNotifications.map((item) =>
+                      item.route ? (
+                        <Link
+                          className="erp-notification erp-notification-link"
+                          to={item.route}
+                          key={item.title}
+                          onClick={() => setNotificationsOpen(false)}
+                        >
+                          <Bell />
+                          <div>
+                            <strong>{item.title}</strong>
+                            <p>{item.description}</p>
+                          </div>
+                          <time>{item.relativeTime}</time>
+                        </Link>
+                      ) : (
+                        <div className="erp-notification" key={item.title} title="Bu bildirim için henüz ilgili bir sayfa yok">
+                          <Bell />
+                          <div>
+                            <strong>{item.title}</strong>
+                            <p>{item.description}</p>
+                          </div>
+                          <time>{item.relativeTime}</time>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
               <button className="erp-icon-btn" onClick={() => setCalendarOpen(true)} aria-label="Ödeme ve tahsilat takvimi">
                 <CalendarDays />
               </button>

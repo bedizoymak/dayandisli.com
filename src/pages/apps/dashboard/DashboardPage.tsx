@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Bell, FilePlus2, ReceiptText, Sun, UserRound, BarChart3 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { approvals, calendarEvents, previewMetrics, upcomingItems, systemNotifications } from "@/features/dashboard/dashboardData";
 import { quickActions } from "@/features/erp-shell/shellNavigationData";
 import { useErpIdentity } from "@/features/erp-shell/erpIdentity";
@@ -8,6 +8,7 @@ import { useErpIdentity } from "@/features/erp-shell/erpIdentity";
 const quickIcons = [FilePlus2, ReceiptText, UserRound, BarChart3];
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { erpUser } = useErpIdentity();
   const [now] = useState(() => new Date());
   const istanbulParts = new Intl.DateTimeFormat("en-GB", {
@@ -96,7 +97,9 @@ export default function DashboardPage() {
         <article className="erp-card erp-panel">
           <div className="erp-panel-head">
             <h2 className="erp-section-title">Yaklaşan Ödeme ve Tahsilatlar</h2>
-            <button>Tümünü Gör</button>
+            <button type="button" onClick={() => navigate("/apps/finance/income/collection-report")}>
+              Tümünü Gör
+            </button>
           </div>
           <div className="erp-upcoming-list">
             {upcomingItems.map((item) => (
@@ -118,7 +121,9 @@ export default function DashboardPage() {
           <article className="erp-card erp-panel">
             <div className="erp-panel-head">
               <h2 className="erp-section-title">Onay Bekleyenler</h2>
-              <button>Tümünü Gör</button>
+              <button type="button" disabled title="Onay merkezi henüz aktif değil">
+                Tümünü Gör
+              </button>
             </div>
             <div className="erp-approval-list">
               {approvals.map((item) => (
@@ -132,19 +137,32 @@ export default function DashboardPage() {
           <article className="erp-card erp-panel erp-system">
             <div className="erp-panel-head">
               <h2 className="erp-section-title">Sistem Bildirimleri</h2>
-              <button>Tümünü Gör</button>
+              <button type="button" disabled title="Bildirim merkezi henüz aktif değil">
+                Tümünü Gör
+              </button>
             </div>
             <div className="erp-notification-list">
-              {systemNotifications.map((item) => (
-                <div className="erp-notification" key={item.title}>
-                  <Bell />
-                  <div>
-                    <strong>{item.title}</strong>
-                    <p>{item.description}</p>
+              {systemNotifications.map((item) =>
+                item.route ? (
+                  <Link className="erp-notification erp-notification-link" to={item.route} key={item.title}>
+                    <Bell />
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.description}</p>
+                    </div>
+                    <time>{item.relativeTime}</time>
+                  </Link>
+                ) : (
+                  <div className="erp-notification" key={item.title} title="Bu bildirim için henüz ilgili bir sayfa yok">
+                    <Bell />
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.description}</p>
+                    </div>
+                    <time>{item.relativeTime}</time>
                   </div>
-                  <time>{item.relativeTime}</time>
-                </div>
-              ))}
+                ),
+              )}
             </div>
           </article>
         </div>

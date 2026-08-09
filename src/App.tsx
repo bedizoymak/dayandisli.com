@@ -49,6 +49,7 @@ const FinanceIncomeExpenseReportPage = lazy(() => import("./pages/apps/finance/e
 const PaymentsReportPage = lazy(() => import("./pages/apps/finance/expense/PaymentsReportPage"));
 const VatReportPage = lazy(() => import("./pages/apps/finance/expense/VatReportPage"));
 const PurchasingOrdersPage = lazy(() => import("./pages/apps/finance/purchasing/OrdersPage"));
+const PurchasingOrderDetailPage = lazy(() => import("./pages/apps/finance/purchasing/OrderDetailPage"));
 const NewPurchasingOrderPage = lazy(() => import("./pages/apps/finance/purchasing/NewOrderPage"));
 const SuppliersPage = lazy(() => import("./pages/apps/finance/purchasing/SuppliersPage"));
 const NewSupplierPage = lazy(() => import("./pages/apps/finance/purchasing/NewSupplierPage"));
@@ -62,10 +63,13 @@ const CashBankReportPage = lazy(() => import("./pages/apps/finance/cash/CashBank
 const CashFlowReportPage = lazy(() => import("./pages/apps/finance/cash/CashFlowReportPage"));
 const ProductsPage = lazy(() => import("./pages/apps/finance/inventory/ProductsPage"));
 const NewProductPage = lazy(() => import("./pages/apps/finance/inventory/NewProductPage"));
+const InventoryProductDetailPage = lazy(() => import("./pages/apps/finance/inventory/ProductDetailPage"));
 const OutgoingDispatchesPage = lazy(() => import("./pages/apps/finance/inventory/OutgoingDispatchesPage"));
 const NewOutgoingDispatchPage = lazy(() => import("./pages/apps/finance/inventory/NewOutgoingDispatchPage"));
+const OutgoingDispatchDetailPage = lazy(() => import("./pages/apps/finance/inventory/OutgoingDispatchDetailPage"));
 const IncomingDispatchesPage = lazy(() => import("./pages/apps/finance/inventory/IncomingDispatchesPage"));
 const NewIncomingDispatchPage = lazy(() => import("./pages/apps/finance/inventory/NewIncomingDispatchPage"));
+const IncomingDispatchDetailPage = lazy(() => import("./pages/apps/finance/inventory/IncomingDispatchDetailPage"));
 const StockHistoryPage = lazy(() => import("./pages/apps/finance/inventory/StockHistoryPage"));
 const StockReportPage = lazy(() => import("./pages/apps/finance/inventory/StockReportPage"));
 const CrmCustomersPage = lazy(() => import("./pages/apps/crm/CustomersPage"));
@@ -79,6 +83,7 @@ const QuoteDetailPage = lazy(() => import("./pages/apps/sales/QuoteDetailPage"))
 const QuotePrintPage = lazy(() => import("./pages/apps/sales/QuotePrintPage"));
 const SalesOrdersPage = lazy(() => import("./pages/apps/sales/OrdersPage"));
 const NewSalesOrderPage = lazy(() => import("./pages/apps/sales/NewOrderPage"));
+const SalesOrderDetailPage = lazy(() => import("./pages/apps/sales/OrderDetailPage"));
 const SalesActivitiesPage = lazy(() => import("./pages/apps/sales/ActivitiesPage"));
 const CollectionsReportPage = lazy(() => import("./pages/apps/reports/CollectionsReportPage"));
 const ReportsIncomeExpensePage = lazy(() => import("./pages/apps/reports/IncomeExpenseReportPage"));
@@ -181,6 +186,7 @@ export const AppRoutes = () => {
 
           <Route path="finance/purchasing/orders" element={<PurchasingOrdersPage />} />
           <Route path="finance/purchasing/orders/new" element={<NewPurchasingOrderPage />} />
+          <Route path="finance/purchasing/orders/:orderNo" element={<PurchasingOrderDetailPage />} />
           <Route path="finance/purchasing/suppliers" element={<SuppliersPage />} />
           <Route path="finance/purchasing/suppliers/new" element={<NewSupplierPage />} />
           <Route path="finance/purchasing/suppliers/:supplierId" element={<SupplierDetailPage />} />
@@ -195,10 +201,13 @@ export const AppRoutes = () => {
 
           <Route path="finance/inventory/products" element={<ProductsPage />} />
           <Route path="finance/inventory/products/new" element={<NewProductPage />} />
+          <Route path="finance/inventory/products/:productId" element={<InventoryProductDetailPage />} />
           <Route path="finance/inventory/outgoing-dispatches" element={<OutgoingDispatchesPage />} />
           <Route path="finance/inventory/outgoing-dispatches/new" element={<NewOutgoingDispatchPage />} />
+          <Route path="finance/inventory/outgoing-dispatches/:dispatchNo" element={<OutgoingDispatchDetailPage />} />
           <Route path="finance/inventory/incoming-dispatches" element={<IncomingDispatchesPage />} />
           <Route path="finance/inventory/incoming-dispatches/new" element={<NewIncomingDispatchPage />} />
+          <Route path="finance/inventory/incoming-dispatches/:dispatchNo" element={<IncomingDispatchDetailPage />} />
           <Route path="finance/inventory/history" element={<StockHistoryPage />} />
           <Route path="finance/inventory/report" element={<StockReportPage />} />
 
@@ -214,6 +223,7 @@ export const AppRoutes = () => {
           <Route path="sales/quotes/:quoteId" element={<QuoteDetailPage />} />
           <Route path="sales/orders" element={<SalesOrdersPage />} />
           <Route path="sales/orders/new" element={<NewSalesOrderPage />} />
+          <Route path="sales/orders/:orderId" element={<SalesOrderDetailPage />} />
           <Route path="sales/activities" element={<SalesActivitiesPage />} />
 
           <Route path="reports/collections" element={<CollectionsReportPage />} />

@@ -28,10 +28,13 @@ export const approvals = [
   { label: "İzin Talepleri", count: 5 },
 ];
 
-export const systemNotifications = [
-  { title: "Yeni tahsilat kaydı", description: "ABC Otomotiv ödemesi plana eklendi.", relativeTime: "12 dk önce" },
+// `route` is optional: only set it when a real destination page exists.
+// "İş emri güncellendi" has none yet (Üretim modülü henüz aktif değil), so it
+// stays a plain, non-clickable entry instead of linking somewhere fake.
+export const systemNotifications: { title: string; description: string; relativeTime: string; route?: string }[] = [
+  { title: "Yeni tahsilat kaydı", description: "ABC Otomotiv ödemesi plana eklendi.", relativeTime: "12 dk önce", route: "/apps/finance/income/collection-report" },
   { title: "İş emri güncellendi", description: "UE-2026-184 üretim aşamasına geçti.", relativeTime: "38 dk önce" },
-  { title: "Onay bekleniyor", description: "İki masraf kaydı incelemenizi bekliyor.", relativeTime: "1 sa önce" },
+  { title: "Onay bekleniyor", description: "İki masraf kaydı incelemenizi bekliyor.", relativeTime: "1 sa önce", route: "/apps/finance/expense/list" },
 ];
 
 export const calendarEvents: Record<number, string> = { 3: "Tahsilat", 7: "Ödeme", 12: "Tahsilat", 17: "Tahsilat", 18: "Ödeme", 21: "Tahsilat", 25: "Personel" };
