@@ -210,19 +210,23 @@ describe("mechanical route count derived from the actual router (not an assumed/
   const appsBlock = appSource.slice(appsBlockStart, appsBlockEnd);
   const childRouteLines = appsBlock.split("\n").filter((line) => /<Route (index|path=)/.test(line));
 
-  it("finds exactly 59 explicit /apps routes (1 index + 58 path routes)", () => {
-    expect(childRouteLines.length).toBe(59);
+  // Bumped from 59/11/47 to 64/16/47: added 5 dynamic detail routes this
+  // session (sales/orders/:orderId, finance/purchasing/orders/:orderNo,
+  // finance/inventory/products/:productId, and the incoming/outgoing
+  // dispatch detail routes) to fix previously-unclickable list rows.
+  it("finds exactly 64 explicit /apps routes (1 index + 63 path routes)", () => {
+    expect(childRouteLines.length).toBe(64);
   });
 
-  it("finds exactly 11 dynamic (:param) routes among them", () => {
+  it("finds exactly 16 dynamic (:param) routes among them", () => {
     const dynamic = childRouteLines.filter((line) => line.includes(":"));
-    expect(dynamic.length).toBe(11);
+    expect(dynamic.length).toBe(16);
   });
 
-  it("finds exactly 47 static path routes (58 path routes minus 11 dynamic)", () => {
+  it("finds exactly 47 static path routes (63 path routes minus 16 dynamic)", () => {
     const pathRoutes = childRouteLines.filter((line) => line.includes("path="));
     const staticRoutes = pathRoutes.filter((line) => !line.includes(":"));
-    expect(pathRoutes.length).toBe(58);
+    expect(pathRoutes.length).toBe(63);
     expect(staticRoutes.length).toBe(47);
   });
 });
