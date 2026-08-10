@@ -86,6 +86,41 @@ function usePayablesSummary() {
   return { summary, status };
 }
 
+interface VatSummary {
+  vat_this_month: number;
+  sales_vat: number;
+  purchase_vat: number;
+}
+
+/** Reads the live "Bu Ay Oluşan KDV" estimate from parasut_readable via the parasut-api Edge Function (action: "vat-summary"). Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
+function useVatSummary() {
+  const [summary, setSummary] = useState<VatSummary | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", { body: { action: "vat-summary" } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data || typeof data.vat_this_month !== "number") {
+          setStatus("error");
+          return;
+        }
+        setSummary(data as VatSummary);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { summary, status };
+}
+
 function SummaryPanel({
   title,
   metrics,
@@ -157,6 +192,7 @@ export function FinanceOverview() {
   const navigate = useNavigate();
   const { summary: receivablesSummary, status: receivablesStatus } = useReceivablesSummary();
   const { summary: payablesSummary, status: payablesStatus } = usePayablesSummary();
+  const { summary: vatSummary, status: vatStatus } = useVatSummary();
 
   const receivables = financeOverviewData.receivables.map((metric, index) => {
     if (index === 0) {
@@ -210,6 +246,21 @@ export function FinanceOverview() {
     return metric;
   });
 
+  const payableDetails = financeOverviewData.payableDetails.map((detail, index) => {
+    if (index === 0) {
+      return {
+        ...detail,
+        value:
+          vatStatus === "ready" && vatSummary
+            ? formatMoney(vatSummary.vat_this_month)
+            : vatStatus === "error"
+              ? "—"
+              : "…",
+      };
+    }
+    return detail;
+  });
+
   return (
     <div className="finance-overview">
       <header className="finance-page-heading">
@@ -241,7 +292,7 @@ export function FinanceOverview() {
           <SummaryPanel
             title="Ödemeler"
             metrics={payables}
-            details={financeOverviewData.payableDetails}
+            details={payableDetails}
             kind="payable"
           />
           <article className="erp-card finance-bank-panel">

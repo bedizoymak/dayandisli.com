@@ -645,6 +645,40 @@ export async function handlePayablesSummary(admin: SupabaseAdminLike, activeComp
   };
 }
 
+export interface VatSummaryResult {
+  vat_this_month: number;
+  sales_vat: number;
+  purchase_vat: number;
+}
+
+/**
+ * Smallest possible read-only summary for the Güncel Durum / "Bu Ay Oluşan
+ * KDV" tile — reuses the exact same computeMonthlyVatEstimate business logic
+ * as handleDashboard's `vatEstimate` (current-calendar-month output VAT from
+ * sales_invoices minus input VAT from purchase_bills, both keyed by
+ * issue_date and excluding source_archived rows). This is an *estimate* per
+ * that helper's own documented caveat — it does not include devreden KDV
+ * (carried-forward VAT credit), withholding, or other declaration-time
+ * adjustments, because no such logic exists anywhere else in this codebase
+ * to reuse.
+ */
+export async function handleVatSummary(admin: SupabaseAdminLike, activeCompanyId: string): Promise<VatSummaryResult> {
+  const [salesResult, purchaseResult] = await Promise.all([
+    scopedParasutTable<MirrorRow>(admin, "sales_invoices", activeCompanyId, MIRROR_ROW_COLUMNS),
+    scopedParasutTable<MirrorRow>(admin, "purchase_bills", activeCompanyId, MIRROR_ROW_COLUMNS),
+  ]);
+  if (salesResult.error) throw new Error(salesResult.error.message);
+  if (purchaseResult.error) throw new Error(purchaseResult.error.message);
+
+  const vatEstimate = computeMonthlyVatEstimate(salesResult.data ?? [], purchaseResult.data ?? [], new Date());
+
+  return {
+    sales_vat: decimalToNumber(turkishLiraTotal(vatEstimate.map((entry) => ({ currency: entry.currency, total: entry.outputVat })))),
+    purchase_vat: decimalToNumber(turkishLiraTotal(vatEstimate.map((entry) => ({ currency: entry.currency, total: entry.inputVat })))),
+    vat_this_month: decimalToNumber(turkishLiraTotal(vatEstimate.map((entry) => ({ currency: entry.currency, total: entry.netVat })))),
+  };
+}
+
 function summarizeDocuments(rows: MirrorRow[]): { currency: string; count: number; net: string; vat: string; gross: string }[] {
   const currencies = new Set(rows.map((row) => (row.attributes.currency as string | undefined) ?? "TRY"));
   return Array.from(currencies)

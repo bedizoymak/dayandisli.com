@@ -9,6 +9,7 @@ import {
   handleReceivablesSummary,
   handleReports,
   handleSyncStatus,
+  handleVatSummary,
   resolveContactNames,
 } from "./handlers.ts";
 
@@ -195,6 +196,53 @@ describe("handleList — cross-company isolation", () => {
       // Company isolation: company A's own payables-summary result (proven above) is unaffected by company D's data existing in the same fake admin.
       const resultA = await handlePayablesSummary(admin, COMPANY_A);
       expect(resultA).toEqual({ outstanding_total: 60, overdue_total: 0, overdue_count: 0, document_count: 1 });
+    });
+  });
+
+  describe("vat-summary: current-month business rule", () => {
+    it("previous month's rows do not contribute (the shared fixture's invoices are dated 2026-07-01, always outside the real current calendar month)", async () => {
+      const admin = createFakeSupabaseAdmin(seedTwoCompanies());
+      const resultA = await handleVatSummary(admin, COMPANY_A);
+      expect(resultA).toEqual({ sales_vat: 0, purchase_vat: 0, vat_this_month: 0 });
+    });
+
+    const COMPANY_E = "55555555-5555-4555-8555-555555555555";
+
+    function currentMonthDate(day: string): string {
+      return `${new Date().toISOString().slice(0, 7)}-${day}`;
+    }
+
+    it("nets current-month sales VAT against purchase VAT, combines TRL+TRY as Turkish lira, excludes archived and prior-month rows, and never leaks another company's rows", async () => {
+      const seed = seedTwoCompanies();
+      seed["parasut.sales_invoices"] = [
+        ...seed["parasut.sales_invoices"],
+        // Current month, TRL — must count toward sales_vat.
+        { parasut_id: "20", company_id: COMPANY_E, attributes: { invoice_no: "HD-20", currency: "TRL", total_vat: "1000.00", issue_date: currentMonthDate("05"), archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // Current month, TRY — must ALSO count toward sales_vat, combined with the TRL row above.
+        { parasut_id: "21", company_id: COMPANY_E, attributes: { invoice_no: "HD-21", currency: "TRY", total_vat: "500.00", issue_date: currentMonthDate("06"), archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // Current month but source_archived — must be excluded entirely.
+        { parasut_id: "22", company_id: COMPANY_E, attributes: { invoice_no: "HD-22", currency: "TRL", total_vat: "9999.00", issue_date: currentMonthDate("07"), archived: true }, relationships: {}, source_archived: true, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // Prior month — must be excluded.
+        { parasut_id: "23", company_id: COMPANY_E, attributes: { invoice_no: "HD-23", currency: "TRL", total_vat: "7777.00", issue_date: "2020-01-15", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+      ];
+      seed["parasut.purchase_bills"] = [
+        ...seed["parasut.purchase_bills"],
+        // Current month, TRL — must count toward purchase_vat.
+        { parasut_id: "24", company_id: COMPANY_E, attributes: { invoice_no: "PB-20", currency: "TRL", total_vat: "300.00", issue_date: currentMonthDate("05"), archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // Current month, TRY — must ALSO count toward purchase_vat, combined with the TRL row above.
+        { parasut_id: "25", company_id: COMPANY_E, attributes: { invoice_no: "PB-21", currency: "TRY", total_vat: "100.00", issue_date: currentMonthDate("08"), archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+      ];
+      const admin = createFakeSupabaseAdmin(seed);
+
+      const resultE = await handleVatSummary(admin, COMPANY_E);
+      // sales_vat = 1000 (TRL) + 500 (TRY) = 1500 (archived row and prior-month row excluded)
+      // purchase_vat = 300 (TRL) + 100 (TRY) = 400
+      // vat_this_month = sales_vat - purchase_vat = 1100
+      expect(resultE).toEqual({ sales_vat: 1500, purchase_vat: 400, vat_this_month: 1100 });
+
+      // Company isolation: company A's own vat-summary result (all zero, proven above) is unaffected by company E's data existing in the same fake admin.
+      const resultA = await handleVatSummary(admin, COMPANY_A);
+      expect(resultA).toEqual({ sales_vat: 0, purchase_vat: 0, vat_this_month: 0 });
     });
   });
 
