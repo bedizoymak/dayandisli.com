@@ -1,200 +1,110 @@
 // supabase/functions/parasut-sync-run/index.ts
+//
+// Repaired to reuse the existing, already-tested sync engine in
+// ../../../server/parasut/*.ts (TokenManager, ParaşütClient, sync-*.ts,
+// company-identity-contract.ts) instead of the dead hand-rolled sync that
+// previously wrote to nonexistent public.parasut_contacts/products/invoices
+// tables. Writes now go to the `parasut` schema, the same schema the
+// `parasut_readable` views read from. No new sync engine, no new tables.
 import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { TokenManager } from "../../../server/parasut/auth.ts";
+import { ParaşütClient } from "../../../server/parasut/client.ts";
+import { buildCanonicalCompanyContext } from "../../../server/parasut/company-identity-contract.ts";
+import { syncAccounts } from "../../../server/parasut/sync-accounts.ts";
+import { syncContacts } from "../../../server/parasut/sync-contacts.ts";
+import { syncProducts } from "../../../server/parasut/sync-products.ts";
+import { syncSalesInvoices } from "../../../server/parasut/sync-sales-invoices.ts";
+import { syncPurchaseBills } from "../../../server/parasut/sync-purchase-bills.ts";
+import type { MirrorDatabase, SyncContext, SyncResult } from "../../../server/parasut/types.ts";
+
+const APPROVED_ERP_COMPANY_ID = "54b50745-89e0-4b97-adb6-4f2426fa2a2f";
+const APPROVED_PARASUT_COMPANY_ID = "666034";
+const MAX_CONSECUTIVE_RESOURCE_ERRORS = 5;
+
+interface ResourceRunner {
+  name: string;
+  run: (context: SyncContext) => Promise<SyncResult>;
+}
+
+const RESOURCE_ORDER: ResourceRunner[] = [
+  { name: "accounts", run: syncAccounts },
+  { name: "contacts", run: syncContacts },
+  { name: "products", run: syncProducts },
+  { name: "sales_invoices", run: syncSalesInvoices },
+  { name: "purchase_bills", run: syncPurchaseBills },
+];
+
+function requireEnv(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value || !value.trim()) throw new Error(`${name} is required and must not be empty.`);
+  return value;
+}
+
+function logSafe(message: string): void {
+  console.log(message.replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]"));
+}
 
 serve(async (req: Request) => {
   try {
-    console.log("🚀 Sync started");
-
-    const companyId = Deno.env.get("PARASUT_COMPANY_ID")!;
-    const clientId = Deno.env.get("PARASUT_CLIENT_ID")!;
-    const clientSecret = Deno.env.get("PARASUT_CLIENT_SECRET")!;
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
-
-    const { data: tokens } = await supabase
-      .from("parasut_tokens")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("updated_at", { ascending: false })
-      .limit(1);
-
-    if (!tokens?.length) {
-      console.error("❌ No token found for company");
-      return new Response("No token found", { status: 400 });
+    if (req.method !== "POST") {
+      return new Response("Method Not Allowed", { status: 405 });
     }
 
-    let tokenRow = tokens[0];
-    const now = Date.now();
-
-    if (!tokenRow.expires_at || now > tokenRow.expires_at - 60000) {
-      console.log("🔁 Token refresh triggered");
-      tokenRow = await refreshToken(companyId, clientId, clientSecret, supabase, tokenRow.refresh_token);
+    const env = {
+      ERP_COMPANY_ID: Deno.env.get("ERP_COMPANY_ID"),
+      PARASUT_COMPANY_ID: Deno.env.get("PARASUT_COMPANY_ID"),
+    };
+    const { companyId, parasutCompanyId } = buildCanonicalCompanyContext(env);
+    if (companyId !== APPROVED_ERP_COMPANY_ID) {
+      throw new Error(`ERP_COMPANY_ID mismatch: expected ${APPROVED_ERP_COMPANY_ID}.`);
+    }
+    if (parasutCompanyId !== APPROVED_PARASUT_COMPANY_ID) {
+      throw new Error(`PARASUT_COMPANY_ID mismatch: expected ${APPROVED_PARASUT_COMPANY_ID}.`);
     }
 
-    const token = tokenRow.access_token;
+    const clientId = requireEnv("PARASUT_CLIENT_ID");
+    const clientSecret = requireEnv("PARASUT_CLIENT_SECRET");
+    const username = requireEnv("PARASUT_USERNAME");
+    const password = requireEnv("PARASUT_PASSWORD");
+    const supabaseUrl = requireEnv("SUPABASE_URL");
+    const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
 
-    const contactsCount = await syncContacts(companyId, token, supabase);
-    const productsCount = await syncProducts(companyId, token, supabase);
-    const invoicesCount = await syncSalesInvoices(companyId, token, supabase);
+    const tokens = new TokenManager({ clientId, clientSecret, username, password });
+    const client = new ParaşütClient(tokens);
+    const database = createClient(supabaseUrl, serviceRoleKey) as unknown as MirrorDatabase;
 
-    console.log("🎉 Sync completed", { contactsCount, productsCount, invoicesCount });
+    const context: SyncContext = { companyId, parasutCompanyId, database, client };
 
-    return new Response(JSON.stringify({ contactsCount, productsCount, invoicesCount }), {
+    logSafe(`[sync] companyId=${companyId} parasutCompanyId=${parasutCompanyId}`);
+
+    const results: SyncResult[] = [];
+    for (const resource of RESOURCE_ORDER) {
+      logSafe(`[sync] starting ${resource.name}`);
+      const result = await resource.run(context);
+      results.push(result);
+      logSafe(
+        `[sync] ${resource.name} ${result.status} — pages=${result.pages} observed=${result.observed} ` +
+          `inserted=${result.inserted} updated=${result.updated} unchanged=${result.unchanged} errors=${result.errors}`,
+      );
+      if (result.errors > MAX_CONSECUTIVE_RESOURCE_ERRORS) {
+        throw new Error(
+          `Stopping: ${resource.name} recorded ${result.errors} errors, exceeding the ${MAX_CONSECUTIVE_RESOURCE_ERRORS} failure threshold.`,
+        );
+      }
+    }
+
+    logSafe(`[sync] all resources completed: ${results.map((r) => `${r.resourceType}=${r.status}`).join(", ")}`);
+
+    return new Response(JSON.stringify({ results }), {
       status: 200,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
-
   } catch (err) {
-    console.error("🔥 SYNC ERROR:", err);
-    return new Response("Internal Error", { status: 500 });
+    console.error("🔥 SYNC ERROR:", (err as Error).message);
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 });
-
-async function refreshToken(companyId: string, clientId: string, clientSecret: string, supabase: any, refreshToken: string) {
-  const res = await fetch("https://api.parasut.com/oauth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  });
-
-  const json = await res.json();
-  if (!res.ok) throw new Error(JSON.stringify(json));
-
-  await supabase.from("parasut_tokens").upsert({
-    company_id: companyId,
-    access_token: json.access_token,
-    refresh_token: json.refresh_token ?? refreshToken,
-    expires_at: Date.now() + json.expires_in * 1000,
-    updated_at: new Date()
-  });
-
-  return json;
-}
-
-// GLOBAL RATE LIMIT SAFE FETCHER
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fetchAllPages(token: string, endpoint: string) {
-  const results: any[] = [];
-  let page = 1;
-  const pageSize = 25;
-
-  while (true) {
-    const url = `${endpoint}?page[number]=${page}&page[size]=${pageSize}`;
-    console.log(`📡 Fetching: ${url}`);
-
-    let res;
-    for (let attempt = 1; attempt <= 5; attempt++) {
-      res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (res.status === 429) {
-        console.warn("⏳ Rate limit hit! Waiting 3s...");
-        await delay(3000);
-        continue;
-      }
-      break;
-    }
-
-    const json = await res!.json();
-    if (!res!.ok) {
-      console.error("❌ Fetch error", json);
-      throw new Error(JSON.stringify(json));
-    }
-
-    if (!json.data?.length) break;
-
-    results.push(...json.data);
-    page++;
-
-    if (!json.meta?.total_count || results.length >= json.meta.total_count) break;
-
-    await delay(350);
-  }
-  return results;
-}
-
-// CONTACTS SYNC
-async function syncContacts(companyId: string, token: string, supabase: any) {
-  const items = await fetchAllPages(token, `https://api.parasut.com/v4/${companyId}/contacts`);
-  if (!items.length) return 0;
-
-  const rows = items.map((item) => {
-    const a = item.attributes || {};
-    return {
-      parasut_id: item.id,
-      name: a.name ?? a.full_name ?? "",
-      email: a.email ?? null,
-      phone: a.phone ?? null,
-      tax_number: a.tax_number ?? null,
-      updated_at: a.updated_at ? new Date(a.updated_at) : new Date(),
-      raw_json: item,
-    };
-  });
-
-  await supabase.from("parasut_contacts").upsert(rows);
-  console.log(`👥 Synced contacts: ${rows.length}`);
-  return rows.length;
-}
-
-// PRODUCTS SYNC
-async function syncProducts(companyId: string, token: string, supabase: any) {
-  const items = await fetchAllPages(token, `https://api.parasut.com/v4/${companyId}/products`);
-  if (!items.length) return 0;
-
-  const rows = items.map((item) => {
-    const a = item.attributes || {};
-    return {
-      parasut_id: item.id,
-      name: a.name ?? "",
-      code: a.code ?? null,
-      unit: a.unit ?? null,
-      unit_price: a.list_price ?? null,
-      currency: a.currency ?? null,
-      updated_at: a.updated_at ? new Date(a.updated_at) : new Date(),
-      raw_json: item,
-    };
-  });
-
-  await supabase.from("parasut_products").upsert(rows);
-  console.log(`📦 Synced products: ${rows.length}`);
-  return rows.length;
-}
-
-// INVOICES SYNC
-async function syncSalesInvoices(companyId: string, token: string, supabase: any) {
-  const items = await fetchAllPages(token, `https://api.parasut.com/v4/${companyId}/sales_invoices`);
-  if (!items.length) return 0;
-
-  const rows = items.map((item) => {
-    const a = item.attributes || {};
-    return {
-      parasut_id: item.id,
-      invoice_no: a.invoice_no ?? null,
-      issue_date: a.issue_date ?? null,
-      net_total: a.net_total ?? null,
-      gross_total: a.gross_total ?? null,
-      currency: a.currency ?? null,
-      updated_at: a.updated_at ? new Date(a.updated_at) : new Date(),
-      raw_json: item,
-    };
-  });
-
-  await supabase.from("parasut_invoices").upsert(rows);
-  console.log(`🧾 Synced invoices: ${rows.length}`);
-  return rows.length;
-}
