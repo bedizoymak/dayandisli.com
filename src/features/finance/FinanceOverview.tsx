@@ -17,8 +17,11 @@ import "./finance-overview.css";
 interface ReceivablesSummary {
   outstanding_total: number;
   overdue_total: number;
+  unscheduled_total: number;
   overdue_count: number;
+  unscheduled_count: number;
   invoice_count: number;
+  check_count: number;
 }
 
 /** Reads live Tahsilatlar totals from parasut_readable via the parasut-api Edge Function (action: "receivables-summary"). Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
@@ -53,8 +56,11 @@ function useReceivablesSummary() {
 interface PayablesSummary {
   outstanding_total: number;
   overdue_total: number;
+  unscheduled_total: number;
   overdue_count: number;
+  unscheduled_count: number;
   document_count: number;
+  check_count: number;
 }
 
 /** Reads live Ödemeler totals from parasut_readable via the parasut-api Edge Function (action: "payables-summary"). Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
@@ -217,6 +223,17 @@ export function FinanceOverview() {
               : "…",
       };
     }
+    if (index === 2) {
+      return {
+        ...metric,
+        value:
+          receivablesStatus === "ready" && receivablesSummary
+            ? formatMoney(receivablesSummary.unscheduled_total)
+            : receivablesStatus === "error"
+              ? "—"
+              : "…",
+      };
+    }
     return metric;
   });
 
@@ -238,6 +255,17 @@ export function FinanceOverview() {
         value:
           payablesStatus === "ready" && payablesSummary
             ? formatMoney(payablesSummary.overdue_total)
+            : payablesStatus === "error"
+              ? "—"
+              : "…",
+      };
+    }
+    if (index === 2) {
+      return {
+        ...metric,
+        value:
+          payablesStatus === "ready" && payablesSummary
+            ? formatMoney(payablesSummary.unscheduled_total)
             : payablesStatus === "error"
               ? "—"
               : "…",

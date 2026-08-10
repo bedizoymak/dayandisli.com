@@ -74,7 +74,11 @@ export type MirrorTable =
   | "taxes"
   | "trackable_jobs"
   | "transactions"
-  | "warehouses";
+  | "warehouses"
+  // Added 2026-08-11 alongside supabase/migrations/20260811000000_parasut_checks_mirror.sql
+  // — foundation-style table (attributes/relationships/included), not the
+  // 20260723 typed-only shape. See that migration's header comment.
+  | "checks";
 
 export type IntegrationTable = "sync_runs" | "sync_errors";
 

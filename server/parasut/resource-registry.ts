@@ -63,6 +63,18 @@ export const PARASUT_RESOURCE_REGISTRY: ResourceConfig[] = [
     notes: "Existing sync-purchase-bills.ts. Verified live: 767 rows across 31 pages.",
   },
   {
+    resourceType: "checks",
+    table: "checks",
+    support: "direct-list",
+    endpoint: "checks",
+    notes:
+      "sync-checks.ts, added 2026-08-11. Verified live: total_count = 40 via GET /v4/{company_id}/checks " +
+      "(same api.parasut.com v4 host/JSON:API/pagination family as every other direct-list resource here, " +
+      "not the browser-only uygulama.parasut.com surface). NOT eligible for deletion reconciliation: no " +
+      "archived/cancelled attribute in the verified payload, and completeness as a full snapshot has not " +
+      "been separately proven the way contacts/purchase_bills were on 2026-07-23.",
+  },
+  {
     resourceType: "sales_invoice_details",
     table: "sales_invoice_details",
     support: "nested",

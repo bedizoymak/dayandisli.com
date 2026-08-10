@@ -100,7 +100,7 @@ function isOpenDocument(row: MirrorRow): boolean {
 }
 
 /** `referenceDate` is injected (rather than read via `new Date()` internally) so this stays deterministic in tests and doesn't rot as real time passes. */
-function isOverdue(row: MirrorRow, referenceDate: Date): boolean {
+export function isOverdue(row: MirrorRow, referenceDate: Date): boolean {
   const daysOverdue = row.attributes.days_overdue;
   if (typeof daysOverdue === "number") return daysOverdue > 0;
   const dueDate = row.attributes.due_date as string | null | undefined;
@@ -122,6 +122,45 @@ export function computeOpenDocumentSummary(rows: MirrorRow[], referenceDate: Dat
     recurringCount,
     overdueCount: overdue.length,
     unscheduledCount: unscheduled.length,
+  };
+}
+
+export interface ChequeSummary {
+  total: string;
+  overdue: string;
+  unscheduled: string;
+  overdueCount: number;
+  unscheduledCount: number;
+  count: number;
+}
+
+function isOpenCheque(row: MirrorRow): boolean {
+  return isPositiveDecimal(row.attributes.remaining_in_trl as string | number | undefined);
+}
+
+/**
+ * Cheques (`checks`) carry no archived/cancelled attribute (verified live
+ * payload), so "open" here is purely `remaining_in_trl > 0` — no
+ * source_archived check, unlike computeOpenDocumentSummary's documents.
+ * Uses `remaining_in_trl` (Paraşüt's own TRY-converted amount), not
+ * `remaining` grouped by currency — Paraşüt already performs that
+ * conversion for cheques, unlike sales_invoices/purchase_bills, where no
+ * such field exists and foreign-currency documents are deliberately
+ * excluded rather than converted (see handlers.ts's turkishLiraTotal).
+ */
+export function computeChequeSummary(rows: MirrorRow[], direction: "is_in" | "is_out", referenceDate: Date = new Date()): ChequeSummary {
+  const directional = rows.filter((row) => row.attributes[direction] === true);
+  const open = directional.filter(isOpenCheque);
+  const overdue = open.filter((row) => isOverdue(row, referenceDate));
+  const unscheduled = open.filter((row) => !row.attributes.due_date);
+
+  return {
+    total: sumDecimalStrings(open.map((row) => row.attributes.remaining_in_trl as string | undefined)),
+    overdue: sumDecimalStrings(overdue.map((row) => row.attributes.remaining_in_trl as string | undefined)),
+    unscheduled: sumDecimalStrings(unscheduled.map((row) => row.attributes.remaining_in_trl as string | undefined)),
+    overdueCount: overdue.length,
+    unscheduledCount: unscheduled.length,
+    count: directional.length,
   };
 }
 

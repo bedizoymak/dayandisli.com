@@ -17,6 +17,7 @@ import {
   buildMonthlyTrend,
   buildUpcomingTimeline,
   computeAgingReport,
+  computeChequeSummary,
   computeMonthlyVatEstimate,
   computeOpenDocumentSummary,
   computeUnsentSummary,
@@ -161,6 +162,7 @@ export const LIST_RESOURCES = [
   "products",
   "sales_invoices",
   "purchase_bills",
+  "checks",
   "accounts",
   "payments",
   "sales_offers",
@@ -334,6 +336,11 @@ export async function handleList(admin: SupabaseAdminLike, params: ListParams, a
     case "purchase_bills": {
       table = scopedParasutTable<MirrorRecord>(admin, "purchase_bills", activeCompanyId, LIST_SELECT_COLUMNS, { count: "exact" });
       searchColumns = ["attributes->>invoice_no", "attributes->>description"];
+      break;
+    }
+    case "checks": {
+      table = scopedParasutTable<MirrorRecord>(admin, "checks", activeCompanyId, LIST_SELECT_COLUMNS, { count: "exact" });
+      searchColumns = ["attributes->>serial_number", "attributes->>description", "attributes->>bank_name"];
       break;
     }
     case "accounts": {
@@ -524,6 +531,7 @@ export const RESOURCE_TYPE_TABLES: Array<{ resourceType: string; table: string }
   { resourceType: "products", table: "products" },
   { resourceType: "sales_invoices", table: "sales_invoices" },
   { resourceType: "purchase_bills", table: "purchase_bills" },
+  { resourceType: "checks", table: "checks" },
   { resourceType: "accounts", table: "accounts" },
 ];
 
@@ -589,8 +597,11 @@ export async function handleDashboard(admin: SupabaseAdminLike, activeCompanyId:
 export interface ReceivablesSummaryResult {
   outstanding_total: number;
   overdue_total: number;
+  unscheduled_total: number;
   overdue_count: number;
+  unscheduled_count: number;
   invoice_count: number;
+  check_count: number;
 }
 
 /**
@@ -606,42 +617,76 @@ function turkishLiraTotal(totals: CurrencyTotal[]): string {
   return sumDecimalStrings(totals.filter((entry) => TURKISH_LIRA_CURRENCY_CODES.has(entry.currency)).map((entry) => entry.total));
 }
 
-/** Smallest possible read-only summary for the Güncel Durum / Tahsilatlar card — reuses the same computeOpenDocumentSummary business logic as handleDashboard's collectionsSummary, scoped to only sales_invoices. */
-export async function handleReceivablesSummary(admin: SupabaseAdminLike, activeCompanyId: string): Promise<ReceivablesSummaryResult> {
-  const { data, error, count } = await scopedParasutTable<MirrorRow>(admin, "sales_invoices", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" });
-  if (error) throw new Error(error.message);
+/**
+ * Paraşüt's live Güncel Durum totals are documents + cheques combined
+ * (verified 2026-08-10/11 against live Paraşüt): Tahsilatlar = open sales
+ * invoices + open received cheques (is_in); Ödemeler = open purchase bills
+ * + open given cheques (is_out). Fetches both resources scoped to the
+ * active company and combines them via computeOpenDocumentSummary (documents)
+ * and computeChequeSummary (cheques) — no new business logic invented, both
+ * are the existing proven helpers.
+ */
+async function fetchDocumentsAndChecks(
+  admin: SupabaseAdminLike,
+  activeCompanyId: string,
+  documentsTable: "sales_invoices" | "purchase_bills",
+) {
+  const [documentsResult, checksResult] = await Promise.all([
+    scopedParasutTable<MirrorRow>(admin, documentsTable, activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }),
+    scopedParasutTable<MirrorRow>(admin, "checks", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }),
+  ]);
+  if (documentsResult.error) throw new Error(documentsResult.error.message);
+  if (checksResult.error) throw new Error(checksResult.error.message);
+  return {
+    documentRows: documentsResult.data ?? [],
+    documentCount: documentsResult.count ?? documentsResult.data?.length ?? 0,
+    checkRows: checksResult.data ?? [],
+  };
+}
 
-  const rows = data ?? [];
-  const summary = computeOpenDocumentSummary(rows, new Date());
+/** Smallest possible read-only summary for the Güncel Durum / Tahsilatlar card: open sales invoices + open received cheques (is_in). */
+export async function handleReceivablesSummary(admin: SupabaseAdminLike, activeCompanyId: string): Promise<ReceivablesSummaryResult> {
+  const { documentRows, documentCount, checkRows } = await fetchDocumentsAndChecks(admin, activeCompanyId, "sales_invoices");
+  const now = new Date();
+  const invoices = computeOpenDocumentSummary(documentRows, now);
+  const receivedCheques = computeChequeSummary(checkRows, "is_in", now);
 
   return {
-    outstanding_total: decimalToNumber(turkishLiraTotal(summary.totalDue)),
-    overdue_total: decimalToNumber(turkishLiraTotal(summary.overdue)),
-    overdue_count: summary.overdueCount,
-    invoice_count: count ?? rows.length,
+    outstanding_total: decimalToNumber(sumDecimalStrings([turkishLiraTotal(invoices.totalDue), receivedCheques.total])),
+    overdue_total: decimalToNumber(sumDecimalStrings([turkishLiraTotal(invoices.overdue), receivedCheques.overdue])),
+    unscheduled_total: decimalToNumber(sumDecimalStrings([turkishLiraTotal(invoices.unscheduled), receivedCheques.unscheduled])),
+    overdue_count: invoices.overdueCount + receivedCheques.overdueCount,
+    unscheduled_count: invoices.unscheduledCount + receivedCheques.unscheduledCount,
+    invoice_count: documentCount,
+    check_count: receivedCheques.count,
   };
 }
 
 export interface PayablesSummaryResult {
   outstanding_total: number;
   overdue_total: number;
+  unscheduled_total: number;
   overdue_count: number;
+  unscheduled_count: number;
   document_count: number;
+  check_count: number;
 }
 
-/** Smallest possible read-only summary for the Güncel Durum / Ödemeler card — reuses the same computeOpenDocumentSummary business logic as handleDashboard's paymentsSummary, scoped to only purchase_bills (the same, and only, resource handleDashboard's paymentsSummary already aggregates for payables). */
+/** Smallest possible read-only summary for the Güncel Durum / Ödemeler card: open purchase bills + open given cheques (is_out). */
 export async function handlePayablesSummary(admin: SupabaseAdminLike, activeCompanyId: string): Promise<PayablesSummaryResult> {
-  const { data, error, count } = await scopedParasutTable<MirrorRow>(admin, "purchase_bills", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" });
-  if (error) throw new Error(error.message);
-
-  const rows = data ?? [];
-  const summary = computeOpenDocumentSummary(rows, new Date());
+  const { documentRows, documentCount, checkRows } = await fetchDocumentsAndChecks(admin, activeCompanyId, "purchase_bills");
+  const now = new Date();
+  const bills = computeOpenDocumentSummary(documentRows, now);
+  const givenCheques = computeChequeSummary(checkRows, "is_out", now);
 
   return {
-    outstanding_total: decimalToNumber(turkishLiraTotal(summary.totalDue)),
-    overdue_total: decimalToNumber(turkishLiraTotal(summary.overdue)),
-    overdue_count: summary.overdueCount,
-    document_count: count ?? rows.length,
+    outstanding_total: decimalToNumber(sumDecimalStrings([turkishLiraTotal(bills.totalDue), givenCheques.total])),
+    overdue_total: decimalToNumber(sumDecimalStrings([turkishLiraTotal(bills.overdue), givenCheques.overdue])),
+    unscheduled_total: decimalToNumber(sumDecimalStrings([turkishLiraTotal(bills.unscheduled), givenCheques.unscheduled])),
+    overdue_count: bills.overdueCount + givenCheques.overdueCount,
+    unscheduled_count: bills.unscheduledCount + givenCheques.unscheduledCount,
+    check_count: givenCheques.count,
+    document_count: documentCount,
   };
 }
 

@@ -16,6 +16,7 @@ import { syncContacts } from "../../../server/parasut/sync-contacts.ts";
 import { syncProducts } from "../../../server/parasut/sync-products.ts";
 import { syncSalesInvoices } from "../../../server/parasut/sync-sales-invoices.ts";
 import { syncPurchaseBills } from "../../../server/parasut/sync-purchase-bills.ts";
+import { syncChecks } from "../../../server/parasut/sync-checks.ts";
 import type { MirrorDatabase, SyncContext, SyncResult } from "../../../server/parasut/types.ts";
 
 const APPROVED_ERP_COMPANY_ID = "54b50745-89e0-4b97-adb6-4f2426fa2a2f";
@@ -33,6 +34,7 @@ const RESOURCE_ORDER: ResourceRunner[] = [
   { name: "products", run: syncProducts },
   { name: "sales_invoices", run: syncSalesInvoices },
   { name: "purchase_bills", run: syncPurchaseBills },
+  { name: "checks", run: syncChecks },
 ];
 
 function requireEnv(name: string): string {

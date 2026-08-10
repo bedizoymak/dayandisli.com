@@ -3,6 +3,7 @@ import {
   buildMonthlyTrend,
   buildUpcomingTimeline,
   computeAgingReport,
+  computeChequeSummary,
   computeMonthlyVatEstimate,
   computeOpenDocumentSummary,
   computeUnsentSummary,
@@ -100,6 +101,59 @@ describe("computeOpenDocumentSummary", () => {
       { currency: "TRY", total: "100.00" },
       { currency: "USD", total: "50.00" },
     ]);
+  });
+});
+
+describe("computeChequeSummary", () => {
+  const referenceDate = new Date("2026-07-15T00:00:00.000Z");
+
+  it("filters strictly by direction: is_in for received, is_out for given, never both", () => {
+    const rows: MirrorRow[] = [
+      row({ is_in: true, is_out: false, remaining_in_trl: "100.0" }),
+      row({ is_in: false, is_out: true, remaining_in_trl: "200.0" }),
+    ];
+    expect(computeChequeSummary(rows, "is_in", referenceDate).total).toBe("100.00");
+    expect(computeChequeSummary(rows, "is_out", referenceDate).total).toBe("200.00");
+  });
+
+  it("open is purely remaining_in_trl > 0 — no source_archived check, since checks expose no archived attribute", () => {
+    const rows: MirrorRow[] = [
+      row({ is_in: true, remaining_in_trl: "100.0", archived: true }), // "archived" here only sets source_archived, which computeChequeSummary ignores
+      row({ is_in: true, remaining_in_trl: "0.0" }), // cashed/closed
+    ];
+    const summary = computeChequeSummary(rows, "is_in", referenceDate);
+    expect(summary.total).toBe("100.00");
+    expect(summary.count).toBe(2); // count is every directional row regardless of open state
+  });
+
+  it("classifies overdue via days_overdue or due_date, same convention as computeOpenDocumentSummary", () => {
+    const rows: MirrorRow[] = [
+      row({ is_in: true, remaining_in_trl: "100.0", days_overdue: 5 }),
+      row({ is_in: true, remaining_in_trl: "200.0", due_date: "2026-01-01" }), // past reference date, no days_overdue field
+      row({ is_in: true, remaining_in_trl: "300.0", due_date: "2099-01-01" }), // future
+    ];
+    const summary = computeChequeSummary(rows, "is_in", referenceDate);
+    expect(summary.overdueCount).toBe(2);
+    expect(summary.overdue).toBe("300.00");
+  });
+
+  it("classifies unscheduled via missing due_date, among open cheques only", () => {
+    const rows: MirrorRow[] = [
+      row({ is_in: true, remaining_in_trl: "100.0" }), // no due_date -> unscheduled
+      row({ is_in: true, remaining_in_trl: "0.0" }), // no due_date but closed -> excluded from unscheduled
+      row({ is_in: true, remaining_in_trl: "50.0", due_date: "2099-01-01" }),
+    ];
+    const summary = computeChequeSummary(rows, "is_in", referenceDate);
+    expect(summary.unscheduledCount).toBe(1);
+    expect(summary.unscheduled).toBe("100.00");
+  });
+
+  it("uses remaining_in_trl directly regardless of currency — no per-currency grouping/exclusion like documents", () => {
+    const rows: MirrorRow[] = [
+      row({ is_in: true, currency: "TRL", remaining_in_trl: "100.0" }),
+      row({ is_in: true, currency: "USD", remaining_in_trl: "50.0" }), // Paraşüt's own conversion, included as-is
+    ];
+    expect(computeChequeSummary(rows, "is_in", referenceDate).total).toBe("150.00");
   });
 });
 
