@@ -593,6 +593,19 @@ export interface ReceivablesSummaryResult {
   invoice_count: number;
 }
 
+/**
+ * Paraşüt mirror rows carry the legacy code `TRL` for Turkish lira on some
+ * (older-synced) records and the canonical ISO code `TRY` on others — both
+ * denote the exact same currency, never two different ones. This ERP card
+ * is TRY-formatted only, so both groups are summed together here; every
+ * other currency (USD, EUR, ...) is deliberately excluded, not converted.
+ */
+const TURKISH_LIRA_CURRENCY_CODES = new Set(["TRY", "TRL"]);
+
+function turkishLiraTotal(totals: CurrencyTotal[]): string {
+  return sumDecimalStrings(totals.filter((entry) => TURKISH_LIRA_CURRENCY_CODES.has(entry.currency)).map((entry) => entry.total));
+}
+
 /** Smallest possible read-only summary for the Güncel Durum / Tahsilatlar card — reuses the same computeOpenDocumentSummary business logic as handleDashboard's collectionsSummary, scoped to only sales_invoices. */
 export async function handleReceivablesSummary(admin: SupabaseAdminLike, activeCompanyId: string): Promise<ReceivablesSummaryResult> {
   const { data, error, count } = await scopedParasutTable<MirrorRow>(admin, "sales_invoices", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" });
@@ -600,12 +613,10 @@ export async function handleReceivablesSummary(admin: SupabaseAdminLike, activeC
 
   const rows = data ?? [];
   const summary = computeOpenDocumentSummary(rows, new Date());
-  const outstandingTry = summary.totalDue.find((entry) => entry.currency === "TRY")?.total ?? "0.00";
-  const overdueTry = summary.overdue.find((entry) => entry.currency === "TRY")?.total ?? "0.00";
 
   return {
-    outstanding_total: decimalToNumber(outstandingTry),
-    overdue_total: decimalToNumber(overdueTry),
+    outstanding_total: decimalToNumber(turkishLiraTotal(summary.totalDue)),
+    overdue_total: decimalToNumber(turkishLiraTotal(summary.overdue)),
     overdue_count: summary.overdueCount,
     invoice_count: count ?? rows.length,
   };

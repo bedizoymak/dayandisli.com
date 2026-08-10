@@ -39,7 +39,8 @@ function seedTwoCompanies(): Record<string, FakeRow[]> {
       {
         parasut_id: "900",
         company_id: COMPANY_A,
-        attributes: { invoice_no: "INV-A-1", currency: "TRY", net_total: "100", gross_total: "120", total_vat: "20", remaining: "120", total_paid: "0", issue_date: "2026-07-01", archived: false },
+        // Deliberately "TRL" — Paraşüt's legacy Turkish-lira code, which real production sales_invoices rows use (see handleReceivablesSummary's TURKISH_LIRA_CURRENCY_CODES).
+        attributes: { invoice_no: "INV-A-1", currency: "TRL", net_total: "100", gross_total: "120", total_vat: "20", remaining: "120", total_paid: "0", issue_date: "2026-07-01", archived: false },
         relationships: { contact: { data: { id: "500", type: "contacts" } }, details: { data: [] }, payments: { data: [{ id: "800", type: "payments" }] } },
         source_archived: false,
         last_seen_at: "2026-07-01T00:00:00Z",
@@ -105,13 +106,48 @@ describe("handleList — cross-company isolation", () => {
     expect((result.recentActivity.syncRuns[0] as FakeRow).id).toBe("run-a");
   });
 
-  it("receivables-summary: matches company A's own open sales invoices only, never company B's", async () => {
+  it("receivables-summary: matches company A's own open sales invoices only, never company B's — TRL (company A) and TRY (company B) both count as Turkish lira", async () => {
     const admin = createFakeSupabaseAdmin(seedTwoCompanies());
     const resultA = await handleReceivablesSummary(admin, COMPANY_A);
     expect(resultA).toEqual({ outstanding_total: 120, overdue_total: 0, overdue_count: 0, invoice_count: 1 });
 
     const resultB = await handleReceivablesSummary(admin, COMPANY_B);
     expect(resultB).toEqual({ outstanding_total: 999, overdue_total: 0, overdue_count: 0, invoice_count: 1 });
+  });
+
+  describe("receivables-summary: TRL/TRY currency-code handling", () => {
+    const COMPANY_C = "33333333-3333-4333-8333-333333333333";
+
+    function seedMixedCurrencyCompany(): Record<string, FakeRow[]> {
+      return {
+        "parasut.sales_invoices": [
+          // Open, not overdue (no due_date) — TRL, must be counted as Turkish lira.
+          { parasut_id: "1", company_id: COMPANY_C, attributes: { invoice_no: "HD-1", currency: "TRL", remaining: "1000.00", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+          // Open, not overdue — TRY, must ALSO be counted as Turkish lira and summed together with the TRL row above.
+          { parasut_id: "2", company_id: COMPANY_C, attributes: { invoice_no: "HD-2", currency: "TRY", remaining: "500.00", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+          // Open, overdue (due_date in the past) — TRL, must land in overdue_total/overdue_count.
+          { parasut_id: "3", company_id: COMPANY_C, attributes: { invoice_no: "HD-3", currency: "TRL", remaining: "200.00", due_date: "2020-01-01", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+          // Open, not overdue — USD, must be fully excluded from the TRY-formatted totals (no conversion, no accidental inclusion).
+          { parasut_id: "4", company_id: COMPANY_C, attributes: { invoice_no: "HD-4", currency: "USD", remaining: "9999.00", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+          // Closed (remaining 0) — must be excluded entirely regardless of currency.
+          { parasut_id: "5", company_id: COMPANY_C, attributes: { invoice_no: "HD-5", currency: "TRL", remaining: "0.00", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        ],
+      };
+    }
+
+    it("sums TRL and TRY together, excludes USD, and never leaks another company's rows", async () => {
+      const seed = seedTwoCompanies();
+      seed["parasut.sales_invoices"] = [...seed["parasut.sales_invoices"], ...seedMixedCurrencyCompany()["parasut.sales_invoices"]];
+      const admin = createFakeSupabaseAdmin(seed);
+
+      const resultC = await handleReceivablesSummary(admin, COMPANY_C);
+      // outstanding_total = 1000 (TRL) + 500 (TRY) + 200 (overdue TRL) = 1700; USD and the closed row are excluded.
+      expect(resultC).toEqual({ outstanding_total: 1700, overdue_total: 200, overdue_count: 1, invoice_count: 5 });
+
+      // Company isolation: company A/B's own receivables-summary results (proven above) are unaffected by company C's data existing in the same fake admin.
+      const resultA = await handleReceivablesSummary(admin, COMPANY_A);
+      expect(resultA).toEqual({ outstanding_total: 120, overdue_total: 0, overdue_count: 0, invoice_count: 1 });
+    });
   });
 
   it("list (sales_invoices): only returns the active company's invoice, with the correctly-scoped contact name", async () => {
@@ -282,7 +318,7 @@ describe("handleReports — aggregations never cross company boundaries", () => 
   it("sales summary and customer balances only reflect the active company", async () => {
     const admin = createFakeSupabaseAdmin(seedTwoCompanies());
     const reportA = await handleReports(admin, COMPANY_A);
-    expect(reportA.salesSummary).toEqual([{ currency: "TRY", count: 1, net: "100.00", vat: "20.00", gross: "120.00" }]);
+    expect(reportA.salesSummary).toEqual([{ currency: "TRL", count: 1, net: "100.00", vat: "20.00", gross: "120.00" }]);
     expect(reportA.customerBalances).toHaveLength(1);
     expect((reportA.customerBalances[0] as FakeRow).attributes).toMatchObject({ name: "A Customer" });
 
