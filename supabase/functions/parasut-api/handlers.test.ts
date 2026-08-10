@@ -4,6 +4,7 @@ import {
   handleDashboard,
   handleDetail,
   handleList,
+  handlePayablesSummary,
   handlePaymentsList,
   handleReceivablesSummary,
   handleReports,
@@ -147,6 +148,53 @@ describe("handleList — cross-company isolation", () => {
       // Company isolation: company A/B's own receivables-summary results (proven above) are unaffected by company C's data existing in the same fake admin.
       const resultA = await handleReceivablesSummary(admin, COMPANY_A);
       expect(resultA).toEqual({ outstanding_total: 120, overdue_total: 0, overdue_count: 0, invoice_count: 1 });
+    });
+  });
+
+  it("payables-summary: matches company A's own open purchase bills only, never company B's (which has none)", async () => {
+    const admin = createFakeSupabaseAdmin(seedTwoCompanies());
+    const resultA = await handlePayablesSummary(admin, COMPANY_A);
+    expect(resultA).toEqual({ outstanding_total: 60, overdue_total: 0, overdue_count: 0, document_count: 1 });
+
+    const resultB = await handlePayablesSummary(admin, COMPANY_B);
+    expect(resultB).toEqual({ outstanding_total: 0, overdue_total: 0, overdue_count: 0, document_count: 0 });
+  });
+
+  describe("payables-summary: TRL/TRY currency handling, partial payment, and archived exclusion", () => {
+    const COMPANY_D = "44444444-4444-4444-8444-444444444444";
+
+    function seedMixedPayablesCompany(): FakeRow[] {
+      return [
+        // Open, not overdue (no due_date) — TRL, must be counted as Turkish lira.
+        { parasut_id: "10", company_id: COMPANY_D, attributes: { invoice_no: "PB-1", currency: "TRL", remaining: "1000.00", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // Open, not overdue — TRY, must ALSO be counted as Turkish lira and summed together with the TRL row above.
+        { parasut_id: "11", company_id: COMPANY_D, attributes: { invoice_no: "PB-2", currency: "TRY", remaining: "500.00", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // Open, overdue (due_date in the past) — TRL, must land in overdue_total/overdue_count.
+        { parasut_id: "12", company_id: COMPANY_D, attributes: { invoice_no: "PB-3", currency: "TRL", remaining: "200.00", due_date: "2020-01-01", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // Open, not overdue — USD, must be fully excluded from the TRY-formatted totals (no conversion, no accidental inclusion).
+        { parasut_id: "13", company_id: COMPANY_D, attributes: { invoice_no: "PB-4", currency: "USD", remaining: "9999.00", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // Partially paid — net_total 800, total_paid 300, remaining 500 (> 0) — still open, must be included at its remaining balance.
+        { parasut_id: "14", company_id: COMPANY_D, attributes: { invoice_no: "PB-5", currency: "TRY", net_total: "800.00", total_paid: "300.00", remaining: "500.00", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // Fully paid / closed (remaining 0) — must be excluded entirely regardless of currency.
+        { parasut_id: "15", company_id: COMPANY_D, attributes: { invoice_no: "PB-6", currency: "TRL", remaining: "0.00", archived: false }, relationships: {}, source_archived: false, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+        // source_archived (deleted upstream in Paraşüt) with a nonzero remaining — must be excluded, exactly like isOpenDocument's archived check.
+        { parasut_id: "16", company_id: COMPANY_D, attributes: { invoice_no: "PB-7", currency: "TRL", remaining: "5000.00", archived: false }, relationships: {}, source_archived: true, last_seen_at: "2026-07-01T00:00:00Z", synced_at: "2026-07-01T00:00:00Z" },
+      ];
+    }
+
+    it("sums TRL and TRY together, includes partially paid rows at their remaining balance, excludes USD and archived rows, and never leaks another company's rows", async () => {
+      const seed = seedTwoCompanies();
+      seed["parasut.purchase_bills"] = [...seed["parasut.purchase_bills"], ...seedMixedPayablesCompany()];
+      const admin = createFakeSupabaseAdmin(seed);
+
+      const resultD = await handlePayablesSummary(admin, COMPANY_D);
+      // outstanding_total = 1000 (TRL) + 500 (TRY) + 200 (overdue TRL) + 500 (partially paid TRY) = 2200;
+      // USD, the closed row, and the archived row are excluded. document_count counts every row for the company regardless of open/overdue state, including the archived one.
+      expect(resultD).toEqual({ outstanding_total: 2200, overdue_total: 200, overdue_count: 1, document_count: 7 });
+
+      // Company isolation: company A's own payables-summary result (proven above) is unaffected by company D's data existing in the same fake admin.
+      const resultA = await handlePayablesSummary(admin, COMPANY_A);
+      expect(resultA).toEqual({ outstanding_total: 60, overdue_total: 0, overdue_count: 0, document_count: 1 });
     });
   });
 

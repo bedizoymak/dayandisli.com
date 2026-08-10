@@ -29,6 +29,7 @@ import {
   handleDashboard,
   handleDetail,
   handleList,
+  handlePayablesSummary,
   handlePaymentsList,
   handleReceivablesSummary,
   handleReports,
@@ -138,6 +139,7 @@ serve(async (req) => {
     if (action === "dashboard") return json(await handleDashboard(admin, activeCompanyId));
     if (action === "reports") return json(await handleReports(admin, activeCompanyId));
     if (action === "receivables-summary") return json(await handleReceivablesSummary(admin, activeCompanyId));
+    if (action === "payables-summary") return json(await handlePayablesSummary(admin, activeCompanyId));
 
     if (action === "list") {
       if (!isListResource(body.resource)) return json({ error: "Geçersiz kaynak." }, 400);

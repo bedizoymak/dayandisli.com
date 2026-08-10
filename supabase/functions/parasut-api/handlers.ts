@@ -622,6 +622,29 @@ export async function handleReceivablesSummary(admin: SupabaseAdminLike, activeC
   };
 }
 
+export interface PayablesSummaryResult {
+  outstanding_total: number;
+  overdue_total: number;
+  overdue_count: number;
+  document_count: number;
+}
+
+/** Smallest possible read-only summary for the Güncel Durum / Ödemeler card — reuses the same computeOpenDocumentSummary business logic as handleDashboard's paymentsSummary, scoped to only purchase_bills (the same, and only, resource handleDashboard's paymentsSummary already aggregates for payables). */
+export async function handlePayablesSummary(admin: SupabaseAdminLike, activeCompanyId: string): Promise<PayablesSummaryResult> {
+  const { data, error, count } = await scopedParasutTable<MirrorRow>(admin, "purchase_bills", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" });
+  if (error) throw new Error(error.message);
+
+  const rows = data ?? [];
+  const summary = computeOpenDocumentSummary(rows, new Date());
+
+  return {
+    outstanding_total: decimalToNumber(turkishLiraTotal(summary.totalDue)),
+    overdue_total: decimalToNumber(turkishLiraTotal(summary.overdue)),
+    overdue_count: summary.overdueCount,
+    document_count: count ?? rows.length,
+  };
+}
+
 function summarizeDocuments(rows: MirrorRow[]): { currency: string; count: number; net: string; vat: string; gross: string }[] {
   const currencies = new Set(rows.map((row) => (row.attributes.currency as string | undefined) ?? "TRY"));
   return Array.from(currencies)

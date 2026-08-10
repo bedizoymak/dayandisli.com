@@ -50,6 +50,42 @@ function useReceivablesSummary() {
   return { summary, status };
 }
 
+interface PayablesSummary {
+  outstanding_total: number;
+  overdue_total: number;
+  overdue_count: number;
+  document_count: number;
+}
+
+/** Reads live Ödemeler totals from parasut_readable via the parasut-api Edge Function (action: "payables-summary"). Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
+function usePayablesSummary() {
+  const [summary, setSummary] = useState<PayablesSummary | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", { body: { action: "payables-summary" } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data || typeof data.outstanding_total !== "number") {
+          setStatus("error");
+          return;
+        }
+        setSummary(data as PayablesSummary);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { summary, status };
+}
+
 function SummaryPanel({
   title,
   metrics,
@@ -120,6 +156,7 @@ function SummaryPanel({
 export function FinanceOverview() {
   const navigate = useNavigate();
   const { summary: receivablesSummary, status: receivablesStatus } = useReceivablesSummary();
+  const { summary: payablesSummary, status: payablesStatus } = usePayablesSummary();
 
   const receivables = financeOverviewData.receivables.map((metric, index) => {
     if (index === 0) {
@@ -140,6 +177,32 @@ export function FinanceOverview() {
           receivablesStatus === "ready" && receivablesSummary
             ? formatMoney(receivablesSummary.overdue_total)
             : receivablesStatus === "error"
+              ? "—"
+              : "…",
+      };
+    }
+    return metric;
+  });
+
+  const payables = financeOverviewData.payables.map((metric, index) => {
+    if (index === 0) {
+      return {
+        ...metric,
+        value:
+          payablesStatus === "ready" && payablesSummary
+            ? formatMoney(payablesSummary.outstanding_total)
+            : payablesStatus === "error"
+              ? "—"
+              : "…",
+      };
+    }
+    if (index === 1) {
+      return {
+        ...metric,
+        value:
+          payablesStatus === "ready" && payablesSummary
+            ? formatMoney(payablesSummary.overdue_total)
+            : payablesStatus === "error"
               ? "—"
               : "…",
       };
@@ -177,7 +240,7 @@ export function FinanceOverview() {
           />
           <SummaryPanel
             title="Ödemeler"
-            metrics={financeOverviewData.payables}
+            metrics={payables}
             details={financeOverviewData.payableDetails}
             kind="payable"
           />
