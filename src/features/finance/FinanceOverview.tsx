@@ -6,10 +6,49 @@ import {
   Plus,
   RefreshCw,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/lib/finance/financeLabels";
 import { FinanceBreadcrumb } from "./FinanceNavigationTools";
 import { financeOverviewData } from "./financeNavigation";
 import "./finance-overview.css";
+
+interface ReceivablesSummary {
+  outstanding_total: number;
+  overdue_total: number;
+  overdue_count: number;
+  invoice_count: number;
+}
+
+/** Reads live Tahsilatlar totals from parasut_readable via the parasut-api Edge Function (action: "receivables-summary"). Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
+function useReceivablesSummary() {
+  const [summary, setSummary] = useState<ReceivablesSummary | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", { body: { action: "receivables-summary" } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data || typeof data.outstanding_total !== "number") {
+          setStatus("error");
+          return;
+        }
+        setSummary(data as ReceivablesSummary);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { summary, status };
+}
 
 function SummaryPanel({
   title,
@@ -80,6 +119,34 @@ function SummaryPanel({
 
 export function FinanceOverview() {
   const navigate = useNavigate();
+  const { summary: receivablesSummary, status: receivablesStatus } = useReceivablesSummary();
+
+  const receivables = financeOverviewData.receivables.map((metric, index) => {
+    if (index === 0) {
+      return {
+        ...metric,
+        value:
+          receivablesStatus === "ready" && receivablesSummary
+            ? formatMoney(receivablesSummary.outstanding_total)
+            : receivablesStatus === "error"
+              ? "—"
+              : "…",
+      };
+    }
+    if (index === 1) {
+      return {
+        ...metric,
+        value:
+          receivablesStatus === "ready" && receivablesSummary
+            ? formatMoney(receivablesSummary.overdue_total)
+            : receivablesStatus === "error"
+              ? "—"
+              : "…",
+      };
+    }
+    return metric;
+  });
+
   return (
     <div className="finance-overview">
       <header className="finance-page-heading">
@@ -104,7 +171,7 @@ export function FinanceOverview() {
         <div className="finance-main-column">
           <SummaryPanel
             title="Tahsilatlar"
-            metrics={financeOverviewData.receivables}
+            metrics={receivables}
             details={financeOverviewData.receivableDetails}
             kind="receivable"
           />

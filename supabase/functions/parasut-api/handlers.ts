@@ -20,6 +20,7 @@ import {
   computeMonthlyVatEstimate,
   computeOpenDocumentSummary,
   computeUnsentSummary,
+  decimalToNumber,
   sumDecimalStrings,
   type CurrencyTotal,
   type MirrorRow,
@@ -582,6 +583,31 @@ export async function handleDashboard(admin: SupabaseAdminLike, activeCompanyId:
       syncErrors: recentSyncErrors.data ?? [],
     },
     resourceAvailability: latestRunPerResource,
+  };
+}
+
+export interface ReceivablesSummaryResult {
+  outstanding_total: number;
+  overdue_total: number;
+  overdue_count: number;
+  invoice_count: number;
+}
+
+/** Smallest possible read-only summary for the Güncel Durum / Tahsilatlar card — reuses the same computeOpenDocumentSummary business logic as handleDashboard's collectionsSummary, scoped to only sales_invoices. */
+export async function handleReceivablesSummary(admin: SupabaseAdminLike, activeCompanyId: string): Promise<ReceivablesSummaryResult> {
+  const { data, error, count } = await scopedParasutTable<MirrorRow>(admin, "sales_invoices", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" });
+  if (error) throw new Error(error.message);
+
+  const rows = data ?? [];
+  const summary = computeOpenDocumentSummary(rows, new Date());
+  const outstandingTry = summary.totalDue.find((entry) => entry.currency === "TRY")?.total ?? "0.00";
+  const overdueTry = summary.overdue.find((entry) => entry.currency === "TRY")?.total ?? "0.00";
+
+  return {
+    outstanding_total: decimalToNumber(outstandingTry),
+    overdue_total: decimalToNumber(overdueTry),
+    overdue_count: summary.overdueCount,
+    invoice_count: count ?? rows.length,
   };
 }
 

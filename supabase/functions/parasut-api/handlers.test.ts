@@ -5,6 +5,7 @@ import {
   handleDetail,
   handleList,
   handlePaymentsList,
+  handleReceivablesSummary,
   handleReports,
   handleSyncStatus,
   resolveContactNames,
@@ -102,6 +103,15 @@ describe("handleList — cross-company isolation", () => {
     expect(((result.recentActivity.invoices[0] as FakeRow).attributes as FakeRow).invoice_no).toBe("INV-A-1");
     expect(result.recentActivity.syncRuns).toHaveLength(1);
     expect((result.recentActivity.syncRuns[0] as FakeRow).id).toBe("run-a");
+  });
+
+  it("receivables-summary: matches company A's own open sales invoices only, never company B's", async () => {
+    const admin = createFakeSupabaseAdmin(seedTwoCompanies());
+    const resultA = await handleReceivablesSummary(admin, COMPANY_A);
+    expect(resultA).toEqual({ outstanding_total: 120, overdue_total: 0, overdue_count: 0, invoice_count: 1 });
+
+    const resultB = await handleReceivablesSummary(admin, COMPANY_B);
+    expect(resultB).toEqual({ outstanding_total: 999, overdue_total: 0, overdue_count: 0, invoice_count: 1 });
   });
 
   it("list (sales_invoices): only returns the active company's invoice, with the correctly-scoped contact name", async () => {

@@ -30,6 +30,7 @@ import {
   handleDetail,
   handleList,
   handlePaymentsList,
+  handleReceivablesSummary,
   handleReports,
   handleSyncStatus,
   isListResource,
@@ -136,6 +137,7 @@ serve(async (req) => {
     const action = body.action;
     if (action === "dashboard") return json(await handleDashboard(admin, activeCompanyId));
     if (action === "reports") return json(await handleReports(admin, activeCompanyId));
+    if (action === "receivables-summary") return json(await handleReceivablesSummary(admin, activeCompanyId));
 
     if (action === "list") {
       if (!isListResource(body.resource)) return json({ error: "Geçersiz kaynak." }, 400);
