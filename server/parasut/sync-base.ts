@@ -219,17 +219,32 @@ async function findLatestResumableRun(
 ): Promise<FailedSourceRun | null> {
   const db = integrationDb(context) as unknown as LatestRunDatabase;
   const columns = "id,status,request_metadata,created_at";
-  const [failed, partial] = await Promise.all([
+  const [failed, partial, completed] = await Promise.all([
     db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "failed"),
     db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "partial"),
+    db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "completed"),
   ]);
   if (failed.error) throw new Error(failed.error.message ?? "Latest sync-run lookup failed");
   if (partial.error) throw new Error(partial.error.message ?? "Latest sync-run lookup failed");
+  if (completed.error) throw new Error(completed.error.message ?? "Latest sync-run lookup failed");
 
   const candidates = [...(failed.data ?? []), ...(partial.data ?? [])];
   if (candidates.length === 0) return null;
   candidates.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
   const latest = candidates[0];
+  // A resume chain that has already reached "completed" must never be resumed
+  // again. The trailing "partial" row of that finished chain would otherwise
+  // stay the newest resumable candidate forever, so every later invocation
+  // would resume at last_completed_page + 1, read one empty page past the end
+  // of the collection and close as "completed" with observed = 0 — the
+  // resource would silently freeze on whatever data it held when the chain
+  // closed. A "completed" run newer than the newest resumable candidate means
+  // that chain is done, so the next traversal must start fresh from page 1.
+  const newestCompletedAt = (completed.data ?? []).reduce<string | null>(
+    (newest, run) => (newest === null || run.created_at > newest ? run.created_at : newest),
+    null,
+  );
+  if (newestCompletedAt !== null && newestCompletedAt > latest.created_at) return null;
   return {
     id: latest.id,
     companyId: context.companyId,
