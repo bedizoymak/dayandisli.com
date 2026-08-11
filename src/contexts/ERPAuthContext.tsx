@@ -36,22 +36,35 @@ const ERPAuthContext = createContext<ERPAuthContextValue | null>(null);
 export function ERPAuthProvider({ children, enabled = true }: { children: ReactNode; enabled?: boolean }) {
   const [state, setState] = useState<ERPAuthState>(EMPTY_AUTH_STATE);
   const requestIdRef = useRef(0);
+  // RequireAuth swaps its ENTIRE route tree for a full-screen loader
+  // whenever isLoading is true, unmounting every page component (and its
+  // scroll position, in-page state, etc). That's correct for the very first
+  // resolution on app boot, but re-running it for every later auth event —
+  // including ones that fire spontaneously on tab focus — is what made
+  // returning to a background tab look like the app resetting to the
+  // beginning. Only the first-ever resolution is allowed to set isLoading;
+  // every later resolveSession() call updates state in place without ever
+  // re-blocking the route tree.
+  const hasBootstrappedRef = useRef(false);
   const invalidateRequests = useCallback(() => {
     ++requestIdRef.current;
   }, []);
 
   const resolveSession = useCallback(async (session: Session | null) => {
     const requestId = ++requestIdRef.current;
+    const isInitialResolve = !hasBootstrappedRef.current;
 
     if (!session?.user?.email) {
+      hasBootstrappedRef.current = true;
       setState({ ...EMPTY_AUTH_STATE, isLoading: false });
       return;
     }
 
-    setState((current) => ({ ...current, session, supabaseUser: session.user, isLoading: true }));
+    setState((current) => ({ ...current, session, supabaseUser: session.user, isLoading: isInitialResolve }));
 
     const erpUserResult = await getCurrentERPUser();
     if (requestId !== requestIdRef.current) return;
+    hasBootstrappedRef.current = true;
 
     const erpUser = erpUserResult.data;
     if (erpUserResult.error || !erpUser?.is_active) {

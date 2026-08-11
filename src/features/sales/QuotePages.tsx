@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FileDown,
   Mail,
@@ -8,12 +8,58 @@ import {
   X,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { salesOrders, salesQuotes } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
 import { customerName, printQuote } from "./salesUtils";
 const root = "/apps/sales";
+
+function sourceText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export function QuoteFormPage() {
   const [selector, setSelector] = useState(false);
+  const [params] = useSearchParams();
+  const preselectedCustomerId = params.get("customerId");
+  const [preselectedCustomer, setPreselectedCustomer] = useState<{
+    name: string;
+    phone: string;
+    email: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!preselectedCustomerId) {
+      setPreselectedCustomer(null);
+      return;
+    }
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", {
+        body: { action: "detail", resource: "customers", parasutId: preselectedCustomerId },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const response = data as { contact?: { attributes?: Record<string, unknown> | null } } | null;
+        const attributes = response?.contact?.attributes;
+        if (error || !attributes) {
+          setPreselectedCustomer(null);
+          return;
+        }
+        setPreselectedCustomer({
+          name: sourceText(attributes.name),
+          phone: sourceText(attributes.phone),
+          email: sourceText(attributes.email),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setPreselectedCustomer(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [preselectedCustomerId]);
+
   return (
     <div className="sales-page">
       <SalesHeader
@@ -42,17 +88,17 @@ export function QuoteFormPage() {
           </div>
           <div className="sales-fields">
             <label>
-              Firma *<input readOnly />
+              Firma *<input readOnly defaultValue={preselectedCustomer?.name ?? ""} key={preselectedCustomer?.name} />
             </label>
             <label>
               İlgili Kişi *<input readOnly />
             </label>
             <label>
               Telefon
-              <input readOnly />
+              <input readOnly defaultValue={preselectedCustomer?.phone ?? ""} key={`phone-${preselectedCustomer?.phone}`} />
             </label>
             <label>
-              E-posta *<input readOnly />
+              E-posta *<input readOnly defaultValue={preselectedCustomer?.email ?? ""} key={`email-${preselectedCustomer?.email}`} />
             </label>
             <label className="wide">
               Konu

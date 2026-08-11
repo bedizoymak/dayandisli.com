@@ -755,18 +755,16 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
 // /apps/crm/customers/:id sayfası. Bu route sadece eski bağlantılar/yer
 // imleri için geriye dönük bir yönlendirme olarak korunuyor.
 export function FinanceCustomerDetailPage({ customerId }: { customerId?: string }) {
-  const customer = findCrmCustomer(customerId);
-
-  if (!customerId || !customer) {
+  if (!customerId) {
     return (
       <NotFoundState
         backTo={incomeCustomersBase}
         backLabel="Müşterilere Dön"
         title="Müşteri Bulunamadı"
-        message={`"${customerId ?? ""}" kimliğine ait bir müşteri bulunamadı.`}
+        message="Müşteri kimliği eksik."
       />
     );
   }
 
-  return <Navigate to={`${crmCustomersBase}/${customer.id}`} replace />;
+  return <Navigate to={`${crmCustomersBase}/${customerId}`} replace />;
 }

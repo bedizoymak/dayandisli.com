@@ -184,17 +184,22 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
     return map;
   }, [documents]);
 
+  // Only invoices Paraşüt itself counts toward the contact's balance
+  // (append_contact_balance !== false) and that are not cancelled feed the
+  // statement — otherwise the running balance can never match trl_balance,
+  // since Paraşüt's own contact balance excludes those by the same rule.
+  const balanceDocuments = useMemo(
+    () =>
+      documents.filter((document) => {
+        const attributes = document.attributes ?? {};
+        if (attributes.append_contact_balance === false) return false;
+        if (sourceText(attributes.item_type) === "cancelled") return false;
+        return true;
+      }),
+    [documents],
+  );
+
   const ledgerRows = useMemo<LedgerRow[]>(() => {
-    // Only invoices Paraşüt itself counts toward the contact's balance
-    // (append_contact_balance !== false) and that are not cancelled feed the
-    // statement — otherwise the running balance can never match trl_balance,
-    // since Paraşüt's own contact balance excludes those by the same rule.
-    const balanceDocuments = documents.filter((document) => {
-      const attributes = document.attributes ?? {};
-      if (attributes.append_contact_balance === false) return false;
-      if (sourceText(attributes.item_type) === "cancelled") return false;
-      return true;
-    });
     const debitRows: LedgerRow[] = balanceDocuments.map((document) => {
       const attributes = document.attributes ?? {};
       const rawAmount = numericValue(attributes.gross_total) ?? 0;
@@ -231,7 +236,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
     return [...debitRows, ...creditRows]
       .filter((row) => row.date)
       .sort((a, b) => a.date.localeCompare(b.date));
-  }, [documents, payments, documentByPaymentId]);
+  }, [balanceDocuments, payments, documentByPaymentId]);
 
   const ledgerWithBalance = useMemo(() => {
     let running = 0;
@@ -246,6 +251,25 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const totalBalance = totalDebit - totalCredit;
 
   const collectedTotal = payments.reduce((sum, payment) => sum + (numericValue(payment.attributes?.amount) ?? 0), 0);
+
+  // remaining_in_trl is Paraşüt's own already-net (unpaid), TRY-denominated
+  // per-invoice figure — using it (rather than re-deriving from gross_total
+  // minus matched payments) avoids re-guessing what Paraşüt already computed.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const overdueTotal = balanceDocuments.reduce((sum, document) => {
+    const attributes = document.attributes ?? {};
+    const remaining = numericValue(attributes.remaining_in_trl);
+    const dueDate = sourceText(attributes.due_date);
+    if (remaining === null || !dueDate || dueDate >= todayIso) return sum;
+    return sum + remaining;
+  }, 0);
+  const upcomingTotal = balanceDocuments.reduce((sum, document) => {
+    const attributes = document.attributes ?? {};
+    const remaining = numericValue(attributes.remaining_in_trl);
+    const dueDate = sourceText(attributes.due_date);
+    if (remaining === null || !dueDate || dueDate < todayIso) return sum;
+    return sum + remaining;
+  }, 0);
 
   const sortedDocuments = useMemo(() => {
     return [...documents].sort((a, b) => {
@@ -331,6 +355,9 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
             </button>
           }
         />
+        <Link className="crm-primary" to={`/apps/sales/quotes/new?customerId=${customerId}`}>
+          Teklif Oluştur
+        </Link>
         <Link className="crm-primary" to={`${parent}/${customerId}/edit`}>
           <Pencil />
           Düzenle
@@ -362,8 +389,8 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
           ["Toplam Borç", formatMoney(totalDebit)],
           ["Tahsil Edilen", formatMoney(collectedTotal)],
           ["Müşteri Bakiyesi", balance],
-          ["Vadesi Geçen Tutar", "—"],
-          ["Yaklaşan Ödeme", "—"],
+          ["Vadesi Geçen Tutar", formatMoney(overdueTotal)],
+          ["Yaklaşan Ödeme", formatMoney(upcomingTotal)],
         ].map((item) => (
           <article className="erp-card" key={item[0]}>
             <span>{item[0]}</span>
@@ -382,7 +409,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
 
       <section className="crm-history">
         <div className="crm-head-actions" style={{ justifyContent: "space-between", display: "flex", alignItems: "center" }}>
-          <h2>Cari Hareketler</h2>
+          <h2>Cari Hareketler — Resmi Hesap</h2>
           <button type="button" className="crm-primary" onClick={printLedger}>
             <Printer />
             Yazdır / Ekstre Al
@@ -397,7 +424,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
           <table className="crm-table">
             <thead>
               <tr>
-                {["Tarih", "İşlem Türü", "Borç", "Alacak", "KPB", "Satır Bakiyesi", "Açıklama"].map((h) => (
+                {["Tarih", "Belge/İşlem", "Açıklama", "Borç", "Alacak", "Bakiye"].map((h) => (
                   <th key={h}>{h}</th>
                 ))}
               </tr>
@@ -407,18 +434,17 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
                 <tr key={row.key}>
                   <td>{row.date || "—"}</td>
                   <td>{row.type}</td>
+                  <td>{row.description || "—"}</td>
                   <td>{row.debit ? formatMoney(row.debit) : "—"}</td>
                   <td>{row.credit ? formatMoney(row.credit) : "—"}</td>
-                  <td>—</td>
                   <td>{formatMoney(row.balance)}</td>
-                  <td>{row.description || "—"}</td>
                 </tr>
               ))}
             </tbody>
             {ledgerWithBalance.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={2}>
+                  <td colSpan={3}>
                     <strong>Toplam</strong>
                   </td>
                   <td>
@@ -427,11 +453,9 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
                   <td>
                     <strong>{formatMoney(totalCredit)}</strong>
                   </td>
-                  <td>—</td>
                   <td>
                     <strong>{formatMoney(totalBalance)}</strong>
                   </td>
-                  <td />
                 </tr>
               </tfoot>
             )}
@@ -465,11 +489,11 @@ function buildLedgerPrintHtml(
     timeStyle: "short",
     timeZone: "Europe/Istanbul",
   }).format(new Date());
-  const headers = ["Tarih", "İşlem Türü", "Borç", "Alacak", "KPB", "Satır Bakiyesi", "Açıklama"];
+  const headers = ["Tarih", "Belge/İşlem", "Açıklama", "Borç", "Alacak", "Bakiye"];
   const bodyRows = rows
     .map(
       (row) =>
-        `<tr><td>${escapeHtml(row.date || "—")}</td><td>${escapeHtml(row.type)}</td><td>${escapeHtml(row.debit ? formatMoney(row.debit) : "—")}</td><td>${escapeHtml(row.credit ? formatMoney(row.credit) : "—")}</td><td>—</td><td>${escapeHtml(formatMoney(row.balance))}</td><td>${escapeHtml(row.description || "—")}</td></tr>`,
+        `<tr><td>${escapeHtml(row.date || "—")}</td><td>${escapeHtml(row.type)}</td><td>${escapeHtml(row.description || "—")}</td><td>${escapeHtml(row.debit ? formatMoney(row.debit) : "—")}</td><td>${escapeHtml(row.credit ? formatMoney(row.credit) : "—")}</td><td>${escapeHtml(formatMoney(row.balance))}</td></tr>`,
     )
     .join("");
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font:12px Arial;color:#18212b;margin:30px}header{border-bottom:2px solid #173d65;margin-bottom:18px;padding-bottom:12px}h1{margin:5px 0}.meta{color:#596879}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ccd5df;padding:7px;text-align:left}th{background:#e9f0f7}tfoot td{font-weight:700}footer{margin-top:24px;border-top:1px solid #ccd5df;padding-top:10px;color:#687684}.pdf-kpis{display:flex;gap:10px;margin:14px 0}.pdf-kpis article{flex:1 1 150px;border:1px solid #ccd5df;border-radius:8px;padding:10px 12px}.pdf-kpis span{display:block;color:#687684;font-size:10px;text-transform:uppercase}.pdf-kpis strong{font-size:16px}@page{size:landscape;margin:12mm}</style></head><body><header><strong>Dayan Dişli</strong><h1>${escapeHtml(title)}</h1><div class="meta">${escapeHtml(subtitle)} · Dışa aktarım: ${escapeHtml(exported)}</div></header><section class="pdf-kpis"><article><span>Toplam Borç</span><strong>${escapeHtml(formatMoney(totals.totalDebit))}</strong></article><article><span>Toplam Alacak</span><strong>${escapeHtml(formatMoney(totals.totalCredit))}</strong></article><article><span>Toplam Bakiye</span><strong>${escapeHtml(formatMoney(totals.totalBalance))}</strong></article></section><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${bodyRows}</tbody></table><footer>© Eclipse Mühendislik</footer><script>window.onload=()=>window.print();</script></body></html>`;

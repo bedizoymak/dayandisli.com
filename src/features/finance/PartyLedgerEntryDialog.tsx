@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,8 +7,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { cashAccounts } from "./cashReportData";
+import { supabase } from "@/integrations/supabase/client";
 import "./party-ledger-entry-dialog.css";
+
+type AccountOption = { id: string; name: string };
+
+function accountText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
 
 export type LedgerEntryKind = "collection" | "payment";
 
@@ -40,7 +46,36 @@ export function PartyLedgerEntryDialog({
   const copy = kindCopy[kind];
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const formId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", {
+        body: { action: "list", resource: "accounts", pageSize: 100, filters: { archived: false } },
+      })
+      .then(({ data, error: fetchError }) => {
+        if (cancelled) return;
+        const response = data as { rows?: unknown } | null;
+        if (fetchError || !response || !Array.isArray(response.rows)) {
+          setAccounts([]);
+          return;
+        }
+        setAccounts(
+          (response.rows as { parasut_id?: unknown; attributes?: Record<string, unknown> | null }[])
+            .map((row) => ({ id: accountText(row.parasut_id), name: accountText(row.attributes?.name) }))
+            .filter((account) => account.id && account.name),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setAccounts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const reset = () => {
     setError(null);
@@ -86,7 +121,12 @@ export function PartyLedgerEntryDialog({
                 setError("Lütfen bir hesap seçin.");
                 return;
               }
-              setError(null);
+              // parasut-api is read-only (no write/insert action exists for
+              // collections or payments yet), so there is no live endpoint
+              // to actually save this to. Reporting success here would be a
+              // fabricated result, so this states the real limitation
+              // instead of silently doing nothing or pretending it saved.
+              setError("Bu kayıt canlı bir Paraşüt uç noktasına henüz bağlı değil; tahsilat/ödeme oluşturma bu sürümde desteklenmiyor.");
             }}
           >
             <label className="ledger-static">
@@ -103,8 +143,8 @@ export function PartyLedgerEntryDialog({
                 <option value="" disabled>
                   —
                 </option>
-                {cashAccounts.map((account) => (
-                  <option key={account.name} value={account.name}>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
                     {account.name}
                   </option>
                 ))}
