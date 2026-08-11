@@ -1,6 +1,8 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/lib/finance/financeLabels";
 import { FinanceFormSection, FinancePageHeader } from "./FinanceFormComponents";
 import {
   FinanceBreadcrumb,
@@ -16,6 +18,7 @@ import {
   collectionKpis,
   collectionRows,
   invoiceRows,
+  type InvoiceRow,
 } from "./financeIncomeData";
 import { crmCustomers } from "../crm/crmCustomerData";
 import "./finance-income.css";
@@ -160,7 +163,66 @@ const customerColumns: ExportColumn<(typeof crmCustomers)[number]>[] = [
   { header: "Bakiye", value: (row) => row.balance },
 ];
 
-const invoiceColumns: ExportColumn<(typeof invoiceRows)[number]>[] = [
+type LiveInvoiceRow = InvoiceRow & { parasutId: string };
+
+type InvoiceApiRow = {
+  parasut_id?: unknown;
+  partyName?: unknown;
+  source_archived?: boolean | null;
+  attributes?: {
+    archived?: unknown;
+    currency?: unknown;
+    due_date?: unknown;
+    gross_total?: unknown;
+    invoice_no?: unknown;
+    issue_date?: unknown;
+    item_type?: unknown;
+    payment_status?: unknown;
+  } | null;
+  relationships?: {
+    contact?: {
+      data?: { id?: unknown } | null;
+    } | null;
+  } | null;
+};
+
+function sourceText(value: unknown) {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function invoiceAmount(value: unknown, currencyValue: unknown) {
+  const currency = sourceText(currencyValue).toUpperCase().replace(/^TRL$/, "TRY");
+  const amount =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : Number.NaN;
+
+  if (!Number.isFinite(amount) || !currency) return "—";
+
+  try {
+    return formatMoney(amount, currency);
+  } catch {
+    return "—";
+  }
+}
+
+function collectionLabel(value: unknown) {
+  const status = sourceText(value);
+  return (
+    {
+      paid: "Tahsil Edildi",
+      partially_paid: "Kısmen Tahsil Edildi",
+      overdue: "Gecikmiş",
+      unpaid: "Tahsil Edilecek",
+    }[status] ?? status ?? "—"
+  ) || "—";
+}
+
+const invoiceColumns: ExportColumn<LiveInvoiceRow>[] = [
   { header: "Fatura No", value: (row) => row.no },
   { header: "Müşteri", value: (row) => row.customer },
   { header: "Fatura Tarihi", value: (row) => row.invoiceDate },
@@ -170,7 +232,7 @@ const invoiceColumns: ExportColumn<(typeof invoiceRows)[number]>[] = [
   { header: "Durum", value: (row) => row.status },
 ];
 
-function InvoiceRowActions({ row }: { row: (typeof invoiceRows)[number] }) {
+function InvoiceRowActions({ row }: { row: LiveInvoiceRow }) {
   const detailTo = `${incomeInvoicesBase}/${encodeURIComponent(row.no)}`;
   return (
     <RowActionsMenu
@@ -196,7 +258,63 @@ function InvoiceRowActions({ row }: { row: (typeof invoiceRows)[number] }) {
 
 export function InvoiceListPage() {
   const [search, setSearch] = useState("");
-  const rows = invoiceRows.filter((row) =>
+  const [liveInvoiceRows, setLiveInvoiceRows] = useState<LiveInvoiceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadInvoices() {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke("parasut-api", {
+        body: {
+          action: "list",
+          resource: "sales_invoices",
+          pageSize: 100,
+          filters: { archived: false },
+          sort: { field: "issue_date", direction: "desc" },
+        },
+      });
+
+      if (cancelled) return;
+
+      if (error || !Array.isArray(data?.rows)) {
+        setLiveInvoiceRows([]);
+        setLoading(false);
+        return;
+      }
+
+      setLiveInvoiceRows(
+        (data.rows as InvoiceApiRow[]).map((source) => {
+          const attributes = source.attributes ?? {};
+          const customerId = sourceText(source.relationships?.contact?.data?.id);
+          const partyName = sourceText(source.partyName);
+          const itemType = sourceText(attributes.item_type);
+          const archived = source.source_archived === true || attributes.archived === true;
+
+          return {
+            parasutId: sourceText(source.parasut_id),
+            no: sourceText(attributes.invoice_no) || "—",
+            customer: partyName && partyName !== customerId ? partyName : "—",
+            customerId,
+            invoiceDate: sourceText(attributes.issue_date) || "—",
+            dueDate: sourceText(attributes.due_date) || "—",
+            amount: invoiceAmount(attributes.gross_total, attributes.currency),
+            collection: collectionLabel(attributes.payment_status),
+            status: archived ? "Arşivlendi" : itemType === "cancelled" ? "İptal" : "—",
+          };
+        }),
+      );
+      setLoading(false);
+    }
+
+    void loadInvoices();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rows = liveInvoiceRows.filter((row) =>
     `${row.no} ${row.customer}`
       .toLocaleLowerCase("tr-TR")
       .includes(search.toLocaleLowerCase("tr-TR")),
@@ -257,12 +375,13 @@ export function InvoiceListPage() {
           "Durum",
           "İşlemler",
         ]}
+        loading={loading}
         empty={!rows.length}
       >
-        {rows.map((row) => {
+        {rows.map((row, index) => {
           const customer = findCrmCustomer(row.customerId);
           return (
-            <tr key={row.no}>
+            <tr key={row.parasutId || `${row.no}-${index}`}>
               <td>
                 <Link
                   className="income-cell-link"
