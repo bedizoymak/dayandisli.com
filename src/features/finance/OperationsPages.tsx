@@ -150,7 +150,91 @@ const productColumns: ExportColumn<(typeof products)[number]>[] = [
   { header: "Alış Fiyatı", value: (r) => `₺${r.purchase}` },
   { header: "Satış Fiyatı", value: (r) => `₺${r.sale}` },
 ];
+
+type ProductListRow = {
+  id: string;
+  name: string;
+  code: string;
+  stock: number | null;
+  purchase: number | null;
+  sale: number | null;
+};
+
+type ProductApiRow = {
+  parasut_id?: unknown;
+  attributes?: Record<string, unknown> | null;
+};
+
+const liveProductColumns: ExportColumn<ProductListRow>[] = [
+  { header: "Adı", value: (r) => r.name },
+  { header: "Ürün / Stok Kodu", value: (r) => r.code },
+  { header: "Stok", value: (r) => r.stock ?? "—" },
+  { header: "Alış Fiyatı", value: (r) => (r.purchase === null ? "—" : `₺${r.purchase}`) },
+  { header: "Satış Fiyatı", value: (r) => (r.sale === null ? "—" : `₺${r.sale}`) },
+];
+
+function productText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : "—";
+}
+
+function productNumber(value: unknown) {
+  const number =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : Number.NaN;
+  return Number.isFinite(number) ? number : null;
+}
+
+function mapProduct(row: ProductApiRow): ProductListRow | null {
+  if (typeof row.parasut_id !== "string" || !row.parasut_id.trim()) return null;
+  const attributes = row.attributes ?? {};
+  return {
+    id: row.parasut_id,
+    name: productText(attributes.name),
+    code: productText(attributes.code),
+    stock: productNumber(attributes.stock_count),
+    purchase: productNumber(attributes.buying_price_in_trl),
+    sale: productNumber(attributes.list_price_in_trl),
+  };
+}
+
 export function ProductsPage() {
+  const [productRows, setProductRows] = useState<ProductListRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", {
+        body: {
+          action: "list",
+          resource: "products",
+          pageSize: 100,
+          filters: { archived: false },
+        },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const response = data as { rows?: unknown } | null;
+        if (error || !response || !Array.isArray(response.rows)) {
+          setProductRows([]);
+          return;
+        }
+        setProductRows(
+          (response.rows as ProductApiRow[])
+            .map(mapProduct)
+            .filter((row): row is ProductListRow => row !== null),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setProductRows([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="ops-page">
       <Header
@@ -169,8 +253,8 @@ export function ProductsPage() {
       </div>
       <div className="ops-export">
         <FinanceExportMenu
-          rows={products}
-          columns={productColumns}
+          rows={productRows}
+          columns={liveProductColumns}
           title="Hizmet ve Ürünler"
           filename="hizmet-urunler"
         />
@@ -179,21 +263,21 @@ export function ProductsPage() {
         <table>
           <thead>
             <tr>
-              {productColumns.map((column) => (
+              {liveProductColumns.map((column) => (
                 <th key={column.header}>{column.header}</th>
               ))}
               <th>İşlemler</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((row) => (
+            {productRows.map((row) => (
               <tr key={row.id}>
                 <td>
                   <Link className="ops-cell-link" to={`${root}/inventory/products/${row.id}`}>
                     {row.name}
                   </Link>
                 </td>
-                {productColumns.slice(1).map((column) => (
+                {liveProductColumns.slice(1).map((column) => (
                   <td key={column.header}>{column.value(row)}</td>
                 ))}
                 <td>
@@ -203,7 +287,12 @@ export function ProductsPage() {
                       {
                         label: "Dışa Aktar",
                         onSelect: () =>
-                          printReport(row.name, productColumns, [row], `Ürün: ${row.name}`),
+                          printReport(
+                            row.name,
+                            liveProductColumns,
+                            [row],
+                            `Ürün: ${row.name}`,
+                          ),
                       },
                     ]}
                   />
