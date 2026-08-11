@@ -1,6 +1,7 @@
-import { type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Filter, Plus, Search, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import {
   FinanceBackLink,
   FinanceBreadcrumb,
@@ -683,7 +684,23 @@ export function StockReportPage() {
     </div>
   );
 }
-const supplierColumns: ExportColumn<(typeof suppliers)[number]>[] = [
+type SupplierListRow = {
+  id: string;
+  name: string;
+  short: string;
+  taxNo: string;
+  phone: string;
+  email: string;
+  city: string;
+  contact: string;
+};
+
+type SupplierApiRow = {
+  parasut_id?: unknown;
+  attributes?: Record<string, unknown> | null;
+};
+
+const supplierColumns: ExportColumn<SupplierListRow>[] = [
   { header: "Firma Ünvanı", value: (r) => r.name },
   { header: "Kısa Ad", value: (r) => r.short },
   { header: "Vergi No", value: (r) => r.taxNo },
@@ -692,7 +709,60 @@ const supplierColumns: ExportColumn<(typeof suppliers)[number]>[] = [
   { header: "İl", value: (r) => r.city },
   { header: "Yetkili", value: (r) => r.contact },
 ];
+
+function supplierText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : "—";
+}
+
+function mapSupplier(row: SupplierApiRow): SupplierListRow | null {
+  if (typeof row.parasut_id !== "string" || !row.parasut_id) return null;
+  const attributes = row.attributes ?? {};
+  return {
+    id: row.parasut_id,
+    name: supplierText(attributes.name),
+    short: supplierText(attributes.short_name),
+    taxNo: supplierText(attributes.tax_number),
+    phone: supplierText(attributes.phone),
+    email: supplierText(attributes.email),
+    city: supplierText(attributes.city),
+    contact: "—",
+  };
+}
+
 export function SuppliersPage() {
+  const [supplierRows, setSupplierRows] = useState<SupplierListRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", {
+        body: {
+          action: "list",
+          resource: "suppliers",
+          pageSize: 100,
+        },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const response = data as { rows?: unknown } | null;
+        if (error || !response || !Array.isArray(response.rows)) {
+          setSupplierRows([]);
+          return;
+        }
+        setSupplierRows(
+          (response.rows as SupplierApiRow[])
+            .map(mapSupplier)
+            .filter((row): row is SupplierListRow => row !== null),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setSupplierRows([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="ops-page">
       <Header
@@ -706,7 +776,7 @@ export function SuppliersPage() {
       <Filters />
       <div className="ops-export">
         <FinanceExportMenu
-          rows={suppliers}
+          rows={supplierRows}
           columns={supplierColumns}
           title="Tedarikçiler"
           filename="tedarikciler"
@@ -723,12 +793,12 @@ export function SuppliersPage() {
             </tr>
           </thead>
           <tbody>
-            {suppliers.map((row) => (
-              <tr key={row.taxNo}>
+            {supplierRows.map((row) => (
+              <tr key={row.id}>
                 <td>
                   <Link
                     className="ops-cell-link"
-                    to={`${suppliersBase}/${encodeURIComponent(row.taxNo)}`}
+                    to={`${suppliersBase}/${encodeURIComponent(row.id)}`}
                   >
                     {row.name}
                   </Link>
@@ -741,7 +811,7 @@ export function SuppliersPage() {
                     actions={[
                       {
                         label: "Görüntüle",
-                        href: `${suppliersBase}/${encodeURIComponent(row.taxNo)}`,
+                        href: `${suppliersBase}/${encodeURIComponent(row.id)}`,
                       },
                       {
                         label: "Dışa Aktar",
