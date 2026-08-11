@@ -120,6 +120,43 @@ function sortCustomerRows(rows: CustomerRow[], state: CustomerSortState) {
   });
 }
 
+async function fetchAllCustomers(search: string, cancelledRef: { cancelled: boolean }) {
+  const pageSize = 100;
+  const fetchPage = (page: number) =>
+    supabase.functions.invoke("parasut-api", {
+      body: {
+        action: "list",
+        resource: "customers",
+        page,
+        pageSize,
+        search: search.trim() || undefined,
+        filters: { archived: false },
+      },
+    });
+
+  const first = await fetchPage(1);
+  if (cancelledRef.cancelled) return { rows: [] as CustomerApiRow[], total: null as number | null };
+  const firstResponse = first.data as { rows?: unknown; total?: unknown } | null;
+  if (first.error || !firstResponse || !Array.isArray(firstResponse.rows)) {
+    return { rows: [] as CustomerApiRow[], total: null };
+  }
+  const total = typeof firstResponse.total === "number" ? firstResponse.total : null;
+  const rows = [...(firstResponse.rows as CustomerApiRow[])];
+
+  if (total !== null) {
+    const remainingPages = Math.ceil(total / pageSize) - 1;
+    for (let page = 2; page <= remainingPages + 1; page += 1) {
+      if (cancelledRef.cancelled) break;
+      const next = await fetchPage(page);
+      const nextResponse = next.data as { rows?: unknown } | null;
+      if (next.error || !nextResponse || !Array.isArray(nextResponse.rows)) break;
+      rows.push(...(nextResponse.rows as CustomerApiRow[]));
+    }
+  }
+
+  return { rows, total };
+}
+
 export function CustomerListPage() {
   const [search, setSearch] = useState("");
   const [type, setType] = useState("Tüm Türler");
@@ -130,54 +167,32 @@ export function CustomerListPage() {
   const pageSize = 100;
 
   useEffect(() => {
-    let cancelled = false;
-    supabase.functions
-      .invoke("parasut-api", {
-        body: {
-          action: "list",
-          resource: "customers",
-          page,
-          pageSize,
-          search: search.trim() || undefined,
-          filters: { archived: false },
-        },
-      })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        const response = data as { rows?: unknown; total?: unknown } | null;
-        if (error || !response || !Array.isArray(response.rows)) {
-          setCustomers([]);
-          setTotal(null);
-          return;
-        }
+    const cancelledRef = { cancelled: false };
+    setPage(1);
+    fetchAllCustomers(search, cancelledRef)
+      .then(({ rows, total: fetchedTotal }) => {
+        if (cancelledRef.cancelled) return;
         setCustomers(
-          (response.rows as CustomerApiRow[])
-            .map(mapCustomerCard)
-            .filter((row): row is CustomerRow => row !== null),
+          rows.map(mapCustomerCard).filter((row): row is CustomerRow => row !== null),
         );
-        setTotal(typeof response.total === "number" ? response.total : null);
+        setTotal(fetchedTotal);
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!cancelledRef.cancelled) {
           setCustomers([]);
           setTotal(null);
         }
       });
     return () => {
-      cancelled = true;
+      cancelledRef.cancelled = true;
     };
-  }, [page, search]);
+  }, [search]);
 
-  const rows = sortCustomerRows(
-    customers.filter(
-      (c) =>
-        `${c.name} ${c.phone} ${c.email} ${c.taxNo}`
-          .toLocaleLowerCase("tr-TR")
-          .includes(search.toLocaleLowerCase("tr-TR")) &&
-        (type === "Tüm Türler" || c.type === type),
-    ),
+  const sortedRows = sortCustomerRows(
+    customers.filter((c) => type === "Tüm Türler" || c.type === type),
     sortState,
   );
+  const rows = sortedRows.slice((page - 1) * pageSize, page * pageSize);
 
   const activeSort = sortState ?? defaultSort;
   const changeSort = (key: CustomerSortKey) => {
