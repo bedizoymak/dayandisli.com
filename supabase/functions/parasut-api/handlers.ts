@@ -500,14 +500,16 @@ export async function handleDetail(admin: SupabaseAdminLike, resource: ListResou
     if (!contact) return null;
     const relKey = resource === "customers" ? "contact" : "supplier";
     const table = resource === "customers" ? "sales_invoices" : "purchase_bills";
-    // 200 documents is a guard rail (not a fake limit): the account-statement
+    // 300 documents is a guard rail (not a fake limit): the account-statement
     // ledger and invoice history read from this same list, so it must cover
-    // realistic real-world history without an unbounded query.
+    // realistic real-world history without an unbounded query. If a contact
+    // legitimately has more, the frontend surfaces that explicitly instead of
+    // silently truncating the statement.
     const { data: recentDocuments } = await scopedParasutTable<MirrorRecord>(admin, table, activeCompanyId, "parasut_id, attributes, relationships")
       .filter("relationships", "cs", JSON.stringify({ [relKey]: { data: { id: parasutId } } }))
       .eq("source_archived", false)
       .order("last_seen_at", { ascending: false })
-      .limit(200);
+      .limit(300);
     const documentRows = recentDocuments ?? [];
     const paymentIds = Array.from(new Set(documentRows.flatMap((document) => relationshipIds(document.relationships, "payments"))));
     const { data: payments } = paymentIds.length

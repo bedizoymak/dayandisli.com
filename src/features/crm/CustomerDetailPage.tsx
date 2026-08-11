@@ -5,9 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatMoney } from "@/lib/finance/financeLabels";
 import { CrmPageHeader, StatusBadge } from "./CrmShared";
 import { PartyLedgerEntryDialog } from "../finance/PartyLedgerEntryDialog";
-import { printReport, type ExportColumn } from "../finance/FinanceNavigationTools";
 
 const parent = "/apps/crm/customers";
+// Must match the `limit(300)` guard rail on the detail action's document
+// fetch in supabase/functions/parasut-api/handlers.ts — if we receive
+// exactly this many rows, older history may exist beyond the cap and the
+// statement must say so instead of silently presenting an incomplete total.
+const DOCUMENT_FETCH_CAP = 300;
 
 type ContactRecord = {
   parasut_id?: unknown;
@@ -181,9 +185,25 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   }, [documents]);
 
   const ledgerRows = useMemo<LedgerRow[]>(() => {
-    const debitRows: LedgerRow[] = documents.map((document) => {
+    // Only invoices Paraşüt itself counts toward the contact's balance
+    // (append_contact_balance !== false) and that are not cancelled feed the
+    // statement — otherwise the running balance can never match trl_balance,
+    // since Paraşüt's own contact balance excludes those by the same rule.
+    const balanceDocuments = documents.filter((document) => {
       const attributes = document.attributes ?? {};
-      const amount = numericValue(attributes.gross_total) ?? 0;
+      if (attributes.append_contact_balance === false) return false;
+      if (sourceText(attributes.item_type) === "cancelled") return false;
+      return true;
+    });
+    const debitRows: LedgerRow[] = balanceDocuments.map((document) => {
+      const attributes = document.attributes ?? {};
+      const rawAmount = numericValue(attributes.gross_total) ?? 0;
+      const currency = sourceText(attributes.currency).toUpperCase();
+      const rate = numericValue(attributes.exchange_rate);
+      // gross_total is in the invoice's own currency; convert to TRY using
+      // Paraşüt's own recorded exchange_rate so foreign-currency invoices
+      // don't silently understate/overstate the TRY-denominated balance.
+      const amount = currency && currency !== "TRY" && currency !== "TRL" && rate && rate > 0 ? rawAmount * rate : rawAmount;
       return {
         key: `invoice-${sourceText(document.parasut_id)}`,
         date: sourceText(attributes.issue_date),
@@ -270,19 +290,23 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
 
   const printLedger = () => {
     const today = new Intl.DateTimeFormat("tr-TR", { dateStyle: "long" }).format(new Date());
-    printReport<typeof ledgerWithBalance[number]>(
+    // A window opened via window.open("", "_blank") + document.write() stays
+    // in the same browsing-context group as this tab (opener relationship),
+    // which is what let window.print() inside it block this page's UI
+    // thread. A Blob URL opened with the "noopener" window feature (not just
+    // nulling .opener after the fact) gets its own browsing context group,
+    // so the print dialog can no longer freeze this tab, and this page stays
+    // on the same route the whole time.
+    const html = buildLedgerPrintHtml(
       `Cari Hesap Ekstresi — ${name}`,
-      ledgerColumns,
-      ledgerWithBalance,
       `Müşteri Kodu: ${code} · Tarih: ${today}`,
-      {
-        kpis: [
-          { label: "Toplam Borç", value: formatMoney(totalDebit) },
-          { label: "Toplam Alacak", value: formatMoney(totalCredit) },
-          { label: "Toplam Bakiye", value: formatMoney(totalBalance) },
-        ],
-      },
+      ledgerWithBalance,
+      { totalDebit, totalCredit, totalBalance },
     );
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const printWindow = window.open(url, "_blank", "noopener,noreferrer");
+    if (!printWindow) URL.revokeObjectURL(url);
+    else setTimeout(() => URL.revokeObjectURL(url), 60000);
   };
 
   return (
@@ -364,6 +388,11 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
             Yazdır / Ekstre Al
           </button>
         </div>
+        {documents.length >= DOCUMENT_FETCH_CAP && (
+          <div className="crm-empty">
+            Bu müşteri için {DOCUMENT_FETCH_CAP}+ belge bulunuyor; ekstre yalnızca en güncel {DOCUMENT_FETCH_CAP} belgeyi kapsıyor ve toplam bakiye ile tam eşleşmeyebilir.
+          </div>
+        )}
         <div className="erp-card crm-table-wrap">
           <table className="crm-table">
             <thead>
@@ -418,22 +447,33 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   );
 }
 
-const ledgerColumns: ExportColumn<{
-  date: string;
-  type: string;
-  debit: number;
-  credit: number;
-  balance: number;
-  description: string;
-}>[] = [
-  { header: "Tarih", value: (row) => row.date || "—" },
-  { header: "İşlem Türü", value: (row) => row.type },
-  { header: "Borç", value: (row) => (row.debit ? formatMoney(row.debit) : "—") },
-  { header: "Alacak", value: (row) => (row.credit ? formatMoney(row.credit) : "—") },
-  { header: "KPB", value: () => "—" },
-  { header: "Satır Bakiyesi", value: (row) => formatMoney(row.balance) },
-  { header: "Açıklama", value: (row) => row.description || "—" },
-];
+const escapeHtml = (value: unknown) =>
+  String(value ?? "").replace(
+    /[&<>"']/g,
+    (character) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] ?? character,
+  );
+
+function buildLedgerPrintHtml(
+  title: string,
+  subtitle: string,
+  rows: { date: string; type: string; debit: number; credit: number; balance: number; description: string }[],
+  totals: { totalDebit: number; totalCredit: number; totalBalance: number },
+) {
+  const exported = new Intl.DateTimeFormat("tr-TR", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "Europe/Istanbul",
+  }).format(new Date());
+  const headers = ["Tarih", "İşlem Türü", "Borç", "Alacak", "KPB", "Satır Bakiyesi", "Açıklama"];
+  const bodyRows = rows
+    .map(
+      (row) =>
+        `<tr><td>${escapeHtml(row.date || "—")}</td><td>${escapeHtml(row.type)}</td><td>${escapeHtml(row.debit ? formatMoney(row.debit) : "—")}</td><td>${escapeHtml(row.credit ? formatMoney(row.credit) : "—")}</td><td>—</td><td>${escapeHtml(formatMoney(row.balance))}</td><td>${escapeHtml(row.description || "—")}</td></tr>`,
+    )
+    .join("");
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font:12px Arial;color:#18212b;margin:30px}header{border-bottom:2px solid #173d65;margin-bottom:18px;padding-bottom:12px}h1{margin:5px 0}.meta{color:#596879}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ccd5df;padding:7px;text-align:left}th{background:#e9f0f7}tfoot td{font-weight:700}footer{margin-top:24px;border-top:1px solid #ccd5df;padding-top:10px;color:#687684}.pdf-kpis{display:flex;gap:10px;margin:14px 0}.pdf-kpis article{flex:1 1 150px;border:1px solid #ccd5df;border-radius:8px;padding:10px 12px}.pdf-kpis span{display:block;color:#687684;font-size:10px;text-transform:uppercase}.pdf-kpis strong{font-size:16px}@page{size:landscape;margin:12mm}</style></head><body><header><strong>Dayan Dişli</strong><h1>${escapeHtml(title)}</h1><div class="meta">${escapeHtml(subtitle)} · Dışa aktarım: ${escapeHtml(exported)}</div></header><section class="pdf-kpis"><article><span>Toplam Borç</span><strong>${escapeHtml(formatMoney(totals.totalDebit))}</strong></article><article><span>Toplam Alacak</span><strong>${escapeHtml(formatMoney(totals.totalCredit))}</strong></article><article><span>Toplam Bakiye</span><strong>${escapeHtml(formatMoney(totals.totalBalance))}</strong></article></section><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${bodyRows}</tbody></table><footer>© Eclipse Mühendislik</footer><script>window.onload=()=>window.print();</script></body></html>`;
+}
 
 function InvoiceHistory({
   documents,

@@ -106,7 +106,16 @@ export function ERPAuthProvider({ children, enabled = true }: { children: ReactN
     }
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "INITIAL_SESSION") return;
+      // Supabase's GoTrueClient refreshes the access token on document
+      // visibility changes, firing TOKEN_REFRESHED every time this tab
+      // regains focus after being backgrounded. The token is still for the
+      // same signed-in user with the same permissions — re-running
+      // resolveSession() here re-fetched the ERP user and, while loading,
+      // made RequireAuth swap the whole route tree for its full-screen
+      // "ERP yetki kontrolü yapılıyor..." loader, discarding in-page state
+      // and reading as the app resetting on every tab switch. Only events
+      // that can actually change who is signed in need to re-resolve.
+      if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
       queueMicrotask(() => void resolveSession(session));
     });
 
