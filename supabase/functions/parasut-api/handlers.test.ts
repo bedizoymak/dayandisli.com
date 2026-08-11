@@ -290,6 +290,98 @@ describe("handleList — cross-company isolation", () => {
     });
   });
 
+  describe("overdue business-date boundary — the ₺30,000 production defect (shared isOverdue predicate, not special-cased per resource)", () => {
+    const COMPANY_H = "77777777-7777-4777-8777-777777777777";
+
+    function istanbulDateString(date: Date): string {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+    }
+
+    // Computed from real wall-clock time (not a fixed date) since
+    // handleReceivablesSummary/handlePayablesSummary use `new Date()`
+    // internally and are not date-injectable — matches the same pattern
+    // already used by the vat-summary current-month tests above.
+    const businessToday = istanbulDateString(new Date());
+    const businessYesterday = istanbulDateString(new Date(Date.now() - 24 * 60 * 60 * 1000));
+
+    it("receivables-summary: a sales invoice due yesterday with a stale days_overdue=0 is still counted overdue (the exact reported ₺30,000 defect)", async () => {
+      const admin = createFakeSupabaseAdmin({
+        "parasut.sales_invoices": [
+          {
+            parasut_id: "1",
+            company_id: COMPANY_H,
+            attributes: { invoice_no: "HD-DEFECT", currency: "TRY", remaining: "30000.00", due_date: businessYesterday, days_overdue: 0, archived: false },
+            relationships: {},
+            source_archived: false,
+            last_seen_at: "2026-07-01T00:00:00Z",
+            synced_at: "2026-07-01T00:00:00Z",
+          },
+        ],
+      });
+      const result = await handleReceivablesSummary(admin, COMPANY_H);
+      expect(result.overdue_total).toBe(30000);
+      expect(result.overdue_count).toBe(1);
+    });
+
+    it("receivables-summary: a sales invoice due today (not yet overdue) is excluded from overdue_total", async () => {
+      const admin = createFakeSupabaseAdmin({
+        "parasut.sales_invoices": [
+          {
+            parasut_id: "2",
+            company_id: COMPANY_H,
+            attributes: { invoice_no: "HD-TODAY", currency: "TRY", remaining: "5000.00", due_date: businessToday, archived: false },
+            relationships: {},
+            source_archived: false,
+            last_seen_at: "2026-07-01T00:00:00Z",
+            synced_at: "2026-07-01T00:00:00Z",
+          },
+        ],
+      });
+      const result = await handleReceivablesSummary(admin, COMPANY_H);
+      expect(result.overdue_total).toBe(0);
+      expect(result.overdue_count).toBe(0);
+      expect(result.outstanding_total).toBe(5000); // still open, just not overdue
+    });
+
+    it("payables-summary: the SAME shared predicate applies to purchase bills — a bill due yesterday with stale days_overdue=0 is overdue too (not special-cased to sales invoices)", async () => {
+      const admin = createFakeSupabaseAdmin({
+        "parasut.purchase_bills": [
+          {
+            parasut_id: "1",
+            company_id: COMPANY_H,
+            attributes: { invoice_no: "PB-DEFECT", currency: "TRY", remaining: "12000.00", due_date: businessYesterday, days_overdue: 0, archived: false },
+            relationships: {},
+            source_archived: false,
+            last_seen_at: "2026-07-01T00:00:00Z",
+            synced_at: "2026-07-01T00:00:00Z",
+          },
+        ],
+      });
+      const result = await handlePayablesSummary(admin, COMPANY_H);
+      expect(result.overdue_total).toBe(12000);
+      expect(result.overdue_count).toBe(1);
+    });
+
+    it("receivables-summary: a received cheque due yesterday with stale days_overdue=0 is overdue too (checks reuse the identical shared predicate)", async () => {
+      const admin = createFakeSupabaseAdmin({
+        "parasut.checks": [
+          {
+            parasut_id: "1",
+            company_id: COMPANY_H,
+            attributes: { is_in: true, is_out: false, currency: "TRL", remaining_in_trl: "8000.00", due_date: businessYesterday, days_overdue: 0 },
+            relationships: {},
+            source_archived: null,
+            last_seen_at: "2026-07-01T00:00:00Z",
+            synced_at: "2026-07-01T00:00:00Z",
+          },
+        ],
+      });
+      const result = await handleReceivablesSummary(admin, COMPANY_H);
+      expect(result.overdue_total).toBe(8000);
+      expect(result.overdue_count).toBe(1);
+    });
+  });
+
   describe("vat-summary: current-month business rule", () => {
     it("previous month's rows do not contribute (the shared fixture's invoices are dated 2026-07-01, always outside the real current calendar month)", async () => {
       const admin = createFakeSupabaseAdmin(seedTwoCompanies());

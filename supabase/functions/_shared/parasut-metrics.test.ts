@@ -9,6 +9,7 @@ import {
   computeUnsentSummary,
   decimalToNumber,
   formatDecimalScaled,
+  isOverdue,
   isPositiveDecimal,
   parseDecimalScaled,
   sumDecimalStrings,
@@ -51,6 +52,49 @@ describe("decimal-safe arithmetic", () => {
   });
 });
 
+describe("isOverdue — business-date boundary (Türkiye/Europe/Istanbul calendar date)", () => {
+  // 2026-08-11T10:00:00Z = 2026-08-11T13:00 Europe/Istanbul (UTC+3, no DST) —
+  // safely mid-day so the exact wall-clock hour cannot itself be ambiguous.
+  const businessDate = new Date("2026-08-11T10:00:00.000Z");
+
+  it("due_date 2026-08-09 (two days before business today) is overdue", () => {
+    expect(isOverdue(row({ due_date: "2026-08-09" }), businessDate)).toBe(true);
+  });
+
+  it("due_date 2026-08-10 (yesterday, business today) is overdue — the exact production defect", () => {
+    expect(isOverdue(row({ due_date: "2026-08-10" }), businessDate)).toBe(true);
+  });
+
+  it("due_date 2026-08-11 (business today) is NOT overdue — a document due today is not yet overdue", () => {
+    expect(isOverdue(row({ due_date: "2026-08-11" }), businessDate)).toBe(false);
+  });
+
+  it("due_date 2026-08-12 (tomorrow) is NOT overdue", () => {
+    expect(isOverdue(row({ due_date: "2026-08-12" }), businessDate)).toBe(false);
+  });
+
+  it("due_date NULL/absent is unscheduled, never overdue", () => {
+    expect(isOverdue(row({}), businessDate)).toBe(false);
+  });
+
+  it("stale/contradictory days_overdue = 0 with an objectively past due_date MUST still be overdue (the reported production bug)", () => {
+    expect(isOverdue(row({ due_date: "2026-08-10", days_overdue: 0 }), businessDate)).toBe(true);
+  });
+
+  it("days_overdue > 0 with an overdue due_date is overdue (fast path still works)", () => {
+    expect(isOverdue(row({ due_date: "2026-08-01", days_overdue: 10 }), businessDate)).toBe(true);
+  });
+
+  it("does not regress into a UTC midnight boundary: 2026-08-10T22:30:00Z is 2026-08-11 01:30 in Istanbul, so a document due 2026-08-11 is NOT yet overdue even though the UTC calendar date is still 2026-08-10", () => {
+    const earlyIstanbulMorning = new Date("2026-08-10T22:30:00.000Z");
+    expect(isOverdue(row({ due_date: "2026-08-11" }), earlyIstanbulMorning)).toBe(false);
+    // A naive `referenceDate.toISOString().slice(0, 10)` would read "2026-08-10" here (UTC) and
+    // wrongly treat 2026-08-10 as still-current/not-yet-due — the Istanbul-aware date is 2026-08-11,
+    // so a document due 2026-08-10 at this exact instant IS already overdue in Türkiye business time.
+    expect(isOverdue(row({ due_date: "2026-08-10" }), earlyIstanbulMorning)).toBe(true);
+  });
+});
+
 describe("computeOpenDocumentSummary", () => {
   const referenceDate = new Date("2026-07-15T00:00:00.000Z");
 
@@ -65,13 +109,13 @@ describe("computeOpenDocumentSummary", () => {
     expect(summary.overdueCount).toBe(1);
   });
 
-  it("classifies overdue via the confirmed days_overdue field, and unscheduled via missing due_date", () => {
+  it("a document with no due_date is unscheduled, never overdue, even if days_overdue is stale/positive", () => {
     const rows: MirrorRow[] = [
-      row({ remaining: "200.0", currency: "TRY", days_overdue: 10 }), // overdue, no due_date -> also unscheduled
+      row({ remaining: "200.0", currency: "TRY", days_overdue: 10 }), // no due_date at all -> unscheduled, NOT overdue
       row({ remaining: "300.0", currency: "TRY", due_date: "2099-01-01", days_overdue: 0 }), // future, not overdue
     ];
     const summary = computeOpenDocumentSummary(rows, referenceDate);
-    expect(summary.overdueCount).toBe(1);
+    expect(summary.overdueCount).toBe(0);
     expect(summary.unscheduledCount).toBe(1);
   });
 
@@ -126,15 +170,15 @@ describe("computeChequeSummary", () => {
     expect(summary.count).toBe(2); // count is every directional row regardless of open state
   });
 
-  it("classifies overdue via days_overdue or due_date, same convention as computeOpenDocumentSummary", () => {
+  it("classifies overdue via days_overdue or due_date, same convention as computeOpenDocumentSummary — but no due_date is never overdue regardless of days_overdue", () => {
     const rows: MirrorRow[] = [
-      row({ is_in: true, remaining_in_trl: "100.0", days_overdue: 5 }),
+      row({ is_in: true, remaining_in_trl: "100.0", days_overdue: 5 }), // no due_date at all -> not overdue
       row({ is_in: true, remaining_in_trl: "200.0", due_date: "2026-01-01" }), // past reference date, no days_overdue field
       row({ is_in: true, remaining_in_trl: "300.0", due_date: "2099-01-01" }), // future
     ];
     const summary = computeChequeSummary(rows, "is_in", referenceDate);
-    expect(summary.overdueCount).toBe(2);
-    expect(summary.overdue).toBe("300.00");
+    expect(summary.overdueCount).toBe(1);
+    expect(summary.overdue).toBe("200.00");
   });
 
   it("classifies unscheduled via missing due_date, among open cheques only", () => {

@@ -99,13 +99,38 @@ function isOpenDocument(row: MirrorRow): boolean {
   return isPositiveDecimal(row.attributes.remaining as string | undefined);
 }
 
-/** `referenceDate` is injected (rather than read via `new Date()` internally) so this stays deterministic in tests and doesn't rot as real time passes. */
+/**
+ * The ERP/Paraşüt business date is Türkiye local date, not UTC — a plain
+ * `referenceDate.toISOString().slice(0, 10)` shifts the overdue boundary by
+ * up to 3 hours (UTC+3, no DST) around midnight Türkiye time, incorrectly
+ * treating a document due "today" (Türkiye) as due "yesterday" or vice versa
+ * between 00:00 and 03:00 Europe/Istanbul. `Intl.DateTimeFormat` with an
+ * explicit `timeZone` renders the correct calendar day regardless of the
+ * runtime's own timezone (Deno/Edge Functions run in UTC).
+ */
+function businessDateString(referenceDate: Date, timeZone = "Europe/Istanbul"): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(referenceDate);
+}
+
+/**
+ * `referenceDate` is injected (rather than read via `new Date()` internally) so this stays deterministic in tests and doesn't rot as real time passes.
+ *
+ * `due_date < businessToday` is the authoritative signal — it is a Paraşüt
+ * calendar date, always compared as a calendar date (never a timestamp) to
+ * Türkiye's current business date. `days_overdue` is corroborating only: a
+ * positive value can confirm overdue as a fast path, but a non-positive/
+ * stale `days_overdue` (Paraşüt sometimes reports 0 or an out-of-date value)
+ * must never override an objectively past `due_date` — see the production
+ * incident this fixes: an invoice due 2026-08-10 with `days_overdue: 0`
+ * evaluated to "not overdue" on business date 2026-08-11 before this fix,
+ * a real ₺30,000 discrepancy against Paraşüt's own dashboard.
+ */
 export function isOverdue(row: MirrorRow, referenceDate: Date): boolean {
-  const daysOverdue = row.attributes.days_overdue;
-  if (typeof daysOverdue === "number") return daysOverdue > 0;
   const dueDate = row.attributes.due_date as string | null | undefined;
-  if (!dueDate) return false;
-  return dueDate < referenceDate.toISOString().slice(0, 10);
+  if (!dueDate) return false; // no due_date at all = unscheduled, never overdue
+  const daysOverdue = row.attributes.days_overdue;
+  if (typeof daysOverdue === "number" && daysOverdue > 0) return true;
+  return dueDate < businessDateString(referenceDate);
 }
 
 /** Computes the "Toplam Tahsil Edilecek / Gecikmiş / Planlanmamış / Tekrarlayan" style summary for a set of open documents. */
