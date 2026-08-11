@@ -10,6 +10,8 @@ import {
   Upload,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/lib/finance/financeLabels";
 import {
   FinanceFormSection,
   FinanceMetadataPanel,
@@ -32,6 +34,7 @@ import {
   expenseTypes,
   incomingInvoiceRows,
   newExpenseActions,
+  type ExpenseRow,
 } from "./financeExpenseData";
 import "./finance-expense.css";
 
@@ -43,7 +46,81 @@ function findSupplierByName(name: string) {
   return suppliers.find((supplier) => supplier.name === name);
 }
 
-const expenseColumns: ExportColumn<(typeof expenseRows)[number]>[] = [
+type LiveExpenseRow = ExpenseRow & { parasutId: string };
+
+type PurchaseBillApiRow = {
+  parasut_id?: unknown;
+  partyName?: unknown;
+  source_archived?: boolean | null;
+  attributes?: {
+    archived?: unknown;
+    currency?: unknown;
+    description?: unknown;
+    due_date?: unknown;
+    gross_total?: unknown;
+    invoice_no?: unknown;
+    issue_date?: unknown;
+    item_type?: unknown;
+    payment_status?: unknown;
+  } | null;
+  relationships?: {
+    supplier?: {
+      data?: { id?: unknown } | null;
+    } | null;
+  } | null;
+};
+
+function purchaseBillSourceText(value: unknown) {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function purchaseBillAmount(value: unknown, currencyValue: unknown) {
+  const currency = purchaseBillSourceText(currencyValue)
+    .toUpperCase()
+    .replace(/^TRL$/, "TRY");
+  const amount =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : Number.NaN;
+
+  if (!Number.isFinite(amount) || !currency) return "—";
+
+  try {
+    return formatMoney(amount, currency);
+  } catch {
+    return "—";
+  }
+}
+
+function purchaseBillTypeLabel(value: unknown) {
+  const type = purchaseBillSourceText(value);
+  return (
+    {
+      purchase_bill: "Fiş / Fatura",
+      recurring_purchase_bill: "Tekrarlayan Alış Faturası",
+      refund: "İade",
+      cancelled: "İptal",
+    }[type] ?? type
+  ) || "—";
+}
+
+function purchaseBillPaymentLabel(value: unknown) {
+  const status = purchaseBillSourceText(value);
+  return (
+    {
+      paid: "Ödendi",
+      partially_paid: "Kısmen Ödendi",
+      overdue: "Gecikmiş",
+      unpaid: "Ödenecek",
+    }[status] ?? status
+  ) || "—";
+}
+
+const expenseColumns: ExportColumn<ExpenseRow>[] = [
   { header: "Kayıt İsmi", value: (row) => row.name },
   { header: "Tedarikçi / Çalışan", value: (row) => row.party },
   { header: "Kayıt Türü", value: (row) => row.type },
@@ -253,6 +330,73 @@ function NewExpenseSplitButton() {
 }
 
 export function ExpenseListPage() {
+  const [liveExpenseRows, setLiveExpenseRows] = useState<LiveExpenseRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadExpenses() {
+      try {
+        const { data, error } = await supabase.functions.invoke("parasut-api", {
+          body: {
+            action: "list",
+            resource: "purchase_bills",
+            pageSize: 100,
+            filters: { archived: false },
+            sort: { field: "issue_date", direction: "desc" },
+          },
+        });
+
+        if (cancelled) return;
+
+        if (error || !Array.isArray(data?.rows)) {
+          setLiveExpenseRows([]);
+          return;
+        }
+
+        setLiveExpenseRows(
+          (data.rows as PurchaseBillApiRow[]).map((source) => {
+            const attributes = source.attributes ?? {};
+            const supplierId = purchaseBillSourceText(
+              source.relationships?.supplier?.data?.id,
+            );
+            const partyName = purchaseBillSourceText(source.partyName);
+            const itemType = purchaseBillSourceText(attributes.item_type);
+            const archived =
+              source.source_archived === true || attributes.archived === true;
+
+            return {
+              parasutId: purchaseBillSourceText(source.parasut_id),
+              name: purchaseBillSourceText(attributes.description) || "—",
+              party: partyName && partyName !== supplierId ? partyName : "—",
+              type: purchaseBillTypeLabel(itemType),
+              issue: purchaseBillSourceText(attributes.issue_date) || "—",
+              document: purchaseBillSourceText(attributes.invoice_no) || "—",
+              due: purchaseBillSourceText(attributes.due_date) || "—",
+              total: purchaseBillAmount(
+                attributes.gross_total,
+                attributes.currency,
+              ),
+              payment: purchaseBillPaymentLabel(attributes.payment_status),
+              status: archived
+                ? "Arşivlendi"
+                : itemType === "cancelled"
+                  ? "İptal"
+                  : "—",
+            };
+          }),
+        );
+      } catch {
+        if (!cancelled) setLiveExpenseRows([]);
+      }
+    }
+
+    void loadExpenses();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="expense-page">
       <PageHeader
@@ -263,13 +407,13 @@ export function ExpenseListPage() {
         <FinanceExportMenu
           title="Gider Listesi"
           filename="gider-listesi"
-          rows={expenseRows}
+          rows={liveExpenseRows}
           columns={expenseColumns}
         />
         <NewExpenseSplitButton />
       </PageHeader>
       <Filters />
-      <TableFrame count={expenseRows.length}>
+      <TableFrame count={liveExpenseRows.length}>
         <table className="expense-table">
           <thead>
             <tr>
@@ -290,8 +434,8 @@ export function ExpenseListPage() {
             </tr>
           </thead>
           <tbody>
-            {expenseRows.map((row) => (
-              <tr key={row.document}>
+            {liveExpenseRows.map((row, index) => (
+              <tr key={row.parasutId || `${row.document}-${index}`}>
                 <td>
                   <Link
                     className="expense-cell-link"

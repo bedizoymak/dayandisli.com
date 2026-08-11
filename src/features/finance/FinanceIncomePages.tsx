@@ -222,7 +222,7 @@ function collectionLabel(value: unknown) {
   ) || "—";
 }
 
-const invoiceColumns: ExportColumn<LiveInvoiceRow>[] = [
+const invoiceColumns: ExportColumn<InvoiceRow>[] = [
   { header: "Fatura No", value: (row) => row.no },
   { header: "Müşteri", value: (row) => row.customer },
   { header: "Fatura Tarihi", value: (row) => row.invoiceDate },
@@ -232,7 +232,7 @@ const invoiceColumns: ExportColumn<LiveInvoiceRow>[] = [
   { header: "Durum", value: (row) => row.status },
 ];
 
-function InvoiceRowActions({ row }: { row: LiveInvoiceRow }) {
+function InvoiceRowActions({ row }: { row: InvoiceRow }) {
   const detailTo = `${incomeInvoicesBase}/${encodeURIComponent(row.no)}`;
   return (
     <RowActionsMenu
