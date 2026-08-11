@@ -127,6 +127,53 @@ function useVatSummary() {
   return { summary, status };
 }
 
+interface AccountRow {
+  parasut_id: string;
+  attributes: {
+    name?: string | null;
+    balance?: string | number | null;
+    account_type?: string | null;
+    currency?: string | null;
+    bank_identifier?: string | null;
+    archived?: boolean | null;
+  };
+  source_archived?: boolean | null;
+}
+
+/** Reads live Kasa ve Bankalar accounts from parasut.accounts via the existing parasut-api Edge Function (action: "list", resource: "accounts") — the same list action already used elsewhere, no new backend action. Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
+function useAccountsList() {
+  const [accounts, setAccounts] = useState<AccountRow[] | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", { body: { action: "list", resource: "accounts", pageSize: 50, filters: { archived: false } } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data || !Array.isArray(data.rows)) {
+          setStatus("error");
+          return;
+        }
+        setAccounts(data.rows as AccountRow[]);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { accounts, status };
+}
+
+/** Paraşüt's own currency code for Turkish lira; Intl.NumberFormat requires the ISO 4217 code TRY. */
+function toIntlCurrency(currency: string | null | undefined): string {
+  return currency === "TRL" || !currency ? "TRY" : currency;
+}
+
 function SummaryPanel({
   title,
   metrics,
@@ -199,6 +246,12 @@ export function FinanceOverview() {
   const { summary: receivablesSummary, status: receivablesStatus } = useReceivablesSummary();
   const { summary: payablesSummary, status: payablesStatus } = usePayablesSummary();
   const { summary: vatSummary, status: vatStatus } = useVatSummary();
+  const { accounts, status: accountsStatus } = useAccountsList();
+
+  const sortedAccounts =
+    accountsStatus === "ready" && accounts
+      ? [...accounts].sort((a, b) => Number(b.attributes.balance ?? 0) - Number(a.attributes.balance ?? 0))
+      : null;
 
   const receivables = financeOverviewData.receivables.map((metric, index) => {
     if (index === 0) {
@@ -331,14 +384,36 @@ export function FinanceOverview() {
               </button>
             </div>
             <div className="finance-bank-cards">
-              {financeOverviewData.accounts.map((account, index) => (
-                <div className="finance-bank-card" key={account.name}>
-                  {index < 2 ? <Landmark /> : <Building2 />}
-                  <span>{account.name}</span>
-                  <strong>{account.balance}</strong>
-                  <small>{account.detail}</small>
+              {accountsStatus === "loading" && (
+                <div className="finance-bank-card">
+                  <Landmark />
+                  <span>…</span>
+                  <strong>…</strong>
+                  <small>&nbsp;</small>
                 </div>
-              ))}
+              )}
+              {accountsStatus === "error" && (
+                <div className="finance-bank-card">
+                  <Landmark />
+                  <span>—</span>
+                  <strong>—</strong>
+                  <small>&nbsp;</small>
+                </div>
+              )}
+              {sortedAccounts?.map((account) => {
+                const isCash = account.attributes.account_type === "cash";
+                const subtitle = isCash
+                  ? "Nakit Hesap"
+                  : (account.attributes.bank_identifier ?? "Banka Hesabı");
+                return (
+                  <div className="finance-bank-card" key={account.parasut_id}>
+                    {isCash ? <Building2 /> : <Landmark />}
+                    <span>{account.attributes.name}</span>
+                    <strong>{formatMoney(Number(account.attributes.balance ?? 0), toIntlCurrency(account.attributes.currency))}</strong>
+                    <small>{subtitle}</small>
+                  </div>
+                );
+              })}
               <button className="finance-connect" type="button" disabled title="Bu demo ortamında devre dışıdır">
                 <Plus />
                 Yeni Hesap Bağla
