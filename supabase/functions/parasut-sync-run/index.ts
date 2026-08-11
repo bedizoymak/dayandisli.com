@@ -25,7 +25,7 @@ const MAX_CONSECUTIVE_RESOURCE_ERRORS = 5;
 
 interface ResourceRunner {
   name: string;
-  run: (context: SyncContext) => Promise<SyncResult>;
+  run: (context: SyncContext, options?: { concurrencyLock?: boolean }) => Promise<SyncResult>;
 }
 
 const RESOURCE_ORDER: ResourceRunner[] = [
@@ -76,14 +76,24 @@ serve(async (req: Request) => {
     const client = new ParaşütClient(tokens);
     const database = createClient(supabaseUrl, serviceRoleKey) as unknown as MirrorDatabase;
 
-    const context: SyncContext = { companyId, parasutCompanyId, database, client };
+    // pg_cron's scheduled invocation (see the migration adding the cron job)
+    // sends this header so sync_runs.trigger_type distinguishes scheduled
+    // runs from manual ones — every other caller (manual admin invocation,
+    // the local CLI runner) is unaffected and still records "local_manual".
+    const triggerType = req.headers.get("X-Sync-Trigger") === "scheduled" ? "scheduled" : undefined;
+    const context: SyncContext = { companyId, parasutCompanyId, database, client, triggerType };
 
-    logSafe(`[sync] companyId=${companyId} parasutCompanyId=${parasutCompanyId}`);
+    logSafe(`[sync] companyId=${companyId} parasutCompanyId=${parasutCompanyId} triggerType=${triggerType ?? "local_manual"}`);
 
     const results: SyncResult[] = [];
     for (const resource of RESOURCE_ORDER) {
       logSafe(`[sync] starting ${resource.name}`);
-      const result = await resource.run(context);
+      // concurrencyLock: true reuses sync-base.ts's existing enforceSingleRunner
+      // election (already implemented/tested for the manual "Sync" button path) —
+      // the smallest guard against two overlapping scheduled invocations
+      // (or a scheduled + manual invocation) racing on the same resource's
+      // resume chain. No new locking mechanism introduced.
+      const result = await resource.run(context, { concurrencyLock: true });
       results.push(result);
       logSafe(
         `[sync] ${resource.name} ${result.status} — pages=${result.pages} observed=${result.observed} ` +

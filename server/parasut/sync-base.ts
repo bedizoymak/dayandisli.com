@@ -175,7 +175,7 @@ async function createRun(
       company_id: context.companyId,
       parasut_company_id: context.parasutCompanyId,
       resource_type: options.resourceType,
-      trigger_type: "local_manual",
+      trigger_type: context.triggerType ?? "local_manual",
       status: "running",
       request_metadata: requestMetadata,
     })

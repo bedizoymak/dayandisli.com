@@ -354,3 +354,24 @@ describe("syncCollection — concurrency election (concurrencyLock: true)", () =
     expect(result.status).toBe("completed");
   });
 });
+
+describe("syncCollection — sync_runs.trigger_type", () => {
+  it("defaults to local_manual when context.triggerType is not set (every existing caller's behavior, unchanged)", async () => {
+    const { database, tables } = createFakeDatabase([contactRow({ id: "row-1", parasut_id: "1" })]);
+    const client = fakeClient([page(1, ["1"])]);
+    await syncCollection(buildContext(database, client), options);
+
+    expect(tables.sync_runs).toHaveLength(1);
+    expect(tables.sync_runs[0].trigger_type).toBe("local_manual");
+  });
+
+  it("records trigger_type = scheduled when context.triggerType is set — the scheduled pg_cron invocation path", async () => {
+    const { database, tables } = createFakeDatabase([contactRow({ id: "row-1", parasut_id: "1" })]);
+    const client = fakeClient([page(1, ["1"])]);
+    const context = { ...buildContext(database, client), triggerType: "scheduled" };
+    await syncCollection(context, options);
+
+    expect(tables.sync_runs).toHaveLength(1);
+    expect(tables.sync_runs[0].trigger_type).toBe("scheduled");
+  });
+});

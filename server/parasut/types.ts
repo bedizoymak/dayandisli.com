@@ -157,6 +157,16 @@ export interface SyncContext {
   client: ParaşütClientContract;
   now?: () => Date;
   observability?: import("./sync-observability.ts").SyncObservabilitySink;
+  /**
+   * Recorded verbatim into sync_runs.trigger_type. Defaults to
+   * "local_manual" (sync-base.ts's createRun) when omitted, preserving
+   * every existing caller's behavior unchanged. The scheduled pg_cron
+   * invocation (supabase/functions/parasut-sync-run/index.ts) is the only
+   * caller that sets this — to "scheduled" — so sync_runs rows are
+   * distinguishable by how they were triggered without inventing a new
+   * observability system.
+   */
+  triggerType?: string;
 }
 
 export interface SyncResourceOptions {
