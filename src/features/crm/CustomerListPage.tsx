@@ -29,12 +29,25 @@ type CustomerRow = {
   planned: string;
   collected: string;
   balance: string;
+  balanceValue: number | null;
 };
 
 type CustomerApiRow = {
   parasut_id?: unknown;
   attributes?: Record<string, unknown> | null;
 };
+
+type CustomerSortKey = "name" | "balance";
+type SortDirection = "asc" | "desc";
+type CustomerSortState = {
+  key: CustomerSortKey;
+  direction: SortDirection;
+} | null;
+
+const defaultSort = {
+  key: "balance",
+  direction: "desc",
+} as const;
 
 const columns: ExportColumn<CustomerRow>[] = [
   { header: "Müşteri", value: (r) => r.name },
@@ -48,7 +61,7 @@ const columns: ExportColumn<CustomerRow>[] = [
 ];
 
 function displayText(value: unknown) {
-  return typeof value === "string" && value.trim() ? value : "—";
+  return typeof value === "string" && value.trim() ? value.trim() : "—";
 }
 
 function displayCustomerType(value: unknown) {
@@ -57,14 +70,17 @@ function displayCustomerType(value: unknown) {
   return "—";
 }
 
-function displayBalance(value: unknown) {
-  const amount = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(amount) ? formatMoney(amount) : "—";
+function numericBalance(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : null;
 }
 
-function mapCustomer(row: CustomerApiRow): CustomerRow | null {
+function mapCustomerCard(row: CustomerApiRow): CustomerRow | null {
   if (typeof row.parasut_id !== "string" || !row.parasut_id) return null;
   const attributes = row.attributes ?? {};
+  const balanceValue = numericBalance(attributes.trl_balance);
   return {
     id: row.parasut_id,
     name: displayText(attributes.name),
@@ -75,8 +91,33 @@ function mapCustomer(row: CustomerApiRow): CustomerRow | null {
     projects: [],
     planned: "—",
     collected: "—",
-    balance: displayBalance(attributes.trl_balance),
+    balance: balanceValue === null ? "—" : formatMoney(balanceValue),
+    balanceValue,
   };
+}
+
+function sortCustomerRows(rows: CustomerRow[], state: CustomerSortState) {
+  const activeSort = state ?? defaultSort;
+  return [...rows].sort((left, right) => {
+    if (activeSort.key === "balance") {
+      if (left.balanceValue === null && right.balanceValue === null) return 0;
+      if (left.balanceValue === null) return 1;
+      if (right.balanceValue === null) return -1;
+      return activeSort.direction === "asc"
+        ? left.balanceValue - right.balanceValue
+        : right.balanceValue - left.balanceValue;
+    }
+
+    const leftMissing = left.name === "—";
+    const rightMissing = right.name === "—";
+    if (leftMissing && rightMissing) return 0;
+    if (leftMissing) return 1;
+    if (rightMissing) return -1;
+    const comparison = left.name.localeCompare(right.name, "tr-TR", {
+      sensitivity: "base",
+    });
+    return activeSort.direction === "asc" ? comparison : -comparison;
+  });
 }
 
 export function CustomerListPage() {
@@ -85,6 +126,7 @@ export function CustomerListPage() {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [page, setPage] = useState(1);
+  const [sortState, setSortState] = useState<CustomerSortState>(null);
   const pageSize = 100;
 
   useEffect(() => {
@@ -110,7 +152,7 @@ export function CustomerListPage() {
         }
         setCustomers(
           (response.rows as CustomerApiRow[])
-            .map(mapCustomer)
+            .map(mapCustomerCard)
             .filter((row): row is CustomerRow => row !== null),
         );
         setTotal(typeof response.total === "number" ? response.total : null);
@@ -126,13 +168,31 @@ export function CustomerListPage() {
     };
   }, [page, search]);
 
-  const rows = customers.filter(
-    (c) =>
-      `${c.name} ${c.phone} ${c.email} ${c.taxNo}`
-        .toLocaleLowerCase("tr-TR")
-        .includes(search.toLocaleLowerCase("tr-TR")) &&
-      (type === "Tüm Türler" || c.type === type),
+  const rows = sortCustomerRows(
+    customers.filter(
+      (c) =>
+        `${c.name} ${c.phone} ${c.email} ${c.taxNo}`
+          .toLocaleLowerCase("tr-TR")
+          .includes(search.toLocaleLowerCase("tr-TR")) &&
+        (type === "Tüm Türler" || c.type === type),
+    ),
+    sortState,
   );
+
+  const activeSort = sortState ?? defaultSort;
+  const changeSort = (key: CustomerSortKey) => {
+    setSortState((current) => {
+      if (!current || current.key !== key) return { key, direction: "asc" };
+      if (current.direction === "asc") return { key, direction: "desc" };
+      return null;
+    });
+  };
+
+  const sortIndicator = (key: CustomerSortKey) => {
+    if (activeSort.key !== key) return "↕";
+    return activeSort.direction === "asc" ? "↑" : "↓";
+  };
+
   return (
     <div className="crm-page">
       <CrmPageHeader
@@ -202,17 +262,68 @@ export function CustomerListPage() {
         <table className="crm-table">
           <thead>
             <tr>
-              {[
-                "Müşteri",
-                "Telefon",
-                "Projeler",
-                "Planlanan Alacak",
-                "Tahsil Edilen",
-                "Kalan Bakiye",
-                "İşlemler",
-              ].map((h) => (
-                <th key={h}>{h}</th>
-              ))}
+              <th
+                aria-sort={
+                  activeSort.key === "name"
+                    ? activeSort.direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+              >
+                <button
+                  type="button"
+                  onClick={() => changeSort("name")}
+                  aria-label="Müşteri adına göre sırala"
+                  style={{
+                    alignItems: "center",
+                    background: "none",
+                    border: 0,
+                    color: "inherit",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    font: "inherit",
+                    gap: "0.3rem",
+                    padding: 0,
+                  }}
+                >
+                  Müşteri <span aria-hidden="true">{sortIndicator("name")}</span>
+                </button>
+              </th>
+              <th>Telefon</th>
+              <th>Projeler</th>
+              <th>Planlanan Alacak</th>
+              <th>Tahsil Edilen</th>
+              <th
+                aria-sort={
+                  activeSort.key === "balance"
+                    ? activeSort.direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+              >
+                <button
+                  type="button"
+                  onClick={() => changeSort("balance")}
+                  aria-label="Kalan bakiyeye göre sırala"
+                  style={{
+                    alignItems: "center",
+                    background: "none",
+                    border: 0,
+                    color: "inherit",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    font: "inherit",
+                    gap: "0.3rem",
+                    padding: 0,
+                  }}
+                >
+                  Kalan Bakiye{" "}
+                  <span aria-hidden="true">{sortIndicator("balance")}</span>
+                </button>
+              </th>
+              <th>İşlemler</th>
             </tr>
           </thead>
           <tbody>
