@@ -1,6 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Filter, Landmark, Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/lib/finance/financeLabels";
 import {
   FinanceBackLink,
   FinanceBreadcrumb,
@@ -17,12 +19,12 @@ import {
 } from "./financeReportData";
 import { expenseRows } from "./financeExpenseData";
 import {
-  cashAccounts,
   cashChart,
   cashFlowGrid,
   cashMovements,
   checks,
   flowTransactions,
+  type CashAccount,
 } from "./cashReportData";
 import "./finance-reports.css";
 
@@ -343,7 +345,43 @@ export function VatReportPage() {
   );
 }
 
-const accountColumns: ExportColumn<(typeof cashAccounts)[number]>[] = [
+type CashAccountApiRow = {
+  attributes?: {
+    balance?: unknown;
+    currency?: unknown;
+    iban?: unknown;
+    name?: unknown;
+  } | null;
+};
+
+function accountText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : "—";
+}
+
+function accountCurrency(value: unknown) {
+  const currency =
+    typeof value === "string" && value.trim() ? value.trim().toUpperCase() : "";
+  return currency === "TRL" ? "TRY" : currency;
+}
+
+function accountBalance(value: unknown, currency: string) {
+  const amount =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : Number.NaN;
+
+  if (!currency || !Number.isFinite(amount)) return "—";
+
+  try {
+    return formatMoney(amount, currency);
+  } catch {
+    return "—";
+  }
+}
+
+const accountColumns: ExportColumn<CashAccount>[] = [
   { header: "Hesap İsmi", value: (r) => r.name },
   { header: "IBAN", value: (r) => r.iban },
   { header: "Döviz Cinsi", value: (r) => r.currency },
@@ -373,12 +411,53 @@ const flowColumns: ExportColumn<(typeof flowTransactions)[number]>[] = [
 ];
 
 export function CashAccountsPage() {
+  const [accounts, setAccounts] = useState<CashAccount[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", {
+        body: {
+          action: "list",
+          resource: "accounts",
+          pageSize: 50,
+          filters: { archived: false },
+        },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const response = data as { rows?: unknown } | null;
+        if (error || !response || !Array.isArray(response.rows)) {
+          setAccounts([]);
+          return;
+        }
+        setAccounts(
+          (response.rows as CashAccountApiRow[]).map((source) => {
+            const attributes = source.attributes ?? {};
+            const currency = accountCurrency(attributes.currency);
+            return {
+              name: accountText(attributes.name),
+              iban: accountText(attributes.iban),
+              currency: currency || "—",
+              balance: accountBalance(attributes.balance, currency),
+            };
+          }),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setAccounts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="report-page">
       <Header
         breadcrumb="Muhasebe ve Finans / Kasa / Kasa ve Bankalar"
         title="Kasa ve Bankalar"
-        rows={cashAccounts}
+        rows={accounts}
         columns={accountColumns}
         filename="kasa-ve-bankalar"
         actions={
@@ -403,7 +482,7 @@ export function CashAccountsPage() {
           <Filter /> Filtrele
         </button>
       </div>
-      <Table rows={cashAccounts} columns={accountColumns} />
+      <Table rows={accounts} columns={accountColumns} />
     </div>
   );
 }
