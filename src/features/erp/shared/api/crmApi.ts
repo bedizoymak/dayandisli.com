@@ -91,6 +91,7 @@ export async function listCRMLeads(search = "", status: CRMLeadStatus | "all" = 
 
 export async function createCRMLead(payload: Partial<CRMLead> & { company_name: string }) {
   const leadNo = await getNextERPNumber("CRM_LEAD");
+  if (leadNo.error || !leadNo.data) return failure<CRMLead | null>("createCRMLead number", leadNo.error, null);
   const record = await withEnterpriseOwnership({ ...payload, lead_no: leadNo.data });
   const { data, error } = (await supabase.from("crm_leads" as never).insert(record as never).select("*").single()) as unknown as DbResult<CRMLead>;
   if (error) return failure<CRMLead | null>("createCRMLead", error, null);
@@ -121,6 +122,9 @@ export async function listCRMOpportunities(search = "", status: CRMOpportunitySt
 
 export async function createCRMOpportunity(payload: Partial<CRMOpportunity> & { title: string }) {
   const opportunityNo = await getNextERPNumber("CRM_OPPORTUNITY");
+  if (opportunityNo.error || !opportunityNo.data) {
+    return failure<CRMOpportunity | null>("createCRMOpportunity number", opportunityNo.error, null);
+  }
   const record = await withEnterpriseOwnership({ ...payload, opportunity_no: opportunityNo.data });
   const { data, error } = (await supabase.from("crm_opportunities" as never).insert(record as never).select("*").single()) as unknown as DbResult<CRMOpportunity>;
   if (error) return failure<CRMOpportunity | null>("createCRMOpportunity", error, null);

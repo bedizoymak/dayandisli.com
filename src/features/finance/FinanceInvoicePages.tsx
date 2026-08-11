@@ -77,7 +77,7 @@ export function SalesInvoiceForm({ mode = "create", invoiceId }: { mode?: "creat
               <fieldset className="wide">
                 <legend>Tahsilat Durumu</legend>
                 <label>
-                  <input type="radio" name="collection" defaultChecked /> Tahsil
+                  <input type="radio" name="collection" /> Tahsil
                   Edilecek
                 </label>
                 <label>
@@ -124,7 +124,7 @@ export function SalesInvoiceForm({ mode = "create", invoiceId }: { mode?: "creat
             <fieldset>
               <legend>Stok Takibi</legend>
               <label>
-                <input type="radio" name="stock" defaultChecked /> Stok Çıkışı
+                <input type="radio" name="stock" /> Stok Çıkışı
                 Yapılsın
               </label>
               <label>

@@ -65,7 +65,7 @@ function Filters() {
     <div className="erp-card ops-filters">
       <label>
         <Search />
-        <input placeholder="Ara..." />
+        <input />
       </label>
       <button>
         <Filter /> Filtrele
@@ -162,7 +162,7 @@ export function ProductsPage() {
       />
       <div className="ops-toolbar">
         <Filters />
-        <button type="button" disabled title="Bu demo ortamında devre dışıdır">
+        <button type="button" disabled>
           Stok Güncelle
         </button>
       </div>
@@ -291,7 +291,8 @@ export function ProductFormPage() {
           </label>
           <label>
             Kategori
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Dişli</option>
               <option>Hizmet</option>
             </select>
@@ -304,14 +305,16 @@ export function ProductFormPage() {
           </label>
           <label>
             Alış Birimi
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Adet</option>
               <option>Kg</option>
             </select>
           </label>
           <label>
             Satış Birimi
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Adet</option>
               <option>Saat</option>
             </select>
@@ -327,7 +330,8 @@ export function ProductFormPage() {
         <div className="ops-fields">
           <label>
             Stok Takibi
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Açık</option>
               <option>Kapalı</option>
             </select>
@@ -350,7 +354,8 @@ export function ProductFormPage() {
           </label>
           <label>
             KDV
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>%20</option>
               <option>%10</option>
             </select>
@@ -553,7 +558,8 @@ export function DispatchFormPage({ type }: { type: "incoming" | "outgoing" }) {
           </label>
           <label>
             Sevkiyat Yöntemi
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Kargo</option>
               <option>Firma Aracı</option>
             </select>
@@ -585,7 +591,8 @@ export function DispatchFormPage({ type }: { type: "incoming" | "outgoing" }) {
           </label>
           <label>
             Birim
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Adet</option>
               <option>Kg</option>
             </select>
@@ -652,15 +659,15 @@ export function StockReportPage() {
       <section className="ops-kpis">
         <article className="erp-card">
           Toplam Stok Maliyeti
-          <strong>₺{totalCost.toLocaleString("tr-TR")}</strong>
+          <strong>{rows.length ? `₺${totalCost.toLocaleString("tr-TR")}` : "—"}</strong>
         </article>
         <article className="erp-card">
           Toplam Satış Değeri
-          <strong>₺{totalSales.toLocaleString("tr-TR")}</strong>
+          <strong>{rows.length ? `₺${totalSales.toLocaleString("tr-TR")}` : "—"}</strong>
         </article>
         <article className="erp-card">
           Tahmini Kâr
-          <strong>₺{totalProfit.toLocaleString("tr-TR")}</strong>
+          <strong>{rows.length ? `₺${totalProfit.toLocaleString("tr-TR")}` : "—"}</strong>
         </article>
       </section>
       {rows.length ? (
@@ -1092,14 +1099,15 @@ export function OrderFormPage() {
           </label>
           <label>
             Durum
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Taslak</option>
               <option>Onaylandı</option>
             </select>
           </label>
           <label>
             İlgili Fatura
-            <input placeholder="Henüz oluşturulmadı" />
+            <input />
           </label>
           <label className="wide">
             Notlar
@@ -1124,7 +1132,8 @@ export function OrderFormPage() {
           </label>
           <label>
             Birim
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Adet</option>
               <option>Saat</option>
             </select>
@@ -1151,7 +1160,8 @@ export function CheckFormPage() {
         <div className="ops-fields">
           <label>
             Tür
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Alınan Çek</option>
               <option>Verilen Çek</option>
             </select>
@@ -1182,7 +1192,8 @@ export function CheckFormPage() {
           </label>
           <label>
             Durum
-            <select>
+            <select defaultValue="">
+              <option value="">—</option>
               <option>Portföyde</option>
               <option>Tahsil edilecek</option>
               <option>Tahsil edildi</option>

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { CrmPageHeader } from "./CrmShared";
-import { customerFormDefaults as d } from "./crmCustomerData";
 const parent = "/apps/crm/customers";
 export function CustomerFormPage({ edit = false }: { edit?: boolean }) {
   return (
@@ -27,27 +26,26 @@ export function CustomerFormPage({ edit = false }: { edit?: boolean }) {
           <div className="crm-fields">
             <label>
               Firma Ünvanı *
-              <input
-                defaultValue={edit ? "Atlas Makine Sanayi A.Ş." : d.companyName}
-              />
+              <input />
             </label>
             <label>
               Kişi Tipi *
-              <select defaultValue={d.personType}>
+              <select>
+                <option value="">—</option>
                 <option>Firma</option>
                 <option>Gerçek Kişi</option>
               </select>
             </label>
             <label>
-              TC/VKN *<input defaultValue={edit ? "1234567890" : d.taxNo} />
+              TC/VKN *<input />
             </label>
             <label>
               İlgili Kişi Adı Soyadı
-              <input defaultValue={edit ? "Mert Aydın" : d.contact} />
+              <input />
             </label>
             <label>
               Vergi Dairesi
-              <input defaultValue={d.taxOffice} />
+              <input />
             </label>
           </div>
         </section>
@@ -56,27 +54,27 @@ export function CustomerFormPage({ edit = false }: { edit?: boolean }) {
           <div className="crm-fields">
             <label>
               Telefon
-              <input defaultValue={d.phone} />
+              <input />
             </label>
             <label>
               Email
-              <input type="email" defaultValue={d.email} />
+              <input type="email" />
             </label>
             <label>
               İl
-              <input defaultValue={d.city} />
+              <input />
             </label>
             <label>
               İlçe
-              <input defaultValue={d.district} />
+              <input />
             </label>
             <label>
               Web Sitesi
-              <input defaultValue={d.website} />
+              <input />
             </label>
             <label className="wide">
               Adres
-              <textarea defaultValue={d.address} />
+              <textarea />
             </label>
           </div>
         </section>
@@ -85,29 +83,32 @@ export function CustomerFormPage({ edit = false }: { edit?: boolean }) {
           <div className="crm-fields">
             <label>
               Cari Durum
-              <select defaultValue={d.status}>
+              <select>
+                <option value="">—</option>
                 <option>Aktif</option>
                 <option>Pasif</option>
               </select>
             </label>
             <label>
               Varsayılan Hesap Tipi
-              <select defaultValue={d.accountType}>
+              <select>
+                <option value="">—</option>
                 <option>Resmi Hesap</option>
                 <option>Gayri Resmi Hesap</option>
               </select>
             </label>
             <label>
               Risk Limiti
-              <input type="number" defaultValue={d.riskLimit} />
+              <input type="number" />
             </label>
             <label>
               Ödeme Vadesi Günü
-              <input type="number" defaultValue={d.dueDays} />
+              <input type="number" />
             </label>
             <label>
               Para Birimi
-              <select defaultValue={d.currency}>
+              <select>
+                <option value="">—</option>
                 <option>TRY</option>
                 <option>USD</option>
                 <option>EUR</option>
@@ -115,11 +116,11 @@ export function CustomerFormPage({ edit = false }: { edit?: boolean }) {
             </label>
             <label>
               Etiketler
-              <input defaultValue={d.tags} />
+              <input />
             </label>
             <label className="wide">
               Notlar
-              <textarea defaultValue={d.notes} />
+              <textarea />
             </label>
           </div>
         </section>

@@ -1,8 +1,6 @@
-import { crmCustomers } from "../crm/crmCustomerData";
 import type { SalesQuote } from "./salesTypes";
 import { DRAFT_QUOTE_KEY } from "./pdf/quotePdfTypes";
-export const customerName = (id: string) =>
-  crmCustomers.find((c) => c.id === id)?.name ?? "Bilinmeyen Müşteri";
+export const customerName = (_id: string) => "—";
 export function openQuotePreview(quote: SalesQuote, print = false) {
   localStorage.setItem(DRAFT_QUOTE_KEY, JSON.stringify(quote));
   window.open(

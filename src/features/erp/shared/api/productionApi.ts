@@ -167,6 +167,7 @@ export const getWorkOrderById = getWorkOrder;
 
 export async function createWorkOrder(payload: Partial<WorkOrder> & { title: string }) {
   const generated = payload.work_order_no ? success(payload.work_order_no) : await getNextERPNumber("WORK_ORDER");
+  if (generated.error || !generated.data) return failure("createWorkOrder number", generated.error, null);
   const record = await withEnterpriseOwnership({
     work_order_no: generated.data,
     sales_order_id: payload.sales_order_id ?? null,

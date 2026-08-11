@@ -3,6 +3,7 @@ export type PartyRef = {
   name: string;
   type: "customer" | "supplier";
 };
+
 export type ProductRef = {
   id: string;
   name: string;
@@ -11,120 +12,48 @@ export type ProductRef = {
   purchase: number;
   sale: number;
 };
-export const parties: PartyRef[] = [
-  { id: "c1", name: "Atlas Makine", type: "customer" },
-  { id: "c2", name: "Eksen Otomotiv", type: "customer" },
-  { id: "s1", name: "Marmara Metal A.Ş.", type: "supplier" },
-  { id: "s2", name: "Anadolu Rulman A.Ş.", type: "supplier" },
-];
-export const products: ProductRef[] = [
-  {
-    id: "p1",
-    name: "Helisel Dişli M2",
-    code: "HD-M2-001",
-    stock: 184,
-    purchase: 820,
-    sale: 1280,
-  },
-  {
-    id: "p2",
-    name: "Konik Dişli Seti",
-    code: "KD-S-014",
-    stock: 46,
-    purchase: 1640,
-    sale: 2490,
-  },
-  {
-    id: "p3",
-    name: "CNC İşleme Hizmeti",
-    code: "HZ-CNC-01",
-    stock: 0,
-    purchase: 0,
-    sale: 1850,
-  },
-];
-export const dispatches = [
-  {
-    no: "IRS-2026-0084",
-    party: "Atlas Makine Sanayi A.Ş.",
-    type: "Giden",
-    date: "16.07.2026",
-    quantity: "24 Adet",
-    status: "Sevk Edildi",
-  },
-  {
-    no: "GIRS-2026-0041",
-    party: "Marmara Metal A.Ş.",
-    type: "Gelen",
-    date: "15.07.2026",
-    quantity: "680 Kg",
-    status: "Teslim Alındı",
-  },
-];
-export const stockMovements = [
-  {
-    product: "Helisel Dişli M2",
-    type: "Giden İrsaliye",
-    party: "Atlas Makine",
-    date: "16.07.2026",
-    quantity: "-24 Adet",
-  },
-  {
-    product: "42CrMo4 Çelik",
-    type: "Gelen İrsaliye",
-    party: "Marmara Metal A.Ş.",
-    date: "15.07.2026",
-    quantity: "+680 Kg",
-  },
-  {
-    product: "Konik Dişli Seti",
-    type: "Satış Faturası",
-    party: "Eksen Otomotiv",
-    date: "12.07.2026",
-    quantity: "-6 Adet",
-  },
-];
-export const suppliers = [
-  {
-    name: "Marmara Metal A.Ş.",
-    short: "Marmara Metal",
-    taxNo: "1234567890",
-    phone: "+90 224 555 18 42",
-    email: "muhasebe@marmarametal.com",
-    city: "Bursa",
-    contact: "Selim Kaya",
-  },
-  {
-    name: "Anadolu Rulman A.Ş.",
-    short: "Anadolu Rulman",
-    taxNo: "9876543210",
-    phone: "+90 216 555 29 10",
-    email: "satis@anadolurulman.com",
-    city: "İstanbul",
-    contact: "Derya Ak",
-  },
-];
-// customerId references crmCustomers (src/features/crm/crmCustomerData.ts) —
-// the CRM customer list is the single source of truth for customer identity.
-export const orders = [
-  {
-    no: "SIP-2026-0072",
-    customer: "Atlas Makine Sanayi A.Ş.",
-    customerId: "atlas-makine",
-    orderDate: "16.07.2026",
-    delivery: "05.08.2026",
-    status: "Üretimde",
-    total: "₺420.000",
-    invoice: "FTR-2026-0718",
-  },
-  {
-    no: "SIP-2026-0068",
-    customer: "Eksen Otomotiv Ltd.",
-    customerId: "eksen-otomotiv",
-    orderDate: "10.07.2026",
-    delivery: "28.07.2026",
-    status: "Onaylandı",
-    total: "₺186.500",
-    invoice: "—",
-  },
-];
+
+export type Dispatch = {
+  no: string;
+  party: string;
+  type: string;
+  date: string;
+  quantity: string;
+  status: string;
+};
+
+export type StockMovement = {
+  product: string;
+  type: string;
+  party: string;
+  date: string;
+  quantity: string;
+};
+
+export type Supplier = {
+  name: string;
+  short: string;
+  taxNo: string;
+  phone: string;
+  email: string;
+  city: string;
+  contact: string;
+};
+
+export type Order = {
+  no: string;
+  customer: string;
+  customerId: string;
+  orderDate: string;
+  delivery: string;
+  status: string;
+  total: string;
+  invoice?: string;
+};
+
+export const parties: PartyRef[] = [];
+export const products: ProductRef[] = [];
+export const dispatches: Dispatch[] = [];
+export const stockMovements: StockMovement[] = [];
+export const suppliers: Supplier[] = [];
+export const orders: Order[] = [];

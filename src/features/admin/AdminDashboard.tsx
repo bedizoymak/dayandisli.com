@@ -20,10 +20,10 @@ export default function AdminDashboard() {
   }, []);
 
   const metrics = [
-    { label: "Müşteriler", value: String(overview?.customers.data.length ?? 0), detail: "Aktif cari kayıtları" },
-    { label: "Teklifler", value: String(overview?.quotations.data.length ?? 0), detail: "Son teklif kayıtları" },
-    { label: "Satış Siparişleri", value: String(overview?.salesOrders.data.length ?? 0), detail: "ERP satış akışı" },
-    { label: "Açık İş Emirleri", value: String(overview?.workOrders.data.filter((row) => !["completed", "cancelled"].includes(row.status)).length ?? 0), detail: "Üretim takibi" },
+    { label: "Müşteriler", value: overview ? String(overview.customers.data.length) : "—", detail: "Aktif cari kayıtları" },
+    { label: "Teklifler", value: overview ? String(overview.quotations.data.length) : "—", detail: "Son teklif kayıtları" },
+    { label: "Satış Siparişleri", value: overview ? String(overview.salesOrders.data.length) : "—", detail: "ERP satış akışı" },
+    { label: "Açık İş Emirleri", value: overview ? String(overview.workOrders.data.filter((row) => !["completed", "cancelled"].includes(row.status)).length) : "—", detail: "Üretim takibi" },
   ];
 
   return (
@@ -74,10 +74,10 @@ export default function AdminDashboard() {
         <AdminSection title="Operasyon Durumu">
           <div className="space-y-3">
             {[
-              ["Tedarikçiler", overview?.suppliers.data.length ?? 0, "/tedarikciler"],
-              ["Stok Kartları", overview?.inventory.data.length ?? 0, "/inventory"],
-              ["Personeller", overview?.employees.data.length ?? 0, "/hr"],
-              ["Veritabanı", overview?.database.data.label ?? "Kontrol ediliyor", "/ayarlar"],
+              ["Tedarikçiler", overview ? overview.suppliers.data.length : "—", "/tedarikciler"],
+              ["Stok Kartları", overview ? overview.inventory.data.length : "—", "/inventory"],
+              ["Personeller", overview ? overview.employees.data.length : "—", "/hr"],
+              ["Veritabanı", overview?.database.data.label ?? "—", "/ayarlar"],
             ].map(([label, value, path]) => (
               <Link key={String(label)} to={String(path)} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm hover:bg-slate-50">
                 <span className="text-slate-600">{label}</span>

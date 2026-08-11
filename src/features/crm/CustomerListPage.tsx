@@ -52,17 +52,22 @@ export function CustomerListPage() {
         </Link>
       </CrmPageHeader>
       <section className="crm-kpis">
-        {[
-          ["Toplam Müşteri", "128"],
-          ["Toplam Tahsilat", "₺8,42M"],
-          ["Bekleyen Tahsilat", "₺3,44M"],
-          ["Bakiyesi Kapanan", "46"],
-        ].map((item) => (
-          <article className="erp-card" key={item[0]}>
-            <span>{item[0]}</span>
-            <strong>{item[1]}</strong>
-          </article>
-        ))}
+        <article className="erp-card">
+          <span>Toplam Müşteri</span>
+          <strong>—</strong>
+        </article>
+        <article className="erp-card">
+          <span>Toplam Tahsilat</span>
+          <strong>—</strong>
+        </article>
+        <article className="erp-card">
+          <span>Bekleyen Tahsilat</span>
+          <strong>—</strong>
+        </article>
+        <article className="erp-card">
+          <span>Bakiyesi Kapanan</span>
+          <strong>—</strong>
+        </article>
       </section>
       <div className="erp-card crm-filters">
         <label className="search">
@@ -70,7 +75,6 @@ export function CustomerListPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Firma, kişi, telefon, e-posta, TC/VKN ara"
           />
         </label>
         <select value={type} onChange={(e) => setType(e.target.value)}>
@@ -161,13 +165,15 @@ export function CustomerListPage() {
         {!rows.length && (
           <div className="crm-empty">Gösterilecek müşteri bulunamadı.</div>
         )}
-        <footer className="crm-pagination">
-          <span>
-            1–{rows.length} / {rows.length}
-          </span>
-          <button disabled>Önceki</button>
-          <button>Sonraki</button>
-        </footer>
+        {rows.length > 0 && (
+          <footer className="crm-pagination">
+            <span>
+              1–{rows.length} / {rows.length}
+            </span>
+            <button disabled>Önceki</button>
+            <button>Sonraki</button>
+          </footer>
+        )}
       </div>
     </div>
   );

@@ -25,7 +25,6 @@ import {
   X,
 } from "lucide-react";
 import { useErpIdentity } from "@/features/erp-shell/erpIdentity";
-import { calendarEvents, systemNotifications } from "@/features/dashboard/dashboardData";
 import { quickActions, searchRoutes, sidebarItems } from "@/features/erp-shell/shellNavigationData";
 import { financeNavigation } from "@/features/finance/financeNavigation";
 import { crmSubmenu } from "@/features/crm/crmCustomerData";
@@ -44,7 +43,7 @@ function initials(value: string) {
       .filter(Boolean)
       .slice(0, 2)
       .map((part) => part[0]?.toLocaleUpperCase("tr-TR"))
-      .join("") || "DD"
+      .join("") || "—"
   );
 }
 
@@ -84,9 +83,9 @@ export default function ErpLayout() {
   const quickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeSection = sectionForPath(location.pathname);
-  const userLabel = erpUser?.email?.split("@")[0]?.replace(/[._-]+/g, " ") || "Ekip Üyesi";
+  const userLabel = erpUser?.email?.split("@")[0]?.replace(/[._-]+/g, " ") || "—";
   const displayName = userLabel.replace(/(^|\s)\S/g, (letter) => letter.toLocaleUpperCase("tr-TR"));
-  const roleLabel = roles[0] || "ERP Kullanıcısı";
+  const roleLabel = roles[0] || "—";
 
   const matches = useMemo(() => {
     const value = query.trim().toLocaleLowerCase("tr-TR");
@@ -356,7 +355,7 @@ export default function ErpLayout() {
               <span className="erp-avatar">{initials(displayName)}</span>
               <span className="erp-profile-copy">
                 <strong>{displayName}</strong>
-                <small>ERP Kullanıcısı</small>
+                <small>{roleLabel}</small>
               </span>
             </div>
           </div>
@@ -370,7 +369,7 @@ export default function ErpLayout() {
             <form className="erp-search" onSubmit={submitSearch}>
               <div className="erp-search-box">
                 <Search size={18} />
-                <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Global arama... (Ctrl + K)" aria-label="Global arama" />
+                <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Global arama" />
               </div>
               {query && (
                 <div className="erp-search-results">
@@ -409,36 +408,10 @@ export default function ErpLayout() {
                   aria-expanded={notificationsOpen}
                 >
                   <Bell />
-                  <span className="erp-badge">{systemNotifications.length}</span>
                 </button>
                 {notificationsOpen && (
                   <div className="erp-popover erp-notifications-popover">
-                    {systemNotifications.map((item) =>
-                      item.route ? (
-                        <Link
-                          className="erp-notification erp-notification-link"
-                          to={item.route}
-                          key={item.title}
-                          onClick={() => setNotificationsOpen(false)}
-                        >
-                          <Bell />
-                          <div>
-                            <strong>{item.title}</strong>
-                            <p>{item.description}</p>
-                          </div>
-                          <time>{item.relativeTime}</time>
-                        </Link>
-                      ) : (
-                        <div className="erp-notification" key={item.title} title="Bu bildirim için henüz ilgili bir sayfa yok">
-                          <Bell />
-                          <div>
-                            <strong>{item.title}</strong>
-                            <p>{item.description}</p>
-                          </div>
-                          <time>{item.relativeTime}</time>
-                        </div>
-                      ),
-                    )}
+                    <div className="erp-empty-search">Henüz bildirim yok.</div>
                   </div>
                 )}
               </div>
@@ -476,7 +449,7 @@ export default function ErpLayout() {
 
           <Outlet context={{ now }} />
 
-          <footer className="erp-footer">© 2026 Eclipse Mühendislik. Tüm hakları saklıdır.</footer>
+          <footer className="erp-footer">© {now.getFullYear()} Eclipse Mühendislik. Tüm hakları saklıdır.</footer>
         </main>
       </div>
 
@@ -501,12 +474,7 @@ function ErpCalendarDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <div className="erp-calendar-grid">
-          {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
-            <div className="erp-calendar-day" key={day}>
-              <strong>{day}</strong>
-              {calendarEvents[day] && <small>{calendarEvents[day]}</small>}
-            </div>
-          ))}
+          <div className="erp-empty-search">Henüz takvim kaydı yok.</div>
         </div>
       </section>
     </div>

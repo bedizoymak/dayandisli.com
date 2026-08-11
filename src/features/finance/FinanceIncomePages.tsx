@@ -133,21 +133,21 @@ function TableShell({
           </tbody>
         </table>
       </div>
-      <div className="income-pagination">
-        <span>1–{Array.isArray(children) ? children.length : 4} / 24</span>
-        <label>
-          Sayfa boyutu{" "}
-          <select defaultValue="10">
-            <option>10</option>
-            <option>25</option>
-            <option>50</option>
-          </select>
-        </label>
-        <button>‹</button>
-        <button>1</button>
-        <button>2</button>
-        <button>›</button>
-      </div>
+      {!empty && !loading && (
+        <div className="income-pagination">
+          <span>{Array.isArray(children) ? `${children.length} kayıt` : "—"}</span>
+          <label>
+            Sayfa boyutu{" "}
+            <select defaultValue="10">
+              <option>10</option>
+              <option>25</option>
+              <option>50</option>
+            </select>
+          </label>
+          <button>‹</button>
+          <button>›</button>
+        </div>
+      )}
     </section>
   );
 }
@@ -216,11 +216,11 @@ export function InvoiceListPage() {
       <FilterBar>
         <label>
           Başlangıç Tarihi
-          <input type="date" defaultValue="2026-07-01" />
+          <input type="date" />
         </label>
         <label>
           Bitiş Tarihi
-          <input type="date" defaultValue="2026-07-31" />
+          <input type="date" />
         </label>
         <label>
           Durum
@@ -243,7 +243,6 @@ export function InvoiceListPage() {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Fatura veya müşteri ara"
           />
         </label>
       </FilterBar>
@@ -326,7 +325,6 @@ export function CustomerListPage() {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Ad veya VKN / TCKN ara"
           />
         </label>
         <label>
@@ -407,7 +405,7 @@ export function CustomerFormPage() {
   return <Navigate to="/apps/crm/customers/new" replace />;
 }
 export function CollectionReportPage() {
-  const max = Math.max(...agingBuckets.map((item) => item.value));
+  const max = Math.max(...agingBuckets.map((item) => item.value), 1);
   return (
     <div className="income-page">
       <IncomeHeader
@@ -462,11 +460,11 @@ export function CollectionReportPage() {
       <FilterBar>
         <label>
           Başlangıç
-          <input type="date" defaultValue="2026-07-01" />
+          <input type="date" />
         </label>
         <label>
           Bitiş
-          <input type="date" defaultValue="2026-07-31" />
+          <input type="date" />
         </label>
         <label>
           Müşteri
@@ -482,7 +480,7 @@ export function CollectionReportPage() {
         </label>
         <label className="income-search">
           <Search />
-          <input placeholder="Raporda ara" />
+          <input />
         </label>
       </FilterBar>
       <TableShell
@@ -493,6 +491,7 @@ export function CollectionReportPage() {
           "Fatura / Çek",
           "Tahsilat Tutarı",
         ]}
+        empty={!collectionRows.length}
       >
         {collectionRows.map((row) => {
           const party = findCrmCustomer(row.partyId);

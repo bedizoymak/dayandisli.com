@@ -14,17 +14,15 @@ export type LedgerEntryKind = "collection" | "payment";
 
 const kindCopy: Record<
   LedgerEntryKind,
-  { title: string; amountLabel: string; success: string }
+  { title: string; amountLabel: string }
 > = {
   collection: {
     title: "Tahsilat Ekle",
     amountLabel: "Tahsilat Tutarı",
-    success: "Tahsilat kaydı oluşturuldu.",
   },
   payment: {
     title: "Ödeme Ekle",
     amountLabel: "Ödeme Tutarı",
-    success: "Ödeme kaydı oluşturuldu.",
   },
 };
 
@@ -41,12 +39,10 @@ export function PartyLedgerEntryDialog({
 }) {
   const copy = kindCopy[kind];
   const [open, setOpen] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const formId = useId();
 
   const reset = () => {
-    setSubmitted(false);
     setError(null);
   };
 
@@ -69,22 +65,7 @@ export function PartyLedgerEntryDialog({
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
         </DialogHeader>
-        {submitted ? (
-          <div className="ledger-success">
-            <p>{copy.success}</p>
-            <p className="ledger-success-detail">
-              {partyLabel}: <strong>{partyName}</strong>
-            </p>
-            <button
-              type="button"
-              className="ledger-primary"
-              onClick={() => setOpen(false)}
-            >
-              Kapat
-            </button>
-          </div>
-        ) : (
-          <form
+        <form
             id={formId}
             className="ledger-form"
             onSubmit={(event) => {
@@ -106,7 +87,6 @@ export function PartyLedgerEntryDialog({
                 return;
               }
               setError(null);
-              setSubmitted(true);
             }}
           >
             <label className="ledger-static">
@@ -121,7 +101,7 @@ export function PartyLedgerEntryDialog({
               Hesap
               <select name="account" required defaultValue="">
                 <option value="" disabled>
-                  Seçiniz
+                  —
                 </option>
                 {cashAccounts.map((account) => (
                   <option key={account.name} value={account.name}>
@@ -137,7 +117,8 @@ export function PartyLedgerEntryDialog({
               </label>
               <label>
                 Para Birimi
-                <select name="currency" defaultValue="TRY">
+                <select name="currency" defaultValue="">
+                  <option value="">—</option>
                   <option>TRY</option>
                   <option>USD</option>
                   <option>EUR</option>
@@ -146,7 +127,8 @@ export function PartyLedgerEntryDialog({
             </div>
             <label>
               Ödeme Yöntemi
-              <select name="method" defaultValue="Havale/EFT">
+              <select name="method" defaultValue="">
+                <option value="">—</option>
                 <option>Havale/EFT</option>
                 <option>Nakit</option>
                 <option>Çek</option>
@@ -170,8 +152,7 @@ export function PartyLedgerEntryDialog({
                 Kaydet
               </button>
             </DialogFooter>
-          </form>
-        )}
+        </form>
       </DialogContent>
     </Dialog>
   );

@@ -20,10 +20,11 @@ export function InvoiceLineItemsTable({
       ),
     [lines],
   );
+  const hasAmounts = lines.some(
+    (line) => line.quantity > 0 && line.unitPrice > 0,
+  );
   const money = (value: number) =>
     new Intl.NumberFormat("tr-TR", {
-      style: "currency",
-      currency: "TRY",
       maximumFractionDigits: 2,
     }).format(value);
   return (
@@ -40,20 +41,24 @@ export function InvoiceLineItemsTable({
       {lines.map((line, index) => (
         <div className="finance-line" key={index}>
           <input defaultValue={line.product} />
-          <input type="number" defaultValue={line.quantity} />
+          <input type="number" defaultValue={line.quantity || ""} />
           <select defaultValue={line.unit}>
+            <option value="">—</option>
             <option>Adet</option>
             <option>Saat</option>
             <option>Kg</option>
           </select>
-          <input type="number" defaultValue={line.unitPrice} />
+          <input type="number" defaultValue={line.unitPrice || ""} />
           <select defaultValue={line.tax}>
+            <option value="0">—</option>
             <option value="20">%20</option>
             <option value="10">%10</option>
             <option value="1">%1</option>
           </select>
           <strong>
-            {money(line.quantity * line.unitPrice * (1 + line.tax / 100))}
+            {line.quantity > 0 && line.unitPrice > 0
+              ? money(line.quantity * line.unitPrice * (1 + line.tax / 100))
+              : "—"}
           </strong>
           <button
             type="button"
@@ -75,11 +80,11 @@ export function InvoiceLineItemsTable({
           setLines((items) => [
             ...items,
             {
-              product: "Yeni Hizmet / Ürün",
-              quantity: 1,
-              unit: "Adet",
+              product: "",
+              quantity: 0,
+              unit: "",
               unitPrice: 0,
-              tax: 20,
+              tax: 0,
             },
           ])
         }
@@ -90,15 +95,15 @@ export function InvoiceLineItemsTable({
       <div className="finance-totals">
         <div>
           <span>Ara Toplam</span>
-          <strong>{money(subtotal)}</strong>
+          <strong>{hasAmounts ? money(subtotal) : "—"}</strong>
         </div>
         <div>
           <span>{taxLabel}</span>
-          <strong>{money(vat)}</strong>
+          <strong>{hasAmounts ? money(vat) : "—"}</strong>
         </div>
         <div className="grand">
           <span>Genel Toplam</span>
-          <strong>{money(subtotal + vat)}</strong>
+          <strong>{hasAmounts ? money(subtotal + vat) : "—"}</strong>
         </div>
       </div>
     </div>

@@ -32,9 +32,7 @@ function Filters({ activity = false }: { activity?: boolean }) {
     <div className="erp-card sales-filters">
       <label className="search">
         <Search />
-        <input
-          placeholder={activity ? "Aktivite ara" : "Teklif veya sipariş no ara"}
-        />
+        <input />
       </label>
       <select>
         <option>{activity ? "Tüm Müşteriler" : "Tüm Firmalar"}</option>
@@ -74,9 +72,9 @@ function Table({
         <tbody>{children}</tbody>
       </table>
       <footer>
-        <span>1–10 / 24</span>
+        <span>—</span>
         <button disabled>Önceki</button>
-        <button>Sonraki</button>
+        <button disabled>Sonraki</button>
       </footer>
     </div>
   );

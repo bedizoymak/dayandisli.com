@@ -32,7 +32,6 @@ export type AdminTableConfig = {
   title: string;
   description: string;
   table: string;
-  searchPlaceholder: string;
   columns: Array<{
     key: string;
     label: string;
@@ -57,7 +56,6 @@ export const adminTableConfigs: Record<string, AdminTableConfig> = {
     title: "Ürün Kataloğu",
     description: "Dişli ürünleri, stok durumu ve fiyat bilgileri.",
     table: "products",
-    searchPlaceholder: "Ürün, SKU, kategori ara",
     searchFields: ["name", "sku", "category", "brand"],
     orderBy: "updated_at",
     columns: [
@@ -86,7 +84,6 @@ export const adminTableConfigs: Record<string, AdminTableConfig> = {
     title: "Mağaza Siparişleri",
     description: "Web mağazadan gelen siparişlerin durum takibi.",
     table: "orders",
-    searchPlaceholder: "Sipariş no, müşteri, şirket ara",
     searchFields: ["order_number", "customer_name", "company_name", "email", "phone"],
     orderBy: "created_at",
     columns: [
@@ -130,7 +127,6 @@ export const adminTableConfigs: Record<string, AdminTableConfig> = {
     title: "Teklifler",
     description: "Hazırlanan tekliflerin hızlı kontrol ekranı.",
     table: "quotations",
-    searchPlaceholder: "Teklif no, firma, ilgili kişi ara",
     searchFields: ["teklif_no", "firma", "ilgili_kisi", "email", "tel"],
     orderBy: "created_at",
     columns: [
@@ -152,17 +148,23 @@ function formatError(error: unknown) {
 }
 
 export function formatAdminValue(value: unknown, format?: AdminTableConfig["columns"][number]["format"], labels?: Record<string, string>) {
-  if (value === null || value === undefined || value === "") return "-";
+  if (value === null || value === undefined || value === "") return "—";
   if (labels?.[String(value)]) return labels[String(value)];
   if (format === "currency") {
     const amount = Number(value);
     return Number.isFinite(amount)
       ? new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount)
-      : String(value);
+      : "—";
   }
-  if (format === "date") return new Intl.DateTimeFormat("tr-TR").format(new Date(String(value)));
+  if (format === "date") {
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat("tr-TR").format(date);
+  }
   if (format === "boolean") return value ? "Evet" : "Hayır";
-  if (format === "number") return new Intl.NumberFormat("tr-TR").format(Number(value) || 0);
+  if (format === "number") {
+    const number = Number(value);
+    return Number.isFinite(number) ? new Intl.NumberFormat("tr-TR").format(number) : "—";
+  }
   return String(value);
 }
 

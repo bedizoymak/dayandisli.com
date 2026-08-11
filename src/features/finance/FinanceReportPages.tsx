@@ -65,8 +65,8 @@ function Header<T>({
   );
 }
 function DateFilters({ tax = false }: { tax?: boolean }) {
-  const [from, setFrom] = useState("2026-07-01");
-  const [to, setTo] = useState("2026-07-31");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   return (
     <div className="erp-card report-filters">
       <label>
@@ -201,9 +201,7 @@ export function IncomeExpenseReportPage() {
                 <strong>{section.total}</strong>
               </footer>
             </div>
-            <div className={`report-donut ${section.tone}`}>
-              <span>{section.total}</span>
-            </div>
+            <span>—</span>
           </article>
         ))}
       </div>
@@ -216,10 +214,10 @@ export function IncomeExpenseReportPage() {
 }
 
 const paymentsReportKpis = [
-  { label: "Planlanmamış", value: "₺199K" },
-  { label: "Vadesi Geçen", value: "₺1,30M" },
-  { label: "Toplam Ödeme", value: "₺1,62M" },
-  { label: "Ort. Vade Aşımı", value: "42 gün" },
+  { label: "Planlanmamış", value: "—" },
+  { label: "Vadesi Geçen", value: "—" },
+  { label: "Toplam Ödeme", value: "—" },
+  { label: "Ort. Vade Aşımı", value: "—" },
 ];
 
 export function PaymentsReportPage() {
@@ -327,7 +325,7 @@ export function VatReportPage() {
         Daha Fazla Göster
       </button>
       <div className="report-subhead">
-        <h2>Temmuz 2026 Satışlar ve Giderler KDV Dökümü</h2>
+        <h2>Satışlar ve Giderler KDV Dökümü</h2>
         <div>
           {["Tümü", "Satışlar", "Giderler"].map((item) => (
             <button
@@ -385,7 +383,7 @@ export function CashAccountsPage() {
         filename="kasa-ve-bankalar"
         actions={
           <div className="report-actions">
-            <button type="button" disabled title="Bu demo ortamında devre dışıdır">
+            <button type="button" disabled>
               <Landmark /> Banka Hesabı Bağla
             </button>
             <Link className="report-action-link" to="/apps/finance/cash/accounts/new-cash">
@@ -399,7 +397,7 @@ export function CashAccountsPage() {
       />
       <div className="erp-card report-filters">
         <label className="wide">
-          <Search /> <input placeholder="Hesap ara" />
+          <Search /> <input />
         </label>
         <button>
           <Filter /> Filtrele
@@ -429,7 +427,7 @@ export function ChecksPage() {
       />
       <div className="erp-card report-filters">
         <label className="wide">
-          <Search /> <input placeholder="Düzenleyen veya çek no ara" />
+          <Search /> <input />
         </label>
         <button>
           <Filter /> Filtrele
@@ -453,9 +451,9 @@ export function CashBankReportPage() {
       <DateFilters />
       <section className="report-kpis">
         {[
-          ["Toplam Nakit Girişi", "₺1,84M"],
-          ["Toplam Nakit Çıkışı", "₺1,12M"],
-          ["Net Nakit Akışı", "₺720K"],
+          ["Toplam Nakit Girişi", "—"],
+          ["Toplam Nakit Çıkışı", "—"],
+          ["Net Nakit Akışı", "—"],
         ].map((kpi) => (
           <article className="erp-card" key={kpi[0]}>
             <span>{kpi[0]}</span>
@@ -509,11 +507,11 @@ export function CashFlowReportPage() {
       />
       <section className="report-kpis flow">
         {[
-          ["Bugün toplam bakiye", "₺7,15M"],
-          ["Vadesi geçmiş Tahsilat", "₺3,34M"],
-          ["Vadesi geçmiş Ödeme", "₺1,30M"],
-          ["Planlanmamış Tahsilat", "₺0"],
-          ["Planlanmamış Ödeme", "₺199K"],
+          ["Bugün toplam bakiye", "—"],
+          ["Vadesi geçmiş Tahsilat", "—"],
+          ["Vadesi geçmiş Ödeme", "—"],
+          ["Planlanmamış Tahsilat", "—"],
+          ["Planlanmamış Ödeme", "—"],
         ].map((kpi) => (
           <article className="erp-card" key={kpi[0]}>
             <span>{kpi[0]}</span>
@@ -539,13 +537,13 @@ export function CashFlowReportPage() {
         <div className="forecast-panel">
           <aside>
             <span>
-              Toplam Tahsilat<strong>₺2,28M</strong>
+              Toplam Tahsilat<strong>—</strong>
             </span>
             <span>
-              Toplam Ödeme<strong>₺1,87M</strong>
+              Toplam Ödeme<strong>—</strong>
             </span>
             <span>
-              Tahmini Dönem Sonu Bakiyesi<strong>₺7,50M</strong>
+              Tahmini Dönem Sonu Bakiyesi<strong>—</strong>
             </span>
           </aside>
           <div className="forecast-chart">
@@ -574,14 +572,7 @@ export function CashFlowReportPage() {
 }
 
 const accountsBase = "/apps/finance/cash/accounts";
-const banks = [
-  "Garanti BBVA",
-  "Akbank",
-  "İş Bankası",
-  "Yapı Kredi",
-  "Ziraat Bankası",
-  "QNB Finansbank",
-];
+const banks: string[] = [];
 
 function AccountFormActions() {
   return (
@@ -612,15 +603,16 @@ export function CashAccountFormPage() {
         <div className="report-account-fields">
           <label>
             Hesap İsmi *
-            <input required placeholder="Örn. Merkez Kasa" />
+            <input required />
           </label>
           <label>
             Sorumlu Kişi
-            <input placeholder="Örn. Ahmet Yılmaz" />
+            <input />
           </label>
           <label>
             Döviz Cinsi
-            <select defaultValue="TRY">
+            <select defaultValue="">
+              <option value="">—</option>
               <option value="TRY">₺ - Türk Lirası</option>
               <option value="USD">$ - Amerikan Doları</option>
               <option value="EUR">€ - Euro</option>
@@ -628,14 +620,15 @@ export function CashAccountFormPage() {
           </label>
           <label>
             Durum
-            <select defaultValue="active">
+            <select defaultValue="">
+              <option value="">—</option>
               <option value="active">Aktif</option>
               <option value="inactive">Pasif</option>
             </select>
           </label>
           <label>
             Açılış Bakiyesi
-            <input type="number" defaultValue="0" step="0.01" />
+            <input type="number" step="0.01" />
           </label>
           <label>
             Açılış Bakiyesi Tarihi
@@ -646,10 +639,6 @@ export function CashAccountFormPage() {
             <textarea rows={3} />
           </label>
         </div>
-        <p className="report-account-hint">
-          Paraşüt tarafında bu kasaya bağlı işlemler, yalnızca bu demo
-          ortamında görüntülenir; gerçek bir muhasebe kaydı oluşturulmaz.
-        </p>
       </form>
     </div>
   );
@@ -675,13 +664,13 @@ export function BankAccountFormPage() {
         <div className="report-account-fields">
           <label>
             Hesap İsmi *
-            <input required placeholder="Örn. Garanti BBVA Ana Hesap" />
+            <input required />
           </label>
           <label>
             Banka *
             <select required defaultValue="">
               <option value="" disabled>
-                Seçiniz
+                —
               </option>
               {banks.map((bank) => (
                 <option key={bank}>{bank}</option>
@@ -690,11 +679,11 @@ export function BankAccountFormPage() {
           </label>
           <label>
             Banka Şubesi
-            <input placeholder="Örn. Levent Şubesi" />
+            <input />
           </label>
           <label>
             Hesap Sahibi / Firma
-            <input placeholder="Örn. Dayan Dişli San. Tic. A.Ş." />
+            <input />
           </label>
           <label>
             Hesap Numarası
@@ -702,11 +691,12 @@ export function BankAccountFormPage() {
           </label>
           <label className="wide">
             IBAN
-            <input placeholder="TR.. .... .... .... .... .... .." />
+            <input />
           </label>
           <label>
             Döviz Cinsi
-            <select defaultValue="TRY">
+            <select defaultValue="">
+              <option value="">—</option>
               <option value="TRY">₺ - Türk Lirası</option>
               <option value="USD">$ - Amerikan Doları</option>
               <option value="EUR">€ - Euro</option>
@@ -714,7 +704,8 @@ export function BankAccountFormPage() {
           </label>
           <label>
             Hesap Türü
-            <select defaultValue="vadesiz">
+            <select defaultValue="">
+              <option value="">—</option>
               <option value="vadesiz">Vadesiz Hesap</option>
               <option value="vadeli">Vadeli Hesap</option>
               <option value="kredi">Kredi Hesabı</option>
@@ -722,14 +713,15 @@ export function BankAccountFormPage() {
           </label>
           <label>
             Durum
-            <select defaultValue="active">
+            <select defaultValue="">
+              <option value="">—</option>
               <option value="active">Aktif</option>
               <option value="inactive">Pasif</option>
             </select>
           </label>
           <label>
             Açılış Bakiyesi
-            <input type="number" defaultValue="0" step="0.01" />
+            <input type="number" step="0.01" />
           </label>
           <label>
             Açılış Bakiyesi Tarihi
@@ -740,11 +732,6 @@ export function BankAccountFormPage() {
             <textarea rows={3} />
           </label>
         </div>
-        <p className="report-account-hint">
-          Paraşüt tarafında bu şirket ve bankaya gireceğiniz işlemler bu
-          hesaba otomatik bağlanmayacaktır; bu demo ortamında yalnızca
-          görüntüleme amaçlıdır.
-        </p>
       </form>
     </div>
   );

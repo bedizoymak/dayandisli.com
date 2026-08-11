@@ -5,7 +5,7 @@ import AdminLayout from "./AdminLayout";
 import { AdminSection } from "./AdminPage";
 
 export default function AdminSqlEditor() {
-  const [sql, setSql] = useState("select * from products limit 20;");
+  const [sql, setSql] = useState("");
 
   return (
     <AdminLayout title="SQL Düzenleyici" description="Supabase güvenlik sınırlarıyla teknik yönetim">

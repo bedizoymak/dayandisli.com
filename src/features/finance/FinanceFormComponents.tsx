@@ -63,7 +63,11 @@ export function FinanceMetadataPanel({
   tags: string;
   showSpender?: boolean;
 }) {
-  const options = categoryOptions?.length ? categoryOptions : [category];
+  const options = categoryOptions?.length
+    ? categoryOptions
+    : category
+      ? [category]
+      : [];
   return (
     <aside className="erp-card finance-metadata">
       <h2>Detaylar</h2>
@@ -74,6 +78,7 @@ export function FinanceMetadataPanel({
           required
           aria-label={categoryLabel}
         >
+          <option value="">—</option>
           {options.map((option) => (
             <option key={option} value={option}>
               {option}

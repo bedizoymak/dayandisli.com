@@ -8,7 +8,7 @@ import { AdminEmptyState, AdminSection } from "./AdminPage";
 
 export default function AdminSettings() {
   const { toast } = useToast();
-  const [authEnabled, setAuthEnabled] = useState(true);
+  const [authEnabled, setAuthEnabled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +26,7 @@ export default function AdminSettings() {
   }, []);
 
   const save = async () => {
+    if (authEnabled === null) return;
     const { error } = await supabase
       .from("settings")
       .upsert({ id: 1, auth_enabled: authEnabled, updated_at: new Date().toISOString() });
@@ -43,6 +44,8 @@ export default function AdminSettings() {
           <AdminEmptyState message="Ayarlar yükleniyor..." />
         ) : error ? (
           <AdminEmptyState message={error} />
+        ) : authEnabled === null ? (
+          <AdminEmptyState message="Henüz erişim ayarı yok." />
         ) : (
           <div className="space-y-4">
             <label className="flex items-center gap-3 rounded-md border p-3">
@@ -55,12 +58,7 @@ export default function AdminSettings() {
       </AdminSection>
 
       <AdminSection title="Marka Uyarlaması">
-        <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-2">
-          <div className="rounded-md border p-3">Logo: public/logo-header.png</div>
-          <div className="rounded-md border p-3">Alan adı: dayandisli.com</div>
-          <div className="rounded-md border p-3">Ürün modeli: ürün kayıtları ve ürün görselleri</div>
-          <div className="rounded-md border p-3">Operasyon modeli: ERP Supabase tabloları</div>
-        </div>
+        <AdminEmptyState message="Henüz marka yapılandırması yok." />
       </AdminSection>
     </AdminLayout>
   );

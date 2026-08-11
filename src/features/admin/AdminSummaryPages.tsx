@@ -42,30 +42,30 @@ export function AdminOperationsPage({ mode }: { mode: "stakeholders" | "producti
   const metrics =
     mode === "production"
       ? [
-          { label: "Satış Siparişleri", value: String(data?.salesOrders.data.length ?? 0) },
-          { label: "İş Emirleri", value: String(data?.workOrders.data.length ?? 0) },
-          { label: "Fason İşleri", value: String(data?.subcontracting.data.length ?? 0) },
-          { label: "Sevkiyat", value: String(data?.shipments.data.length ?? 0) },
+          { label: "Satış Siparişleri", value: data ? String(data.salesOrders.data.length) : "—" },
+          { label: "İş Emirleri", value: data ? String(data.workOrders.data.length) : "—" },
+          { label: "Fason İşleri", value: data ? String(data.subcontracting.data.length) : "—" },
+          { label: "Sevkiyat", value: data ? String(data.shipments.data.length) : "—" },
         ]
       : mode === "stock"
         ? [
-            { label: "Stok Kartları", value: String(data?.inventory.data.length ?? 0) },
-            { label: "Satın Alma", value: String(data?.purchaseOrders.data.length ?? 0) },
-            { label: "Kritik Stok", value: String(data?.inventory.data.filter((item) => item.current_stock <= item.min_stock).length ?? 0) },
-            { label: "Aktif Kart", value: String(data?.inventory.data.filter((item) => item.is_active).length ?? 0) },
+            { label: "Stok Kartları", value: data ? String(data.inventory.data.length) : "—" },
+            { label: "Satın Alma", value: data ? String(data.purchaseOrders.data.length) : "—" },
+            { label: "Kritik Stok", value: data ? String(data.inventory.data.filter((item) => item.current_stock <= item.min_stock).length) : "—" },
+            { label: "Aktif Kart", value: data ? String(data.inventory.data.filter((item) => item.is_active).length) : "—" },
           ]
         : mode === "quality"
           ? [
-              { label: "Kalite Raporları", value: String(data?.quality.data.length ?? 0) },
-              { label: "Bakım Görevleri", value: String(data?.maintenance.data.length ?? 0) },
-              { label: "Açık Bakım", value: String(data?.maintenance.data.filter((item) => !["completed", "cancelled"].includes(item.status)).length ?? 0) },
-              { label: "Açık Kalite", value: String(data?.quality.data.filter((item) => item.result === "pending").length ?? 0) },
+              { label: "Kalite Raporları", value: data ? String(data.quality.data.length) : "—" },
+              { label: "Bakım Görevleri", value: data ? String(data.maintenance.data.length) : "—" },
+              { label: "Açık Bakım", value: data ? String(data.maintenance.data.filter((item) => !["completed", "cancelled"].includes(item.status)).length) : "—" },
+              { label: "Açık Kalite", value: data ? String(data.quality.data.filter((item) => item.result === "pending").length) : "—" },
             ]
           : [
-              { label: "Müşteri", value: "-" },
-              { label: "Tedarikçi", value: "-" },
-              { label: "Fason", value: String(data?.subcontracting.data.length ?? 0) },
-              { label: "Bağlı Modül", value: "ERP" },
+              { label: "Müşteri", value: "—" },
+              { label: "Tedarikçi", value: "—" },
+              { label: "Fason", value: data ? String(data.subcontracting.data.length) : "—" },
+              { label: "Bağlı Modül", value: "—" },
             ];
 
   return (
@@ -100,14 +100,13 @@ export function AdminFinancePage() {
     getAdminFinanceSummary().then(setData);
   }, []);
 
-  const summary = data?.reports.data;
-  const invoiceTotal = data?.invoices.data.reduce((total, invoice) => total + Number(invoice.grand_total || 0), 0) ?? 0;
-  const paymentTotal = data?.payments.data.reduce((total, payment) => total + Number(payment.amount || 0), 0) ?? 0;
+  const invoiceTotal = data?.invoices.data.reduce((total, invoice) => total + Number(invoice.grand_total), 0);
+  const paymentTotal = data?.payments.data.reduce((total, payment) => total + Number(payment.amount), 0);
   const metrics = [
     { label: "Fatura Toplamı", value: formatAdminValue(invoiceTotal, "currency") },
     { label: "Tahsilat/Ödeme", value: formatAdminValue(paymentTotal, "currency") },
-    { label: "Fatura Sayısı", value: String(data?.invoices.data.length ?? 0) },
-    { label: "Hareket Sayısı", value: String(data?.payments.data.length ?? 0) },
+    { label: "Fatura Sayısı", value: data ? String(data.invoices.data.length) : "—" },
+    { label: "Hareket Sayısı", value: data ? String(data.payments.data.length) : "—" },
   ];
 
   return (
@@ -135,7 +134,7 @@ export function AdminFinancePage() {
                   <TableCell>{PAYMENT_TYPE_LABELS[row.payment_type] || row.payment_type}</TableCell>
                   <TableCell>{formatAdminValue(row.amount, "currency")}</TableCell>
                   <TableCell>{formatAdminValue(row.payment_date, "date")}</TableCell>
-                  <TableCell>{row.description || "-"}</TableCell>
+                  <TableCell>{row.description || "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -155,8 +154,8 @@ export function AdminReportsPage() {
     getAdminFinanceSummary().then(setData);
   }, []);
 
-  const customerBalance = data?.customers.data.reduce((total, customer) => total + Number(customer.current_balance || 0), 0) ?? 0;
-  const supplierBalance = data?.suppliers.data.reduce((total, supplier) => total + Number(supplier.current_balance || 0), 0) ?? 0;
+  const customerBalance = data?.customers.data.reduce((total, customer) => total + Number(customer.current_balance), 0);
+  const supplierBalance = data?.suppliers.data.reduce((total, supplier) => total + Number(supplier.current_balance), 0);
 
   return (
     <AdminLayout title="Raporlar" description="Yönetim raporları ve ERP özetleri">
@@ -164,8 +163,8 @@ export function AdminReportsPage() {
         metrics={[
           { label: "Müşteri Bakiyesi", value: formatAdminValue(customerBalance, "currency") },
           { label: "Tedarikçi Bakiyesi", value: formatAdminValue(supplierBalance, "currency") },
-          { label: "Müşteri Sayısı", value: String(data?.customers.data.length ?? 0) },
-          { label: "Tedarikçi Sayısı", value: String(data?.suppliers.data.length ?? 0) },
+          { label: "Müşteri Sayısı", value: data ? String(data.customers.data.length) : "—" },
+          { label: "Tedarikçi Sayısı", value: data ? String(data.suppliers.data.length) : "—" },
         ]}
       />
       <AdminSection title="Rapor Modülleri">

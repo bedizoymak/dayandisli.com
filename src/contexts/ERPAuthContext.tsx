@@ -88,7 +88,7 @@ export function ERPAuthProvider({ children, enabled = true }: { children: ReactN
       await createAuditLog({
         entity_type: "auth_session",
         action: "logout",
-        description: `${email ?? "Bilinmeyen kullanıcı"} ERP oturumunu kapattı.`,
+        description: email ? `${email} ERP oturumunu kapattı.` : "ERP oturumu kapatıldı.",
         metadata: { email },
       });
     } finally {

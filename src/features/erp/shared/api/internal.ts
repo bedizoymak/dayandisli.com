@@ -79,36 +79,24 @@ export function numberValue(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function sequencePrefix(sequenceKey: string) {
-  const prefixes: Record<string, string> = {
-    SALES_ORDER: "SO",
-    WORK_ORDER: "WO",
-    SHIPMENT: "SHP",
-    QUALITY_REPORT: "QC",
-    SUBCONTRACTING: "FSN",
-    PURCHASE_ORDER: "PO",
-  };
-
-  return prefixes[sequenceKey] ?? "ERP";
-}
-
 export async function getNextERPNumber(sequenceKey: string): Promise<ApiResult<string>> {
-  const prefix = sequencePrefix(sequenceKey);
-
   try {
     const { data, error } = (await supabase.rpc("next_erp_number" as never, {
       p_sequence_key: sequenceKey,
     } as never)) as unknown as DbResult<string>;
 
     if (error || !data) {
-      const fallbackNo = `${prefix}-TEMP-${Date.now()}`;
-      return { data: fallbackNo, error: error ? toErrorMessage(error) : null, missingTable: isMissingTableError(error) };
+      return {
+        data: "",
+        error: error ? toErrorMessage(error) : "Belge numarası oluşturulamadı",
+        missingTable: isMissingTableError(error),
+      };
     }
 
     return success(data);
   } catch (error) {
     logError("getNextERPNumber", error);
-    return { data: `${prefix}-TEMP-${Date.now()}`, error: toErrorMessage(error), missingTable: isMissingTableError(error) };
+    return { data: "", error: toErrorMessage(error), missingTable: isMissingTableError(error) };
   }
 }
 

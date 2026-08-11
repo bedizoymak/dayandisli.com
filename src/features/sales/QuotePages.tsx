@@ -1,77 +1,19 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   FileDown,
   Mail,
   MessageCircle,
   Plus,
   ShoppingCart,
-  Trash2,
   X,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
-import { crmCustomers } from "../crm/crmCustomerData";
-import { products } from "../finance/operationsData";
 import { salesOrders, salesQuotes } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
-import { customerName, openQuotePreview, printQuote } from "./salesUtils";
-import type { QuoteLine, SalesQuote } from "./salesTypes";
+import { customerName, printQuote } from "./salesUtils";
 const root = "/apps/sales";
-const blankLine = (): QuoteLine => ({
-  productServiceId: products[0].id,
-  code: products[0].code,
-  name: products[0].name,
-  material: "42CrMo4",
-  quantity: 1,
-  unit: "Adet",
-  unitPrice: products[0].sale,
-  discount: 0,
-  vat: 20,
-});
 export function QuoteFormPage() {
-  const [customerId, setCustomerId] = useState(crmCustomers[0].id);
   const [selector, setSelector] = useState(false);
-  const [lines, setLines] = useState<QuoteLine[]>([blankLine()]);
-  const customer =
-    crmCustomers.find((c) => c.id === customerId) ?? crmCustomers[0];
-  const totals = useMemo(() => {
-    const subtotal = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
-    const discount = lines.reduce(
-      (s, l) => s + (l.quantity * l.unitPrice * l.discount) / 100,
-      0,
-    );
-    const vat = lines.reduce(
-      (s, l) =>
-        s + (l.quantity * l.unitPrice * (1 - l.discount / 100) * l.vat) / 100,
-      0,
-    );
-    return { subtotal, discount, vat, grand: subtotal - discount + vat };
-  }, [lines]);
-  const draftQuote: SalesQuote = {
-    id: "draft-quote",
-    no: "TKL-YENİ",
-    customerId,
-    contactId: `${customerId}-contact`,
-    contact: customer.contact,
-    projectId: "draft-project",
-    project: "Yeni Proje",
-    subject: "Dişli üretim teklifi",
-    currency: "TRY",
-    created: new Intl.DateTimeFormat("tr-TR").format(new Date()),
-    validUntil: "15 gün",
-    status: "Taslak",
-    lines,
-    notes: "Teklif formundaki güncel notlar.",
-    paymentTerms: "%40 avans, bakiye teslimde",
-    deliveryTerms: customer.address,
-  };
-  const update = (
-    index: number,
-    key: keyof QuoteLine,
-    value: string | number,
-  ) =>
-    setLines((items) =>
-      items.map((line, i) => (i === index ? { ...line, [key]: value } : line)),
-    );
   return (
     <div className="sales-page">
       <SalesHeader
@@ -85,7 +27,7 @@ export function QuoteFormPage() {
       </SalesHeader>
       <details className="erp-card sales-recent">
         <summary>Son Teklifler</summary>
-        <span>TKL-2026-0092 · TKL-2026-0078</span>
+        <span>—</span>
       </details>
       <form className="sales-form" onSubmit={(e) => e.preventDefault()}>
         <section className="erp-card">
@@ -100,21 +42,21 @@ export function QuoteFormPage() {
           </div>
           <div className="sales-fields">
             <label>
-              Firma *<input value={customer.name} readOnly />
+              Firma *<input readOnly />
             </label>
             <label>
-              İlgili Kişi *<input value={customer.contact} readOnly />
+              İlgili Kişi *<input readOnly />
             </label>
             <label>
               Telefon
-              <input value={customer.phone} readOnly />
+              <input readOnly />
             </label>
             <label>
-              E-posta *<input value={customer.email} readOnly />
+              E-posta *<input readOnly />
             </label>
             <label className="wide">
               Konu
-              <input defaultValue="Dişli üretim teklifi" />
+              <input />
             </label>
           </div>
         </section>
@@ -123,13 +65,14 @@ export function QuoteFormPage() {
             <h2>Ürün / Hizmet</h2>
             <div>
               <select>
+                <option value="">—</option>
                 <option>TRY</option>
                 <option>USD</option>
                 <option>EUR</option>
               </select>
               <button
                 type="button"
-                onClick={() => setLines((i) => [...i, blankLine()])}
+                disabled
               >
                 <Plus />
                 Satır Ekle
@@ -154,108 +97,23 @@ export function QuoteFormPage() {
                 <span key={h}>{h}</span>
               ))}
             </div>
-            {lines.map((l, i) => (
-              <div className="quote-line" key={i}>
-                <span>{i + 1}</span>
-                <input value={l.code} readOnly />
-                <select
-                  value={l.productServiceId}
-                  onChange={(e) => {
-                    const p = products.find((x) => x.id === e.target.value)!;
-                    setLines((items) =>
-                      items.map((line, n) =>
-                        n === i
-                          ? {
-                              ...line,
-                              productServiceId: p.id,
-                              code: p.code,
-                              name: p.name,
-                              unitPrice: p.sale,
-                            }
-                          : line,
-                      ),
-                    );
-                  }}
-                >
-                  {products.map((p) => (
-                    <option value={p.id} key={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={l.material}
-                  onChange={(e) => update(i, "material", e.target.value)}
-                />
-                <input
-                  type="number"
-                  value={l.quantity}
-                  onChange={(e) =>
-                    update(i, "quantity", Number(e.target.value))
-                  }
-                />
-                <select
-                  value={l.unit}
-                  onChange={(e) => update(i, "unit", e.target.value)}
-                >
-                  <option>Adet</option>
-                  <option>Saat</option>
-                  <option>Kg</option>
-                </select>
-                <input
-                  type="number"
-                  value={l.unitPrice}
-                  onChange={(e) =>
-                    update(i, "unitPrice", Number(e.target.value))
-                  }
-                />
-                <input
-                  type="number"
-                  value={l.discount}
-                  onChange={(e) =>
-                    update(i, "discount", Number(e.target.value))
-                  }
-                />
-                <select
-                  value={l.vat}
-                  onChange={(e) => update(i, "vat", Number(e.target.value))}
-                >
-                  <option value="20">%20</option>
-                  <option value="10">%10</option>
-                </select>
-                <strong>
-                  {(
-                    l.quantity *
-                    l.unitPrice *
-                    (1 - l.discount / 100) *
-                    (1 + l.vat / 100)
-                  ).toLocaleString("tr-TR")}
-                </strong>
-                <button
-                  type="button"
-                  onClick={() => setLines((x) => x.filter((_, n) => n !== i))}
-                >
-                  <Trash2 />
-                </button>
-              </div>
-            ))}
           </div>
           <div className="quote-totals">
             <p>
               <span>Ara Toplam</span>
-              <b>{totals.subtotal.toLocaleString("tr-TR")} TRY</b>
+              <b>—</b>
             </p>
             <p>
               <span>İskonto</span>
-              <b>-{totals.discount.toLocaleString("tr-TR")} TRY</b>
+              <b>—</b>
             </p>
             <p>
               <span>KDV</span>
-              <b>{totals.vat.toLocaleString("tr-TR")} TRY</b>
+              <b>—</b>
             </p>
             <p className="grand">
               <span>Genel Toplam</span>
-              <b>{totals.grand.toLocaleString("tr-TR")} TRY</b>
+              <b>—</b>
             </p>
           </div>
         </section>
@@ -268,7 +126,7 @@ export function QuoteFormPage() {
             </label>
             <label>
               Opsiyon Süresi
-              <input defaultValue="15 gün" />
+              <input />
             </label>
             <label>
               Teklif Geçerlilik Tarihi
@@ -276,15 +134,15 @@ export function QuoteFormPage() {
             </label>
             <label>
               Öngörülen Teslim Süresi
-              <input defaultValue="4 hafta" />
+              <input />
             </label>
             <label>
               Ödeme Şekli
-              <input defaultValue="%40 avans" />
+              <input />
             </label>
             <label>
               Teslim Yeri
-              <input defaultValue="Fabrika teslim" />
+              <input />
             </label>
             <label>
               Proje
@@ -293,12 +151,14 @@ export function QuoteFormPage() {
             <label>
               Para Birimi
               <select>
+                <option value="">—</option>
                 <option>TRY</option>
               </select>
             </label>
             <label>
               Teklif Dili
               <select>
+                <option value="">—</option>
                 <option>Türkçe</option>
                 <option>İngilizce</option>
               </select>
@@ -311,10 +171,10 @@ export function QuoteFormPage() {
         </section>
         <footer className="quote-actions">
           <button type="button">Taslak Kaydet</button>
-          <button type="button" onClick={() => openQuotePreview(draftQuote)}>
+          <button type="button" disabled>
             Önizle
           </button>
-          <button type="button" onClick={() => printQuote(draftQuote)}>
+          <button type="button" disabled>
             PDF İndir
           </button>
           <button type="button">Mail Gönder</button>
@@ -328,21 +188,8 @@ export function QuoteFormPage() {
               <X />
             </button>
             <h2>Müşteri Seç</h2>
-            <input placeholder="Müşteri ara" />
-            {crmCustomers.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => {
-                  setCustomerId(c.id);
-                  setSelector(false);
-                }}
-              >
-                {c.name}
-                <small>
-                  {c.contact} · {c.phone}
-                </small>
-              </button>
-            ))}
+            <input />
+            <p>Henüz müşteri kaydı yok.</p>
           </div>
         </div>
       )}
@@ -362,7 +209,15 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
       </div>
     );
   }
-  const subtotal = q.lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+  const grandTotal = q.lines.reduce(
+    (sum, line) =>
+      sum +
+      line.quantity *
+        line.unitPrice *
+        (1 - line.discount / 100) *
+        (1 + line.vat / 100),
+    0,
+  );
   return (
     <div className="sales-page">
       <SalesHeader
@@ -436,7 +291,7 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
           </p>
           <p>
             <span>Kaynak Sipariş</span>
-            <b>{q.linkedOrderNo ?? "Henüz yok"}</b>
+            <b>{q.linkedOrderNo ?? "—"}</b>
           </p>
         </article>
       </section>
@@ -481,7 +336,7 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
           <p className="grand">
             <span>Genel Toplam</span>
             <b>
-              {(subtotal * 1.2).toLocaleString("tr-TR")} {q.currency}
+              {grandTotal.toLocaleString("tr-TR")} {q.currency}
             </b>
           </p>
         </div>
@@ -493,9 +348,7 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
         </article>
         <article className="erp-card sales-timeline">
           <h2>Aktivite Geçmişi</h2>
-          <p>Teklif oluşturuldu · {q.created}</p>
-          <p>Müşteriye gönderildi</p>
-          <p>Son görüntüleme kaydedildi</p>
+          <p>Henüz aktivite kaydı yok.</p>
         </article>
       </section>
     </div>
@@ -563,7 +416,7 @@ export function SalesOrderDetailPage({ orderId }: { orderId?: string }) {
                 {o.sourceQuoteNo}
               </Link>
             ) : (
-              <b>Manuel sipariş</b>
+              <b>—</b>
             )}
           </p>
         </article>
@@ -633,7 +486,7 @@ export function SalesOrderFormPage() {
             </label>
             <label>
               Kaynak Teklif
-              <input value={source?.no ?? "Manuel sipariş"} readOnly />
+              <input value={source?.no ?? ""} readOnly />
             </label>
             <label>
               İlgili Kişi
@@ -653,7 +506,7 @@ export function SalesOrderFormPage() {
             </label>
             <label>
               Para Birimi
-              <input value={source?.currency ?? "TRY"} readOnly />
+              <input value={source?.currency ?? ""} readOnly />
             </label>
             <label className="wide">
               Notlar
@@ -676,7 +529,7 @@ export function SalesOrderFormPage() {
               {l.code} · {l.name} · {l.quantity} {l.unit} · {l.unitPrice}{" "}
               {source.currency}
             </p>
-          )) ?? <p>Manuel ürün satırı eklenebilir.</p>}
+          )) ?? null}
         </section>
         <footer className="quote-actions">
           <button>Taslak Kaydet</button>

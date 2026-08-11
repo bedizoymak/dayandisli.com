@@ -2004,6 +2004,7 @@ export async function getShipmentById(id: string) {
 
 export async function createShipment(payload: Partial<Shipment>) {
   const generated = payload.shipment_no ? success(payload.shipment_no) : await getNextERPNumber("SHIPMENT");
+  if (generated.error || !generated.data) return failure("createShipment number", generated.error, null);
 
   const { data, error } = (await supabase
     .from("shipments" as never)
@@ -2139,6 +2140,7 @@ export async function getQualityReportById(id: string) {
 
 export async function createQualityReport(payload: Partial<QualityReport>) {
   const generated = payload.report_no ? success(payload.report_no) : await getNextERPNumber("QUALITY_REPORT");
+  if (generated.error || !generated.data) return failure("createQualityReport number", generated.error, null);
   const insertPayload: Record<string, unknown> = {
     report_no: generated.data,
     work_order_id: payload.work_order_id ?? null,
@@ -2420,6 +2422,7 @@ export async function getPurchaseOrderById(id: string) {
 
 export async function createPurchaseOrder(payload: Partial<PurchaseOrder> & { title: string }) {
   const generated = payload.purchase_order_no ? success(payload.purchase_order_no) : await getNextERPNumber("PURCHASE_ORDER");
+  if (generated.error || !generated.data) return failure("createPurchaseOrder number", generated.error, null);
   const record = await withEnterpriseOwnership({
     purchase_order_no: generated.data,
     supplier_id: payload.supplier_id ?? null,

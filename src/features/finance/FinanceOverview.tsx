@@ -24,7 +24,7 @@ interface ReceivablesSummary {
   check_count: number;
 }
 
-/** Reads live Tahsilatlar totals from parasut_readable via the parasut-api Edge Function (action: "receivables-summary"). Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
+/** Reads live Tahsilatlar totals from parasut_readable via the parasut-api Edge Function. */
 function useReceivablesSummary() {
   const [summary, setSummary] = useState<ReceivablesSummary | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -63,7 +63,7 @@ interface PayablesSummary {
   check_count: number;
 }
 
-/** Reads live Ödemeler totals from parasut_readable via the parasut-api Edge Function (action: "payables-summary"). Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
+/** Reads live Ödemeler totals from parasut_readable via the parasut-api Edge Function. */
 function usePayablesSummary() {
   const [summary, setSummary] = useState<PayablesSummary | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -98,7 +98,7 @@ interface VatSummary {
   purchase_vat: number;
 }
 
-/** Reads the live "Bu Ay Oluşan KDV" estimate from parasut_readable via the parasut-api Edge Function (action: "vat-summary"). Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
+/** Reads the live "Bu Ay Oluşan KDV" estimate from parasut_readable via the parasut-api Edge Function. */
 function useVatSummary() {
   const [summary, setSummary] = useState<VatSummary | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -140,7 +140,7 @@ interface AccountRow {
   source_archived?: boolean | null;
 }
 
-/** Reads live Kasa ve Bankalar accounts from parasut.accounts via the existing parasut-api Edge Function (action: "list", resource: "accounts") — the same list action already used elsewhere, no new backend action. Returns null while loading or on error/no-access — callers must not fall back to demo values in either case. */
+/** Reads live Kasa ve Bankalar accounts from parasut.accounts via the existing parasut-api Edge Function. */
 function useAccountsList() {
   const [accounts, setAccounts] = useState<AccountRow[] | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -170,8 +170,8 @@ function useAccountsList() {
 }
 
 /** Paraşüt's own currency code for Turkish lira; Intl.NumberFormat requires the ISO 4217 code TRY. */
-function toIntlCurrency(currency: string | null | undefined): string {
-  return currency === "TRL" || !currency ? "TRY" : currency;
+function toIntlCurrency(currency: string): string {
+  return currency === "TRL" ? "TRY" : currency;
 }
 
 function SummaryPanel({
@@ -202,14 +202,7 @@ function SummaryPanel({
         <div className="finance-metrics">
           {metrics.map((metric, index) => (
             <div className="finance-metric" key={metric.label}>
-              <div
-                className={`finance-ring ${metric.tone}`}
-                style={
-                  {
-                    "--ring-fill": `${index === 0 ? 86 : index === 1 ? 72 : 8}%`,
-                  } as React.CSSProperties
-                }
-              >
+              <div className={`finance-ring ${metric.tone}`} style={{ background: "none" }}>
                 <div>
                   <span>
                     {index === 0
@@ -250,7 +243,10 @@ export function FinanceOverview() {
 
   const sortedAccounts =
     accountsStatus === "ready" && accounts
-      ? [...accounts].sort((a, b) => Number(b.attributes.balance ?? 0) - Number(a.attributes.balance ?? 0))
+      ? [...accounts].sort(
+          (a, b) =>
+            Number(b.attributes.balance) - Number(a.attributes.balance),
+        )
       : null;
 
   const receivables = financeOverviewData.receivables.map((metric, index) => {
@@ -404,17 +400,25 @@ export function FinanceOverview() {
                 const isCash = account.attributes.account_type === "cash";
                 const subtitle = isCash
                   ? "Nakit Hesap"
-                  : (account.attributes.bank_identifier ?? "Banka Hesabı");
+                  : (account.attributes.bank_identifier ?? "—");
+                const balance = Number(account.attributes.balance);
+                const formattedBalance =
+                  account.attributes.balance !== null &&
+                  account.attributes.balance !== undefined &&
+                  account.attributes.currency &&
+                  Number.isFinite(balance)
+                    ? formatMoney(balance, toIntlCurrency(account.attributes.currency))
+                    : "—";
                 return (
                   <div className="finance-bank-card" key={account.parasut_id}>
                     {isCash ? <Building2 /> : <Landmark />}
-                    <span>{account.attributes.name}</span>
-                    <strong>{formatMoney(Number(account.attributes.balance ?? 0), toIntlCurrency(account.attributes.currency))}</strong>
+                    <span>{account.attributes.name ?? "—"}</span>
+                    <strong>{formattedBalance}</strong>
                     <small>{subtitle}</small>
                   </div>
                 );
               })}
-              <button className="finance-connect" type="button" disabled title="Bu demo ortamında devre dışıdır">
+              <button className="finance-connect" type="button" disabled>
                 <Plus />
                 Yeni Hesap Bağla
               </button>
@@ -438,46 +442,7 @@ export function FinanceOverview() {
                 </div>
               ))}
             </div>
-            <div className="finance-chart">
-              <svg
-                viewBox="0 0 1000 240"
-                preserveAspectRatio="none"
-                aria-label="12 haftalık nakit akışı grafiği"
-              >
-                <defs>
-                  <linearGradient
-                    id="financeCashArea"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0" stopColor="#2f8cff" stopOpacity=".28" />
-                    <stop offset="1" stopColor="#2f8cff" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <g className="grid-lines">
-                  <line x1="0" y1="40" x2="1000" y2="40" />
-                  <line x1="0" y1="100" x2="1000" y2="100" />
-                  <line x1="0" y1="160" x2="1000" y2="160" />
-                  <line x1="0" y1="220" x2="1000" y2="220" />
-                </g>
-                <path
-                  className="area"
-                  d="M0,150 C80,142 120,147 170,132 S280,120 340,125 S450,96 520,108 S650,92 720,85 S840,76 1000,58 L1000,240 L0,240 Z"
-                />
-                <path
-                  className="line"
-                  d="M0,150 C80,142 120,147 170,132 S280,120 340,125 S450,96 520,108 S650,92 720,85 S840,76 1000,58"
-                />
-                <line className="today-line" x1="55" y1="10" x2="55" y2="230" />
-              </svg>
-              <div className="finance-week-labels">
-                {financeOverviewData.weeks.map((week) => (
-                  <span key={week}>{week}</span>
-                ))}
-              </div>
-            </div>
+            <div className="finance-chart">—</div>
           </article>
         </div>
         <aside className="erp-card finance-timeline-panel">
@@ -488,11 +453,8 @@ export function FinanceOverview() {
             </button>
           </div>
           <div className="finance-timeline">
-            {financeOverviewData.timeline.map((item, index) => (
+            {financeOverviewData.timeline.map((item) => (
               <div key={`${item.timing}-${item.title}`}>
-                {index === 4 && (
-                  <div className="finance-today">BUGÜN · 16 TEMMUZ</div>
-                )}
                 <div className={`finance-timeline-item ${item.status}`}>
                   <i />
                   <small>{item.timing}</small>

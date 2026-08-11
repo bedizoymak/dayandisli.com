@@ -113,7 +113,7 @@ function Filters({ incoming = false }: { incoming?: boolean }) {
         <>
           <label>
             Gönderen
-            <input placeholder="Tüm gönderenler" />
+            <input />
           </label>
           <label>
             Fatura Türü
@@ -155,7 +155,7 @@ function Filters({ incoming = false }: { incoming?: boolean }) {
           </label>
           <label>
             Tedarikçi
-            <input placeholder="Tümü" />
+            <input />
           </label>
           <label>
             Kategori
@@ -168,7 +168,7 @@ function Filters({ incoming = false }: { incoming?: boolean }) {
       )}
       <label className="expense-search">
         <Search />
-        <input placeholder="Ara..." />
+        <input />
       </label>
       <button type="button">Filtreleri Temizle</button>
     </div>
@@ -184,12 +184,18 @@ function Badge({ children }: { children: ReactNode }) {
     </span>
   );
 }
-function TableFrame({ children }: { children: ReactNode }) {
+function TableFrame({
+  children,
+  count,
+}: {
+  children: ReactNode;
+  count: number;
+}) {
   return (
     <div className="erp-card expense-table-wrap">
       <div className="expense-table-scroll">{children}</div>
       <footer>
-        <span>1-4 / 4 kayıt</span>
+        <span>{count ? `1-${count} / ${count} kayıt` : "—"}</span>
         <div>
           <button type="button" disabled>
             Önceki
@@ -263,7 +269,7 @@ export function ExpenseListPage() {
         <NewExpenseSplitButton />
       </PageHeader>
       <Filters />
-      <TableFrame>
+      <TableFrame count={expenseRows.length}>
         <table className="expense-table">
           <thead>
             <tr>
@@ -449,7 +455,7 @@ export function IncomingInvoicesPage() {
         </button>
       </PageHeader>
       <Filters incoming />
-      <TableFrame>
+      <TableFrame count={incomingInvoiceRows.length}>
         <table className="expense-table incoming">
           <thead>
             <tr>
@@ -493,7 +499,7 @@ function Payment({ employee = false }: { employee?: boolean }) {
     <fieldset>
       <legend>Ödeme Durumu</legend>
       <label>
-        <input type="radio" name="expense-payment" defaultChecked /> Ödenecek
+        <input type="radio" name="expense-payment" /> Ödenecek
       </label>
       <label>
         <input type="radio" name="expense-payment" /> Ödendi
@@ -596,7 +602,6 @@ export function ExpenseInvoicePage({
             Fiş / Fatura Numarası
             <input
               defaultValue={data.invoiceNumber}
-              placeholder="Belge numarası"
             />
           </label>
           <label>
@@ -645,7 +650,7 @@ const simpleConfigs = {
     title: "Yeni Banka Gideri",
     date: "Düzenleme Tarihi",
     party: "Banka",
-    partyValue: "Garanti BBVA",
+    partyValue: "",
   },
   other: {
     title: "Diğer Gider",
@@ -669,7 +674,7 @@ export function SimpleExpenseForm({
         <div className="finance-fields two">
           <label>
             Kayıt İsmi
-            <input defaultValue={config.title} />
+            <input />
           </label>
           <label>
             {config.party}
@@ -681,11 +686,12 @@ export function SimpleExpenseForm({
           </label>
           <label>
             Toplam Tutar
-            <input type="number" defaultValue="0" />
+            <input type="number" />
           </label>
           <label>
             Para Birimi
-            <select defaultValue="TRY">
+            <select defaultValue="">
+              <option value="">—</option>
               <option>TRY</option>
               <option>USD</option>
               <option>EUR</option>

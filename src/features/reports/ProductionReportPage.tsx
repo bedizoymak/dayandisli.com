@@ -34,21 +34,19 @@ export function ProductionReportPage() {
         <div>
           <FinanceBreadcrumb value="Raporlar / Üretim Raporu" />
           <h1>Üretim Raporu</h1>
-          <p>Frontend placeholder üretim özeti</p>
         </div>
         <FinanceExportMenu
           title="Üretim Raporu"
           filename="uretim-raporu"
           rows={[...productionReportRows]}
           columns={columns}
-          filterSummary="Frontend placeholder kayıtları"
         />
       </header>
       <section className="report-kpis">
         {[
-          ["Aktif İş Emri", "18"],
-          ["Tamamlanan", "42"],
-          ["Planlanan Üretim", "1.240 adet"],
+          ["Aktif İş Emri", "—"],
+          ["Tamamlanan", "—"],
+          ["Planlanan Üretim", "—"],
         ].map(([label, value]) => (
           <article className="erp-card" key={label}>
             <span>{label}</span>

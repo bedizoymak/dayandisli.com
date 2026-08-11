@@ -78,7 +78,7 @@ export default function AdminTablePage({ config }: { config: AdminTableConfig })
         >
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input className="pl-9" placeholder={config.searchPlaceholder} value={search} onChange={(event) => setSearch(event.target.value)} />
+            <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} />
           </div>
           <Button type="submit" variant="outline">Ara</Button>
         </form>
@@ -143,7 +143,7 @@ export default function AdminTablePage({ config }: { config: AdminTableConfig })
                   <Textarea value={String(form[field.key] ?? "")} onChange={(event) => setEditing({ ...form, [field.key]: event.target.value })} />
                 ) : field.type === "select" ? (
                   <Select value={String(form[field.key] ?? "")} onValueChange={(value) => setEditing({ ...form, [field.key]: value })}>
-                    <SelectTrigger><SelectValue placeholder="Seçin" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>{field.options?.map((option) => <SelectItem key={option} value={option}>{field.optionLabels?.[option] ?? option}</SelectItem>)}</SelectContent>
                   </Select>
                 ) : field.type === "boolean" ? (
