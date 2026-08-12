@@ -172,8 +172,18 @@ type InvoiceApiRow = {
   attributes?: {
     archived?: unknown;
     currency?: unknown;
+    description?: unknown;
     due_date?: unknown;
+    // Paraşüt's own schema (SalesInvoiceAttributes) documents these two the
+    // opposite of what their English names suggest: net_total = "Genel
+    // Toplam" (VAT-inclusive general total), gross_total = "Ara toplam"
+    // (VAT-exclusive subtotal). Verified 2026-08-12 against live production
+    // invoices where the list/detail showed gross_total's value (the
+    // subtotal) while Paraşüt's own UI showed net_total's value (the real
+    // general total) for the same invoices.
     gross_total?: unknown;
+    net_total?: unknown;
+    total_vat?: unknown;
     invoice_no?: unknown;
     issue_date?: unknown;
     item_type?: unknown;
@@ -302,7 +312,9 @@ export function InvoiceListPage() {
             customerId,
             invoiceDate: sourceText(attributes.issue_date) || "—",
             dueDate: sourceText(attributes.due_date) || "—",
-            amount: invoiceAmount(attributes.gross_total, attributes.currency),
+            // net_total is Paraşüt's real VAT-inclusive general total for
+            // this resource — see the InvoiceApiRow field comment.
+            amount: invoiceAmount(attributes.net_total, attributes.currency),
             collection: collectionLabel(attributes.payment_status),
             status: archived ? "Arşivlendi" : itemType === "cancelled" ? "İptal" : "—",
           };
@@ -669,14 +681,39 @@ function NotFoundState({
   );
 }
 
+type InvoiceDetailData = {
+  parasutId: string;
+  no: string;
+  description: string;
+  customer: string;
+  customerId: string;
+  invoiceDate: string;
+  dueDate: string;
+  currency: string;
+  subtotal: string;
+  vatTotal: string;
+  grandTotal: string;
+  collection: string;
+  status: string;
+  lines: {
+    key: string;
+    description: string;
+    quantity: string;
+    unitPrice: string;
+    vatRate: string;
+    vatAmount: string;
+    lineTotal: string;
+  }[];
+};
+
 export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
   const [loading, setLoading] = useState(true);
-  const [row, setRow] = useState<LiveInvoiceRow | null>(null);
+  const [data, setData] = useState<InvoiceDetailData | null>(null);
 
   useEffect(() => {
     if (!invoiceId) {
       setLoading(false);
-      setRow(null);
+      setData(null);
       return;
     }
     let cancelled = false;
@@ -685,39 +722,79 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
       .invoke("parasut-api", {
         body: { action: "detail", resource: "sales_invoices", parasutId: invoiceId },
       })
-      .then(({ data, error }) => {
+      .then(({ data: response, error }) => {
         if (cancelled) return;
-        const response = data as {
+        const result = response as {
           header?: InvoiceApiRow | null;
           contact?: { attributes?: Record<string, unknown> | null } | null;
+          details?: {
+            parasut_id?: unknown;
+            productName?: unknown;
+            attributes?: {
+              description?: unknown;
+              quantity?: unknown;
+              unit_price?: unknown;
+              vat_rate?: unknown;
+            } | null;
+          }[] | null;
         } | null;
-        const header = response?.header;
+        const header = result?.header;
         if (error || !header) {
-          setRow(null);
+          setData(null);
           setLoading(false);
           return;
         }
         const attributes = header.attributes ?? {};
+        const currency = sourceText(attributes.currency).toUpperCase().replace(/^TRL$/, "TRY") || "TRY";
         const customerId = sourceText(header.relationships?.contact?.data?.id);
-        const contactName = sourceText(response?.contact?.attributes?.name);
+        const contactName = sourceText(result?.contact?.attributes?.name);
         const itemType = sourceText(attributes.item_type);
         const archived = header.source_archived === true || attributes.archived === true;
-        setRow({
+
+        const lines = (result?.details ?? []).map((detail) => {
+          const detailAttributes = detail.attributes ?? {};
+          const quantity = Number(detailAttributes.quantity);
+          const unitPrice = Number(detailAttributes.unit_price);
+          const vatRate = Number(detailAttributes.vat_rate);
+          const lineNet = Number.isFinite(quantity) && Number.isFinite(unitPrice) ? quantity * unitPrice : null;
+          const vatAmount = lineNet !== null && Number.isFinite(vatRate) ? (lineNet * vatRate) / 100 : null;
+          const lineTotal = lineNet !== null && vatAmount !== null ? lineNet + vatAmount : lineNet;
+          return {
+            key: sourceText(detail.parasut_id) || Math.random().toString(36),
+            description: sourceText(detailAttributes.description) || sourceText(detail.productName) || "—",
+            quantity: Number.isFinite(quantity) ? String(quantity) : "—",
+            unitPrice: Number.isFinite(unitPrice) ? invoiceAmount(unitPrice, currency) : "—",
+            vatRate: Number.isFinite(vatRate) ? `%${vatRate}` : "—",
+            vatAmount: vatAmount !== null ? invoiceAmount(vatAmount, currency) : "—",
+            lineTotal: lineTotal !== null ? invoiceAmount(lineTotal, currency) : "—",
+          };
+        });
+
+        setData({
           parasutId: sourceText(header.parasut_id) || invoiceId,
           no: sourceText(attributes.invoice_no) || "—",
+          description: sourceText(attributes.description),
           customer: contactName || "—",
           customerId,
           invoiceDate: sourceText(attributes.issue_date) || "—",
           dueDate: sourceText(attributes.due_date) || "—",
-          amount: invoiceAmount(attributes.gross_total, attributes.currency),
+          currency,
+          // See the InvoiceApiRow field comment: Paraşüt's own schema swaps
+          // these names — gross_total is the VAT-exclusive subtotal
+          // ("Ara toplam"), net_total is the VAT-inclusive general total
+          // ("Genel Toplam").
+          subtotal: invoiceAmount(attributes.gross_total, currency),
+          vatTotal: invoiceAmount(attributes.total_vat, currency),
+          grandTotal: invoiceAmount(attributes.net_total, currency),
           collection: collectionLabel(attributes.payment_status),
           status: archived ? "Arşivlendi" : itemType === "cancelled" ? "İptal" : "—",
+          lines,
         });
         setLoading(false);
       })
       .catch(() => {
         if (cancelled) return;
-        setRow(null);
+        setData(null);
         setLoading(false);
       });
     return () => {
@@ -733,7 +810,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
     );
   }
 
-  if (!invoiceId || !row) {
+  if (!invoiceId || !data) {
     return (
       <NotFoundState
         backTo={incomeInvoicesBase}
@@ -747,71 +824,125 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
   return (
     <div className="income-page">
       <FinancePageHeader
-        breadcrumb={`Muhasebe ve Finans / Gelir Yönetimi / Faturalar / ${row.no}`}
-        title={`Fatura ${row.no}`}
+        breadcrumb={`Muhasebe ve Finans / Gelir Yönetimi / Faturalar / ${data.no}`}
+        title={data.description ? `Fatura ${data.no} — ${data.description}` : `Fatura ${data.no}`}
         cancelTo={incomeInvoicesBase}
         backLabel="Faturalara Dön"
       />
       <section className="erp-card income-detail-panel">
         <div className="finance-fields two">
-          <label>
-            Fatura No
-            <input readOnly value={row.no} />
-          </label>
-          <label>
-            Müşteri
-            {row.customerId ? (
-              <Link className="income-cell-link" to={`${crmCustomersBase}/${row.customerId}`}>
-                {row.customer}
-              </Link>
-            ) : (
-              <input readOnly value={row.customer} />
-            )}
-          </label>
-          <label>
-            Fatura Tarihi
-            <input readOnly value={row.invoiceDate} />
-          </label>
-          <label>
-            Vade Tarihi
-            <input readOnly value={row.dueDate} />
-          </label>
-          <label>
-            Tutar
-            <input readOnly value={row.amount} />
-          </label>
-          <label>
-            Tahsilat Durumu
-            <input readOnly value={row.collection} />
-          </label>
-          <label>
-            Durum
-            <input readOnly value={row.status} />
-          </label>
-        </div>
-        <div className="finance-inline-actions">
-          <Link
-            className="finance-text-button"
-            to={`${incomeInvoicesBase}/${encodeURIComponent(row.parasutId)}/edit`}
-          >
-            Düzenle
-          </Link>
-          <button
-            type="button"
-            className="finance-text-button"
-            onClick={() =>
-              printReport(
-                `Fatura ${row.no}`,
-                invoiceColumns,
-                [row],
-                `Fatura no ${row.no}`,
-              )
-            }
-          >
-            PDF Olarak İndir
-          </button>
+          <p>
+            <span>Fatura No</span>
+            <b>{data.no}</b>
+          </p>
+          <p>
+            <span>Müşteri</span>
+            <b>
+              {data.customerId ? (
+                <Link className="income-cell-link" to={`${crmCustomersBase}/${data.customerId}`}>
+                  {data.customer}
+                </Link>
+              ) : (
+                data.customer
+              )}
+            </b>
+          </p>
+          <p>
+            <span>Fatura Tarihi</span>
+            <b>{data.invoiceDate}</b>
+          </p>
+          <p>
+            <span>Vade Tarihi</span>
+            <b>{data.dueDate}</b>
+          </p>
+          <p>
+            <span>Tahsilat Durumu</span>
+            <b>{data.collection}</b>
+          </p>
+          <p>
+            <span>Durum</span>
+            <b>{data.status}</b>
+          </p>
         </div>
       </section>
+      <section className="erp-card income-detail-panel">
+        <h2>Fatura Kalemleri</h2>
+        {data.lines.length ? (
+          <table className="income-subtable">
+            <thead>
+              <tr>
+                <th>Açıklama</th>
+                <th>Miktar</th>
+                <th>Birim Fiyat</th>
+                <th>KDV Oranı</th>
+                <th>KDV Tutarı</th>
+                <th>Satır Toplamı</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.lines.map((line) => (
+                <tr key={line.key}>
+                  <td>{line.description}</td>
+                  <td>{line.quantity}</td>
+                  <td>{line.unitPrice}</td>
+                  <td>{line.vatRate}</td>
+                  <td>{line.vatAmount}</td>
+                  <td>{line.lineTotal}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>Bu faturaya ait kalem verisi bulunamadı.</p>
+        )}
+        <div className="finance-fields two" style={{ marginTop: "12px" }}>
+          <p>
+            <span>Ara Toplam (KDV Hariç)</span>
+            <b>{data.subtotal}</b>
+          </p>
+          <p>
+            <span>KDV Toplam</span>
+            <b>{data.vatTotal}</b>
+          </p>
+          <p>
+            <span>Genel Toplam (KDV Dahil)</span>
+            <b>{data.grandTotal}</b>
+          </p>
+        </div>
+      </section>
+      <div className="finance-inline-actions">
+        <Link
+          className="finance-text-button"
+          to={`${incomeInvoicesBase}/${encodeURIComponent(data.parasutId)}/edit`}
+        >
+          Düzenle
+        </Link>
+        <button
+          type="button"
+          className="finance-text-button"
+          onClick={() =>
+            printReport(
+              `Fatura ${data.no}`,
+              invoiceColumns,
+              [
+                {
+                  no: data.no,
+                  customer: data.customer,
+                  customerId: data.customerId,
+                  invoiceDate: data.invoiceDate,
+                  dueDate: data.dueDate,
+                  amount: data.grandTotal,
+                  collection: data.collection,
+                  status: data.status,
+                },
+              ],
+              `Fatura no ${data.no}`,
+            )
+          }
+        >
+          PDF Olarak İndir
+        </button>
+      </div>
     </div>
   );
 }
