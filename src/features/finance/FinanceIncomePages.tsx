@@ -258,6 +258,9 @@ function InvoiceRowActions({ row }: { row: InvoiceRow }) {
 
 export function InvoiceListPage() {
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [collectionFilter, setCollectionFilter] = useState("Tümü");
   const [liveInvoiceRows, setLiveInvoiceRows] = useState<LiveInvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -314,11 +317,15 @@ export function InvoiceListPage() {
     };
   }, []);
 
-  const rows = liveInvoiceRows.filter((row) =>
-    `${row.no} ${row.customer}`
+  const rows = liveInvoiceRows.filter((row) => {
+    const matchesSearch = `${row.no} ${row.customer}`
       .toLocaleLowerCase("tr-TR")
-      .includes(search.toLocaleLowerCase("tr-TR")),
-  );
+      .includes(search.toLocaleLowerCase("tr-TR"));
+    const matchesFrom = !dateFrom || row.invoiceDate >= dateFrom;
+    const matchesTo = !dateTo || row.invoiceDate <= dateTo;
+    const matchesCollection = collectionFilter === "Tümü" || row.collection === collectionFilter;
+    return matchesSearch && matchesFrom && matchesTo && matchesCollection;
+  });
   return (
     <div className="income-page">
       <IncomeHeader
@@ -334,11 +341,11 @@ export function InvoiceListPage() {
       <FilterBar>
         <label>
           Başlangıç Tarihi
-          <input type="date" />
+          <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
         </label>
         <label>
           Bitiş Tarihi
-          <input type="date" />
+          <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
         </label>
         <label>
           Durum
@@ -350,7 +357,7 @@ export function InvoiceListPage() {
         </label>
         <label>
           Tahsilat Durumu
-          <select>
+          <select value={collectionFilter} onChange={(event) => setCollectionFilter(event.target.value)}>
             <option>Tümü</option>
             <option>Tahsil Edilecek</option>
             <option>Tahsil Edildi</option>
