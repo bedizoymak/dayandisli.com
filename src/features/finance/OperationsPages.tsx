@@ -62,12 +62,21 @@ function Header({
     </header>
   );
 }
-function Filters() {
+function Filters({
+  search,
+  onSearchChange,
+}: {
+  search?: string;
+  onSearchChange?: (value: string) => void;
+} = {}) {
   return (
     <div className="erp-card ops-filters">
       <label>
         <Search />
-        <input />
+        <input
+          value={search}
+          onChange={onSearchChange ? (event) => onSearchChange(event.target.value) : undefined}
+        />
       </label>
       <button>
         <Filter /> Filtrele
@@ -833,6 +842,7 @@ function mapSupplier(row: SupplierApiRow): SupplierListRow | null {
 
 export function SuppliersPage() {
   const [supplierRows, setSupplierRows] = useState<SupplierListRow[]>([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -875,7 +885,7 @@ export function SuppliersPage() {
           to: `${root}/purchasing/suppliers/new`,
         }}
       />
-      <Filters />
+      <Filters search={search} onSearchChange={setSearch} />
       <div className="ops-export">
         <FinanceExportMenu
           rows={supplierRows}
@@ -895,7 +905,9 @@ export function SuppliersPage() {
             </tr>
           </thead>
           <tbody>
-            {supplierRows.map((row) => (
+            {supplierRows
+              .filter((row) => row.name.toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR")))
+              .map((row) => (
               <tr key={row.id}>
                 <td>
                   <Link

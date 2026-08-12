@@ -232,8 +232,8 @@ const invoiceColumns: ExportColumn<InvoiceRow>[] = [
   { header: "Durum", value: (row) => row.status },
 ];
 
-function InvoiceRowActions({ row }: { row: InvoiceRow }) {
-  const detailTo = `${incomeInvoicesBase}/${encodeURIComponent(row.no)}`;
+function InvoiceRowActions({ row }: { row: LiveInvoiceRow }) {
+  const detailTo = `${incomeInvoicesBase}/${encodeURIComponent(row.parasutId)}`;
   return (
     <RowActionsMenu
       actions={[
@@ -386,20 +386,19 @@ export function InvoiceListPage() {
         empty={!rows.length}
       >
         {rows.map((row, index) => {
-          const customer = findCrmCustomer(row.customerId);
           return (
             <tr key={row.parasutId || `${row.no}-${index}`}>
               <td>
                 <Link
                   className="income-cell-link"
-                  to={`${incomeInvoicesBase}/${encodeURIComponent(row.no)}`}
+                  to={`${incomeInvoicesBase}/${encodeURIComponent(row.parasutId)}`}
                 >
                   {row.no}
                 </Link>
               </td>
               <td>
-                {customer ? (
-                  <Link className="income-cell-link" to={`${crmCustomersBase}/${customer.id}`}>
+                {row.customerId ? (
+                  <Link className="income-cell-link" to={`${crmCustomersBase}/${row.customerId}`}>
                     {row.customer}
                   </Link>
                 ) : (
@@ -671,7 +670,68 @@ function NotFoundState({
 }
 
 export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
-  const row = invoiceId ? invoiceRows.find((item) => item.no === invoiceId) : undefined;
+  const [loading, setLoading] = useState(true);
+  const [row, setRow] = useState<LiveInvoiceRow | null>(null);
+
+  useEffect(() => {
+    if (!invoiceId) {
+      setLoading(false);
+      setRow(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    supabase.functions
+      .invoke("parasut-api", {
+        body: { action: "detail", resource: "sales_invoices", parasutId: invoiceId },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const response = data as {
+          header?: InvoiceApiRow | null;
+          contact?: { attributes?: Record<string, unknown> | null } | null;
+        } | null;
+        const header = response?.header;
+        if (error || !header) {
+          setRow(null);
+          setLoading(false);
+          return;
+        }
+        const attributes = header.attributes ?? {};
+        const customerId = sourceText(header.relationships?.contact?.data?.id);
+        const contactName = sourceText(response?.contact?.attributes?.name);
+        const itemType = sourceText(attributes.item_type);
+        const archived = header.source_archived === true || attributes.archived === true;
+        setRow({
+          parasutId: sourceText(header.parasut_id) || invoiceId,
+          no: sourceText(attributes.invoice_no) || "—",
+          customer: contactName || "—",
+          customerId,
+          invoiceDate: sourceText(attributes.issue_date) || "—",
+          dueDate: sourceText(attributes.due_date) || "—",
+          amount: invoiceAmount(attributes.gross_total, attributes.currency),
+          collection: collectionLabel(attributes.payment_status),
+          status: archived ? "Arşivlendi" : itemType === "cancelled" ? "İptal" : "—",
+        });
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRow(null);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [invoiceId]);
+
+  if (loading) {
+    return (
+      <div className="income-page">
+        <FinancePageHeader breadcrumb="Muhasebe ve Finans / Gelir Yönetimi" title="Yükleniyor…" />
+      </div>
+    );
+  }
 
   if (!invoiceId || !row) {
     return (
@@ -679,12 +739,10 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
         backTo={incomeInvoicesBase}
         backLabel="Faturalara Dön"
         title="Fatura Bulunamadı"
-        message={`"${invoiceId ?? ""}" numaralı bir fatura bulunamadı. Fatura silinmiş veya taşınmış olabilir.`}
+        message={`"${invoiceId ?? ""}" kimlikli bir fatura bulunamadı. Fatura silinmiş veya taşınmış olabilir.`}
       />
     );
   }
-
-  const customer = findCrmCustomer(row.customerId);
 
   return (
     <div className="income-page">
@@ -702,8 +760,8 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           </label>
           <label>
             Müşteri
-            {customer ? (
-              <Link className="income-cell-link" to={`${crmCustomersBase}/${customer.id}`}>
+            {row.customerId ? (
+              <Link className="income-cell-link" to={`${crmCustomersBase}/${row.customerId}`}>
                 {row.customer}
               </Link>
             ) : (
@@ -734,7 +792,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
         <div className="finance-inline-actions">
           <Link
             className="finance-text-button"
-            to={`${incomeInvoicesBase}/${encodeURIComponent(row.no)}/edit`}
+            to={`${incomeInvoicesBase}/${encodeURIComponent(row.parasutId)}/edit`}
           >
             Düzenle
           </Link>
