@@ -500,22 +500,48 @@ export async function handleDetail(admin: SupabaseAdminLike, resource: ListResou
     if (!contact) return null;
     const relKey = resource === "customers" ? "contact" : "supplier";
     const table = resource === "customers" ? "sales_invoices" : "purchase_bills";
-    // 300 documents is a guard rail (not a fake limit): the account-statement
-    // ledger and invoice history read from this same list, so it must cover
-    // realistic real-world history without an unbounded query. If a contact
-    // legitimately has more, the frontend surfaces that explicitly instead of
-    // silently truncating the statement.
-    const { data: recentDocuments } = await scopedParasutTable<MirrorRecord>(admin, table, activeCompanyId, "parasut_id, attributes, relationships")
-      .filter("relationships", "cs", JSON.stringify({ [relKey]: { data: { id: parasutId } } }))
-      .eq("source_archived", false)
-      .order("last_seen_at", { ascending: false })
-      .limit(300);
-    const documentRows = recentDocuments ?? [];
+    // The account-statement ledger reads the customer's ENTIRE real history,
+    // not a truncated recent window — a single-page query would silently
+    // drop older rows and desync the running balance from the real
+    // trl_balance. Page through every matching row instead, in batches
+    // bounded only as a defensive ceiling against a runaway loop (50 * 500 =
+    // 25,000 documents for one contact is far beyond any real customer).
+    const PAGE_SIZE = 500;
+    const MAX_PAGES = 50;
+    const documentRows: MirrorRecord[] = [];
+    for (let page = 0; page < MAX_PAGES; page += 1) {
+      const from = page * PAGE_SIZE;
+      const { data: pageRows } = await scopedParasutTable<MirrorRecord>(admin, table, activeCompanyId, "parasut_id, attributes, relationships")
+        .filter("relationships", "cs", JSON.stringify({ [relKey]: { data: { id: parasutId } } }))
+        .eq("source_archived", false)
+        .order("last_seen_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      const rows = pageRows ?? [];
+      documentRows.push(...rows);
+      if (rows.length < PAGE_SIZE) break;
+    }
     const paymentIds = Array.from(new Set(documentRows.flatMap((document) => relationshipIds(document.relationships, "payments"))));
     const { data: payments } = paymentIds.length
       ? await scopedParasutTable<MirrorRecord>(admin, "payments", activeCompanyId, "parasut_id, attributes, relationships").in("parasut_id", paymentIds)
       : { data: [] as MirrorRecord[] };
-    return { contact, recentDocuments: documentRows, payments: payments ?? [] };
+
+    // Received checks (Alacak): only surfaced for customers, and only via
+    // the real relationship columns verified in the checks mirror migration
+    // (supabase/migrations/20260811000000_parasut_checks_mirror.sql) —
+    // issued_by_parasut_id (who wrote/issued the check to us) + is_in (an
+    // incoming/received check). Both are read straight off the row; nothing
+    // here infers or guesses which contact a check belongs to.
+    let checks: MirrorRecord[] = [];
+    if (resource === "customers") {
+      const { data: checkRows } = await scopedParasutTable<MirrorRecord>(admin, "checks", activeCompanyId, "*").eq("source_archived", false);
+      checks = (checkRows ?? []).filter((row) => {
+        const attributes = row.attributes ?? {};
+        const issuedBy = attributes.issued_by_parasut_id ?? relationshipId(row.relationships, "issued_by");
+        return attributes.is_in === true && String(issuedBy ?? "") === parasutId;
+      });
+    }
+
+    return { contact, recentDocuments: documentRows, payments: payments ?? [], checks };
   }
 
   if (resource === "products" || resource === "accounts" || resource === "payments") {
