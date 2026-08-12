@@ -815,6 +815,15 @@ function supplierText(value: unknown) {
   return typeof value === "string" && value.trim() ? value : "—";
 }
 
+// Same join convention as CustomerDetailPage's displayAddress: real
+// address/district/city attributes only, no invented fallback.
+function supplierAddressText(attributes: Record<string, unknown>) {
+  const parts = [attributes.address, attributes.district, attributes.city]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+  return parts.length ? parts.join(", ") : "—";
+}
+
 // +/-/0 sign, no suffix — same real-trl_balance convention as the customer
 // list and profile header.
 function supplierBalanceText(value: unknown) {
@@ -1082,6 +1091,10 @@ export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
               <div>
                 <dt>E-posta</dt>
                 <dd>{supplierText(attributes.email)}</dd>
+              </div>
+              <div>
+                <dt>Adres</dt>
+                <dd>{supplierAddressText(attributes)}</dd>
               </div>
             </dl>
           </div>

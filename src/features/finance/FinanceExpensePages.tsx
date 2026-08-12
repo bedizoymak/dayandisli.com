@@ -46,7 +46,7 @@ function findSupplierByName(name: string) {
   return suppliers.find((supplier) => supplier.name === name);
 }
 
-type LiveExpenseRow = ExpenseRow & { parasutId: string };
+type LiveExpenseRow = ExpenseRow & { parasutId: string; supplierId: string };
 
 type PurchaseBillApiRow = {
   parasut_id?: unknown;
@@ -175,16 +175,52 @@ function PageHeader({
   );
 }
 
-function Filters({ incoming = false }: { incoming?: boolean }) {
+type ExpenseFiltersState = {
+  dateFrom: string;
+  dateTo: string;
+  recordType: string;
+  paymentStatus: string;
+  supplierText: string;
+  search: string;
+};
+
+const EXPENSE_FILTERS_DEFAULT: ExpenseFiltersState = {
+  dateFrom: "",
+  dateTo: "",
+  recordType: "Tümü",
+  paymentStatus: "Tümü",
+  supplierText: "",
+  search: "",
+};
+
+function Filters({
+  incoming = false,
+  value,
+  onChange,
+}: {
+  incoming?: boolean;
+  value?: ExpenseFiltersState;
+  onChange?: (next: ExpenseFiltersState) => void;
+}) {
+  const filters = value ?? EXPENSE_FILTERS_DEFAULT;
+  const set = (patch: Partial<ExpenseFiltersState>) => onChange?.({ ...filters, ...patch });
   return (
     <div className="erp-card expense-filters">
       <label>
         Başlangıç
-        <input type="date" />
+        <input
+          type="date"
+          value={onChange ? filters.dateFrom : undefined}
+          onChange={onChange ? (event) => set({ dateFrom: event.target.value }) : undefined}
+        />
       </label>
       <label>
         Bitiş
-        <input type="date" />
+        <input
+          type="date"
+          value={onChange ? filters.dateTo : undefined}
+          onChange={onChange ? (event) => set({ dateTo: event.target.value }) : undefined}
+        />
       </label>
       {incoming ? (
         <>
@@ -214,7 +250,10 @@ function Filters({ incoming = false }: { incoming?: boolean }) {
         <>
           <label>
             Kayıt Türü
-            <select>
+            <select
+              value={onChange ? filters.recordType : undefined}
+              onChange={onChange ? (event) => set({ recordType: event.target.value }) : undefined}
+            >
               <option>Tümü</option>
               {expenseTypes.map((item) => (
                 <option key={item}>{item}</option>
@@ -223,7 +262,10 @@ function Filters({ incoming = false }: { incoming?: boolean }) {
           </label>
           <label>
             Ödeme Durumu
-            <select>
+            <select
+              value={onChange ? filters.paymentStatus : undefined}
+              onChange={onChange ? (event) => set({ paymentStatus: event.target.value }) : undefined}
+            >
               <option>Tümü</option>
               {expensePaymentStatuses.map((item) => (
                 <option key={item}>{item}</option>
@@ -232,7 +274,10 @@ function Filters({ incoming = false }: { incoming?: boolean }) {
           </label>
           <label>
             Tedarikçi
-            <input />
+            <input
+              value={onChange ? filters.supplierText : undefined}
+              onChange={onChange ? (event) => set({ supplierText: event.target.value }) : undefined}
+            />
           </label>
           <label>
             Kategori
@@ -245,9 +290,14 @@ function Filters({ incoming = false }: { incoming?: boolean }) {
       )}
       <label className="expense-search">
         <Search />
-        <input />
+        <input
+          value={onChange ? filters.search : undefined}
+          onChange={onChange ? (event) => set({ search: event.target.value }) : undefined}
+        />
       </label>
-      <button type="button">Filtreleri Temizle</button>
+      <button type="button" onClick={() => onChange?.(EXPENSE_FILTERS_DEFAULT)}>
+        Filtreleri Temizle
+      </button>
     </div>
   );
 }
@@ -395,6 +445,7 @@ export function ExpenseListPage() {
 
             return {
               parasutId: purchaseBillSourceText(source.parasut_id),
+              supplierId,
               name: purchaseBillSourceText(attributes.description) || "—",
               party: partyName && partyName !== supplierId ? partyName : "—",
               type: purchaseBillTypeLabel(itemType),
@@ -425,6 +476,25 @@ export function ExpenseListPage() {
     };
   }, []);
 
+  const [filters, setFilters] = useState<ExpenseFiltersState>(EXPENSE_FILTERS_DEFAULT);
+  const rows = liveExpenseRows.filter((row) => {
+    if (filters.dateFrom && row.issue < filters.dateFrom) return false;
+    if (filters.dateTo && row.issue > filters.dateTo) return false;
+    if (filters.recordType !== "Tümü" && row.type !== filters.recordType) return false;
+    if (filters.paymentStatus !== "Tümü" && row.payment !== filters.paymentStatus) return false;
+    if (
+      filters.supplierText.trim() &&
+      !row.party.toLocaleLowerCase("tr-TR").includes(filters.supplierText.trim().toLocaleLowerCase("tr-TR"))
+    ) {
+      return false;
+    }
+    if (filters.search.trim()) {
+      const haystack = `${row.name} ${row.party} ${row.document}`.toLocaleLowerCase("tr-TR");
+      if (!haystack.includes(filters.search.trim().toLocaleLowerCase("tr-TR"))) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="expense-page">
       <PageHeader
@@ -435,13 +505,13 @@ export function ExpenseListPage() {
         <FinanceExportMenu
           title="Gider Listesi"
           filename="gider-listesi"
-          rows={liveExpenseRows}
+          rows={rows}
           columns={expenseColumns}
         />
         <NewExpenseSplitButton />
       </PageHeader>
-      <Filters />
-      <TableFrame count={liveExpenseRows.length}>
+      <Filters value={filters} onChange={setFilters} />
+      <TableFrame count={rows.length}>
         <table className="expense-table">
           <thead>
             <tr>
@@ -462,27 +532,24 @@ export function ExpenseListPage() {
             </tr>
           </thead>
           <tbody>
-            {liveExpenseRows.map((row, index) => (
+            {rows.map((row, index) => (
               <tr key={row.parasutId || `${row.document}-${index}`}>
                 <td>
                   <Link
                     className="expense-cell-link"
-                    to={`${base}/${encodeURIComponent(row.document)}`}
+                    to={`${base}/${encodeURIComponent(row.parasutId)}`}
                   >
                     <strong>{row.name}</strong>
                   </Link>
                 </td>
                 <td>
-                  {(() => {
-                    const supplier = findSupplierByName(row.party);
-                    return supplier ? (
-                      <Link className="expense-cell-link" to={`${purchasingSuppliersBase}/${encodeURIComponent(supplier.taxNo)}`}>
-                        {row.party}
-                      </Link>
-                    ) : (
-                      row.party
-                    );
-                  })()}
+                  {row.supplierId ? (
+                    <Link className="expense-cell-link" to={`${purchasingSuppliersBase}/${row.supplierId}`}>
+                      {row.party}
+                    </Link>
+                  ) : (
+                    row.party
+                  )}
                 </td>
                 <td>{row.type}</td>
                 <td>{row.issue}</td>
@@ -503,7 +570,7 @@ export function ExpenseListPage() {
                     actions={[
                       {
                         label: "Görüntüle",
-                        href: `${base}/${encodeURIComponent(row.document)}`,
+                        href: `${base}/${encodeURIComponent(row.parasutId)}`,
                       },
                       {
                         label: "Dışa Aktar",
@@ -602,7 +669,100 @@ function IncomingInvoiceRow({
   );
 }
 
+type LiveIncomingInvoiceRow = {
+  key: string;
+  sender: string;
+  number: string;
+  type: string;
+  date: string;
+  total: string;
+  status: string;
+  purchaseBillId: string;
+};
+
+type EInvoiceApiRow = {
+  attributes?: {
+    external_id?: unknown;
+    direction?: unknown;
+    contact_name?: unknown;
+    status?: unknown;
+    response_type?: unknown;
+    issue_date?: unknown;
+    net_total?: unknown;
+    currency?: unknown;
+    invoice_parasut_id?: unknown;
+  } | null;
+};
+
+// "Gelen Faturalar" previously rendered the static, permanently-empty
+// incomingInvoiceRows mock. The real equivalent is the existing e_invoices
+// resource's incoming direction (direction === "in") — already-built
+// generic list action, full-page-fetched the same way as
+// fetchAllPurchaseBills so a supplier's e-invoices aren't cut off past
+// page 1 either.
+async function fetchAllIncomingEInvoices(cancelledRef: { cancelled: boolean }) {
+  const pageSize = 100;
+  const fetchPage = (page: number) =>
+    supabase.functions.invoke("parasut-api", {
+      body: { action: "list", resource: "e_invoices", page, pageSize },
+    });
+
+  const first = await fetchPage(1);
+  if (cancelledRef.cancelled) return [] as EInvoiceApiRow[];
+  const firstResponse = first.data as { rows?: unknown; total?: unknown } | null;
+  if (first.error || !firstResponse || !Array.isArray(firstResponse.rows)) return [] as EInvoiceApiRow[];
+
+  const total = typeof firstResponse.total === "number" ? firstResponse.total : null;
+  const rows = [...(firstResponse.rows as EInvoiceApiRow[])];
+
+  if (total !== null) {
+    const remainingPages = Math.ceil(total / pageSize) - 1;
+    for (let page = 2; page <= remainingPages + 1; page += 1) {
+      if (cancelledRef.cancelled) break;
+      const next = await fetchPage(page);
+      const nextResponse = next.data as { rows?: unknown } | null;
+      if (next.error || !nextResponse || !Array.isArray(nextResponse.rows)) break;
+      rows.push(...(nextResponse.rows as EInvoiceApiRow[]));
+    }
+  }
+
+  return rows;
+}
+
 export function IncomingInvoicesPage() {
+  const [rows, setRows] = useState<LiveIncomingInvoiceRow[]>([]);
+
+  useEffect(() => {
+    const cancelledRef = { cancelled: false };
+    fetchAllIncomingEInvoices(cancelledRef)
+      .then((allRows) => {
+        if (cancelledRef.cancelled) return;
+        setRows(
+          allRows
+            .filter((row) => purchaseBillSourceText(row.attributes?.direction) === "in")
+            .map((row, index) => {
+              const attributes = row.attributes ?? {};
+              return {
+                key: purchaseBillSourceText(attributes.external_id) || String(index),
+                sender: purchaseBillSourceText(attributes.contact_name) || "—",
+                number: purchaseBillSourceText(attributes.external_id) || "—",
+                type: purchaseBillSourceText(attributes.response_type) || "—",
+                date: purchaseBillSourceText(attributes.issue_date) || "—",
+                total: purchaseBillAmount(attributes.net_total, attributes.currency),
+                status: purchaseBillSourceText(attributes.status) || "—",
+                purchaseBillId: purchaseBillSourceText(attributes.invoice_parasut_id),
+              };
+            }),
+        );
+      })
+      .catch(() => {
+        if (!cancelledRef.cancelled) setRows([]);
+      });
+    return () => {
+      cancelledRef.cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="expense-page">
       <PageHeader
@@ -613,8 +773,15 @@ export function IncomingInvoicesPage() {
         <FinanceExportMenu
           title="Gelen Faturalar"
           filename="gelen-faturalar"
-          rows={incomingInvoiceRows}
-          columns={incomingInvoiceColumns}
+          rows={rows}
+          columns={[
+            { header: "Gönderen Ünvan", value: (row: LiveIncomingInvoiceRow) => row.sender },
+            { header: "Fatura No", value: (row: LiveIncomingInvoiceRow) => row.number },
+            { header: "Fatura Türü", value: (row: LiveIncomingInvoiceRow) => row.type },
+            { header: "Fatura Tarihi", value: (row: LiveIncomingInvoiceRow) => row.date },
+            { header: "Fatura Tutarı", value: (row: LiveIncomingInvoiceRow) => row.total },
+            { header: "Durum", value: (row: LiveIncomingInvoiceRow) => row.status },
+          ]}
         />
         <Link
           className="expense-primary-link"
@@ -627,7 +794,7 @@ export function IncomingInvoicesPage() {
         </button>
       </PageHeader>
       <Filters incoming />
-      <TableFrame count={incomingInvoiceRows.length}>
+      <TableFrame count={rows.length}>
         <table className="expense-table incoming">
           <thead>
             <tr>
@@ -645,11 +812,40 @@ export function IncomingInvoicesPage() {
             </tr>
           </thead>
           <tbody>
-            {incomingInvoiceRows.map((row) => (
-              <IncomingInvoiceRow row={row} key={row.number} />
+            {rows.map((row) => (
+              <tr key={row.key}>
+                <td>
+                  <strong>{row.sender}</strong>
+                </td>
+                <td>
+                  {row.purchaseBillId ? (
+                    <Link className="expense-cell-link" to={`${base}/${row.purchaseBillId}`}>
+                      {row.number}
+                    </Link>
+                  ) : (
+                    row.number
+                  )}
+                </td>
+                <td>{row.type}</td>
+                <td>{row.date}</td>
+                <td>
+                  <strong>{row.total}</strong>
+                </td>
+                <td>
+                  <Badge>{row.status}</Badge>
+                </td>
+                <td>
+                  {row.purchaseBillId && (
+                    <Link to={`${base}/${row.purchaseBillId}`} title="Görüntüle">
+                      <Eye />
+                    </Link>
+                  )}
+                </td>
+              </tr>
             ))}
           </tbody>
         </table>
+        {!rows.length && <p className="ops-empty">Gerçek gelen e-fatura kaydı bulunamadı.</p>}
       </TableFrame>
     </div>
   );
@@ -906,16 +1102,137 @@ function ExpenseNotFound({
   );
 }
 
-export function ExpenseDetailPage({ expenseId }: { expenseId?: string }) {
-  const row = expenseId ? expenseRows.find((item) => item.document === expenseId) : undefined;
+type ExpenseDetailData = {
+  parasutId: string;
+  name: string;
+  document: string;
+  supplierName: string;
+  supplierId: string;
+  issue: string;
+  due: string;
+  total: string;
+  vatTotal: string;
+  payment: string;
+  status: string;
+  lines: {
+    key: string;
+    description: string;
+    quantity: string;
+    unitPrice: string;
+    vatRate: string;
+    lineTotal: string;
+  }[];
+};
 
-  if (!expenseId || !row) {
+export function ExpenseDetailPage({ expenseId }: { expenseId?: string }) {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<ExpenseDetailData | null>(null);
+
+  useEffect(() => {
+    if (!expenseId) {
+      setLoading(false);
+      setData(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    supabase.functions
+      .invoke("parasut-api", {
+        body: { action: "detail", resource: "purchase_bills", parasutId: expenseId },
+      })
+      .then(({ data: response, error }) => {
+        if (cancelled) return;
+        const result = response as {
+          header?: PurchaseBillApiRow | null;
+          contact?: { attributes?: Record<string, unknown> | null } | null;
+          details?: {
+            parasut_id?: unknown;
+            productName?: unknown;
+            attributes?: {
+              description?: unknown;
+              quantity?: unknown;
+              unit_price?: unknown;
+              vat_rate?: unknown;
+            } | null;
+          }[] | null;
+        } | null;
+        const header = result?.header;
+        if (error || !header) {
+          setData(null);
+          setLoading(false);
+          return;
+        }
+        const attributes = header.attributes ?? {} as Record<string, unknown>;
+        const currency = purchaseBillSourceText(attributes.currency).toUpperCase().replace(/^TRL$/, "TRY") || "TRY";
+        const supplierId = purchaseBillSourceText(header.relationships?.supplier?.data?.id);
+        const supplierName = purchaseBillSourceText(result?.contact?.attributes?.name);
+        const itemType = purchaseBillSourceText(attributes.item_type);
+        const archived = header.source_archived === true || attributes.archived === true;
+
+        const lines = (result?.details ?? []).map((detail) => {
+          const detailAttributes = detail.attributes ?? {};
+          const quantity = Number(detailAttributes.quantity);
+          const unitPrice = Number(detailAttributes.unit_price);
+          const vatRate = Number(detailAttributes.vat_rate);
+          const lineNet = Number.isFinite(quantity) && Number.isFinite(unitPrice) ? quantity * unitPrice : null;
+          const lineTotal =
+            lineNet !== null && Number.isFinite(vatRate) ? lineNet * (1 + vatRate / 100) : lineNet;
+          return {
+            key: purchaseBillSourceText(detail.parasut_id) || Math.random().toString(36),
+            description:
+              [purchaseBillSourceText(detail.productName), purchaseBillSourceText(detailAttributes.description)]
+                .filter(Boolean)
+                .join(" — ") || "—",
+            quantity: Number.isFinite(quantity) ? quantity.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—",
+            unitPrice: Number.isFinite(unitPrice) ? purchaseBillAmount(unitPrice, currency) : "—",
+            vatRate: Number.isFinite(vatRate) ? `%${vatRate}` : "—",
+            lineTotal: lineTotal !== null ? purchaseBillAmount(lineTotal, currency) : "—",
+          };
+        });
+
+        setData({
+          parasutId: purchaseBillSourceText(header.parasut_id) || expenseId,
+          name: purchaseBillSourceText(attributes.description) || "—",
+          document: purchaseBillSourceText(attributes.invoice_no) || "—",
+          supplierName: supplierName || "—",
+          supplierId,
+          issue: purchaseBillSourceText(attributes.issue_date) || "—",
+          due: purchaseBillSourceText(attributes.due_date) || "—",
+          // Same gross_total field the already-approved list column uses —
+          // unchanged mapping, not a new calculation.
+          total: purchaseBillAmount(attributes.gross_total, currency),
+          vatTotal: purchaseBillAmount((attributes as { total_vat?: unknown }).total_vat, currency),
+          payment: purchaseBillPaymentLabel(attributes.payment_status),
+          status: archived ? "Arşivlendi" : itemType === "cancelled" ? "İptal" : "—",
+          lines,
+        });
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setData(null);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [expenseId]);
+
+  if (loading) {
+    return (
+      <div className="finance-form-page expense-form-page">
+        <PageHeader breadcrumb="Muhasebe ve Finans / Gider Yönetimi" title="Yükleniyor…" />
+      </div>
+    );
+  }
+
+  if (!expenseId || !data) {
     return (
       <ExpenseNotFound
         backTo={base}
         backLabel="Gider Listesine Dön"
         title="Gider Kaydı Bulunamadı"
-        message={`"${expenseId ?? ""}" belge numaralı bir gider kaydı bulunamadı.`}
+        message={`"${expenseId ?? ""}" kimlikli bir gider kaydı bulunamadı.`}
       />
     );
   }
@@ -923,58 +1240,90 @@ export function ExpenseDetailPage({ expenseId }: { expenseId?: string }) {
   return (
     <div className="finance-form-page expense-form-page">
       <PageHeader
-        breadcrumb={`Muhasebe ve Finans / Gider Yönetimi / Gider Listesi / ${row.name}`}
-        title={row.name}
+        breadcrumb={`Muhasebe ve Finans / Gider Yönetimi / Gider Listesi / ${data.name}`}
+        title={data.name}
         backTo={base}
         backLabel="Gider Listesine Dön"
       />
       <section className="erp-card expense-detail-panel">
-        <div className="finance-fields two">
-          <label>
-            Kayıt İsmi
-            <input readOnly value={row.name} />
-          </label>
-          <label>
-            Tedarikçi / Çalışan
-            {(() => {
-              const supplier = findSupplierByName(row.party);
-              return supplier ? (
-                <Link className="expense-cell-link" to={`${purchasingSuppliersBase}/${encodeURIComponent(supplier.taxNo)}`}>
-                  {row.party}
+        <div className="expense-detail-fields">
+          <p>
+            <span>Belge No</span>
+            <b>{data.document}</b>
+          </p>
+          <p>
+            <span>Tedarikçi</span>
+            <b>
+              {data.supplierId ? (
+                <Link className="expense-cell-link" to={`${purchasingSuppliersBase}/${data.supplierId}`}>
+                  {data.supplierName}
                 </Link>
               ) : (
-                <input readOnly value={row.party} />
-              );
-            })()}
-          </label>
-          <label>
-            Kayıt Türü
-            <input readOnly value={row.type} />
-          </label>
-          <label>
-            Belge No
-            <input readOnly value={row.document} />
-          </label>
-          <label>
-            Düzenleme Tarihi
-            <input readOnly value={row.issue} />
-          </label>
-          <label>
-            Vade Tarihi
-            <input readOnly value={row.due} />
-          </label>
-          <label>
-            Toplam Tutar
-            <input readOnly value={row.total} />
-          </label>
-          <label>
-            Ödeme Durumu
-            <input readOnly value={row.payment} />
-          </label>
-          <label>
-            Durum
-            <input readOnly value={row.status} />
-          </label>
+                data.supplierName
+              )}
+            </b>
+          </p>
+          <p>
+            <span>Düzenleme Tarihi</span>
+            <b>{data.issue}</b>
+          </p>
+          <p>
+            <span>Vade Tarihi</span>
+            <b>{data.due}</b>
+          </p>
+          <p>
+            <span>Ödeme Durumu</span>
+            <b>{data.payment}</b>
+          </p>
+          {data.status && (
+            <p>
+              <span>Durum</span>
+              <b>{data.status}</b>
+            </p>
+          )}
+        </div>
+      </section>
+      <section className="erp-card expense-detail-panel">
+        <h2>Kalemler</h2>
+        {data.lines.length ? (
+          <div className="expense-table-scroll">
+            <table className="expense-table">
+              <thead>
+                <tr>
+                  <th>Açıklama</th>
+                  <th>Miktar</th>
+                  <th>Birim Fiyat</th>
+                  <th>KDV Oranı</th>
+                  <th>Satır Toplamı</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.lines.map((line) => (
+                  <tr key={line.key}>
+                    <td>{line.description}</td>
+                    <td>{line.quantity}</td>
+                    <td>{line.unitPrice}</td>
+                    <td>{line.vatRate}</td>
+                    <td>{line.lineTotal}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>Bu kayda ait kalem verisi bulunamadı.</p>
+        )}
+        <div className="expense-detail-fields" style={{ marginTop: "12px" }}>
+          {data.vatTotal !== "—" && (
+            <p>
+              <span>KDV Toplam</span>
+              <b>{data.vatTotal}</b>
+            </p>
+          )}
+          <p>
+            <span>Toplam Tutar</span>
+            <b>{data.total}</b>
+          </p>
         </div>
       </section>
     </div>

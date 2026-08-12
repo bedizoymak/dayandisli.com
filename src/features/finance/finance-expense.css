@@ -96,6 +96,31 @@
 .expense-detail-panel {
   padding: 20px;
 }
+.expense-detail-panel h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.expense-detail-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 24px;
+}
+.expense-detail-fields p {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.expense-detail-fields span {
+  color: #8fa2b9;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.expense-detail-fields b {
+  color: #e7eef6;
+  font-size: 13px;
+  font-weight: 600;
+}
 .expense-split {
   position: relative;
 }
