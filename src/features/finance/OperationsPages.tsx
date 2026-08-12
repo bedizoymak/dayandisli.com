@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Filter, Plus, Search, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/lib/finance/financeLabels";
 import {
   FinanceBackLink,
   FinanceBreadcrumb,
@@ -782,6 +783,7 @@ type SupplierListRow = {
   email: string;
   city: string;
   contact: string;
+  balance: string;
 };
 
 type SupplierApiRow = {
@@ -797,10 +799,20 @@ const supplierColumns: ExportColumn<SupplierListRow>[] = [
   { header: "E-posta", value: (r) => r.email },
   { header: "İl", value: (r) => r.city },
   { header: "Yetkili", value: (r) => r.contact },
+  { header: "Bakiye", value: (r) => r.balance },
 ];
 
 function supplierText(value: unknown) {
   return typeof value === "string" && value.trim() ? value : "—";
+}
+
+// +/-/0 sign, no suffix — same real-trl_balance convention as the customer
+// list and profile header.
+function supplierBalanceText(value: unknown) {
+  const amount = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : null;
+  if (amount === null || !Number.isFinite(amount)) return "—";
+  if (amount === 0) return formatMoney(0);
+  return `${amount > 0 ? "+" : "-"}${formatMoney(Math.abs(amount))}`;
 }
 
 function mapSupplier(row: SupplierApiRow): SupplierListRow | null {
@@ -815,6 +827,7 @@ function mapSupplier(row: SupplierApiRow): SupplierListRow | null {
     email: supplierText(attributes.email),
     city: supplierText(attributes.city),
     contact: "—",
+    balance: supplierBalanceText(attributes.trl_balance),
   };
 }
 
@@ -925,9 +938,47 @@ export function SuppliersPage() {
 }
 
 export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
-  const supplier = supplierId ? suppliers.find((row) => row.taxNo === supplierId) : undefined;
+  const [loading, setLoading] = useState(true);
+  const [attributes, setAttributes] = useState<Record<string, unknown> | null>(null);
 
-  if (!supplierId || !supplier) {
+  useEffect(() => {
+    if (!supplierId) {
+      setLoading(false);
+      setAttributes(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    supabase.functions
+      .invoke("parasut-api", {
+        body: { action: "detail", resource: "suppliers", parasutId: supplierId },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const response = data as { contact?: { attributes?: Record<string, unknown> | null } } | null;
+        setAttributes(!error && response?.contact?.attributes ? response.contact.attributes : null);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAttributes(null);
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supplierId]);
+
+  if (loading) {
+    return (
+      <div className="ops-page">
+        <Header breadcrumb="Muhasebe ve Finans / Satın Alma / Tedarikçiler" title="Yükleniyor…" />
+      </div>
+    );
+  }
+
+  if (!supplierId || !attributes) {
     return (
       <div className="ops-page">
         <Header
@@ -938,21 +989,20 @@ export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
           Tedarikçilere Dön
         </FinanceBackLink>
         <p className="ops-empty">
-          "{supplierId ?? ""}" vergi numarasına ait bir tedarikçi bulunamadı.
+          "{supplierId ?? ""}" kimlikli bir tedarikçi bulunamadı.
         </p>
       </div>
     );
   }
 
-  const relatedDispatches = dispatches.filter(
-    (row) => row.party === supplier.name,
-  );
+  const name = supplierText(attributes.name);
+  const balance = supplierBalanceText(attributes.trl_balance);
 
   return (
     <div className="ops-page">
       <Header
-        breadcrumb={`Muhasebe ve Finans / Satın Alma / Tedarikçiler / ${supplier.name}`}
-        title={supplier.name}
+        breadcrumb={`Muhasebe ve Finans / Satın Alma / Tedarikçiler / ${name}`}
+        title={name}
       />
       <FinanceBackLink to={`${root}/purchasing/suppliers`}>
         Tedarikçilere Dön
@@ -960,13 +1010,13 @@ export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
       <section className="erp-card ops-supplier-card">
         <header className="ops-supplier-head">
           <div>
-            <h2>{supplier.name}</h2>
-            <span>{supplier.short}</span>
+            <h2>{name}</h2>
+            <span>{supplierText(attributes.short_name)}</span>
           </div>
           <PartyLedgerEntryDialog
             kind="payment"
             partyLabel="Tedarikçi"
-            partyName={supplier.name}
+            partyName={name}
             trigger={
               <button type="button" className="ops-supplier-payment">
                 Ödeme Ekle
@@ -980,11 +1030,15 @@ export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
             <dl>
               <div>
                 <dt>Vergi No</dt>
-                <dd>{supplier.taxNo}</dd>
+                <dd>{supplierText(attributes.tax_number)}</dd>
               </div>
               <div>
                 <dt>İl</dt>
-                <dd>{supplier.city}</dd>
+                <dd>{supplierText(attributes.city)}</dd>
+              </div>
+              <div>
+                <dt>Bakiye</dt>
+                <dd>{balance}</dd>
               </div>
             </dl>
           </div>
@@ -993,48 +1047,15 @@ export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
             <dl>
               <div>
                 <dt>Telefon</dt>
-                <dd>{supplier.phone}</dd>
+                <dd>{supplierText(attributes.phone)}</dd>
               </div>
               <div>
                 <dt>E-posta</dt>
-                <dd>{supplier.email}</dd>
-              </div>
-              <div>
-                <dt>Yetkili Kişi</dt>
-                <dd>{supplier.contact}</dd>
+                <dd>{supplierText(attributes.email)}</dd>
               </div>
             </dl>
           </div>
         </div>
-      </section>
-      <section className="erp-card ops-supplier-history">
-        <h3>İrsaliye Geçmişi</h3>
-        {relatedDispatches.length ? (
-          <table>
-            <thead>
-              <tr>
-                <th>İrsaliye No</th>
-                <th>Tür</th>
-                <th>Tarih</th>
-                <th>Miktar</th>
-                <th>Durum</th>
-              </tr>
-            </thead>
-            <tbody>
-              {relatedDispatches.map((row) => (
-                <tr key={row.no}>
-                  <td>{row.no}</td>
-                  <td>{row.type}</td>
-                  <td>{row.date}</td>
-                  <td>{row.quantity}</td>
-                  <td>{row.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="ops-empty">Bu tedarikçiye ait irsaliye bulunamadı.</p>
-        )}
       </section>
     </div>
   );

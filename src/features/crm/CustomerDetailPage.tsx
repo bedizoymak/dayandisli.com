@@ -97,10 +97,18 @@ function displayAddress(attributes: Record<string, unknown>) {
 
 // Positive running balance = customer owes us (Borç bakiyesi, "B" suffix);
 // negative = we owe the customer / they're in credit (Alacak bakiyesi, "A"
-// suffix). Convention matches the supplied PİNO statement.
+// suffix). Convention matches the supplied PİNO statement. Used for ledger
+// rows/totals only.
 function formatSignedBalance(value: number) {
   const suffix = value < 0 ? "A" : "B";
   return `${formatMoney(Math.abs(value))} ${suffix}`;
+}
+
+// Profile-header balance: +/-/0 sign, no B/A suffix — same convention as
+// the customer list, applied to the real trl_balance directly.
+function formatHeaderBalance(value: number) {
+  if (value === 0) return formatMoney(0);
+  return `${value > 0 ? "+" : "-"}${formatMoney(Math.abs(value))}`;
 }
 
 function documentPaymentIds(document: DocumentRow): string[] {
@@ -362,7 +370,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const name = displayText(attributes.name);
   const code = sourceText(attributes.short_name) || sourceText(contact.parasut_id) || "—";
   const balanceValue = numericValue(attributes.trl_balance);
-  const balance = balanceValue === null ? "—" : formatSignedBalance(balanceValue);
+  const balance = balanceValue === null ? "—" : formatHeaderBalance(balanceValue);
   const phone = sourceText(attributes.phone);
   const whatsapp = sourceText(attributes.whatsapp) || phone;
 
@@ -483,6 +491,9 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
               Cari Hesabı Yazdır
             </button>
           </div>
+        </div>
+        <div className="crm-empty" style={{ marginBottom: "0.5rem" }}>
+          Bu tablo mutabakatı henüz doğrulanmadı; bazı tahsilatlar Paraşüt'te ayrı parçalar halinde kayıtlı olabilir. Güncel bakiye için üstteki Müşteri Bakiyesi kartını esas alın.
         </div>
         <div className="erp-card crm-table-wrap">
           <table className="crm-table">

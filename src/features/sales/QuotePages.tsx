@@ -18,21 +18,19 @@ function sourceText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+type QuoteCustomer = { id: string; name: string; phone: string; email: string };
+
 export function QuoteFormPage() {
   const [selector, setSelector] = useState(false);
   const [params] = useSearchParams();
   const preselectedCustomerId = params.get("customerId");
-  const [preselectedCustomer, setPreselectedCustomer] = useState<{
-    name: string;
-    phone: string;
-    email: string;
-  } | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<QuoteCustomer | null>(null);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerCustomers, setPickerCustomers] = useState<QuoteCustomer[]>([]);
+  const [pickerLoaded, setPickerLoaded] = useState(false);
 
   useEffect(() => {
-    if (!preselectedCustomerId) {
-      setPreselectedCustomer(null);
-      return;
-    }
+    if (!preselectedCustomerId) return;
     let cancelled = false;
     supabase.functions
       .invoke("parasut-api", {
@@ -42,23 +40,51 @@ export function QuoteFormPage() {
         if (cancelled) return;
         const response = data as { contact?: { attributes?: Record<string, unknown> | null } } | null;
         const attributes = response?.contact?.attributes;
-        if (error || !attributes) {
-          setPreselectedCustomer(null);
-          return;
-        }
-        setPreselectedCustomer({
+        if (error || !attributes) return;
+        setSelectedCustomer({
+          id: preselectedCustomerId,
           name: sourceText(attributes.name),
           phone: sourceText(attributes.phone),
           email: sourceText(attributes.email),
         });
-      })
-      .catch(() => {
-        if (!cancelled) setPreselectedCustomer(null);
       });
     return () => {
       cancelled = true;
     };
   }, [preselectedCustomerId]);
+
+  useEffect(() => {
+    if (!selector || pickerLoaded) return;
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", {
+        body: { action: "list", resource: "customers", pageSize: 100, filters: { archived: false } },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const response = data as { rows?: unknown } | null;
+        if (error || !response || !Array.isArray(response.rows)) return;
+        setPickerCustomers(
+          (response.rows as { parasut_id?: unknown; attributes?: Record<string, unknown> | null }[])
+            .map((row) => ({
+              id: sourceText(row.parasut_id),
+              name: sourceText(row.attributes?.name),
+              phone: sourceText(row.attributes?.phone),
+              email: sourceText(row.attributes?.email),
+            }))
+            .filter((customer) => customer.id && customer.name),
+        );
+        setPickerLoaded(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selector, pickerLoaded]);
+
+  const filteredPickerCustomers = pickerCustomers.filter((customer) =>
+    customer.name.toLocaleLowerCase("tr-TR").includes(pickerSearch.toLocaleLowerCase("tr-TR")),
+  );
 
   return (
     <div className="sales-page">
@@ -88,17 +114,17 @@ export function QuoteFormPage() {
           </div>
           <div className="sales-fields">
             <label>
-              Firma *<input readOnly defaultValue={preselectedCustomer?.name ?? ""} key={preselectedCustomer?.name} />
+              Firma *<input readOnly defaultValue={selectedCustomer?.name ?? ""} key={selectedCustomer?.name} />
             </label>
             <label>
               İlgili Kişi *<input readOnly />
             </label>
             <label>
               Telefon
-              <input readOnly defaultValue={preselectedCustomer?.phone ?? ""} key={`phone-${preselectedCustomer?.phone}`} />
+              <input readOnly defaultValue={selectedCustomer?.phone ?? ""} key={`phone-${selectedCustomer?.phone}`} />
             </label>
             <label>
-              E-posta *<input readOnly defaultValue={preselectedCustomer?.email ?? ""} key={`email-${preselectedCustomer?.email}`} />
+              E-posta *<input readOnly defaultValue={selectedCustomer?.email ?? ""} key={`email-${selectedCustomer?.email}`} />
             </label>
             <label className="wide">
               Konu
@@ -234,8 +260,41 @@ export function QuoteFormPage() {
               <X />
             </button>
             <h2>Müşteri Seç</h2>
-            <input />
-            <p>Henüz müşteri kaydı yok.</p>
+            <input
+              value={pickerSearch}
+              onChange={(event) => setPickerSearch(event.target.value)}
+              placeholder="Müşteri ara"
+            />
+            {filteredPickerCustomers.length ? (
+              <ul style={{ listStyle: "none", margin: "0.5rem 0 0", padding: 0, maxHeight: "260px", overflowY: "auto" }}>
+                {filteredPickerCustomers.map((customer) => (
+                  <li key={customer.id}>
+                    <button
+                      type="button"
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "0.5rem",
+                        background: "none",
+                        border: 0,
+                        borderBottom: "1px solid var(--border, #e2e8f0)",
+                        cursor: "pointer",
+                        font: "inherit",
+                        color: "inherit",
+                      }}
+                      onClick={() => {
+                        setSelectedCustomer(customer);
+                        setSelector(false);
+                      }}
+                    >
+                      {customer.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>{pickerLoaded ? "Müşteri bulunamadı." : "Yükleniyor…"}</p>
+            )}
           </div>
         </div>
       )}
