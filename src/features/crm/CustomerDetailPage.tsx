@@ -200,18 +200,15 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
     return map;
   }, [documents]);
 
-  // Only invoices Paraşüt itself counts toward the contact's balance
-  // (append_contact_balance !== false) and that are not cancelled feed the
-  // statement — otherwise the running balance can never match trl_balance,
-  // since Paraşüt's own contact balance excludes those by the same rule.
+  // Every real, non-cancelled invoice matched to this customer via the real
+  // relationships.contact relation is a Borç row — it must appear whether or
+  // not it has any linked payment. append_contact_balance was previously
+  // used to exclude rows here, but real production data showed customers
+  // whose genuine invoices have that flag false while still being real,
+  // owed receivables — excluding on it silently dropped every invoice for
+  // some customers. Only a genuinely cancelled document is excluded now.
   const balanceDocuments = useMemo(
-    () =>
-      documents.filter((document) => {
-        const attributes = document.attributes ?? {};
-        if (attributes.append_contact_balance === false) return false;
-        if (sourceText(attributes.item_type) === "cancelled") return false;
-        return true;
-      }),
+    () => documents.filter((document) => sourceText(document.attributes?.item_type) !== "cancelled"),
     [documents],
   );
 
@@ -284,6 +281,24 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const totalCredit = ledgerRows.reduce((sum, row) => sum + row.credit, 0);
   const totalBalance = totalDebit - totalCredit;
 
+  // The visible Start/End inputs must filter the on-screen ledger itself,
+  // not only the printed output. Default (both empty) is the full real
+  // history, so it begins at the customer's true oldest row. carryForward is
+  // the real computed balance from every actual row before the selected
+  // start date — never fabricated — and is only shown once a start date is
+  // chosen.
+  const rangeFilteredLedger = useMemo(() => {
+    const rowsBeforeRange = printFrom ? ledgerWithBalance.filter((row) => row.date < printFrom) : [];
+    const carryForward = printFrom && rowsBeforeRange.length ? rowsBeforeRange[rowsBeforeRange.length - 1].balance : null;
+    const rows = ledgerWithBalance.filter(
+      (row) => (!printFrom || row.date >= printFrom) && (!printTo || row.date <= printTo),
+    );
+    const debit = rows.reduce((sum, row) => sum + row.debit, 0);
+    const credit = rows.reduce((sum, row) => sum + row.credit, 0);
+    const balance = rows.length ? rows[rows.length - 1].balance : carryForward ?? 0;
+    return { rows, carryForward, totalDebit: debit, totalCredit: credit, totalBalance: balance };
+  }, [ledgerWithBalance, printFrom, printTo]);
+
   const collectedTotal = payments.reduce((sum, payment) => sum + (numericValue(payment.attributes?.amount) ?? 0), 0);
 
   // remaining_in_trl is Paraşüt's own already-net (unpaid), TRY-denominated
@@ -348,17 +363,6 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
 
   const printLedger = () => {
     const today = new Intl.DateTimeFormat("tr-TR", { dateStyle: "long" }).format(new Date());
-    // The carry-forward balance is the real computed running balance from
-    // every actual row before the selected range's start — not a fabricated
-    // opening figure, since the full real history is already loaded.
-    const rowsBeforeRange = printFrom ? ledgerWithBalance.filter((row) => row.date < printFrom) : [];
-    const carryForward = rowsBeforeRange.length ? rowsBeforeRange[rowsBeforeRange.length - 1].balance : 0;
-    const rowsInRange = ledgerWithBalance.filter(
-      (row) => (!printFrom || row.date >= printFrom) && (!printTo || row.date <= printTo),
-    );
-    const periodDebit = rowsInRange.reduce((sum, row) => sum + row.debit, 0);
-    const periodCredit = rowsInRange.reduce((sum, row) => sum + row.credit, 0);
-    const periodBalance = rowsInRange.length ? rowsInRange[rowsInRange.length - 1].balance : carryForward;
     const periodLabel =
       printFrom || printTo
         ? `Dönem: ${printFrom || "başlangıç"} – ${printTo || "güncel"}`
@@ -373,9 +377,9 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
     const html = buildLedgerPrintHtml(
       `Cari Hesap Ekstresi — ${name}`,
       `Müşteri Kodu: ${code} · ${periodLabel} · Oluşturma Tarihi: ${today}`,
-      rowsInRange,
-      { totalDebit: periodDebit, totalCredit: periodCredit, totalBalance: periodBalance },
-      printFrom ? carryForward : null,
+      rangeFilteredLedger.rows,
+      { totalDebit: rangeFilteredLedger.totalDebit, totalCredit: rangeFilteredLedger.totalCredit, totalBalance: rangeFilteredLedger.totalBalance },
+      rangeFilteredLedger.carryForward,
       `${window.location.origin}${import.meta.env.BASE_URL}logo-header.png`,
     );
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
@@ -486,7 +490,17 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
               </tr>
             </thead>
             <tbody>
-              {ledgerWithBalance.map((row) => (
+              {rangeFilteredLedger.carryForward !== null && (
+                <tr className="crm-carry-row">
+                  <td>—</td>
+                  <td>Devir Bakiyesi</td>
+                  <td>Seçilen dönem öncesi gerçek bakiye</td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td>{formatSignedBalance(rangeFilteredLedger.carryForward)}</td>
+                </tr>
+              )}
+              {rangeFilteredLedger.rows.map((row) => (
                 <tr key={row.key}>
                   <td>{row.date || "—"}</td>
                   <td>{row.type}</td>
@@ -497,26 +511,26 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
                 </tr>
               ))}
             </tbody>
-            {ledgerWithBalance.length > 0 && (
+            {rangeFilteredLedger.rows.length > 0 && (
               <tfoot>
                 <tr>
                   <td colSpan={3}>
                     <strong>Toplam</strong>
                   </td>
                   <td>
-                    <strong>{formatMoney(totalDebit)}</strong>
+                    <strong>{formatMoney(rangeFilteredLedger.totalDebit)}</strong>
                   </td>
                   <td>
-                    <strong>{formatMoney(totalCredit)}</strong>
+                    <strong>{formatMoney(rangeFilteredLedger.totalCredit)}</strong>
                   </td>
                   <td>
-                    <strong>{formatSignedBalance(totalBalance)}</strong>
+                    <strong>{formatSignedBalance(rangeFilteredLedger.totalBalance)}</strong>
                   </td>
                 </tr>
               </tfoot>
             )}
           </table>
-          {!ledgerWithBalance.length && (
+          {!rangeFilteredLedger.rows.length && (
             <div className="crm-empty">Bu müşteriye ait cari hareket bulunamadı.</div>
           )}
         </div>
