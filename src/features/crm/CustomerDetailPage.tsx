@@ -362,7 +362,6 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const whatsapp = sourceText(attributes.whatsapp) || phone;
 
   const printLedger = () => {
-    const today = new Intl.DateTimeFormat("tr-TR", { dateStyle: "long" }).format(new Date());
     const periodLabel =
       printFrom || printTo
         ? `Dönem: ${printFrom || "başlangıç"} – ${printTo || "güncel"}`
@@ -376,7 +375,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
     // on the same route the whole time.
     const html = buildLedgerPrintHtml(
       `Cari Hesap Ekstresi — ${name}`,
-      `Müşteri Kodu: ${code} · ${periodLabel} · Oluşturma Tarihi: ${today}`,
+      `Müşteri Kodu: ${code} · ${periodLabel}`,
       rangeFilteredLedger.rows,
       { totalDebit: rangeFilteredLedger.totalDebit, totalCredit: rangeFilteredLedger.totalCredit, totalBalance: rangeFilteredLedger.totalBalance },
       rangeFilteredLedger.carryForward,
@@ -556,11 +555,6 @@ function buildLedgerPrintHtml(
   carryForward: number | null,
   logoUrl: string,
 ) {
-  const exported = new Intl.DateTimeFormat("tr-TR", {
-    dateStyle: "long",
-    timeStyle: "short",
-    timeZone: "Europe/Istanbul",
-  }).format(new Date());
   const headers = ["Tarih", "İşlem", "Açıklama", "Borç", "Alacak", "Bakiye"];
   const carryRow =
     carryForward !== null
@@ -584,7 +578,6 @@ th,td{border:1px solid #ccd5df;padding:6px;text-align:left}
 th{background:#e9f0f7}
 tfoot td{font-weight:700}
 tr.carry td{font-style:italic;background:#f4f7fa}
-footer{margin-top:20px;border-top:1px solid #ccd5df;padding-top:8px;color:#687684;font-size:10px}
 .pdf-kpis{display:flex;gap:10px;margin:14px 0}
 .pdf-kpis article{flex:1 1 150px;border:1px solid #ccd5df;border-radius:8px;padding:8px 10px}
 .pdf-kpis span{display:block;color:#687684;font-size:9px;text-transform:uppercase}
@@ -592,7 +585,7 @@ footer{margin-top:20px;border-top:1px solid #ccd5df;padding-top:8px;color:#68768
 .page-number:after{content:"Sayfa " counter(page) " / " counter(pages)}
 @page{size:A4;margin:12mm 12mm 18mm 12mm}
 @media print{.page-number{position:fixed;bottom:6mm;right:12mm;font-size:9px;color:#687684}}
-</style></head><body><div class="sheet"><header><div><strong>Dayan Dişli</strong><h1>${escapeHtml(title)}</h1><div class="meta">${escapeHtml(subtitle)} · Oluşturma: ${escapeHtml(exported)}</div></div><img src="${escapeHtml(logoUrl)}" alt="Dayan Dişli" /></header><section class="pdf-kpis"><article><span>Toplam Borç</span><strong>${escapeHtml(formatMoney(totals.totalDebit))}</strong></article><article><span>Toplam Alacak</span><strong>${escapeHtml(formatMoney(totals.totalCredit))}</strong></article><article><span>Toplam Bakiye</span><strong>${escapeHtml(formatSignedBalance(totals.totalBalance))}</strong></article></section><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${carryRow}${bodyRows}</tbody></table><footer>© Eclipse Mühendislik</footer><div class="page-number"></div></div><script>window.onload=()=>window.print();</script></body></html>`;
+</style></head><body><div class="sheet"><header><div><strong>Dayan Dişli</strong><h1>${escapeHtml(title)}</h1><div class="meta">${escapeHtml(subtitle)}</div></div><img src="${escapeHtml(logoUrl)}" alt="Dayan Dişli" /></header><section class="pdf-kpis"><article><span>Toplam Borç</span><strong>${escapeHtml(formatMoney(totals.totalDebit))}</strong></article><article><span>Toplam Alacak</span><strong>${escapeHtml(formatMoney(totals.totalCredit))}</strong></article><article><span>Toplam Bakiye</span><strong>${escapeHtml(formatSignedBalance(totals.totalBalance))}</strong></article></section><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${carryRow}${bodyRows}</tbody></table><div class="page-number"></div></div><script>window.onload=()=>window.print();</script></body></html>`;
 }
 
 function InvoiceHistory({

@@ -25,12 +25,11 @@ type CustomerRow = {
   phone: string;
   whatsapp?: string;
   email: string;
-  projects: string[];
-  planned: string;
-  collected: string;
   balance: string;
   balanceValue: number | null;
 };
+
+type BalanceFilter = "all" | "none" | "any" | "receivable" | "payable";
 
 type CustomerApiRow = {
   parasut_id?: unknown;
@@ -54,11 +53,16 @@ const columns: ExportColumn<CustomerRow>[] = [
   { header: "Tür", value: (r) => r.type },
   { header: "TC/VKN", value: (r) => r.taxNo },
   { header: "Telefon", value: (r) => r.phone },
-  { header: "Projeler", value: (r) => r.projects.join(", ") },
-  { header: "Planlanan Alacak", value: (r) => r.planned },
-  { header: "Tahsil Edilen", value: (r) => r.collected },
   { header: "Kalan Bakiye", value: (r) => r.balance },
 ];
+
+// Positive = customer owes us (Borç bakiyesi, "B"); negative = we owe the
+// customer (Alacak bakiyesi, "A") — same signed convention as the customer
+// ledger, applied consistently here too.
+function formatSignedBalance(value: number) {
+  const suffix = value < 0 ? "A" : "B";
+  return `${formatMoney(Math.abs(value))} ${suffix}`;
+}
 
 function displayText(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : "—";
@@ -88,12 +92,18 @@ function mapCustomerCard(row: CustomerApiRow): CustomerRow | null {
     taxNo: displayText(attributes.tax_number),
     phone: displayText(attributes.phone),
     email: displayText(attributes.email),
-    projects: [],
-    planned: "—",
-    collected: "—",
-    balance: balanceValue === null ? "—" : formatMoney(balanceValue),
+    balance: balanceValue === null ? "—" : formatSignedBalance(balanceValue),
     balanceValue,
   };
+}
+
+function matchesBalanceFilter(balanceValue: number | null, filter: BalanceFilter) {
+  if (filter === "all") return true;
+  if (balanceValue === null) return false;
+  if (filter === "none") return balanceValue === 0;
+  if (filter === "any") return balanceValue !== 0;
+  if (filter === "receivable") return balanceValue > 0;
+  return balanceValue < 0;
 }
 
 function sortCustomerRows(rows: CustomerRow[], state: CustomerSortState) {
@@ -160,10 +170,13 @@ async function fetchAllCustomers(search: string, cancelledRef: { cancelled: bool
 export function CustomerListPage() {
   const [search, setSearch] = useState("");
   const [type, setType] = useState("Tüm Türler");
+  const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [sortState, setSortState] = useState<CustomerSortState>(null);
+  const [outstandingTotal, setOutstandingTotal] = useState<number | null>(null);
+  const [overdueTotal, setOverdueTotal] = useState<number | null>(null);
   const pageSize = 100;
 
   useEffect(() => {
@@ -188,8 +201,36 @@ export function CustomerListPage() {
     };
   }, [search]);
 
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions
+      .invoke("parasut-api", { body: { action: "receivables-summary" } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const response = data as { outstanding_total?: unknown; overdue_total?: unknown } | null;
+        if (error || !response) {
+          setOutstandingTotal(null);
+          setOverdueTotal(null);
+          return;
+        }
+        setOutstandingTotal(typeof response.outstanding_total === "number" ? response.outstanding_total : null);
+        setOverdueTotal(typeof response.overdue_total === "number" ? response.overdue_total : null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOutstandingTotal(null);
+          setOverdueTotal(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const sortedRows = sortCustomerRows(
-    customers.filter((c) => type === "Tüm Türler" || c.type === type),
+    customers.filter(
+      (c) => (type === "Tüm Türler" || c.type === type) && matchesBalanceFilter(c.balanceValue, balanceFilter),
+    ),
     sortState,
   );
   const rows = sortedRows.slice((page - 1) * pageSize, page * pageSize);
@@ -230,16 +271,12 @@ export function CustomerListPage() {
           <strong>{total === null ? "—" : total.toLocaleString("tr-TR")}</strong>
         </article>
         <article className="erp-card">
-          <span>Toplam Tahsilat</span>
-          <strong>—</strong>
+          <span>Toplam Tahsil Edilecek</span>
+          <strong>{outstandingTotal === null ? "—" : formatMoney(outstandingTotal)}</strong>
         </article>
         <article className="erp-card">
-          <span>Bekleyen Tahsilat</span>
-          <strong>—</strong>
-        </article>
-        <article className="erp-card">
-          <span>Bakiyesi Kapanan</span>
-          <strong>—</strong>
+          <span>Gecikmiş</span>
+          <strong>{overdueTotal === null ? "—" : formatMoney(overdueTotal)}</strong>
         </article>
       </section>
       <div className="erp-card crm-filters">
@@ -264,13 +301,18 @@ export function CustomerListPage() {
           <option>Tüzel Kişi</option>
           <option>Gerçek Kişi</option>
         </select>
-        <select>
-          <option>Tüm Projeler</option>
-        </select>
-        <select>
-          <option>Tüm Bakiyeler</option>
-          <option>Bakiyesi Açık</option>
-          <option>Bakiyesi Kapalı</option>
+        <select
+          value={balanceFilter}
+          onChange={(e) => {
+            setBalanceFilter(e.target.value as BalanceFilter);
+            setPage(1);
+          }}
+        >
+          <option value="all">Tüm Bakiyeler</option>
+          <option value="none">Bakiyesi Olmayan</option>
+          <option value="any">Bakiyesi Olan</option>
+          <option value="receivable">Tahsil Edilecek</option>
+          <option value="payable">Ödenecek</option>
         </select>
       </div>
       <div className="erp-card crm-table-wrap">
@@ -306,9 +348,6 @@ export function CustomerListPage() {
                 </button>
               </th>
               <th>Telefon</th>
-              <th>Projeler</th>
-              <th>Planlanan Alacak</th>
-              <th>Tahsil Edilen</th>
               <th
                 aria-sort={
                   activeSort.key === "balance"
@@ -363,9 +402,6 @@ export function CustomerListPage() {
                   {c.phone}
                   <small>{c.whatsapp && `WhatsApp: ${c.whatsapp}`}</small>
                 </td>
-                <td>{c.projects.join(", ")}</td>
-                <td>{c.planned}</td>
-                <td>{c.collected}</td>
                 <td>
                   <strong>{c.balance}</strong>
                 </td>
