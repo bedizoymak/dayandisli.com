@@ -329,33 +329,61 @@ function NewExpenseSplitButton() {
   );
 }
 
+// Backend caps a single list call at 100 rows; this company has at least
+// 767 real purchase bills (per server/parasut/resource-registry.ts's
+// live-verified count), so a single page hid the vast majority of them and
+// left search only able to match within that first page. Same
+// full-page-fetch convention as CustomerListPage's fetchAllCustomers.
+async function fetchAllPurchaseBills(cancelledRef: { cancelled: boolean }) {
+  const pageSize = 100;
+  const fetchPage = (page: number) =>
+    supabase.functions.invoke("parasut-api", {
+      body: {
+        action: "list",
+        resource: "purchase_bills",
+        page,
+        pageSize,
+        filters: { archived: false },
+        sort: { field: "issue_date", direction: "desc" },
+      },
+    });
+
+  const first = await fetchPage(1);
+  if (cancelledRef.cancelled) return [] as PurchaseBillApiRow[];
+  const firstResponse = first.data as { rows?: unknown; total?: unknown } | null;
+  if (first.error || !firstResponse || !Array.isArray(firstResponse.rows)) return [] as PurchaseBillApiRow[];
+
+  const total = typeof firstResponse.total === "number" ? firstResponse.total : null;
+  const rows = [...(firstResponse.rows as PurchaseBillApiRow[])];
+
+  if (total !== null) {
+    const remainingPages = Math.ceil(total / pageSize) - 1;
+    for (let page = 2; page <= remainingPages + 1; page += 1) {
+      if (cancelledRef.cancelled) break;
+      const next = await fetchPage(page);
+      const nextResponse = next.data as { rows?: unknown } | null;
+      if (next.error || !nextResponse || !Array.isArray(nextResponse.rows)) break;
+      rows.push(...(nextResponse.rows as PurchaseBillApiRow[]));
+    }
+  }
+
+  return rows;
+}
+
 export function ExpenseListPage() {
   const [liveExpenseRows, setLiveExpenseRows] = useState<LiveExpenseRow[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
+    const cancelledRef = { cancelled: false };
 
     async function loadExpenses() {
       try {
-        const { data, error } = await supabase.functions.invoke("parasut-api", {
-          body: {
-            action: "list",
-            resource: "purchase_bills",
-            pageSize: 100,
-            filters: { archived: false },
-            sort: { field: "issue_date", direction: "desc" },
-          },
-        });
+        const rows = await fetchAllPurchaseBills(cancelledRef);
 
-        if (cancelled) return;
-
-        if (error || !Array.isArray(data?.rows)) {
-          setLiveExpenseRows([]);
-          return;
-        }
+        if (cancelledRef.cancelled) return;
 
         setLiveExpenseRows(
-          (data.rows as PurchaseBillApiRow[]).map((source) => {
+          rows.map((source) => {
             const attributes = source.attributes ?? {};
             const supplierId = purchaseBillSourceText(
               source.relationships?.supplier?.data?.id,
@@ -387,13 +415,13 @@ export function ExpenseListPage() {
           }),
         );
       } catch {
-        if (!cancelled) setLiveExpenseRows([]);
+        if (!cancelledRef.cancelled) setLiveExpenseRows([]);
       }
     }
 
     void loadExpenses();
     return () => {
-      cancelled = true;
+      cancelledRef.cancelled = true;
     };
   }, []);
 

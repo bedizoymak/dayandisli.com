@@ -840,38 +840,56 @@ function mapSupplier(row: SupplierApiRow): SupplierListRow | null {
   };
 }
 
+// Backend caps a single list call at 100 rows and defaults to
+// last_seen_at desc. A real supplier that hasn't been touched recently in
+// Paraşüt could rank far past page 1 and never render — same fix as
+// CustomerListPage's fetchAllCustomers, adapted for suppliers (no server
+// search here; the page's own search box already filters client-side).
+async function fetchAllSuppliers(cancelledRef: { cancelled: boolean }) {
+  const pageSize = 100;
+  const fetchPage = (page: number) =>
+    supabase.functions.invoke("parasut-api", {
+      body: { action: "list", resource: "suppliers", page, pageSize },
+    });
+
+  const first = await fetchPage(1);
+  if (cancelledRef.cancelled) return [] as SupplierApiRow[];
+  const firstResponse = first.data as { rows?: unknown; total?: unknown } | null;
+  if (first.error || !firstResponse || !Array.isArray(firstResponse.rows)) return [] as SupplierApiRow[];
+
+  const total = typeof firstResponse.total === "number" ? firstResponse.total : null;
+  const rows = [...(firstResponse.rows as SupplierApiRow[])];
+
+  if (total !== null) {
+    const remainingPages = Math.ceil(total / pageSize) - 1;
+    for (let page = 2; page <= remainingPages + 1; page += 1) {
+      if (cancelledRef.cancelled) break;
+      const next = await fetchPage(page);
+      const nextResponse = next.data as { rows?: unknown } | null;
+      if (next.error || !nextResponse || !Array.isArray(nextResponse.rows)) break;
+      rows.push(...(nextResponse.rows as SupplierApiRow[]));
+    }
+  }
+
+  return rows;
+}
+
 export function SuppliersPage() {
   const [supplierRows, setSupplierRows] = useState<SupplierListRow[]>([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
-    supabase.functions
-      .invoke("parasut-api", {
-        body: {
-          action: "list",
-          resource: "suppliers",
-          pageSize: 100,
-        },
-      })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        const response = data as { rows?: unknown } | null;
-        if (error || !response || !Array.isArray(response.rows)) {
-          setSupplierRows([]);
-          return;
-        }
-        setSupplierRows(
-          (response.rows as SupplierApiRow[])
-            .map(mapSupplier)
-            .filter((row): row is SupplierListRow => row !== null),
-        );
+    const cancelledRef = { cancelled: false };
+    fetchAllSuppliers(cancelledRef)
+      .then((rows) => {
+        if (cancelledRef.cancelled) return;
+        setSupplierRows(rows.map(mapSupplier).filter((row): row is SupplierListRow => row !== null));
       })
       .catch(() => {
-        if (!cancelled) setSupplierRows([]);
+        if (!cancelledRef.cancelled) setSupplierRows([]);
       });
     return () => {
-      cancelled = true;
+      cancelledRef.cancelled = true;
     };
   }, []);
 
