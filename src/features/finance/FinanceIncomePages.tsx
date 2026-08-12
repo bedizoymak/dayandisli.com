@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatMoney } from "@/lib/finance/financeLabels";
 import { FinanceFormSection, FinancePageHeader } from "./FinanceFormComponents";
 import {
+  FinanceBackLink,
   FinanceBreadcrumb,
   FinanceExportMenu,
   RowActionsMenu,
@@ -695,15 +696,32 @@ type InvoiceDetailData = {
   grandTotal: string;
   collection: string;
   status: string;
+  eInvoiceStatus: string;
   lines: {
     key: string;
     description: string;
     quantity: string;
+    unit: string;
     unitPrice: string;
     vatRate: string;
     vatAmount: string;
     lineTotal: string;
   }[];
+};
+
+// Real, schema-confirmed enum (SalesInvoiceAttributes.item_type, "Fatura
+// türü") — the previous version only handled "cancelled" and silently fell
+// through to "—" for every normal invoice (item_type "invoice"), which is
+// why Durum rendered empty for real invoices.
+const SALES_INVOICE_ITEM_TYPE_LABELS: Record<string, string> = {
+  invoice: "Fatura",
+  export: "İhracat Faturası",
+  estimate: "Taslak",
+  cancelled: "İptal",
+  recurring_invoice: "Tekrarlayan Fatura",
+  recurring_estimate: "Tekrarlayan Taslak",
+  recurring_export: "Tekrarlayan İhracat Faturası",
+  refund: "İade",
 };
 
 export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
@@ -722,7 +740,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
       .invoke("parasut-api", {
         body: { action: "detail", resource: "sales_invoices", parasutId: invoiceId },
       })
-      .then(({ data: response, error }) => {
+      .then(async ({ data: response, error }) => {
         if (cancelled) return;
         const result = response as {
           header?: InvoiceApiRow | null;
@@ -736,6 +754,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
               unit_price?: unknown;
               vat_rate?: unknown;
             } | null;
+            relationships?: { product?: { data?: { id?: unknown } | null } | null } | null;
           }[] | null;
         } | null;
         const header = result?.header;
@@ -750,8 +769,51 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
         const contactName = sourceText(result?.contact?.attributes?.name);
         const itemType = sourceText(attributes.item_type);
         const archived = header.source_archived === true || attributes.archived === true;
+        const detailRows = result?.details ?? [];
 
-        const lines = (result?.details ?? []).map((detail) => {
+        // Units live on the product resource (products.attributes.unit),
+        // not on the invoice line itself — resolved here via the existing
+        // read-only detail/products action (no backend change) for each
+        // product actually referenced by this invoice's real lines.
+        const productIds = Array.from(
+          new Set(
+            detailRows
+              .map((detail) => sourceText(detail.relationships?.product?.data?.id))
+              .filter(Boolean),
+          ),
+        );
+        const unitByProductId = new Map<string, string>();
+        if (productIds.length) {
+          const productResults = await Promise.all(
+            productIds.map((id) =>
+              supabase.functions.invoke("parasut-api", { body: { action: "detail", resource: "products", parasutId: id } }),
+            ),
+          );
+          productResults.forEach((productResult, index) => {
+            const record = (productResult.data as { record?: { attributes?: Record<string, unknown> | null } } | null)?.record;
+            const unit = sourceText(record?.attributes?.unit);
+            if (unit) unitByProductId.set(productIds[index], unit);
+          });
+        }
+
+        // Real e-belge status, if this invoice has one — resolved from the
+        // existing e_invoices resource (already-built generic list action),
+        // matched via its real invoice_parasut_id relation. Shown only when
+        // actually returned; never guessed.
+        let eInvoiceStatus = "";
+        const eInvoiceResult = await supabase.functions.invoke("parasut-api", {
+          body: { action: "list", resource: "e_invoices", pageSize: 25, search: invoiceId },
+        });
+        const eInvoiceRows = (eInvoiceResult.data as { rows?: { attributes?: Record<string, unknown> | null }[] } | null)?.rows ?? [];
+        const matchedEInvoice = eInvoiceRows.find(
+          (row) => sourceText(row.attributes?.invoice_parasut_id) === invoiceId,
+        );
+        if (matchedEInvoice) {
+          eInvoiceStatus = sourceText(matchedEInvoice.attributes?.status);
+        }
+        if (cancelled) return;
+
+        const lines = detailRows.map((detail) => {
           const detailAttributes = detail.attributes ?? {};
           const quantity = Number(detailAttributes.quantity);
           const unitPrice = Number(detailAttributes.unit_price);
@@ -759,10 +821,15 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           const lineNet = Number.isFinite(quantity) && Number.isFinite(unitPrice) ? quantity * unitPrice : null;
           const vatAmount = lineNet !== null && Number.isFinite(vatRate) ? (lineNet * vatRate) / 100 : null;
           const lineTotal = lineNet !== null && vatAmount !== null ? lineNet + vatAmount : lineNet;
+          const productId = sourceText(detail.relationships?.product?.data?.id);
           return {
             key: sourceText(detail.parasut_id) || Math.random().toString(36),
-            description: sourceText(detailAttributes.description) || sourceText(detail.productName) || "—",
+            description:
+              [sourceText(detail.productName), sourceText(detailAttributes.description)]
+                .filter(Boolean)
+                .join(" — ") || "—",
             quantity: Number.isFinite(quantity) ? String(quantity) : "—",
+            unit: unitByProductId.get(productId) ?? "",
             unitPrice: Number.isFinite(unitPrice) ? invoiceAmount(unitPrice, currency) : "—",
             vatRate: Number.isFinite(vatRate) ? `%${vatRate}` : "—",
             vatAmount: vatAmount !== null ? invoiceAmount(vatAmount, currency) : "—",
@@ -787,7 +854,8 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           vatTotal: invoiceAmount(attributes.total_vat, currency),
           grandTotal: invoiceAmount(attributes.net_total, currency),
           collection: collectionLabel(attributes.payment_status),
-          status: archived ? "Arşivlendi" : itemType === "cancelled" ? "İptal" : "—",
+          status: archived ? "Arşivlendi" : SALES_INVOICE_ITEM_TYPE_LABELS[itemType] ?? (itemType || "—"),
+          eInvoiceStatus,
           lines,
         });
         setLoading(false);
@@ -805,7 +873,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
   if (loading) {
     return (
       <div className="income-page">
-        <FinancePageHeader breadcrumb="Muhasebe ve Finans / Gelir Yönetimi" title="Yükleniyor…" />
+        <h1>Yükleniyor…</h1>
       </div>
     );
   }
@@ -823,14 +891,15 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
 
   return (
     <div className="income-page">
-      <FinancePageHeader
-        breadcrumb={`Muhasebe ve Finans / Gelir Yönetimi / Faturalar / ${data.no}`}
-        title={data.description ? `Fatura ${data.no} — ${data.description}` : `Fatura ${data.no}`}
-        cancelTo={incomeInvoicesBase}
-        backLabel="Faturalara Dön"
-      />
+      <header className="finance-form-header">
+        <div>
+          <FinanceBreadcrumb value={`Muhasebe ve Finans / Gelir Yönetimi / Faturalar / ${data.no}`} />
+          <FinanceBackLink to={incomeInvoicesBase}>Faturalara Dön</FinanceBackLink>
+          <h1>{data.description ? `Fatura ${data.no} — ${data.description}` : `Fatura ${data.no}`}</h1>
+        </div>
+      </header>
       <section className="erp-card income-detail-panel">
-        <div className="finance-fields two">
+        <div className="income-detail-fields">
           <p>
             <span>Fatura No</span>
             <b>{data.no}</b>
@@ -863,39 +932,47 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
             <span>Durum</span>
             <b>{data.status}</b>
           </p>
+          {data.eInvoiceStatus && (
+            <p>
+              <span>E-Fatura Durumu</span>
+              <b>{data.eInvoiceStatus}</b>
+            </p>
+          )}
         </div>
       </section>
       <section className="erp-card income-detail-panel">
         <h2>Fatura Kalemleri</h2>
         {data.lines.length ? (
-          <table className="income-subtable">
-            <thead>
-              <tr>
-                <th>Açıklama</th>
-                <th>Miktar</th>
-                <th>Birim Fiyat</th>
-                <th>KDV Oranı</th>
-                <th>KDV Tutarı</th>
-                <th>Satır Toplamı</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.lines.map((line) => (
-                <tr key={line.key}>
-                  <td>{line.description}</td>
-                  <td>{line.quantity}</td>
-                  <td>{line.unitPrice}</td>
-                  <td>{line.vatRate}</td>
-                  <td>{line.vatAmount}</td>
-                  <td>{line.lineTotal}</td>
+          <div className="income-table-scroll">
+            <table className="income-subtable">
+              <thead>
+                <tr>
+                  <th>Açıklama</th>
+                  <th>Miktar</th>
+                  <th>Birim Fiyat</th>
+                  <th>KDV Oranı</th>
+                  <th>KDV Tutarı</th>
+                  <th>Satır Toplamı</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.lines.map((line) => (
+                  <tr key={line.key}>
+                    <td>{line.description}</td>
+                    <td>{line.unit ? `${line.quantity} ${line.unit}` : line.quantity}</td>
+                    <td>{line.unitPrice}</td>
+                    <td>{line.vatRate}</td>
+                    <td>{line.vatAmount}</td>
+                    <td>{line.lineTotal}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p>Bu faturaya ait kalem verisi bulunamadı.</p>
         )}
-        <div className="finance-fields two" style={{ marginTop: "12px" }}>
+        <div className="income-detail-fields" style={{ marginTop: "12px" }}>
           <p>
             <span>Ara Toplam (KDV Hariç)</span>
             <b>{data.subtotal}</b>
@@ -910,39 +987,41 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           </p>
         </div>
       </section>
-      <div className="finance-inline-actions">
-        <Link
-          className="finance-text-button"
-          to={`${incomeInvoicesBase}/${encodeURIComponent(data.parasutId)}/edit`}
-        >
-          Düzenle
-        </Link>
-        <button
-          type="button"
-          className="finance-text-button"
-          onClick={() =>
-            printReport(
-              `Fatura ${data.no}`,
-              invoiceColumns,
-              [
-                {
-                  no: data.no,
-                  customer: data.customer,
-                  customerId: data.customerId,
-                  invoiceDate: data.invoiceDate,
-                  dueDate: data.dueDate,
-                  amount: data.grandTotal,
-                  collection: data.collection,
-                  status: data.status,
-                },
-              ],
-              `Fatura no ${data.no}`,
-            )
-          }
-        >
-          PDF Olarak İndir
-        </button>
-      </div>
+      <section className="erp-card">
+        <div className="finance-inline-actions">
+          <Link
+            className="finance-text-button"
+            to={`${incomeInvoicesBase}/${encodeURIComponent(data.parasutId)}/edit`}
+          >
+            Düzenle
+          </Link>
+          <button
+            type="button"
+            className="finance-text-button"
+            onClick={() =>
+              printReport(
+                `Fatura ${data.no}`,
+                invoiceColumns,
+                [
+                  {
+                    no: data.no,
+                    customer: data.customer,
+                    customerId: data.customerId,
+                    invoiceDate: data.invoiceDate,
+                    dueDate: data.dueDate,
+                    amount: data.grandTotal,
+                    collection: data.collection,
+                    status: data.status,
+                  },
+                ],
+                `Fatura no ${data.no}`,
+              )
+            }
+          >
+            PDF Olarak İndir
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
