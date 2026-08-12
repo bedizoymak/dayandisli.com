@@ -709,20 +709,21 @@ type InvoiceDetailData = {
   }[];
 };
 
-// Real, schema-confirmed enum (SalesInvoiceAttributes.item_type, "Fatura
-// türü") — the previous version only handled "cancelled" and silently fell
-// through to "—" for every normal invoice (item_type "invoice"), which is
-// why Durum rendered empty for real invoices.
-const SALES_INVOICE_ITEM_TYPE_LABELS: Record<string, string> = {
-  invoice: "Fatura",
-  export: "İhracat Faturası",
-  estimate: "Taslak",
-  cancelled: "İptal",
-  recurring_invoice: "Tekrarlayan Fatura",
-  recurring_estimate: "Tekrarlayan Taslak",
-  recurring_export: "Tekrarlayan İhracat Faturası",
-  refund: "İade",
-};
+// A JSON:API to-one relationship is normally { data: { id, type } }, but the
+// backend's own relationshipId() helper (supabase/functions/parasut-api/
+// handlers.ts) defensively rejects an array shape rather than assuming
+// which entry is right — mirrored here so a product reference is never
+// silently dropped just because it arrived in the less common shape.
+function toOneRelationshipId(ref: unknown): string {
+  if (!ref || typeof ref !== "object") return "";
+  const data = (ref as { data?: unknown }).data;
+  if (!data || Array.isArray(data)) return "";
+  return sourceText((data as { id?: unknown }).id);
+}
+
+function formatQuantity(value: number) {
+  return value.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
   const [loading, setLoading] = useState(true);
@@ -767,7 +768,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
         const currency = sourceText(attributes.currency).toUpperCase().replace(/^TRL$/, "TRY") || "TRY";
         const customerId = sourceText(header.relationships?.contact?.data?.id);
         const contactName = sourceText(result?.contact?.attributes?.name);
-        const itemType = sourceText(attributes.item_type);
+        const issueDate = sourceText(attributes.issue_date);
         const archived = header.source_archived === true || attributes.archived === true;
         const detailRows = result?.details ?? [];
 
@@ -775,10 +776,13 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
         // not on the invoice line itself — resolved here via the existing
         // read-only detail/products action (no backend change) for each
         // product actually referenced by this invoice's real lines.
+        // toOneRelationshipId (not a plain optional-chain) is used because a
+        // relationship that arrived as an array was previously read as
+        // undefined, silently dropping the product link for every line.
         const productIds = Array.from(
           new Set(
             detailRows
-              .map((detail) => sourceText(detail.relationships?.product?.data?.id))
+              .map((detail) => toOneRelationshipId(detail.relationships?.product))
               .filter(Boolean),
           ),
         );
@@ -796,20 +800,31 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           });
         }
 
-        // Real e-belge status, if this invoice has one — resolved from the
-        // existing e_invoices resource (already-built generic list action),
-        // matched via its real invoice_parasut_id relation. Shown only when
-        // actually returned; never guessed.
+        // Real e-belge status, if this invoice has one. The previous version
+        // used the generic list action's `search` param, which only matches
+        // e_invoices.external_id/contact_name/from_vkn/to_vkn — never the
+        // invoice_parasut_id relation this needs, so it always returned zero
+        // rows. Narrowed instead with the resource's real date filter
+        // (issue_date, same calendar day as this invoice) and matched
+        // client-side by the real invoice_parasut_id attribute. Left empty
+        // — never guessed — if nothing real is found.
         let eInvoiceStatus = "";
-        const eInvoiceResult = await supabase.functions.invoke("parasut-api", {
-          body: { action: "list", resource: "e_invoices", pageSize: 25, search: invoiceId },
-        });
-        const eInvoiceRows = (eInvoiceResult.data as { rows?: { attributes?: Record<string, unknown> | null }[] } | null)?.rows ?? [];
-        const matchedEInvoice = eInvoiceRows.find(
-          (row) => sourceText(row.attributes?.invoice_parasut_id) === invoiceId,
-        );
-        if (matchedEInvoice) {
-          eInvoiceStatus = sourceText(matchedEInvoice.attributes?.status);
+        if (issueDate) {
+          const eInvoiceResult = await supabase.functions.invoke("parasut-api", {
+            body: {
+              action: "list",
+              resource: "e_invoices",
+              pageSize: 100,
+              filters: { dueFrom: issueDate, dueTo: issueDate },
+            },
+          });
+          const eInvoiceRows = (eInvoiceResult.data as { rows?: { attributes?: Record<string, unknown> | null }[] } | null)?.rows ?? [];
+          const matchedEInvoice = eInvoiceRows.find(
+            (row) => sourceText(row.attributes?.invoice_parasut_id) === invoiceId,
+          );
+          if (matchedEInvoice) {
+            eInvoiceStatus = sourceText(matchedEInvoice.attributes?.status);
+          }
         }
         if (cancelled) return;
 
@@ -821,14 +836,14 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           const lineNet = Number.isFinite(quantity) && Number.isFinite(unitPrice) ? quantity * unitPrice : null;
           const vatAmount = lineNet !== null && Number.isFinite(vatRate) ? (lineNet * vatRate) / 100 : null;
           const lineTotal = lineNet !== null && vatAmount !== null ? lineNet + vatAmount : lineNet;
-          const productId = sourceText(detail.relationships?.product?.data?.id);
+          const productId = toOneRelationshipId(detail.relationships?.product);
           return {
             key: sourceText(detail.parasut_id) || Math.random().toString(36),
             description:
               [sourceText(detail.productName), sourceText(detailAttributes.description)]
                 .filter(Boolean)
                 .join(" — ") || "—",
-            quantity: Number.isFinite(quantity) ? String(quantity) : "—",
+            quantity: Number.isFinite(quantity) ? formatQuantity(quantity) : "—",
             unit: unitByProductId.get(productId) ?? "",
             unitPrice: Number.isFinite(unitPrice) ? invoiceAmount(unitPrice, currency) : "—",
             vatRate: Number.isFinite(vatRate) ? `%${vatRate}` : "—",
@@ -843,7 +858,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           description: sourceText(attributes.description),
           customer: contactName || "—",
           customerId,
-          invoiceDate: sourceText(attributes.issue_date) || "—",
+          invoiceDate: issueDate || "—",
           dueDate: sourceText(attributes.due_date) || "—",
           currency,
           // See the InvoiceApiRow field comment: Paraşüt's own schema swaps
@@ -854,7 +869,10 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           vatTotal: invoiceAmount(attributes.total_vat, currency),
           grandTotal: invoiceAmount(attributes.net_total, currency),
           collection: collectionLabel(attributes.payment_status),
-          status: archived ? "Arşivlendi" : SALES_INVOICE_ITEM_TYPE_LABELS[itemType] ?? (itemType || "—"),
+          // item_type ("invoice"/"estimate"/...) is a document TYPE, not a
+          // status — no longer shown as Durum. Durum now only reflects a
+          // real, verified state: archived, or a matched e-invoice status.
+          status: archived ? "Arşivlendi" : "",
           eInvoiceStatus,
           lines,
         });
@@ -928,10 +946,12 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
             <span>Tahsilat Durumu</span>
             <b>{data.collection}</b>
           </p>
-          <p>
-            <span>Durum</span>
-            <b>{data.status}</b>
-          </p>
+          {data.status && (
+            <p>
+              <span>Durum</span>
+              <b>{data.status}</b>
+            </p>
+          )}
           {data.eInvoiceStatus && (
             <p>
               <span>E-Fatura Durumu</span>
@@ -988,7 +1008,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
         </div>
       </section>
       <section className="erp-card">
-        <div className="finance-inline-actions">
+        <div className="finance-inline-actions" style={{ gap: "12px" }}>
           <Link
             className="finance-text-button"
             to={`${incomeInvoicesBase}/${encodeURIComponent(data.parasutId)}/edit`}
@@ -998,6 +1018,7 @@ export function InvoiceDetailPage({ invoiceId }: { invoiceId?: string }) {
           <button
             type="button"
             className="finance-text-button"
+            style={{ marginLeft: "4px" }}
             onClick={() =>
               printReport(
                 `Fatura ${data.no}`,
