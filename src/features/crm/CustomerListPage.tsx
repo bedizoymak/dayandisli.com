@@ -56,12 +56,11 @@ const columns: ExportColumn<CustomerRow>[] = [
   { header: "Kalan Bakiye", value: (r) => r.balance },
 ];
 
-// Positive = customer owes us (Borç bakiyesi, "B"); negative = we owe the
-// customer (Alacak bakiyesi, "A") — same signed convention as the customer
-// ledger, applied consistently here too.
+// Display-only: real trl_balance value, sign-prefixed. Positive = customer
+// owes us, negative = we owe the customer, zero = no balance.
 function formatSignedBalance(value: number) {
-  const suffix = value < 0 ? "A" : "B";
-  return `${formatMoney(Math.abs(value))} ${suffix}`;
+  if (value === 0) return formatMoney(0);
+  return `${value > 0 ? "+" : "-"}${formatMoney(Math.abs(value))}`;
 }
 
 function displayText(value: unknown) {

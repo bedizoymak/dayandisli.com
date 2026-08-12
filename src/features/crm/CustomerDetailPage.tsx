@@ -215,6 +215,11 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const ledgerRows = useMemo<LedgerRow[]>(() => {
     const debitRows: LedgerRow[] = balanceDocuments.map((document) => {
       const attributes = document.attributes ?? {};
+      // Paraşüt's own customer statement and customer balance use the
+      // VAT-INCLUSIVE invoice general total — confirmed via live read-only
+      // reconciliation against production (Paraşüt statement amounts matched
+      // gross_total exactly; net_total was consistently 20% below the real
+      // statement amount for every checked invoice).
       const rawAmount = numericValue(attributes.gross_total) ?? 0;
       const currency = sourceText(attributes.currency).toUpperCase();
       const rate = numericValue(attributes.exchange_rate);
@@ -357,7 +362,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const name = displayText(attributes.name);
   const code = sourceText(attributes.short_name) || sourceText(contact.parasut_id) || "—";
   const balanceValue = numericValue(attributes.trl_balance);
-  const balance = balanceValue === null ? "—" : formatMoney(balanceValue);
+  const balance = balanceValue === null ? "—" : formatSignedBalance(balanceValue);
   const phone = sourceText(attributes.phone);
   const whatsapp = sourceText(attributes.whatsapp) || phone;
 
