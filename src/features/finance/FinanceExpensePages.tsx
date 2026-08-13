@@ -417,7 +417,22 @@ async function fetchAllPurchaseBills(cancelledRef: { cancelled: boolean }) {
     }
   }
 
-  return rows;
+  // The backend orders this paginated fetch by issue_date, which many real
+  // purchase bills share exactly (same calendar day) — without a unique
+  // tiebreaker, offset pagination over a non-unique sort key is not
+  // guaranteed stable across separate page requests, so the same row can
+  // legitimately come back on two different pages. Deduplicated here by the
+  // real canonical parasut_id so no row is ever counted or keyed twice.
+  const seen = new Set<string>();
+  const deduped: PurchaseBillApiRow[] = [];
+  for (const row of rows) {
+    const id = purchaseBillSourceText(row.parasut_id);
+    if (id && seen.has(id)) continue;
+    if (id) seen.add(id);
+    deduped.push(row);
+  }
+
+  return deduped;
 }
 
 export function ExpenseListPage() {
@@ -532,8 +547,8 @@ export function ExpenseListPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
-              <tr key={row.parasutId || `${row.document}-${index}`}>
+            {rows.map((row) => (
+              <tr key={row.parasutId}>
                 <td>
                   <Link
                     className="expense-cell-link"

@@ -817,11 +817,26 @@ function supplierText(value: unknown) {
 
 // Same join convention as CustomerDetailPage's displayAddress: real
 // address/district/city attributes only, no invented fallback.
+// Paraşüt's free-text `address` field is very often already a full address
+// (street + neighborhood/district + city typed together), while the
+// separate `district`/`city` attributes are also populated from the same
+// real location — appending them unconditionally repeated that text. Real
+// info is never dropped: district/city are only left out when their exact
+// text is already present in `address`; otherwise they're still appended.
 function supplierAddressText(attributes: Record<string, unknown>) {
-  const parts = [attributes.address, attributes.district, attributes.city]
-    .map((value) => (typeof value === "string" ? value.trim() : ""))
-    .filter(Boolean);
-  return parts.length ? parts.join(", ") : "—";
+  const address = typeof attributes.address === "string" ? attributes.address.trim() : "";
+  const district = typeof attributes.district === "string" ? attributes.district.trim() : "";
+  const city = typeof attributes.city === "string" ? attributes.city.trim() : "";
+
+  const normalize = (value: string) => value.toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim();
+  const addressNormalized = normalize(address);
+
+  const parts = [address];
+  if (district && !addressNormalized.includes(normalize(district))) parts.push(district);
+  if (city && !addressNormalized.includes(normalize(city))) parts.push(city);
+
+  const cleaned = parts.filter(Boolean);
+  return cleaned.length ? cleaned.join(", ") : "—";
 }
 
 // +/-/0 sign, no suffix — same real-trl_balance convention as the customer
