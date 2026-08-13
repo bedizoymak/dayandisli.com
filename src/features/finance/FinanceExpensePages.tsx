@@ -510,6 +510,24 @@ export function ExpenseListPage() {
     return true;
   });
 
+  // Deterministic signature of the active filter combination. Keying
+  // <tbody> with it forces React to fully discard and rebuild the row
+  // subtree on every filter change instead of diffing it — a per-row
+  // key (row.parasutId, already unique/deduplicated) should already be
+  // sufficient, but live QA proved rows were still surviving a filter
+  // transition when absent from the new filtered set. Remounting the
+  // whole body on every transition makes that impossible regardless of
+  // the exact reconciliation cause, at the cost of a cheap full rebuild
+  // of a data table's rows (not its header) on each filter edit.
+  const filterSignature = [
+    filters.dateFrom,
+    filters.dateTo,
+    filters.recordType,
+    filters.paymentStatus,
+    filters.supplierText,
+    filters.search,
+  ].join("|");
+
   return (
     <div className="expense-page">
       <PageHeader
@@ -546,7 +564,7 @@ export function ExpenseListPage() {
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody key={filterSignature}>
             {rows.map((row) => (
               <tr key={row.parasutId}>
                 <td>

@@ -823,17 +823,34 @@ function supplierText(value: unknown) {
 // real location — appending them unconditionally repeated that text. Real
 // info is never dropped: district/city are only left out when their exact
 // text is already present in `address`; otherwise they're still appended.
-function supplierAddressText(attributes: Record<string, unknown>) {
+// Turkish casing is locale-dependent in a way plain .toLowerCase()/
+// .toLocaleLowerCase("tr-TR") don't handle uniformly for containment
+// checks: "İ" and "I" fold to two DIFFERENT lowercase letters in Turkish
+// ("i" vs "ı"), so if the free-text address spells a word with one variant
+// and the separate district/city field spells the same word with the
+// other, a locale-aware lowercase comparison still misses the match. All
+// three I-like characters are folded to a single marker first, before any
+// other casing/punctuation normalization, so the comparison is blind to
+// that variance. Exported for its own unit test.
+export function normalizeAddressForComparison(value: string) {
+  return value
+    .replace(/[İIı]/g, "i")
+    .toLowerCase()
+    .replace(/[.,/\\\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function supplierAddressText(attributes: Record<string, unknown>) {
   const address = typeof attributes.address === "string" ? attributes.address.trim() : "";
   const district = typeof attributes.district === "string" ? attributes.district.trim() : "";
   const city = typeof attributes.city === "string" ? attributes.city.trim() : "";
 
-  const normalize = (value: string) => value.toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim();
-  const addressNormalized = normalize(address);
+  const addressNormalized = normalizeAddressForComparison(address);
 
   const parts = [address];
-  if (district && !addressNormalized.includes(normalize(district))) parts.push(district);
-  if (city && !addressNormalized.includes(normalize(city))) parts.push(city);
+  if (district && !addressNormalized.includes(normalizeAddressForComparison(district))) parts.push(district);
+  if (city && !addressNormalized.includes(normalizeAddressForComparison(city))) parts.push(city);
 
   const cleaned = parts.filter(Boolean);
   return cleaned.length ? cleaned.join(", ") : "—";
