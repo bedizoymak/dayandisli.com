@@ -49,6 +49,16 @@ const lines: QuoteLineRow[] = [
   },
 ];
 
+function brandSection(html: string) {
+  const start = html.indexOf('<section class="brand-lockup');
+  return html.slice(start, html.indexOf("</section>", start));
+}
+
+function cssRule(html: string, selector: string) {
+  const start = html.indexOf(selector);
+  return html.slice(start, html.indexOf("}", start) + 1);
+}
+
 describe("buildQuotePdfHtml — approved V6 template fields", () => {
   it("includes the issuer's real header copy, quote meta, customer, subject, terms and totals", () => {
     const html = buildQuotePdfHtml(baseQuote, lines);
@@ -70,28 +80,34 @@ describe("buildQuotePdfHtml — approved V6 template fields", () => {
     expect(html).toContain("İkitelli VD: 43675880102");
   });
 
-  it("renders the issuer name under the logo as the exact single-line white brand-name block", () => {
+  it("keeps Dayan's embedded wordmark as the only visible company name in the brand lockup", () => {
     const dayanHtml = buildQuotePdfHtml(baseQuote, lines);
-    const dayanBrandSection = dayanHtml.slice(dayanHtml.indexOf('class="brand-lockup"'), dayanHtml.indexOf("</section>", dayanHtml.indexOf('class="brand-lockup"')));
-    expect(dayanBrandSection).toContain('<div class="brand-name">DAYAN DİŞLİ</div>');
+    const dayanBrandSection = brandSection(dayanHtml);
 
+    expect(dayanBrandSection).toContain('<section class="brand-lockup"');
+    expect(dayanBrandSection).toContain('class="brand-logo"');
+    expect(dayanBrandSection).not.toContain('class="brand-name"');
+    expect(dayanBrandSection).toContain('<span class="brand-tagline">HASSAS ÜRETİM • GÜVENİLİR TEDARİK</span>');
+  });
+
+  it("renders exactly one single-line white CEHA DİŞLİ badge between the real logo and slogan", () => {
     const cehaHtml = buildQuotePdfHtml({ ...baseQuote, issuer: "ceha" }, lines);
-    const cehaBrandSection = cehaHtml.slice(cehaHtml.indexOf('class="brand-lockup"'), cehaHtml.indexOf("</section>", cehaHtml.indexOf('class="brand-lockup"')));
-    expect(cehaBrandSection).toContain('<div class="brand-name">CEHA DİŞLİ</div>');
+    const cehaBrandSection = brandSection(cehaHtml);
 
-    for (const html of [dayanHtml, cehaHtml]) {
-      expect(html).toContain(`.brand-name {
-  display: block;
-  margin-top: 2.4mm;
-  color: #FFFFFF !important;
-  font-size: 8.8pt;
-  font-weight: 800;
-  letter-spacing: 0.55pt;
-  line-height: 1;
-  white-space: nowrap;
-  text-align: center;
-}`);
-    }
+    expect(cehaBrandSection).toContain('<section class="brand-lockup issuer-ceha"');
+    expect(cehaBrandSection).toContain('<div class="brand-name">CEHA DİŞLİ</div>');
+    expect(cehaBrandSection.match(/class="brand-name"/g) ?? []).toHaveLength(1);
+
+    const brandNameRule = cssRule(cehaHtml, ".brand-name {");
+    expect(brandNameRule).toContain("display: block");
+    expect(brandNameRule).toContain("color: #fff");
+    expect(brandNameRule).toContain("font-size: 8.8pt");
+    expect(brandNameRule).toContain("font-weight: 800");
+    expect(brandNameRule).toContain("letter-spacing: .55pt");
+    expect(brandNameRule).toContain("line-height: 1");
+    expect(brandNameRule).toContain("white-space: nowrap");
+    expect(brandNameRule).toContain("background: #09243d");
+    expect(brandNameRule).toContain("padding: .7mm 2.4mm");
   });
 
   it("falls back to the 'talep halinde' bank text when no IBAN is configured for the issuer/currency", () => {
@@ -104,6 +120,8 @@ describe("buildQuotePdfHtml — approved V6 template fields", () => {
     const html = buildQuotePdfHtml(baseQuote, lines);
     expect(html).toContain("logo-header.png");
     expect(html).toContain('class="brand-logo"');
+    expect(html).toContain(".logo-fallback[hidden]{display:none}");
+    expect(brandSection(html)).toContain('class="logo-fallback" hidden');
   });
 
   it("uses the real CEHA logo image for the ceha issuer, with a single-line white-on-navy wordmark onerror fallback (never a fabricated logo)", () => {
@@ -208,9 +226,32 @@ describe("buildQuotePdfHtml — approved V6 template fields", () => {
     }
   });
 
-  it("shifts the brand-lockup group down slightly (translateY) so the logo/slogan group sits lower in the header, per spec", () => {
+  it("moves CEHA's complete logo/name/slogan group down and tightens the name-to-slogan spacing", () => {
     const html = buildQuotePdfHtml(baseQuote, lines);
-    expect(html).toContain("transform:translateY(2.5mm)");
+    expect(html).toContain(".brand-lockup{width:42mm;align-self:center;justify-self:center;display:flex;flex-direction:column;align-items:center;text-align:center;transform:translateY(2.5mm)}");
+    expect(html).toContain(".brand-lockup.issuer-ceha{transform:translateY(4mm)}");
+    expect(html).toContain(".brand-lockup.issuer-ceha .brand-name{margin-top:2mm}");
+    expect(html).toContain(".brand-lockup.issuer-ceha .brand-tagline{margin-top:1.2mm}");
+  });
+
+  it("uses a zero-margin A4 flex document and keeps both footer blocks together on short printouts", () => {
+    const html = buildQuotePdfHtml(baseQuote, lines);
+    const documentRule = cssRule(html, ".quote-document{");
+
+    expect(html).toContain("@page{size:A4;margin:0}");
+    expect(html).toContain("html,body{margin:0;padding:0}");
+    expect(html).toContain('<main class="quote-sheet quote-document">');
+    expect(documentRule).toContain("width:210mm");
+    expect(documentRule).toContain("min-height:297mm");
+    expect(documentRule).toContain("box-sizing:border-box");
+    expect(documentRule).toContain("display:flex");
+    expect(documentRule).toContain("flex-direction:column");
+    expect(html).toContain(".quote-footer,.document-footer{break-inside:avoid;page-break-inside:avoid}");
+    expect(html).toContain(".quote-footer{break-after:avoid;page-break-after:avoid}");
+    expect(cssRule(html, "\n.document-footer{")).toContain("margin-top:auto");
+    expect(cssRule(html, "\n.document-footer{")).toContain("padding-top:2.5mm");
+    expect(html).toContain(".quote-sheet{box-shadow:none;margin:0;padding:12mm 12mm 6mm}");
+    expect(html).not.toContain("min-height:0");
   });
 
   it("gives TEKLİF VEREN/MÜŞTERİ plain, borderless blocks — no rounded card look — with bold party-label/party-name typography", () => {

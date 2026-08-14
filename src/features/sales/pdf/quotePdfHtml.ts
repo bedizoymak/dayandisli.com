@@ -56,8 +56,10 @@ function validityLabel(issueDate: string, validUntil: string | null) {
 const PDF_STYLE = `
 :root{--navy:#09243d;--blue:#55b8e8;--ink:#183047;--muted:#607486;--line:#d9e2e9;--paper:#fff}
 *{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact;color-adjust:exact}
-body{margin:0;background:#e7edf2;color:var(--ink);font-family:Arial,"Helvetica Neue",sans-serif}
-.quote-sheet{width:210mm;min-height:297mm;margin:18px auto;background:var(--paper);padding:16mm 16mm 14mm;box-shadow:0 4px 24px #0e26341c}
+html,body{margin:0;padding:0}
+body{background:#e7edf2;color:var(--ink);font-family:Arial,"Helvetica Neue",sans-serif}
+.quote-sheet{margin:18px auto;background:var(--paper);padding:16mm 16mm 14mm;box-shadow:0 4px 24px #0e26341c}
+.quote-document{width:210mm;min-height:297mm;box-sizing:border-box;display:flex;flex-direction:column}
 /* Fixed technical geometry — identical for both issuers; only colors,
    the logo file, and the logo's own aspect-ratio-driven fit change. */
 .quote-header{
@@ -79,20 +81,25 @@ body{margin:0;background:#e7edf2;color:var(--ink);font-family:Arial,"Helvetica N
    reads correctly against whichever background is active. */
 .header-divider{width:1px;height:30mm;align-self:center;justify-self:center;opacity:.26;transform:rotate(14deg);transform-origin:center;background:currentColor}
 .brand-lockup{width:42mm;align-self:center;justify-self:center;display:flex;flex-direction:column;align-items:center;text-align:center;transform:translateY(2.5mm)}
+.brand-lockup.issuer-ceha{transform:translateY(4mm)}
 .brand-logo{display:block;margin:0 auto;object-fit:contain;object-position:center;max-width:31mm;max-height:12mm}
 .brand-lockup[data-logo-shape="compact"] .brand-logo{max-width:24mm;max-height:17mm}
 .brand-name {
   display: block;
-  margin-top: 2.4mm;
-  color: #FFFFFF !important;
+  color: #fff;
   font-size: 8.8pt;
   font-weight: 800;
-  letter-spacing: 0.55pt;
+  letter-spacing: .55pt;
   line-height: 1;
   white-space: nowrap;
   text-align: center;
+  background: #09243d;
+  border-radius: 1px;
+  padding: .7mm 2.4mm;
 }
+.brand-lockup.issuer-ceha .brand-name{margin-top:2mm}
 .logo-fallback{color:var(--header-ink);font-size:10pt;font-weight:800;letter-spacing:.7pt;line-height:1.1;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.logo-fallback[hidden]{display:none}
 .logo-fallback span{color:var(--header-kicker)}
 /* CEHA's white header means white fallback text would be invisible — give
    it its own navy badge so the (white, single-line) wordmark stays
@@ -100,6 +107,7 @@ body{margin:0;background:#e7edf2;color:var(--ink);font-family:Arial,"Helvetica N
 .quote-header.issuer-ceha .logo-fallback.ceha-wordmark{background:#09243d;padding:2mm 3mm;border-radius:1px}
 .ceha-wordmark{color:#fff;font-size:10pt;font-weight:800;letter-spacing:.65pt;line-height:1;white-space:nowrap}
 .brand-tagline{margin-top:3.2mm;font-size:6.4pt;font-weight:500;letter-spacing:.1pt;line-height:1.2;color:var(--header-tagline);white-space:nowrap}
+.brand-lockup.issuer-ceha .brand-tagline{margin-top:1.2mm}
 .meta-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-top:0;margin-bottom:9mm}
 .meta-grid div{padding:4.2mm 5mm;border-right:1px solid var(--line)}
 .meta-grid div:last-child{border-right:0}
@@ -134,19 +142,22 @@ th:nth-child(n+4),td:nth-child(n+4){text-align:right;white-space:nowrap}
 .totals-row.grand-total{margin-top:2.5mm;padding:3.5mm 3mm;background:#09243d;color:#fff;border:0;border-radius:0;font-size:10pt;font-weight:800}
 .totals-row.grand-total .amount{color:#55b8e8;font-size:11pt;font-weight:800}
 .quote-footer{border-top:1px solid var(--line);margin-top:11mm;padding-top:4.5mm;display:grid;grid-template-columns:1.7fr 1fr;gap:9mm}
+.quote-footer,.document-footer{break-inside:avoid;page-break-inside:avoid}
+.quote-footer{break-after:avoid;page-break-after:avoid}
 .quote-footer strong{display:block;font-size:8.4px;margin:1.6mm 0}
 .quote-footer p:not(.section-label){font-size:8px;line-height:1.5;margin:1mm 0}
-.document-footer{border-top:1px solid var(--line);margin:6mm 0 0;padding-top:3mm;text-align:center;font-size:7.2px;color:var(--muted)}
+.document-footer{border-top:1px solid var(--line);margin:0;padding-top:2.5mm;text-align:center;font-size:7.2px;color:var(--muted);margin-top:auto}
 .page-number:after{content:"Sayfa " counter(page) " / " counter(pages)}
 @page{size:A4;margin:0}
 @media print{
   body{background:#fff}
-  .quote-sheet{box-shadow:none;margin:0;width:auto;min-height:0;padding:12mm}
+  .quote-sheet{box-shadow:none;margin:0;padding:12mm 12mm 6mm}
 }
 `;
 
 export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): string {
   const issuer = QUOTE_ISSUERS[quote.issuer as QuoteIssuerKey];
+  const showBrandName = quote.issuer !== "dayan";
   const currency = quote.currency as QuoteCurrency;
   const bank = QUOTE_BANK_ACCOUNTS[quote.issuer as QuoteIssuerKey]?.[currency];
 
@@ -201,7 +212,7 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
     : `<section class="bank-info"><p class="section-label">BANKA BİLGİLERİ</p><p>Banka bilgileri talep halinde paylaşılacaktır.</p></section>`;
 
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8" /><title>${escapeHtml(quote.quote_no)} — Teklif</title><style>${PDF_STYLE}</style></head><body>
-<main class="quote-sheet">
+<main class="quote-sheet quote-document">
   <header class="quote-header${quote.issuer === "ceha" ? " issuer-ceha" : ""}">
     <section class="header-copy">
       <p class="header-kicker">${escapeHtml(issuer.displayName)}</p>
@@ -209,9 +220,9 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
       <p class="header-tagline">Dişli imalatı, profil taşlama ve hassas mekanik çözümler</p>
     </section>
     <div class="header-divider" aria-hidden="true"></div>
-    <section class="brand-lockup" aria-label="Firma logosu">
+    <section class="brand-lockup${quote.issuer === "ceha" ? " issuer-ceha" : ""}" aria-label="Firma logosu">
       ${brandBlock}
-      <div class="brand-name">${escapeHtml(issuer.displayName)}</div>
+      ${showBrandName ? `<div class="brand-name">${escapeHtml(issuer.displayName)}</div>` : ""}
       <span class="brand-tagline">${escapeHtml(issuer.slogan)}</span>
     </section>
   </header>
