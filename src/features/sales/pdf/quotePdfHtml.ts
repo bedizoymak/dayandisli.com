@@ -222,10 +222,43 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
 </body></html>`;
 }
 
+/**
+ * Use when quote+lines are already loaded in memory (e.g. the quote detail
+ * page) — a single synchronous call from the click handler, so no popup
+ * blocker can intervene: the window is opened and fully written to in one
+ * tick, with no `await` in between.
+ */
 export function openQuotePdf(quote: QuoteRow, lines: QuoteLineRow[]) {
   const html = buildQuotePdfHtml(quote, lines);
   const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
   const printWindow = window.open(url, "_blank", "noopener,noreferrer");
   if (!printWindow) URL.revokeObjectURL(url);
   else setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
+ * Use when the quote's lines still need to be fetched (e.g. the "PDF İndir"
+ * row action on the quotes list, which only has the header in memory).
+ * Popup blockers key off whether window.open() itself ran synchronously
+ * inside the user gesture — NOT whether the window's content was written
+ * synchronously. Call this FIRST, synchronously, directly in the onClick
+ * handler; only afterwards `await` the data fetch and pass the still-open
+ * window into writeQuotePdfToWindow(). (A prior version awaited the fetch
+ * *before* calling window.open(), which put the call outside the gesture
+ * and let most browsers silently block it.) No `noopener` here — writing
+ * into the window later requires keeping the reference.
+ */
+export function openQuotePdfPlaceholder(): Window | null {
+  const win = window.open("", "_blank");
+  win?.document.write(
+    "<!doctype html><title>Teklif hazırlanıyor…</title><body style=\"font:14px Arial;padding:40px;color:#334\">Teklif hazırlanıyor…</body>",
+  );
+  return win;
+}
+
+export function writeQuotePdfToWindow(win: Window, quote: QuoteRow, lines: QuoteLineRow[]) {
+  const html = buildQuotePdfHtml(quote, lines);
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
 }

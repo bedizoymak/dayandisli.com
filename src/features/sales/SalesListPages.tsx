@@ -15,8 +15,9 @@ import {
 import { salesActivities, salesOrders } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
 import { customerName } from "./salesUtils";
+import { useToast } from "@/hooks/use-toast";
 import { fetchQuoteWithLines, fetchQuotes } from "./quotesApi";
-import { openQuotePdf } from "./pdf/quotePdfHtml";
+import { openQuotePdfPlaceholder, writeQuotePdfToWindow } from "./pdf/quotePdfHtml";
 import { effectiveQuoteStatus, QUOTE_ISSUERS, QUOTE_STATUS_LABELS, type QuoteRow, type QuoteStatus } from "./quoteTypes";
 const root = "/apps/sales";
 const quoteColumns: ExportColumn<QuoteRow>[] = [
@@ -30,6 +31,7 @@ const quoteColumns: ExportColumn<QuoteRow>[] = [
   { header: "Geçerlilik Tarihi", value: (r) => r.valid_until ?? "—" },
 ];
 export function QuotesPage() {
+  const { toast } = useToast();
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -59,10 +61,27 @@ export function QuotesPage() {
   }, [quotes, search, statusFilter]);
 
   async function downloadPdf(quote: QuoteRow) {
+    // Popup blockers only allow window.open() when it runs synchronously
+    // inside the click handler — so the window opens here, first, before
+    // any `await`, and is written to only once the lines have loaded.
+    const win = openQuotePdfPlaceholder();
+    if (!win) {
+      toast({
+        title: "Popup engellendi",
+        description: "Tarayıcınız açılır pencereyi engelledi. Lütfen bu site için popup iznini açıp tekrar deneyin.",
+        variant: "destructive",
+      });
+      return;
+    }
     setDownloadingId(quote.id);
     const result = await fetchQuoteWithLines(quote.id);
     setDownloadingId(null);
-    if (result.ok) openQuotePdf(result.data.quote, result.data.lines);
+    if (!result.ok) {
+      win.close();
+      toast({ title: "Hata", description: result.message, variant: "destructive" });
+      return;
+    }
+    writeQuotePdfToWindow(win, result.data.quote, result.data.lines);
   }
 
   return (
@@ -160,7 +179,7 @@ export function QuotesPage() {
                     <Link title="Düzenle" to={`${root}/quotes/${q.id}/edit`}>
                       <Pencil />
                     </Link>
-                    <button title="PDF İndir" disabled={downloadingId === q.id} onClick={() => downloadPdf(q)}>
+                    <button title="Yazdır / PDF Kaydet" disabled={downloadingId === q.id} onClick={() => downloadPdf(q)}>
                       <FileDown />
                     </button>
                     <Link title="Siparişe Dönüştür" to={`${root}/orders/new?sourceQuoteId=${q.id}`}>

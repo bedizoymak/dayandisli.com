@@ -304,25 +304,33 @@ export function QuoteFormPage({ quoteId }: { quoteId?: string }) {
       toast({ title: "Eksik bilgi", description: "Firma adı zorunlu.", variant: "destructive" });
       return;
     }
-    const result = await createLocalCustomer(newCustomerForm);
-    if (!result.ok) {
-      toast({ title: "Hata", description: result.message, variant: "destructive" });
-      return;
+    try {
+      const result = await createLocalCustomer(newCustomerForm);
+      if (!result.ok) {
+        toast({ title: "Hata", description: result.message, variant: "destructive" });
+        return;
+      }
+      const row = result.data;
+      setCustomer({
+        source: "local",
+        parasutId: null,
+        name: row.company_name,
+        contact: row.contact_name ?? "",
+        phone: row.phone ?? "",
+        email: row.email ?? "",
+        address: row.address ?? "",
+        taxNo: row.tax_no ?? "",
+      });
+      setLocalCustomerId(row.id);
+      setNewCustomerMode(false);
+      setSelector(false);
+    } catch (caught) {
+      toast({
+        title: "Hata",
+        description: caught instanceof Error ? caught.message : "Müşteri kaydedilirken beklenmeyen bir hata oluştu.",
+        variant: "destructive",
+      });
     }
-    const row = result.data;
-    setCustomer({
-      source: "local",
-      parasutId: null,
-      name: row.company_name,
-      contact: row.contact_name ?? "",
-      phone: row.phone ?? "",
-      email: row.email ?? "",
-      address: row.address ?? "",
-      taxNo: row.tax_no ?? "",
-    });
-    setLocalCustomerId(row.id);
-    setNewCustomerMode(false);
-    setSelector(false);
   }
 
   async function handleSave() {
@@ -335,40 +343,57 @@ export function QuoteFormPage({ quoteId }: { quoteId?: string }) {
     if (!validLines.length) return setError("En az bir ürün/hizmet satırı girilmelidir.");
 
     setSaving(true);
-    const customerSnapshot: QuoteCustomerSnapshot = {
-      source: customer.source,
-      parasutCustomerId: customer.source === "parasut" ? customer.parasutId : null,
-      localCustomerId: customer.source === "local" ? localCustomerId : null,
-      name: customer.name,
-      contact: customer.contact,
-      phone: customer.phone,
-      email: customer.email,
-      address: customer.address,
-      taxNo: customer.taxNo,
-    };
-    const result = await saveQuote({
-      id: existingId ?? undefined,
-      quoteNo: quoteNo.trim(),
-      issuer,
-      status,
-      currency,
-      subject: subject.trim(),
-      customer: customerSnapshot,
-      issueDate,
-      validUntil: validUntil || null,
-      paymentTerms,
-      deliveryTerms,
-      deliveryTime,
-      notes,
-      lines: validLines,
-    });
-    setSaving(false);
-    if (!result.ok) {
-      setError(result.message);
-      return;
+    // try/finally guarantees setSaving(false) runs even if saveQuote (or
+    // anything it calls) throws instead of resolving with {ok:false} — a
+    // previous version had no catch here, so an unexpected rejection left
+    // the button stuck on "Kaydediliyor…" forever with no visible error.
+    try {
+      const customerSnapshot: QuoteCustomerSnapshot = {
+        source: customer.source,
+        parasutCustomerId: customer.source === "parasut" ? customer.parasutId : null,
+        localCustomerId: customer.source === "local" ? localCustomerId : null,
+        name: customer.name,
+        contact: customer.contact,
+        phone: customer.phone,
+        email: customer.email,
+        address: customer.address,
+        taxNo: customer.taxNo,
+      };
+      const result = await saveQuote({
+        id: existingId ?? undefined,
+        quoteNo: quoteNo.trim(),
+        issuer,
+        status,
+        currency,
+        subject: subject.trim(),
+        customer: customerSnapshot,
+        issueDate,
+        validUntil: validUntil || null,
+        paymentTerms,
+        deliveryTerms,
+        deliveryTime,
+        notes,
+        lines: validLines,
+      });
+      if (!result.ok) {
+        // Postgres reports a duplicate quote_no as a unique-violation
+        // (error code 23505) — surfaced verbatim by default, which is not
+        // understandable to a user; translate that one case to plain
+        // Turkish instead.
+        setError(
+          /duplicate key|unique constraint|23505/i.test(result.message)
+            ? `"${quoteNo.trim()}" numaralı bir teklif zaten var. Lütfen farklı bir teklif numarası girin.`
+            : result.message,
+        );
+        return;
+      }
+      toast({ title: "Kaydedildi", description: `${result.data.quote_no} kaydedildi.` });
+      navigate(`${root}/quotes/${result.data.id}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Teklif kaydedilirken beklenmeyen bir hata oluştu.");
+    } finally {
+      setSaving(false);
     }
-    toast({ title: "Kaydedildi", description: `${result.data.quote_no} kaydedildi.` });
-    navigate(`${root}/quotes/${result.data.id}`);
   }
 
   if (loading) {
@@ -740,9 +765,9 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
         <Link className="sales-back" to={`${root}/quotes`}>
           ← Tekliflere Dön
         </Link>
-        <button onClick={() => openQuotePdf(quote, lines)}>
+        <button onClick={() => openQuotePdf(quote, lines)} title="Yazdırılabilir bir pencere açar; tarayıcının yazdırma penceresinden 'PDF olarak kaydet' seçilebilir.">
           <FileDown />
-          PDF İndir
+          Yazdır / PDF Kaydet
         </button>
         <a href={mailtoHref}>
           <Mail />

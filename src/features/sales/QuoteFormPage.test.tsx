@@ -112,4 +112,49 @@ describe("QuoteFormPage — save", () => {
     await waitFor(() => expect(screen.getByText(/Müşteri seçimi/)).toBeInTheDocument());
     expect(saveQuote).not.toHaveBeenCalled();
   });
+
+  async function fillMinimalValidForm() {
+    generateQuoteNumber.mockResolvedValue({ ok: true, data: "DY-202608-4" });
+    createLocalCustomer.mockResolvedValue({
+      ok: true,
+      data: { id: "local-1", company_name: "Yeni Firma", contact_name: null, phone: null, email: null, address: null, tax_no: null },
+    });
+    renderForm();
+    fireEvent.change(screen.getByLabelText(/Teklif Veren Firma \*/), { target: { value: "dayan" } });
+    await waitFor(() => expect(screen.getByDisplayValue("DY-202608-4")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Yeni Müşteri"));
+    fireEvent.change(screen.getByLabelText(/Firma Adı \*/), { target: { value: "Yeni Firma" } });
+    fireEvent.click(screen.getByText("Müşteriyi Kaydet ve Seç"));
+    await waitFor(() => expect(screen.getByDisplayValue("Yeni Firma")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/^Konu \*/), { target: { value: "Test Konu" } });
+    fireEvent.change(screen.getByPlaceholderText("Ürün/Hizmet"), { target: { value: "Test Kalem" } });
+  }
+
+  it("never hangs on 'Kaydediliyor…' — an unexpected rejection is caught, surfaced, and re-enables the button", async () => {
+    await fillMinimalValidForm();
+    saveQuote.mockRejectedValue(new Error("network down"));
+    fireEvent.click(screen.getByText("Taslak Kaydet"));
+    await waitFor(() => expect(screen.getByText("network down")).toBeInTheDocument());
+    expect(screen.getByText("Taslak Kaydet")).not.toBeDisabled();
+  });
+
+  it("translates a duplicate quote_no (unique-violation) error into a plain Turkish message", async () => {
+    await fillMinimalValidForm();
+    saveQuote.mockResolvedValue({
+      ok: false,
+      message: 'duplicate key value violates unique constraint "quotes_quote_no_key"',
+    });
+    fireEvent.click(screen.getByText("Taslak Kaydet"));
+    await waitFor(() => expect(screen.getByText(/numaralı bir teklif zaten var/)).toBeInTheDocument());
+  });
+
+  it("saves successfully, toasts, and navigates to the new quote's detail page", async () => {
+    await fillMinimalValidForm();
+    saveQuote.mockResolvedValue({ ok: true, data: { id: "new-quote-1", quote_no: "DY-202608-4" } });
+    fireEvent.click(screen.getByText("Taslak Kaydet"));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/apps/sales/quotes/new-quote-1"));
+    expect(saveQuote).toHaveBeenCalledWith(
+      expect.objectContaining({ quoteNo: "DY-202608-4", issuer: "dayan", subject: "Test Konu" }),
+    );
+  });
 });
