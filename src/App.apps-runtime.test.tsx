@@ -6,6 +6,70 @@ import { describe, expect, it, vi } from "vitest";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AppRoutes } from "./App";
 
+const invoke = vi.hoisted(() =>
+  vi.fn(
+    async (
+      _functionName: string,
+      options?: {
+        body?: { action?: unknown; resource?: unknown; parasutId?: unknown };
+      },
+    ) => {
+      const action = options?.body?.action;
+      const resource = options?.body?.resource;
+      const parasutId = options?.body?.parasutId;
+
+      if (action === "detail" && resource === "sales_invoices" && parasutId === "SF-2026-137") {
+        return {
+          data: {
+            header: {
+              parasut_id: "SF-2026-137",
+              attributes: { invoice_no: "SF-2026-137", currency: "TRY" },
+              relationships: { contact: { data: null } },
+            },
+            contact: null,
+            details: [],
+          },
+          error: null,
+        };
+      }
+
+      if (action === "detail" && resource === "customers" && parasutId === "eksen-otomotiv") {
+        return {
+          data: {
+            contact: {
+              parasut_id: "eksen-otomotiv",
+              attributes: { name: "Eksen Otomotiv" },
+              relationships: {},
+            },
+            recentDocuments: [],
+            payments: [],
+            checks: [],
+          },
+          error: null,
+        };
+      }
+
+      if (action === "detail") return { data: null, error: null };
+      return { data: { rows: [], meta: {} }, error: null };
+    },
+  ),
+);
+
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: { functions: { invoke: (...args: Parameters<typeof invoke>) => invoke(...args) } },
+}));
+
+vi.mock("@/features/sales/quotesApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/sales/quotesApi")>();
+  return {
+    ...actual,
+    fetchQuoteWithLines: vi.fn(async () => ({ ok: false as const, message: "Teklif bulunamadı." })),
+    fetchLocalCustomer: vi.fn(async () => ({ ok: false as const, message: "Müşteri bulunamadı." })),
+    fetchQuotesForCustomer: vi.fn(async () => ({ ok: true as const, data: [] })),
+    fetchHistoryEntriesForCustomer: vi.fn(async () => ({ ok: true as const, data: [] })),
+  };
+});
+
 // Mock ERP auth as an authorized admin user so route-level permission checks
 // pass genuinely (not because auth short-circuits to a login redirect) and so
 // the runtime 404 behavior below is proof of the *router's* matching, not of
@@ -50,6 +114,10 @@ function renderAt(path: string) {
 
 async function waitForRouteToSettle() {
   await waitFor(() => expect(screen.queryByText("loading...")).not.toBeInTheDocument(), { timeout: 5000 });
+  await waitFor(
+    () => expect(screen.queryByRole("heading", { name: "Yükleniyor…" })).not.toBeInTheDocument(),
+    { timeout: 5000 },
+  );
 }
 
 describe("runtime /apps route resolution (authenticated, MemoryRouter, real router matching)", () => {
@@ -112,9 +180,9 @@ describe("dynamic-route parameter resolution (per-family, valid vs unknown vs ma
   it("invoice detail: a valid fictional-but-existing invoice number renders the real record, not the first sample row", async () => {
     renderAt("/apps/finance/income/invoices/SF-2026-137");
     await waitForRouteToSettle();
-    expect(screen.getByDisplayValue("SF-2026-137")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Fatura SF-2026-137" })).toBeInTheDocument();
     // Must not silently show the first sample row's number instead.
-    expect(screen.queryByDisplayValue("SF-2026-148")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /SF-2026-148/ })).not.toBeInTheDocument();
   });
 
   it("invoice detail: an unknown invoice number renders a controlled not-found state, not sample data", async () => {
@@ -140,6 +208,7 @@ describe("dynamic-route parameter resolution (per-family, valid vs unknown vs ma
   it("crm customer detail: a valid id renders the matching customer without a not-found heading", async () => {
     const view = renderAt("/apps/crm/customers/eksen-otomotiv");
     await waitForRouteToSettle();
+    expect(screen.getByRole("heading", { name: "Eksen Otomotiv" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Müşteri bulunamadı" })).not.toBeInTheDocument();
     view.unmount();
   });

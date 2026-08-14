@@ -129,8 +129,10 @@ describe("production ERP feature directories have no preview/demo naming", () =>
     }
   });
 
-  it("does not import production data or authentication modules (still mock/UI-only, backend-connectedness unchanged by this refactor)", () => {
-    expect(productionErpSource).not.toMatch(/@\/features\/erp\/|@\/integrations\/supabase|@\/contexts\/ERPAuthContext|supabase|parasut/i);
+  it("keeps route page adapters separate from backend and authentication infrastructure", () => {
+    expect(pagesSource()).not.toMatch(
+      /from\s+["'](?:@\/integrations\/supabase|@\/contexts\/ERPAuthContext|@\/features\/erp\/)/,
+    );
   });
 
   it("shell navigation data no longer points nav entries at unimplemented module paths", () => {

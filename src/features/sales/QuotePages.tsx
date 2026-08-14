@@ -125,7 +125,7 @@ export function QuoteFormPage({ quoteId }: { quoteId?: string }) {
     setLoading(true);
     fetchQuoteWithLines(sourceId).then((result) => {
       if (cancelled) return;
-      if (!result.ok) {
+      if (result.ok === false) {
         setError(result.message);
         setLoading(false);
         return;
@@ -375,7 +375,7 @@ export function QuoteFormPage({ quoteId }: { quoteId?: string }) {
     }
     try {
       const result = await createLocalCustomer(newCustomerForm);
-      if (!result.ok) {
+      if (result.ok === false) {
         toast({ title: "Hata", description: result.message, variant: "destructive" });
         return;
       }
@@ -444,7 +444,7 @@ export function QuoteFormPage({ quoteId }: { quoteId?: string }) {
         notes,
         lines: validLines,
       });
-      if (!result.ok) {
+      if (result.ok === false) {
         // Postgres reports a duplicate quote_no as a unique-violation
         // (error code 23505) — surfaced verbatim by default, which is not
         // understandable to a user; translate that one case to plain
@@ -784,7 +784,7 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
   async function changeStatus(next: QuoteStatus) {
     if (!quote) return;
     const result = await updateQuoteStatus(quote.id, next);
-    if (!result.ok) {
+    if (result.ok === false) {
       toast({ title: "Hata", description: result.message, variant: "destructive" });
       return;
     }

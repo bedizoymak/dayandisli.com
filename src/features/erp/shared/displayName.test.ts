@@ -12,14 +12,14 @@ describe("resolveDisplayName", () => {
     expect(getInitials(resolveDisplayName(erpUser, false))).toBe("HD");
   });
 
-  it("falls back to a title-cased email prefix only when full_name is missing", () => {
+  it("does not derive a display name from email when full_name is missing", () => {
     const erpUser = { email: "ali.veli@example.com", full_name: null };
 
-    expect(resolveDisplayName(erpUser, false)).toBe("Ali Veli");
+    expect(resolveDisplayName(erpUser, false)).toBe("—");
   });
 
-  it("falls back to a generic label when there is no ERP profile at all", () => {
-    expect(resolveDisplayName(null, false)).toBe("Ekip Üyesi");
+  it("uses the missing-data placeholder when there is no ERP profile", () => {
+    expect(resolveDisplayName(null, false)).toBe("—");
   });
 
   it("does not flash the email-derived name while the ERP profile is still loading", () => {

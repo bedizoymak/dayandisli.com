@@ -61,7 +61,7 @@ export function QuoteHistoryPanel({
     setOpeningId(entry.id);
     const result = await getQuoteHistoryFileUrl(entry.file_path);
     setOpeningId(null);
-    if (!result.ok) {
+    if (result.ok === false) {
       toast({ title: "Hata", description: result.message, variant: "destructive" });
       return;
     }
@@ -190,7 +190,7 @@ function QuoteHistoryUploadModal({
     setUploading(true);
     try {
       const uploadResult = await uploadQuoteHistoryFile(file, { source, customerId });
-      if (!uploadResult.ok) {
+      if (uploadResult.ok === false) {
         setError(uploadResult.message);
         return;
       }
@@ -208,7 +208,7 @@ function QuoteHistoryUploadModal({
         fileMime: uploadResult.data.mime,
         fileSize: uploadResult.data.size,
       });
-      if (!result.ok) {
+      if (result.ok === false) {
         // Best-effort cleanup — never leave an orphaned file in storage
         // when the DB record it belongs to failed to save.
         await deleteQuoteHistoryFile(uploadResult.data.path);

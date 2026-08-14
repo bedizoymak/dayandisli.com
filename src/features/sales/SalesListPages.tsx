@@ -78,7 +78,7 @@ export function QuotesPage() {
     setDownloadingId(quote.id);
     const result = await fetchQuoteWithLines(quote.id);
     setDownloadingId(null);
-    if (!result.ok) {
+    if (result.ok === false) {
       win.close();
       toast({ title: "Hata", description: result.message, variant: "destructive" });
       return;
@@ -91,7 +91,7 @@ export function QuotesPage() {
     setDeletingId(quote.id);
     const result = await deleteQuote(quote.id);
     setDeletingId(null);
-    if (!result.ok) {
+    if (result.ok === false) {
       toast({ title: "Hata", description: result.message, variant: "destructive" });
       return;
     }

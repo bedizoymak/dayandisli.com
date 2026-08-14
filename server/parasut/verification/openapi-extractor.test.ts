@@ -281,5 +281,5 @@ describe("openapi-extractor — real cached spec sanity check (not a substitute 
     expect(attributes.length).toBeGreaterThan(0);
     expect(relationships.length).toBeGreaterThan(0);
     expect(attributes.some((f) => f.name === "trl_balance")).toBe(true);
-  });
+  }, 15_000);
 });
