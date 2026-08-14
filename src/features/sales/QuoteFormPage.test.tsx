@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { Toaster } from "@/components/ui/toaster";
 
 const invoke = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
@@ -36,6 +37,7 @@ function renderForm(initialPath = "/apps/sales/quotes/new") {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <QuoteFormPage />
+      <Toaster />
     </MemoryRouter>,
   );
 }
@@ -104,6 +106,23 @@ describe("QuoteFormPage — customer flow", () => {
   });
 });
 
+async function fillMinimalValidForm() {
+  generateQuoteNumber.mockResolvedValue({ ok: true, data: "DY-202608-4" });
+  createLocalCustomer.mockResolvedValue({
+    ok: true,
+    data: { id: "local-1", company_name: "Yeni Firma", contact_name: null, phone: null, email: null, address: null, tax_no: null },
+  });
+  renderForm();
+  fireEvent.change(screen.getByLabelText(/Teklif Veren Firma \*/), { target: { value: "dayan" } });
+  await waitFor(() => expect(screen.getByDisplayValue("DY-202608-4")).toBeInTheDocument());
+  fireEvent.click(screen.getByText("Yeni Müşteri"));
+  fireEvent.change(screen.getByLabelText(/Firma Adı \*/), { target: { value: "Yeni Firma" } });
+  fireEvent.click(screen.getByText("Müşteriyi Kaydet ve Seç"));
+  await waitFor(() => expect(screen.getByDisplayValue("Yeni Firma")).toBeInTheDocument());
+  fireEvent.change(screen.getByLabelText(/^Konu \*/), { target: { value: "Test Konu" } });
+  fireEvent.change(screen.getByPlaceholderText("Ürün/Hizmet"), { target: { value: "Test Kalem" } });
+}
+
 describe("QuoteFormPage — save", () => {
   it("blocks save and shows an error when no customer is selected", async () => {
     renderForm();
@@ -112,23 +131,6 @@ describe("QuoteFormPage — save", () => {
     await waitFor(() => expect(screen.getByText(/Müşteri seçimi/)).toBeInTheDocument());
     expect(saveQuote).not.toHaveBeenCalled();
   });
-
-  async function fillMinimalValidForm() {
-    generateQuoteNumber.mockResolvedValue({ ok: true, data: "DY-202608-4" });
-    createLocalCustomer.mockResolvedValue({
-      ok: true,
-      data: { id: "local-1", company_name: "Yeni Firma", contact_name: null, phone: null, email: null, address: null, tax_no: null },
-    });
-    renderForm();
-    fireEvent.change(screen.getByLabelText(/Teklif Veren Firma \*/), { target: { value: "dayan" } });
-    await waitFor(() => expect(screen.getByDisplayValue("DY-202608-4")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("Yeni Müşteri"));
-    fireEvent.change(screen.getByLabelText(/Firma Adı \*/), { target: { value: "Yeni Firma" } });
-    fireEvent.click(screen.getByText("Müşteriyi Kaydet ve Seç"));
-    await waitFor(() => expect(screen.getByDisplayValue("Yeni Firma")).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText(/^Konu \*/), { target: { value: "Test Konu" } });
-    fireEvent.change(screen.getByPlaceholderText("Ürün/Hizmet"), { target: { value: "Test Kalem" } });
-  }
 
   it("never hangs on 'Kaydediliyor…' — an unexpected rejection is caught, surfaced, and re-enables the button", async () => {
     await fillMinimalValidForm();
@@ -156,5 +158,48 @@ describe("QuoteFormPage — save", () => {
     expect(saveQuote).toHaveBeenCalledWith(
       expect.objectContaining({ quoteNo: "DY-202608-4", issuer: "dayan", subject: "Test Konu" }),
     );
+  });
+});
+
+describe("QuoteFormPage — 'Yazdır / PDF Kaydet' from an unsaved form", () => {
+  it("blocks the preview and shows a Turkish error when there is no line item yet", async () => {
+    generateQuoteNumber.mockResolvedValue({ ok: true, data: "DY-202608-4" });
+    createLocalCustomer.mockResolvedValue({
+      ok: true,
+      data: { id: "local-1", company_name: "Yeni Firma", contact_name: null, phone: null, email: null, address: null, tax_no: null },
+    });
+    renderForm();
+    fireEvent.change(screen.getByLabelText(/Teklif Veren Firma \*/), { target: { value: "dayan" } });
+    await waitFor(() => expect(screen.getByDisplayValue("DY-202608-4")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Yeni Müşteri"));
+    fireEvent.change(screen.getByLabelText(/Firma Adı \*/), { target: { value: "Yeni Firma" } });
+    fireEvent.click(screen.getByText("Müşteriyi Kaydet ve Seç"));
+    await waitFor(() => expect(screen.getByDisplayValue("Yeni Firma")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/^Konu \*/), { target: { value: "Test Konu" } });
+    // No line description entered — the single default empty line stays invalid.
+    const openSpy = vi.spyOn(window, "open");
+    fireEvent.click(screen.getByText("Yazdır / PDF Kaydet"));
+    expect(openSpy).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByText(/en az bir ürün\/hizmet satırı/)).toBeInTheDocument());
+    openSpy.mockRestore();
+  });
+
+  it("opens the print window synchronously with the in-memory form data — never calls saveQuote, never touches Parasut", async () => {
+    await fillMinimalValidForm();
+    const openSpy = vi.spyOn(window, "open").mockReturnValue({ document: { write: vi.fn() } } as unknown as Window);
+    invoke.mockClear();
+    fireEvent.click(screen.getByText("Yazdır / PDF Kaydet"));
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(saveQuote).not.toHaveBeenCalled();
+    expect(invoke).not.toHaveBeenCalled();
+    openSpy.mockRestore();
+  });
+
+  it("shows a visible Turkish error toast when the popup is blocked", async () => {
+    await fillMinimalValidForm();
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+    fireEvent.click(screen.getByText("Yazdır / PDF Kaydet"));
+    await waitFor(() => expect(screen.getByText(/Popup engellendi/)).toBeInTheDocument());
+    openSpy.mockRestore();
   });
 });

@@ -166,6 +166,21 @@ export async function updateQuoteStatus(quoteId: string, status: QuoteStatus): P
   return ok(null);
 }
 
+/**
+ * Deletes only the quotes row and its own quote_lines (the migration's
+ * `on delete cascade` on quote_lines.quote_id handles those automatically —
+ * no separate delete statement needed). quote_history_entries is never
+ * linked to a quotes.id at all (by design — it records quotes that were
+ * never real ERP rows to begin with), so there is nothing to cascade there
+ * for a real quote's deletion. Never touches quote_customers, the Parasut
+ * mirror, or any CRM data.
+ */
+export async function deleteQuote(quoteId: string): Promise<ApiResult<null>> {
+  const { error } = await supabase.from("quotes" as never).delete().eq("id", quoteId);
+  if (error) return fail(error.message);
+  return ok(null);
+}
+
 export async function createLocalCustomer(input: {
   companyName: string;
   contactName: string;

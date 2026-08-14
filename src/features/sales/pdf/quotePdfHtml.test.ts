@@ -97,4 +97,36 @@ describe("buildQuotePdfHtml — approved V6 template fields", () => {
     expect(html).not.toContain("<script>alert(1)</script>");
     expect(html).toContain("&lt;script&gt;");
   });
+
+  it("forces print-color-adjust so navy backgrounds (header, grand-total band) survive print/Save-as-PDF instead of being silently dropped", () => {
+    const html = buildQuotePdfHtml(baseQuote, lines);
+    expect(html).toContain("print-color-adjust:exact");
+    expect(html).toContain("-webkit-print-color-adjust:exact");
+  });
+
+  it("Dayan renders the identical layout template with a navy header (no issuer-ceha class)", () => {
+    const html = buildQuotePdfHtml(baseQuote, lines);
+    expect(html).toMatch(/<header class="quote-header">/);
+    expect(html).not.toMatch(/<header class="[^"]*issuer-ceha/);
+  });
+
+  it("CEHA renders the SAME layout template, only flagged with issuer-ceha for the header color-variant CSS (not a separate template)", () => {
+    const html = buildQuotePdfHtml({ ...baseQuote, issuer: "ceha" }, lines);
+    expect(html).toContain('<header class="quote-header issuer-ceha">');
+    // Same section structure as Dayan — proves it is the one shared template.
+    for (const marker of ["ÜRÜNLER VE HİZMETLER", "TEKLİF KOŞULLARI", "GENEL TOPLAM", "meta-grid", "quote-footer"]) {
+      expect(html).toContain(marker);
+    }
+  });
+
+  it("repeats the table header on every print page (thead as table-header-group) for multi-page quotes", () => {
+    const html = buildQuotePdfHtml(baseQuote, lines);
+    expect(html).toContain("thead{display:table-header-group}");
+  });
+
+  it("never labels TEKLİF KOŞULLARI as 'TİCARİ ŞARTLAR'", () => {
+    const html = buildQuotePdfHtml(baseQuote, lines);
+    expect(html).not.toContain("TİCARİ ŞARTLAR");
+    expect(html).toContain("TEKLİF KOŞULLARI");
+  });
 });

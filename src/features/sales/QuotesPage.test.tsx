@@ -5,9 +5,11 @@ import { Toaster } from "@/components/ui/toaster";
 
 const fetchQuotes = vi.fn();
 const fetchQuoteWithLines = vi.fn();
+const deleteQuote = vi.fn();
 vi.mock("./quotesApi", () => ({
   fetchQuotes: (...args: unknown[]) => fetchQuotes(...args),
   fetchQuoteWithLines: (...args: unknown[]) => fetchQuoteWithLines(...args),
+  deleteQuote: (...args: unknown[]) => deleteQuote(...args),
 }));
 
 const { QuotesPage } = await import("./SalesListPages");
@@ -108,5 +110,56 @@ describe("QuotesPage — 'Yazdır / PDF Kaydet' opens the popup synchronously (p
     expect(fetchQuoteWithLines).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByText(/Popup engellendi/)).toBeInTheDocument());
     openSpy.mockRestore();
+  });
+});
+
+describe("QuotesPage — delete", () => {
+  it("asks for confirmation with the quote number in the message, and does nothing on cancel", async () => {
+    fetchQuotes.mockResolvedValue({ ok: true, data: [SAMPLE_QUOTE] });
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(
+      <MemoryRouter>
+        <QuotesPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText("DY-202608-4")).toBeInTheDocument());
+    fireEvent.click(screen.getByTitle("Sil"));
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("DY-202608-4"));
+    expect(deleteQuote).not.toHaveBeenCalled();
+    expect(screen.getByText("DY-202608-4")).toBeInTheDocument();
+    confirmSpy.mockRestore();
+  });
+
+  it("deletes on confirm, removes the row immediately, and toasts success", async () => {
+    fetchQuotes.mockResolvedValue({ ok: true, data: [SAMPLE_QUOTE] });
+    deleteQuote.mockResolvedValue({ ok: true, data: null });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(
+      <MemoryRouter>
+        <QuotesPage />
+        <Toaster />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText("DY-202608-4")).toBeInTheDocument());
+    fireEvent.click(screen.getByTitle("Sil"));
+    expect(deleteQuote).toHaveBeenCalledWith("q1");
+    await waitFor(() => expect(screen.queryByText("DY-202608-4")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/kalıcı olarak silindi/)).toBeInTheDocument());
+  });
+
+  it("shows a visible error and keeps the row when the delete fails", async () => {
+    fetchQuotes.mockResolvedValue({ ok: true, data: [SAMPLE_QUOTE] });
+    deleteQuote.mockResolvedValue({ ok: false, message: "permission denied" });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(
+      <MemoryRouter>
+        <QuotesPage />
+        <Toaster />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText("DY-202608-4")).toBeInTheDocument());
+    fireEvent.click(screen.getByTitle("Sil"));
+    await waitFor(() => expect(screen.getByText("permission denied")).toBeInTheDocument());
+    expect(screen.getByText("DY-202608-4")).toBeInTheDocument();
   });
 });

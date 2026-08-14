@@ -41,60 +41,78 @@ function validityLabel(issueDate: string, validUntil: string | null) {
 // header, thin light-blue rule, KDV-inclusive grand-total band, plain-list
 // terms, unboxed footer) — see the task's index.html/style.css. Adapted
 // here to be driven by real quote data instead of the static sample.
+//
+// CEHA uses the identical layout with only the header's two colors
+// swapped (white bg / navy text instead of navy bg / white text) via the
+// --header-bg/--header-ink/--header-kicker/--header-tagline custom
+// properties set on .quote-header per issuer (see buildQuotePdfHtml) — no
+// separate template.
+//
+// print-color-adjust/-webkit-print-color-adjust: exact is load-bearing —
+// without it, Chromium's print/"Save as PDF" path silently drops every
+// background-color (the navy header, the navy grand-total band, the table
+// header tint), which is exactly the washed-out/white-header, missing
+// grand-total-band output previously reported. This is the fix for that.
 const PDF_STYLE = `
 :root{--navy:#09243d;--blue:#55b8e8;--ink:#183047;--muted:#607486;--line:#d9e2e9;--paper:#fff}
-*{box-sizing:border-box}
+*{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact;color-adjust:exact}
 body{margin:0;background:#e7edf2;color:var(--ink);font-family:Arial,"Helvetica Neue",sans-serif}
-.quote-sheet{width:210mm;min-height:297mm;margin:18px auto;background:var(--paper);padding:15mm 14mm 12mm}
-.quote-header{background:var(--navy);border-bottom:3px solid var(--blue);min-height:43mm;padding:9mm 10mm;display:flex;justify-content:space-between;align-items:flex-start;color:#fff}
-.header-copy{max-width:127mm}
-.issuer-kicker{margin:0 0 3mm;color:var(--blue);font-size:10px;font-weight:700;letter-spacing:1.35px}
-.header-copy h1{margin:0;font-size:23px;line-height:1.06;letter-spacing:.2px}
-.tagline{margin:3mm 0 0;color:#d9edf8;font-size:10.5px}
-.brand-lockup{width:38mm;display:flex;align-items:center;flex-direction:column;text-align:center;margin-top:-2mm}
-.brand-logo{max-width:28mm;max-height:17mm;object-fit:contain}
-.logo-fallback{height:17mm;color:#fff;font-size:13px;font-weight:800;line-height:.85;letter-spacing:1px;padding-top:2mm;display:flex;align-items:center;justify-content:center;flex-direction:column}
-.logo-fallback span{color:var(--blue)}
-.brand-lockup strong{font-size:8.5px;letter-spacing:.8px;margin-top:2mm}
-.brand-lockup>span.slogan{font-size:6.6px;color:#d9edf8;margin-top:1mm;white-space:nowrap}
-.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-top:0;margin-bottom:7mm}
-.meta-grid div{padding:3.7mm 4mm;border-right:1px solid var(--line)}
-.meta-grid div:last-child{border:0}
-.meta-grid span,.section-label{display:block;color:var(--muted);font-size:7.2px;font-weight:700;letter-spacing:.8px}
-.meta-grid strong{display:block;margin-top:1.4mm;font-size:9.5px}
-.parties{display:grid;grid-template-columns:1fr 1fr;gap:7mm;margin-top:2mm}
-.party{border-top:2px solid var(--blue);padding-top:3mm;min-height:35mm}
-.party h2{font-size:10.3px;margin:2.4mm 0 3mm;line-height:1.25}
-.party p{font-size:8.1px;line-height:1.48;margin:1.3mm 0}
+.quote-sheet{width:210mm;min-height:297mm;margin:18px auto;background:var(--paper);padding:16mm 16mm 14mm;box-shadow:0 4px 24px #0e26341c}
+.quote-header{
+  --header-bg:var(--navy);--header-ink:#fff;--header-kicker:var(--blue);--header-tagline:#d9edf8;
+  background:var(--header-bg);border-bottom:3px solid var(--blue);min-height:46mm;
+  padding:11mm 12mm;display:flex;justify-content:space-between;align-items:center;color:var(--header-ink);
+}
+.quote-header.issuer-ceha{--header-bg:#ffffff;--header-ink:var(--navy);--header-kicker:#2f7fb0;--header-tagline:#5b7891}
+.header-copy{max-width:118mm}
+.issuer-kicker{margin:0 0 4mm;color:var(--header-kicker);font-size:11px;font-weight:700;letter-spacing:1.6px}
+.header-copy h1{margin:0;font-size:26px;line-height:1.15;letter-spacing:.2px;color:var(--header-ink)}
+.tagline{margin:4mm 0 0;color:var(--header-tagline);font-size:11px}
+.brand-lockup{width:44mm;display:flex;align-items:center;flex-direction:column;text-align:center;gap:2.4mm}
+.brand-logo{max-width:34mm;max-height:18mm;object-fit:contain}
+.logo-fallback{height:18mm;color:var(--header-ink);font-size:14px;font-weight:800;line-height:1.05;letter-spacing:1px;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.logo-fallback span{color:var(--header-kicker)}
+.brand-lockup strong{font-size:9px;letter-spacing:.9px;color:var(--header-ink)}
+.brand-lockup>span.slogan{font-size:7.4px;color:var(--header-tagline);white-space:nowrap}
+.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-top:0;margin-bottom:9mm}
+.meta-grid div{padding:4.2mm 5mm;border-right:1px solid var(--line)}
+.meta-grid div:last-child{border-right:0}
+.meta-grid span,.section-label{display:block;color:var(--muted);font-size:7.6px;font-weight:700;letter-spacing:.8px}
+.meta-grid strong{display:block;margin-top:1.8mm;font-size:10.5px}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:9mm;margin-top:2mm;margin-bottom:8mm}
+.party{border-top:2px solid var(--blue);padding-top:4mm;min-height:32mm}
+.party h2{font-size:11.5px;margin:3.4mm 0 3.4mm;line-height:1.3;color:var(--navy)}
+.party p{font-size:8.8px;line-height:1.62;margin:1.5mm 0}
 .party p span{color:var(--muted);font-weight:700}
-.manual-subject{font-size:9px;margin:6mm 0 5mm;padding:0 0 2.5mm;border-bottom:1px solid var(--line);font-weight:700}
-.products h2,.conditions h2{font-size:9.5px;letter-spacing:.55px;margin:0 0 3mm;color:var(--navy)}
-table{border-collapse:collapse;width:100%;font-size:8px}
+.manual-subject{font-size:10px;margin:0 0 6mm;padding:0 0 3mm;border-bottom:1px solid var(--line);font-weight:700;color:var(--navy)}
+.products h2,.conditions h2{font-size:10.5px;letter-spacing:.6px;margin:0 0 3.5mm;color:var(--navy)}
+table{border-collapse:collapse;width:100%;font-size:8.6px}
 thead{display:table-header-group}
 tr{page-break-inside:avoid}
-th{background:#eaf4f9;color:var(--navy);padding:2.7mm 2mm;text-align:left;font-size:7.1px;letter-spacing:.35px}
-td{padding:3mm 2mm;border-bottom:1px solid var(--line);vertical-align:top}
-th:nth-child(1),td:nth-child(1){width:6mm;text-align:center}
-th:nth-child(3),td:nth-child(3){width:15mm;text-align:center}
+th{background:#eaf4f9;color:var(--navy);padding:3.2mm 2.6mm;text-align:left;font-size:7.6px;letter-spacing:.35px}
+td{padding:3.4mm 2.6mm;border-bottom:1px solid var(--line);vertical-align:top}
+th:nth-child(1),td:nth-child(1){width:7mm;text-align:center}
+th:nth-child(3),td:nth-child(3){width:17mm;text-align:center}
 th:nth-child(n+4),td:nth-child(n+4){text-align:right;white-space:nowrap}
 .item-title{font-weight:700;display:block}
-.item-detail{font-size:7.2px;color:var(--muted);margin-top:1mm;display:block}
-.bottom-grid{display:grid;grid-template-columns:1fr 57mm;gap:9mm;margin-top:8mm}
-.conditions ul{margin:0;padding-left:4.6mm}
-.conditions li{font-size:8px;line-height:1.5;margin-bottom:1.2mm}
-.totals{margin:0;font-size:8.6px}
-.totals div{display:flex;justify-content:space-between;padding:2.4mm 0;border-bottom:1px solid var(--line)}
+.item-detail{font-size:7.6px;color:var(--muted);margin-top:1mm;display:block}
+.bottom-grid{display:grid;grid-template-columns:1fr 62mm;gap:10mm;margin-top:9mm}
+.conditions ul{margin:0;padding-left:4.8mm}
+.conditions li{font-size:8.6px;line-height:1.6;margin-bottom:1.6mm}
+.totals{margin:0;font-size:9.2px}
+.totals div{display:flex;justify-content:space-between;padding:2.8mm 0;border-bottom:1px solid var(--line)}
 .totals dd{margin:0;font-weight:700}
-.totals .grand-total{background:var(--navy);color:#fff;margin-top:2mm;padding:3.4mm 3mm;border:0;font-size:10px}
-.quote-footer{border-top:1px solid var(--line);margin-top:10mm;padding-top:4mm;display:grid;grid-template-columns:1.7fr 1fr;gap:8mm}
-.quote-footer strong{display:block;font-size:7.8px;margin:1.5mm 0}
-.quote-footer p:not(.section-label){font-size:7.5px;line-height:1.45;margin:1mm 0}
-.document-footer{border-top:1px solid var(--line);margin:5mm 0 0;padding-top:2.5mm;text-align:center;font-size:6.8px;color:var(--muted)}
+.totals .grand-total{background:var(--navy);color:#fff;margin-top:2.4mm;padding:4mm 3.4mm;border:0;border-radius:2px;font-size:11px}
+.totals .grand-total dt,.totals .grand-total dd{color:#fff}
+.quote-footer{border-top:1px solid var(--line);margin-top:11mm;padding-top:4.5mm;display:grid;grid-template-columns:1.7fr 1fr;gap:9mm}
+.quote-footer strong{display:block;font-size:8.4px;margin:1.6mm 0}
+.quote-footer p:not(.section-label){font-size:8px;line-height:1.5;margin:1mm 0}
+.document-footer{border-top:1px solid var(--line);margin:6mm 0 0;padding-top:3mm;text-align:center;font-size:7.2px;color:var(--muted)}
 .page-number:after{content:"Sayfa " counter(page) " / " counter(pages)}
 @page{size:A4;margin:0}
 @media print{
   body{background:#fff}
-  .quote-sheet{box-shadow:none;margin:0;width:auto;min-height:0;padding:10mm}
+  .quote-sheet{box-shadow:none;margin:0;width:auto;min-height:0;padding:12mm}
 }
 `;
 
@@ -139,7 +157,7 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
 
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8" /><title>${escapeHtml(quote.quote_no)} — Teklif</title><style>${PDF_STYLE}</style></head><body>
 <main class="quote-sheet">
-  <header class="quote-header">
+  <header class="quote-header${quote.issuer === "ceha" ? " issuer-ceha" : ""}">
     <section class="header-copy">
       <p class="issuer-kicker">${escapeHtml(issuer.displayName)}</p>
       <h1>ÜRÜN VE HİZMET TEKLİFİ</h1>
@@ -228,12 +246,17 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
  * blocker can intervene: the window is opened and fully written to in one
  * tick, with no `await` in between.
  */
-export function openQuotePdf(quote: QuoteRow, lines: QuoteLineRow[]) {
+/** Returns false when the popup was blocked, so callers can surface a visible error instead of doing nothing. */
+export function openQuotePdf(quote: QuoteRow, lines: QuoteLineRow[]): boolean {
   const html = buildQuotePdfHtml(quote, lines);
   const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
   const printWindow = window.open(url, "_blank", "noopener,noreferrer");
-  if (!printWindow) URL.revokeObjectURL(url);
-  else setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  if (!printWindow) {
+    URL.revokeObjectURL(url);
+    return false;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return true;
 }
 
 /**

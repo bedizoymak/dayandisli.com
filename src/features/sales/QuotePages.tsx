@@ -299,6 +299,76 @@ export function QuoteFormPage({ quoteId }: { quoteId?: string }) {
     setLines((current) => (current.length > 1 ? current.filter((line) => line.id !== id) : current));
   }
 
+  // Print/PDF preview from the still-unsaved form: builds an in-memory
+  // QuoteRow/QuoteLineRow shape (never sent to saveQuote, never touches
+  // Parasut) and reuses the same buildQuotePdfHtml the saved-quote detail
+  // page uses, so the preview is pixel-identical to the eventual saved
+  // output. window.open() happens synchronously inside this click handler
+  // (openQuotePdf) — no async gap, so no popup blocker can intervene.
+  function handlePreviewPrint() {
+    if (!issuer) return toast({ title: "Eksik bilgi", description: "Önce teklif veren firmayı seçin.", variant: "destructive" });
+    if (!customer) return toast({ title: "Eksik bilgi", description: "Önce müşteri seçin.", variant: "destructive" });
+    if (!subject.trim()) return toast({ title: "Eksik bilgi", description: "Konu alanı zorunludur.", variant: "destructive" });
+    if (!quoteNo.trim()) return toast({ title: "Eksik bilgi", description: "Teklif numarası zorunludur.", variant: "destructive" });
+    const validLines = lines.filter((line) => line.description.trim() && line.quantity > 0);
+    if (!validLines.length) {
+      return toast({ title: "Eksik bilgi", description: "Önizleme için en az bir ürün/hizmet satırı girilmelidir.", variant: "destructive" });
+    }
+
+    const now = new Date().toISOString();
+    const previewQuote: QuoteRow = {
+      id: existingId ?? "preview",
+      quote_no: quoteNo.trim(),
+      issuer,
+      status,
+      currency: currency as QuoteRow["currency"],
+      subject: subject.trim(),
+      customer_source: customer.source,
+      parasut_customer_id: customer.source === "parasut" ? customer.parasutId : null,
+      local_customer_id: customer.source === "local" ? localCustomerId : null,
+      customer_name: customer.name,
+      customer_contact: customer.contact || null,
+      customer_phone: customer.phone || null,
+      customer_email: customer.email || null,
+      customer_address: customer.address || null,
+      customer_tax_no: customer.taxNo || null,
+      issue_date: issueDate,
+      valid_until: validUntil || null,
+      payment_terms: paymentTerms || null,
+      delivery_terms: deliveryTerms || null,
+      delivery_time: deliveryTime || null,
+      notes: notes || null,
+      subtotal: totals.subtotal,
+      discount_total: totals.discountTotal,
+      vat_total: totals.vatTotal,
+      grand_total: totals.grandTotal,
+      converted_order_no: null,
+      created_at: now,
+      updated_at: now,
+    };
+    const previewLines: QuoteLineRow[] = validLines.map((line, index) => ({
+      id: line.id,
+      quote_id: previewQuote.id,
+      position: index,
+      description: line.description,
+      detail: line.detail || null,
+      quantity: line.quantity,
+      unit: line.unit,
+      unit_price: line.unitPrice,
+      discount_pct: line.discountPct,
+      vat_pct: line.vatPct,
+      line_total: calculateLineTotal(line),
+    }));
+    const opened = openQuotePdf(previewQuote, previewLines);
+    if (!opened) {
+      toast({
+        title: "Popup engellendi",
+        description: "Tarayıcınız açılır pencereyi engelledi. Lütfen bu site için popup iznini açıp tekrar deneyin.",
+        variant: "destructive",
+      });
+    }
+  }
+
   async function submitNewCustomer() {
     if (!newCustomerForm.companyName.trim()) {
       toast({ title: "Eksik bilgi", description: "Firma adı zorunlu.", variant: "destructive" });
@@ -604,6 +674,9 @@ export function QuoteFormPage({ quoteId }: { quoteId?: string }) {
         </section>
 
         <footer className="quote-actions">
+          <button type="button" onClick={handlePreviewPrint}>
+            Yazdır / PDF Kaydet
+          </button>
           <button type="button" onClick={handleSave} disabled={saving}>
             {saving ? "Kaydediliyor…" : editing ? "Kaydet" : "Taslak Kaydet"}
           </button>
@@ -765,7 +838,18 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
         <Link className="sales-back" to={`${root}/quotes`}>
           ← Tekliflere Dön
         </Link>
-        <button onClick={() => openQuotePdf(quote, lines)} title="Yazdırılabilir bir pencere açar; tarayıcının yazdırma penceresinden 'PDF olarak kaydet' seçilebilir.">
+        <button
+          onClick={() => {
+            if (!openQuotePdf(quote, lines)) {
+              toast({
+                title: "Popup engellendi",
+                description: "Tarayıcınız açılır pencereyi engelledi. Lütfen bu site için popup iznini açıp tekrar deneyin.",
+                variant: "destructive",
+              });
+            }
+          }}
+          title="Yazdırılabilir bir pencere açar; tarayıcının yazdırma penceresinden 'PDF olarak kaydet' seçilebilir."
+        >
           <FileDown />
           Yazdır / PDF Kaydet
         </button>

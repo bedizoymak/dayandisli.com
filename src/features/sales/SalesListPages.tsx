@@ -6,6 +6,7 @@ import {
   Pencil,
   Search,
   ShoppingCart,
+  Trash2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -16,7 +17,7 @@ import { salesActivities, salesOrders } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
 import { customerName } from "./salesUtils";
 import { useToast } from "@/hooks/use-toast";
-import { fetchQuoteWithLines, fetchQuotes } from "./quotesApi";
+import { deleteQuote, fetchQuoteWithLines, fetchQuotes } from "./quotesApi";
 import { openQuotePdfPlaceholder, writeQuotePdfToWindow } from "./pdf/quotePdfHtml";
 import { effectiveQuoteStatus, QUOTE_ISSUERS, QUOTE_STATUS_LABELS, type QuoteRow, type QuoteStatus } from "./quoteTypes";
 const root = "/apps/sales";
@@ -37,6 +38,7 @@ export function QuotesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<QuoteStatus | "">("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +84,19 @@ export function QuotesPage() {
       return;
     }
     writeQuotePdfToWindow(win, result.data.quote, result.data.lines);
+  }
+
+  async function handleDelete(quote: QuoteRow) {
+    if (!window.confirm(`${quote.quote_no} numaralı teklif kalıcı olarak silinecek. Devam etmek istiyor musunuz?`)) return;
+    setDeletingId(quote.id);
+    const result = await deleteQuote(quote.id);
+    setDeletingId(null);
+    if (!result.ok) {
+      toast({ title: "Hata", description: result.message, variant: "destructive" });
+      return;
+    }
+    setQuotes((current) => current.filter((q) => q.id !== quote.id));
+    toast({ title: "Silindi", description: `${quote.quote_no} kalıcı olarak silindi.` });
   }
 
   return (
@@ -185,6 +200,9 @@ export function QuotesPage() {
                     <Link title="Siparişe Dönüştür" to={`${root}/orders/new?sourceQuoteId=${q.id}`}>
                       <ShoppingCart />
                     </Link>
+                    <button title="Sil" disabled={deletingId === q.id} onClick={() => handleDelete(q)}>
+                      <Trash2 />
+                    </button>
                     <Link title="Kopyala" to={`${root}/quotes/new?duplicateOf=${q.id}`}>
                       <MoreHorizontal />
                     </Link>
