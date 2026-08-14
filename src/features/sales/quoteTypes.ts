@@ -40,12 +40,10 @@ export const QUOTE_ISSUERS: Record<QuoteIssuerKey, QuoteIssuerProfile> = {
       "İkitelli OSB Mahallesi, Çevre Sanayi Sitesi Sk. 8. Blok No: 45 – İç Kapı No: 1 Başakşehir, İstanbul",
     phone: "+90 536 583 74 20",
     email: "info@cehadisli.com",
-    // No CEHA logo asset exists anywhere in this repository or its public
-    // assets — confirmed by search. Left null on purpose: the PDF template
-    // falls back to a text lockup (same fallback element the approved V6
-    // template itself defines for a missing/broken logo image), never a
-    // fabricated logo. See the final report's blocker list.
-    logoPath: null,
+    // Real CEHA logo asset, supplied 2026-08-14 and committed to
+    // public/ceha-logo.png. The PDF template still falls back to the text
+    // lockup automatically (onerror handler) if this ever fails to load.
+    logoPath: "ceha-logo.png",
   },
 };
 

@@ -81,9 +81,13 @@ describe("buildQuotePdfHtml — approved V6 template fields", () => {
     expect(html).toContain('class="brand-logo"');
   });
 
-  it("falls back to a text lockup (no fabricated logo image) for the ceha issuer, which has no logo asset", () => {
+  it("uses the real CEHA logo image for the ceha issuer, with a text-lockup onerror fallback (never a fabricated logo)", () => {
     const html = buildQuotePdfHtml({ ...baseQuote, issuer: "ceha" }, lines);
-    expect(html).not.toContain('class="brand-logo"');
+    expect(html).toContain("ceha-logo.png");
+    expect(html).toContain('class="brand-logo"');
+    // The onerror handler that reveals the text lockup must still be wired,
+    // so a broken/missing image never renders as an empty gap.
+    expect(html).toContain("this.hidden=true;this.nextElementSibling.hidden=false");
     expect(html).toContain('class="logo-fallback"');
     expect(html).toContain("CEHA");
   });
