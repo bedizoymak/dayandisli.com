@@ -70,15 +70,28 @@ describe("buildQuotePdfHtml — approved V6 template fields", () => {
     expect(html).toContain("İkitelli VD: 43675880102");
   });
 
-  it("prints the brand name only once per issuer — never a duplicate caption next to a logo that already contains the wordmark", () => {
+  it("renders the issuer name under the logo as the exact single-line white brand-name block", () => {
     const dayanHtml = buildQuotePdfHtml(baseQuote, lines);
     const dayanBrandSection = dayanHtml.slice(dayanHtml.indexOf('class="brand-lockup"'), dayanHtml.indexOf("</section>", dayanHtml.indexOf('class="brand-lockup"')));
-    // Only the (hidden, onerror-only) fallback caption may mention the name — never a second, always-visible one alongside the real logo image.
-    expect(dayanBrandSection).not.toMatch(/<strong>DAYAN/);
+    expect(dayanBrandSection).toContain('<div class="brand-name">DAYAN DİŞLİ</div>');
 
     const cehaHtml = buildQuotePdfHtml({ ...baseQuote, issuer: "ceha" }, lines);
     const cehaBrandSection = cehaHtml.slice(cehaHtml.indexOf('class="brand-lockup"'), cehaHtml.indexOf("</section>", cehaHtml.indexOf('class="brand-lockup"')));
-    expect(cehaBrandSection).not.toMatch(/<strong>CEHA/);
+    expect(cehaBrandSection).toContain('<div class="brand-name">CEHA DİŞLİ</div>');
+
+    for (const html of [dayanHtml, cehaHtml]) {
+      expect(html).toContain(`.brand-name {
+  display: block;
+  margin-top: 2.4mm;
+  color: #FFFFFF !important;
+  font-size: 8.8pt;
+  font-weight: 800;
+  letter-spacing: 0.55pt;
+  line-height: 1;
+  white-space: nowrap;
+  text-align: center;
+}`);
+    }
   });
 
   it("falls back to the 'talep halinde' bank text when no IBAN is configured for the issuer/currency", () => {

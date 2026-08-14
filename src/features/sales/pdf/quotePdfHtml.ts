@@ -81,6 +81,17 @@ body{margin:0;background:#e7edf2;color:var(--ink);font-family:Arial,"Helvetica N
 .brand-lockup{width:42mm;align-self:center;justify-self:center;display:flex;flex-direction:column;align-items:center;text-align:center;transform:translateY(2.5mm)}
 .brand-logo{display:block;margin:0 auto;object-fit:contain;object-position:center;max-width:31mm;max-height:12mm}
 .brand-lockup[data-logo-shape="compact"] .brand-logo{max-width:24mm;max-height:17mm}
+.brand-name {
+  display: block;
+  margin-top: 2.4mm;
+  color: #FFFFFF !important;
+  font-size: 8.8pt;
+  font-weight: 800;
+  letter-spacing: 0.55pt;
+  line-height: 1;
+  white-space: nowrap;
+  text-align: center;
+}
 .logo-fallback{color:var(--header-ink);font-size:10pt;font-weight:800;letter-spacing:.7pt;line-height:1.1;display:flex;align-items:center;justify-content:center;flex-direction:column}
 .logo-fallback span{color:var(--header-kicker)}
 /* CEHA's white header means white fallback text would be invisible — give
@@ -200,6 +211,7 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
     <div class="header-divider" aria-hidden="true"></div>
     <section class="brand-lockup" aria-label="Firma logosu">
       ${brandBlock}
+      <div class="brand-name">${escapeHtml(issuer.displayName)}</div>
       <span class="brand-tagline">${escapeHtml(issuer.slogan)}</span>
     </section>
   </header>
