@@ -165,8 +165,7 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
     </section>
     <section class="brand-lockup" aria-label="Firma logosu">
       ${brandBlock}
-      <strong>${escapeHtml(issuer.displayName)}</strong>
-      <span class="slogan">Güç, hassasiyet, süreklilik</span>
+      <span class="slogan">${escapeHtml(issuer.slogan)}</span>
     </section>
   </header>
 
@@ -181,19 +180,19 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
     <article class="party">
       <p class="section-label">TEKLİF VEREN</p>
       <h2>${escapeHtml(issuer.legalName)}</h2>
-      <p>${escapeHtml(issuer.address)}</p>
-      <p><span>Telefon</span> ${escapeHtml(issuer.phone)} &nbsp; <span>E-posta</span> ${escapeHtml(issuer.email)}</p>
+      <p><span>Yetkili</span> ${escapeHtml(issuer.contactPerson)}</p>
+      <p><span>Telefon</span> ${escapeHtml(issuer.phone)}</p>
+      <p><span>E-posta</span> ${escapeHtml(issuer.email)}</p>
       <p><span>VKN</span> ${escapeHtml(issuer.taxNo)}</p>
+      <p><span>Adres</span> ${escapeHtml(issuer.address)}</p>
     </article>
     <article class="party customer">
       <p class="section-label">MÜŞTERİ</p>
       <h2>${escapeHtml(quote.customer_name)}</h2>
-      <p>${escapeHtml(quote.customer_address || "—")}</p>
-      <p>
-        ${quote.customer_phone ? `<span>Telefon</span> ${escapeHtml(quote.customer_phone)} &nbsp; ` : ""}
-        ${quote.customer_email ? `<span>E-posta</span> ${escapeHtml(quote.customer_email)}` : ""}
-      </p>
+      ${quote.customer_phone ? `<p><span>Telefon</span> ${escapeHtml(quote.customer_phone)}</p>` : ""}
+      ${quote.customer_email ? `<p><span>E-posta</span> ${escapeHtml(quote.customer_email)}</p>` : ""}
       ${quote.customer_tax_no ? `<p><span>Vergi No</span> ${escapeHtml(quote.customer_tax_no)}</p>` : ""}
+      <p><span>Adres</span> ${escapeHtml(quote.customer_address || "—")}</p>
     </article>
   </section>
 

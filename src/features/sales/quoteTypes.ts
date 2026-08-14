@@ -7,6 +7,8 @@ export type QuoteIssuerProfile = {
   prefix: string;
   legalName: string;
   displayName: string;
+  contactPerson: string;
+  slogan: string;
   taxNo: string;
   address: string;
   phone: string;
@@ -15,40 +17,49 @@ export type QuoteIssuerProfile = {
 };
 
 // Approved billing entities. VKN is intentionally identical for both — both
-// trade under the same tax identity (HAYRETTİN DAYAN CEHA DİŞLİ SANAYİ),
-// per the task's fixed e-invoice block.
+// trade under the same tax identity (HAYRETTİN DAYAN), per the task's fixed
+// e-invoice block. contactPerson/slogan match the approved V6 PDF reference
+// verbatim — never invented.
 export const QUOTE_ISSUERS: Record<QuoteIssuerKey, QuoteIssuerProfile> = {
   dayan: {
     prefix: "DY",
     legalName: "Dayan Dişli & Profil Taşlama",
     displayName: "DAYAN DİŞLİ",
+    contactPerson: "Hayrettin Dayan",
+    slogan: "HASSAS ÜRETİM • GÜVENİLİR TEDARİK",
     taxNo: "43675880102",
     address:
-      "İkitelli OSB Mahallesi, Çevre Sanayi Sitesi Sk. 8. Blok No: 45 – İç Kapı No: 1 Başakşehir, İstanbul",
+      "İkitelli OSB Mahallesi, Çevre Sanayi Sitesi Sk. 8. Blok No: 45 – İç Kapı No: 1 Başakşehir, İstanbul – Türkiye",
     phone: "+90 536 583 74 20",
     email: "info@dayandisli.com",
     // Confirmed present in the repo (public/logo-header.png, already used by
-    // every other PDF/print surface in this app).
+    // every other PDF/print surface in this app). This asset already
+    // contains the "DAYAN" wordmark baked into the image — the PDF template
+    // must never print a second, separate "DAYAN DİŞLİ" caption next to it.
     logoPath: "logo-header.png",
   },
   ceha: {
     prefix: "CH",
     legalName: "CEHA Dişli & Profil Taşlama",
     displayName: "CEHA DİŞLİ",
+    contactPerson: "Hayrettin Dayan",
+    slogan: "HASSAS ÜRETİM • GÜVENİLİR TEDARİK",
     taxNo: "43675880102",
     address:
-      "İkitelli OSB Mahallesi, Çevre Sanayi Sitesi Sk. 8. Blok No: 45 – İç Kapı No: 1 Başakşehir, İstanbul",
+      "İkitelli OSB Mahallesi, Çevre Sanayi Sitesi Sk. 8. Blok No: 45 – İç Kapı No: 1 Başakşehir, İstanbul – Türkiye",
     phone: "+90 536 583 74 20",
     email: "info@cehadisli.com",
     // Real CEHA logo asset, supplied 2026-08-14 and committed to
-    // public/ceha-logo.png. The PDF template still falls back to the text
+    // public/ceha-logo.png. Also already contains the full "CEHA DİŞLİ
+    // PROFİL TAŞLAMA" wordmark baked into the image — same no-duplicate-
+    // caption rule applies. The PDF template still falls back to the text
     // lockup automatically (onerror handler) if this ever fails to load.
     logoPath: "ceha-logo.png",
   },
 };
 
 export const QUOTE_EINVOICE_INFO = {
-  legalName: "HAYRETTİN DAYAN CEHA DİŞLİ SANAYİ",
+  legalName: "HAYRETTİN DAYAN",
   address:
     "İkitelli OSB Mahallesi, Çevre Sanayi Sitesi Sk. 8. Blok No: 45 – İç Kapı No: 1 Başakşehir, İstanbul",
   taxOffice: "İkitelli VD: 43675880102",
