@@ -253,6 +253,10 @@ export async function addHistoryEntry(input: {
   amount: number | null;
   currency: string;
   note: string;
+  filePath: string;
+  fileName: string;
+  fileMime: string;
+  fileSize: number;
 }): Promise<ApiResult<QuoteHistoryEntryRow>> {
   const { data, error } = (await supabase
     .from("quote_history_entries" as never)
@@ -265,9 +269,53 @@ export async function addHistoryEntry(input: {
       amount: input.amount,
       currency: input.currency || null,
       note: input.note || null,
+      file_path: input.filePath,
+      file_name: input.fileName,
+      file_mime: input.fileMime,
+      file_size: input.fileSize,
     } as never)
     .select("*")
     .single()) as unknown as DbResult<QuoteHistoryEntryRow>;
   if (error || !data) return fail(error?.message ?? "Geçmiş teklif kaydedilemedi.");
   return ok(data);
+}
+
+const QUOTE_DOCUMENTS_BUCKET = "quote-documents";
+
+export const QUOTE_HISTORY_FILE_MAX_BYTES = 20 * 1024 * 1024;
+
+export type QuoteHistoryFileUpload = { path: string; name: string; mime: string; size: number };
+
+/**
+ * Path is never guessable: <source>/<customerId>/<random uuid>-<sanitized
+ * original name>. Private bucket (see 20260816090000 migration) — nobody
+ * can browse or construct another customer's file path, and every read
+ * goes through a short-lived signed URL (getQuoteHistoryFileUrl), never a
+ * public URL.
+ */
+export async function uploadQuoteHistoryFile(
+  file: File,
+  context: { source: QuoteCustomerSource; customerId: string },
+): Promise<ApiResult<QuoteHistoryFileUpload>> {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
+  const path = `${context.source}/${context.customerId}/${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage
+    .from(QUOTE_DOCUMENTS_BUCKET)
+    .upload(path, file, { contentType: file.type || "application/pdf", upsert: false });
+  if (error) return fail(error.message);
+  return ok({ path, name: file.name, mime: file.type || "application/pdf", size: file.size });
+}
+
+/** Removes an uploaded file — used to clean up after an upload whose quote_history_entries insert then failed. */
+export async function deleteQuoteHistoryFile(path: string): Promise<ApiResult<null>> {
+  const { error } = await supabase.storage.from(QUOTE_DOCUMENTS_BUCKET).remove([path]);
+  if (error) return fail(error.message);
+  return ok(null);
+}
+
+/** Short-lived (5 min) signed URL — the only way this private bucket's files are ever viewed/downloaded. */
+export async function getQuoteHistoryFileUrl(path: string): Promise<ApiResult<string>> {
+  const { data, error } = await supabase.storage.from(QUOTE_DOCUMENTS_BUCKET).createSignedUrl(path, 300);
+  if (error || !data?.signedUrl) return fail(error?.message ?? "Dosya bağlantısı oluşturulamadı.");
+  return ok(data.signedUrl);
 }

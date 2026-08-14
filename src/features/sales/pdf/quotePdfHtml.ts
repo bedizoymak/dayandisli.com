@@ -61,43 +61,53 @@ body{margin:0;background:#e7edf2;color:var(--ink);font-family:Arial,"Helvetica N
 /* Fixed technical geometry — identical for both issuers; only colors,
    the logo file, and the logo's own aspect-ratio-driven fit change. */
 .quote-header{
-  --header-bg:#09243d;--header-ink:#fff;--header-kicker:#55b8e8;--header-tagline:#d9edf8;--divider-color:rgba(217,237,248,.35);
+  --header-bg:#09243d;--header-ink:#fff;--header-kicker:#55b8e8;--header-tagline:#d9edf8;
   height:43mm;box-sizing:border-box;
-  padding:8mm 10mm 7mm 10mm;
+  padding:8mm 10mm 7mm;
   border-bottom:3px solid #55b8e8;
   display:grid;grid-template-columns:minmax(0,1fr) 1px 42mm;column-gap:7mm;
   overflow:hidden;
   background:var(--header-bg);color:var(--header-ink);
 }
-.quote-header.issuer-ceha{--header-bg:#ffffff;--header-ink:#09243d;--header-kicker:#09243d;--header-tagline:#607486;--divider-color:rgba(9,36,61,.25)}
+.quote-header.issuer-ceha{--header-bg:#ffffff;--header-ink:#09243d;--header-kicker:#09243d;--header-tagline:#607486}
 .header-copy{min-width:0;display:flex;flex-direction:column;justify-content:center}
-.issuer-kicker{margin:0 0 3.2mm;color:var(--header-kicker);font-size:9pt;font-weight:700;letter-spacing:.9pt}
-.header-copy h1{margin:0;font-size:22pt;line-height:1.08;font-weight:800;letter-spacing:0;color:var(--header-ink)}
-.tagline{margin:3mm 0 0;color:var(--header-tagline);font-size:9.5pt;line-height:1.35}
-.header-divider{width:1px;height:30mm;background:var(--divider-color);transform:rotate(14deg);transform-origin:center;justify-self:center;align-self:center}
-.brand-lockup{width:42mm;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center}
-.brand-logo{display:block;object-fit:contain;margin:0 auto 3.2mm;max-width:31mm;max-height:12mm}
-.brand-logo[data-logo-shape="compact"]{max-width:24mm;max-height:17mm;margin-bottom:2.8mm}
-.logo-fallback{color:var(--header-ink);font-size:10pt;font-weight:800;letter-spacing:.7pt;line-height:1.1;display:flex;align-items:center;justify-content:center;flex-direction:column;margin-bottom:3.2mm}
+.header-kicker{margin:0 0 3.2mm;color:var(--header-kicker);font-size:9pt;font-weight:700;letter-spacing:.9pt}
+.header-title{font-size:20pt;line-height:1.08;font-weight:800;letter-spacing:0;white-space:nowrap;margin:0;color:var(--header-ink)}
+.header-tagline{font-size:9.5pt;line-height:1.35;margin:3mm 0 0;color:var(--header-tagline)}
+/* No per-issuer color needed: the divider inherits .quote-header's own
+   text color (white on Dayan's navy, navy on CEHA's white), so it always
+   reads correctly against whichever background is active. */
+.header-divider{width:1px;height:30mm;align-self:center;justify-self:center;opacity:.26;transform:rotate(14deg);transform-origin:center;background:currentColor}
+.brand-lockup{width:42mm;align-self:center;justify-self:center;display:flex;flex-direction:column;align-items:center;text-align:center;transform:translateY(2.5mm)}
+.brand-logo{display:block;margin:0 auto;object-fit:contain;object-position:center;max-width:31mm;max-height:12mm}
+.brand-lockup[data-logo-shape="compact"] .brand-logo{max-width:24mm;max-height:17mm}
+.logo-fallback{color:var(--header-ink);font-size:10pt;font-weight:800;letter-spacing:.7pt;line-height:1.1;display:flex;align-items:center;justify-content:center;flex-direction:column}
 .logo-fallback span{color:var(--header-kicker)}
-.brand-lockup>span.slogan{font-size:6.4pt;font-weight:500;letter-spacing:.1pt;line-height:1.2;color:var(--header-tagline);text-align:center;white-space:nowrap}
+/* CEHA's white header means white fallback text would be invisible — give
+   it its own navy badge so the (white, single-line) wordmark stays
+   readable. Dayan's navy header already contrasts fine, no badge needed. */
+.quote-header.issuer-ceha .logo-fallback.ceha-wordmark{background:#09243d;padding:2mm 3mm;border-radius:1px}
+.ceha-wordmark{color:#fff;font-size:10pt;font-weight:800;letter-spacing:.65pt;line-height:1;white-space:nowrap}
+.brand-tagline{margin-top:3.2mm;font-size:6.4pt;font-weight:500;letter-spacing:.1pt;line-height:1.2;color:var(--header-tagline);white-space:nowrap}
 .meta-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-top:0;margin-bottom:9mm}
 .meta-grid div{padding:4.2mm 5mm;border-right:1px solid var(--line)}
 .meta-grid div:last-child{border-right:0}
 .meta-grid span,.section-label{display:block;color:var(--muted);font-size:7.6px;font-weight:700;letter-spacing:.8px}
 .meta-grid strong{display:block;margin-top:1.8mm;font-size:10.5px}
-.parties{display:grid;grid-template-columns:1fr 1fr;gap:9mm;margin-top:2mm;margin-bottom:8mm}
-.party{border-top:2px solid var(--blue);padding-top:4mm;min-height:32mm}
-.party h2{font-size:11.5px;margin:3.4mm 0 3.4mm;line-height:1.3;color:var(--navy)}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:7mm;margin-top:2mm;margin-bottom:8mm}
+.party{min-height:35mm;padding-top:3mm;border:0;border-top:2px solid #55b8e8;border-radius:0;background:transparent}
+.party-label{font-size:9pt;font-weight:800;letter-spacing:.45pt;color:#09243d;margin:0 0 3.2mm}
+.party-name{font-size:10.5pt;font-weight:800;line-height:1.25;margin:0 0 2.7mm}
 .party p{font-size:8.8px;line-height:1.62;margin:1.5mm 0}
 .party p span{color:var(--muted);font-weight:700}
 .manual-subject{font-size:10px;margin:0 0 6mm;padding:0 0 3mm;border-bottom:1px solid var(--line);font-weight:700;color:var(--navy)}
-.products h2,.conditions h2{font-size:10.5px;letter-spacing:.6px;margin:0 0 3.5mm;color:var(--navy)}
+.products-title{margin:6mm 0 3mm;font-size:10pt;font-weight:800;letter-spacing:.45pt;color:#09243d}
+.conditions h2{font-size:10.5px;letter-spacing:.6px;margin:0 0 3.5mm;color:var(--navy)}
 table{border-collapse:collapse;width:100%;font-size:8.6px}
 thead{display:table-header-group}
 tr{page-break-inside:avoid}
-th{background:#eaf4f9;color:var(--navy);padding:3.2mm 2.6mm;text-align:left;font-size:7.6px;letter-spacing:.35px}
-td{padding:3.4mm 2.6mm;border-bottom:1px solid var(--line);vertical-align:top}
+.quote-table thead th{background:#09243d;color:#fff;font-size:7.6pt;font-weight:800;letter-spacing:.2pt;padding:3mm 2.2mm;border:0;text-align:left}
+.quote-table tbody td{padding:3mm 2.2mm;border-bottom:1px solid #d9e2e9;font-size:8.2pt;vertical-align:top}
 th:nth-child(1),td:nth-child(1){width:7mm;text-align:center}
 th:nth-child(3),td:nth-child(3){width:17mm;text-align:center}
 th:nth-child(n+4),td:nth-child(n+4){text-align:right;white-space:nowrap}
@@ -106,11 +116,12 @@ th:nth-child(n+4),td:nth-child(n+4){text-align:right;white-space:nowrap}
 .bottom-grid{display:grid;grid-template-columns:1fr 62mm;gap:10mm;margin-top:9mm}
 .conditions ul{margin:0;padding-left:4.8mm}
 .conditions li{font-size:8.6px;line-height:1.6;margin-bottom:1.6mm}
-.totals{margin:0;font-size:9.2px}
-.totals div{display:flex;justify-content:space-between;padding:2.8mm 0;border-bottom:1px solid var(--line)}
-.totals dd{margin:0;font-weight:700}
-.totals .grand-total{background:var(--navy);color:#fff;margin-top:2.4mm;padding:4mm 3.4mm;border:0;border-radius:2px;font-size:11px}
-.totals .grand-total dt,.totals .grand-total dd{color:#fff}
+.totals{width:57mm;margin-left:auto;border:0;border-radius:0;background:transparent}
+.totals-row{display:flex;justify-content:space-between;padding:2.7mm 0;border-bottom:1px solid #d9e2e9;font-size:8.8pt}
+.totals-row dt,.totals-row dd{margin:0}
+.totals-row dd{font-weight:700}
+.totals-row.grand-total{margin-top:2.5mm;padding:3.5mm 3mm;background:#09243d;color:#fff;border:0;border-radius:0;font-size:10pt;font-weight:800}
+.totals-row.grand-total .amount{color:#55b8e8;font-size:11pt;font-weight:800}
 .quote-footer{border-top:1px solid var(--line);margin-top:11mm;padding-top:4.5mm;display:grid;grid-template-columns:1.7fr 1fr;gap:9mm}
 .quote-footer strong{display:block;font-size:8.4px;margin:1.6mm 0}
 .quote-footer p:not(.section-label){font-size:8px;line-height:1.5;margin:1mm 0}
@@ -156,13 +167,23 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
   // Shape (wide vs compact) is measured from the actual loaded file's
   // naturalWidth/naturalHeight — never a hardcoded per-issuer guess — so a
   // future logo swap for either issuer keeps fitting correctly with no
-  // CSS change. Threshold and both size sets are the given technical spec.
+  // CSS change. The attribute is set on the .brand-lockup CONTAINER (not
+  // the <img> itself), matching the CSS selectors
+  // `.brand-lockup[data-logo-shape="…"] .brand-logo`.
   const logoShapeScript =
-    'var r=this.naturalWidth/this.naturalHeight;this.setAttribute("data-logo-shape",r>=1.65?"wide":"compact")';
+    'var r=this.naturalWidth/this.naturalHeight;this.parentElement.setAttribute("data-logo-shape",r>=1.65?"wide":"compact")';
+  // CEHA's fallback (only shown if the real logo image fails to load) is a
+  // single-line white-on-navy badge — a plain navy-header fallback would
+  // be invisible against CEHA's white header. Dayan's existing two-line
+  // fallback already contrasts fine against its navy header.
+  const fallbackBlock =
+    quote.issuer === "ceha"
+      ? `<div class="logo-fallback ceha-wordmark" hidden>${escapeHtml(issuer.displayName)}</div>`
+      : `<div class="logo-fallback" hidden>${escapeHtml(issuer.displayName.split(" ")[0])}<br /><span>${escapeHtml(issuer.displayName.split(" ").slice(1).join(" ") || issuer.displayName)}</span></div>`;
   const brandBlock = logoUrl
     ? `<img class="brand-logo" src="${escapeHtml(logoUrl)}" alt="${escapeHtml(issuer.legalName)}" onload='${logoShapeScript}' onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
-       <div class="logo-fallback" hidden>${escapeHtml(issuer.displayName.split(" ")[0])}<br /><span>${escapeHtml(issuer.displayName.split(" ").slice(1).join(" ") || issuer.displayName)}</span></div>`
-    : `<div class="logo-fallback">${escapeHtml(issuer.displayName.split(" ")[0])}<br /><span>${escapeHtml(issuer.displayName.split(" ").slice(1).join(" ") || issuer.displayName)}</span></div>`;
+       ${fallbackBlock}`
+    : fallbackBlock.replace(' hidden>', '>');
 
   const bankHtml = bank
     ? `<section class="bank-info"><p class="section-label">BANKA BİLGİLERİ</p><strong>${escapeHtml(bank.bankName)}</strong><p>${escapeHtml(bank.iban)}</p></section>`
@@ -172,14 +193,14 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
 <main class="quote-sheet">
   <header class="quote-header${quote.issuer === "ceha" ? " issuer-ceha" : ""}">
     <section class="header-copy">
-      <p class="issuer-kicker">${escapeHtml(issuer.displayName)}</p>
-      <h1>ÜRÜN VE HİZMET TEKLİFİ</h1>
-      <p class="tagline">Dişli imalatı, profil taşlama ve hassas mekanik çözümler</p>
+      <p class="header-kicker">${escapeHtml(issuer.displayName)}</p>
+      <h1 class="header-title">ÜRÜN VE HİZMET TEKLİFİ</h1>
+      <p class="header-tagline">Dişli imalatı, profil taşlama ve hassas mekanik çözümler</p>
     </section>
     <div class="header-divider" aria-hidden="true"></div>
     <section class="brand-lockup" aria-label="Firma logosu">
       ${brandBlock}
-      <span class="slogan">${escapeHtml(issuer.slogan)}</span>
+      <span class="brand-tagline">${escapeHtml(issuer.slogan)}</span>
     </section>
   </header>
 
@@ -192,8 +213,8 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
 
   <section class="parties">
     <article class="party">
-      <p class="section-label">TEKLİF VEREN</p>
-      <h2>${escapeHtml(issuer.legalName)}</h2>
+      <p class="party-label">TEKLİF VEREN</p>
+      <h2 class="party-name">${escapeHtml(issuer.legalName)}</h2>
       <p><span>Yetkili</span> ${escapeHtml(issuer.contactPerson)}</p>
       <p><span>Telefon</span> ${escapeHtml(issuer.phone)}</p>
       <p><span>E-posta</span> ${escapeHtml(issuer.email)}</p>
@@ -201,8 +222,8 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
       <p><span>Adres</span> ${escapeHtml(issuer.address)}</p>
     </article>
     <article class="party customer">
-      <p class="section-label">MÜŞTERİ</p>
-      <h2>${escapeHtml(quote.customer_name)}</h2>
+      <p class="party-label">MÜŞTERİ</p>
+      <h2 class="party-name">${escapeHtml(quote.customer_name)}</h2>
       ${quote.customer_phone ? `<p><span>Telefon</span> ${escapeHtml(quote.customer_phone)}</p>` : ""}
       ${quote.customer_email ? `<p><span>E-posta</span> ${escapeHtml(quote.customer_email)}</p>` : ""}
       ${quote.customer_tax_no ? `<p><span>Vergi No</span> ${escapeHtml(quote.customer_tax_no)}</p>` : ""}
@@ -213,8 +234,8 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
   <p class="manual-subject">Konu: ${escapeHtml(quote.subject || "—")}</p>
 
   <section class="products">
-    <h2>ÜRÜNLER VE HİZMETLER</h2>
-    <table>
+    <p class="products-title">ÜRÜNLER VE HİZMETLER</p>
+    <table class="quote-table">
       <thead><tr><th>#</th><th>ÜRÜN / HİZMET VE TEKNİK AÇIKLAMA</th><th>MİKTAR</th><th>BİRİM FİYAT</th><th>İSKONTO</th><th>TOPLAM</th></tr></thead>
       <tbody>${itemsHtml}</tbody>
     </table>
@@ -231,10 +252,10 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
       </ul>
     </div>
     <dl class="totals">
-      <div><dt>Ara Toplam</dt><dd>${escapeHtml(money(quote.subtotal, currency))}</dd></div>
-      <div><dt>İskonto</dt><dd>${escapeHtml(money(quote.discount_total, currency))}</dd></div>
-      <div><dt>KDV</dt><dd>${escapeHtml(money(quote.vat_total, currency))}</dd></div>
-      <div class="grand-total"><dt>GENEL TOPLAM</dt><dd>${escapeHtml(money(quote.grand_total, currency))}</dd></div>
+      <div class="totals-row"><dt>Ara Toplam</dt><dd>${escapeHtml(money(quote.subtotal, currency))}</dd></div>
+      <div class="totals-row"><dt>İskonto</dt><dd>${escapeHtml(money(quote.discount_total, currency))}</dd></div>
+      <div class="totals-row"><dt>KDV</dt><dd>${escapeHtml(money(quote.vat_total, currency))}</dd></div>
+      <div class="totals-row grand-total"><dt>GENEL TOPLAM</dt><dd class="amount">${escapeHtml(money(quote.grand_total, currency))}</dd></div>
     </dl>
   </section>
 

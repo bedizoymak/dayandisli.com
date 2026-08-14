@@ -182,6 +182,10 @@ export type QuoteHistoryEntryRow = {
   amount: number | null;
   currency: string | null;
   note: string | null;
+  file_path: string | null;
+  file_name: string | null;
+  file_mime: string | null;
+  file_size: number | null;
   created_at: string;
 };
 

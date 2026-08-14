@@ -16,7 +16,6 @@ import { SalesHeader, SalesStatus } from "./SalesShared";
 import { customerName } from "./salesUtils";
 import { calculateLineTotal, calculateQuoteTotals } from "./quoteCalculations";
 import {
-  addHistoryEntry,
   createLocalCustomer,
   fetchLocalCustomer,
   fetchQuoteWithLines,
@@ -762,7 +761,6 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteRow | null>(null);
   const [lines, setLines] = useState<QuoteLineRow[]>([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (!quoteId) {
@@ -997,98 +995,7 @@ export function QuoteDetailPage({ quoteId }: { quoteId?: string }) {
           </p>
         </article>
       </section>
-
-      <QuoteHistoryAddButton
-        open={historyOpen}
-        onOpenChange={setHistoryOpen}
-        source={quote.customer_source}
-        parasutCustomerId={quote.parasut_customer_id}
-        localCustomerId={quote.local_customer_id}
-      />
     </div>
-  );
-}
-
-function QuoteHistoryAddButton({
-  open,
-  onOpenChange,
-  source,
-  parasutCustomerId,
-  localCustomerId,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  source: "parasut" | "local";
-  parasutCustomerId: string | null;
-  localCustomerId: string | null;
-}) {
-  const { toast } = useToast();
-  const [form, setForm] = useState({ quoteNo: "", quoteDate: "", amount: "", currency: "TRY", note: "" });
-  async function submit() {
-    const result = await addHistoryEntry({
-      source,
-      parasutCustomerId,
-      localCustomerId,
-      quoteNo: form.quoteNo,
-      quoteDate: form.quoteDate,
-      amount: form.amount ? Number(form.amount) : null,
-      currency: form.currency,
-      note: form.note,
-    });
-    if (!result.ok) {
-      toast({ title: "Hata", description: result.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Kaydedildi", description: "Geçmiş teklif eklendi." });
-    onOpenChange(false);
-    setForm({ quoteNo: "", quoteDate: "", amount: "", currency: "TRY", note: "" });
-  }
-  return (
-    <>
-      <button type="button" className="sales-inline-actions" style={{ marginTop: "8px" }} onClick={() => onOpenChange(true)}>
-        + Bu Müşteriye Geçmiş Teklif Ekle
-      </button>
-      {open && (
-        <div className="sales-modal" role="dialog" aria-modal="true">
-          <div>
-            <button className="close" onClick={() => onOpenChange(false)}>
-              <X />
-            </button>
-            <h2>Geçmiş Teklif Ekle</h2>
-            <small>Paraşüt'e yazılmaz; yalnızca bu müşterinin ERP geçmişine eklenir.</small>
-            <div className="sales-fields" style={{ marginTop: "10px" }}>
-              <label>
-                Teklif No
-                <input value={form.quoteNo} onChange={(e) => setForm((f) => ({ ...f, quoteNo: e.target.value }))} />
-              </label>
-              <label>
-                Tarih
-                <input type="date" value={form.quoteDate} onChange={(e) => setForm((f) => ({ ...f, quoteDate: e.target.value }))} />
-              </label>
-              <label>
-                Tutar
-                <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} />
-              </label>
-              <label>
-                Para Birimi
-                <select value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}>
-                  <option>TRY</option>
-                  <option>USD</option>
-                  <option>EUR</option>
-                </select>
-              </label>
-              <label className="wide">
-                Not
-                <textarea value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
-              </label>
-            </div>
-            <button type="button" onClick={submit} style={{ marginTop: "10px", width: "100%" }}>
-              Kaydet
-            </button>
-          </div>
-        </div>
-      )}
-    </>
   );
 }
 

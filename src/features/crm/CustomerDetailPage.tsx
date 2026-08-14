@@ -7,6 +7,7 @@ import { CrmPageHeader, StatusBadge } from "./CrmShared";
 import { PartyLedgerEntryDialog } from "../finance/PartyLedgerEntryDialog";
 import { fetchQuotesForCustomer } from "../sales/quotesApi";
 import { effectiveQuoteStatus, QUOTE_STATUS_LABELS, type QuoteRow } from "../sales/quoteTypes";
+import { QuoteHistoryPanel } from "../sales/QuoteHistoryPanel";
 
 const parent = "/apps/crm/customers";
 
@@ -570,6 +571,8 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
       </section>
 
       <ErpQuoteHistory quotes={erpQuotes} />
+
+      <QuoteHistoryPanel source="parasut" parasutCustomerId={customerId ?? null} localCustomerId={null} />
 
       <OfferHistory offers={offers} />
     </div>

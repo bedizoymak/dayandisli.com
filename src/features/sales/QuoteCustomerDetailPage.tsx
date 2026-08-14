@@ -1,12 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { SalesHeader, SalesStatus } from "./SalesShared";
-import {
-  fetchHistoryEntriesForCustomer,
-  fetchLocalCustomer,
-  fetchQuotesForCustomer,
-} from "./quotesApi";
-import { effectiveQuoteStatus, QUOTE_STATUS_LABELS, type QuoteHistoryEntryRow, type QuoteLocalCustomerRow, type QuoteRow } from "./quoteTypes";
+import { fetchLocalCustomer, fetchQuotesForCustomer } from "./quotesApi";
+import { effectiveQuoteStatus, QUOTE_STATUS_LABELS, type QuoteLocalCustomerRow, type QuoteRow } from "./quoteTypes";
+import { QuoteHistoryPanel } from "./QuoteHistoryPanel";
 
 const root = "/apps/sales";
 
@@ -14,7 +11,6 @@ export function QuoteCustomerDetailPage({ customerId }: { customerId?: string })
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<QuoteLocalCustomerRow | null>(null);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
-  const [history, setHistory] = useState<QuoteHistoryEntryRow[]>([]);
 
   useEffect(() => {
     if (!customerId) {
@@ -22,17 +18,14 @@ export function QuoteCustomerDetailPage({ customerId }: { customerId?: string })
       return;
     }
     let cancelled = false;
-    Promise.all([
-      fetchLocalCustomer(customerId),
-      fetchQuotesForCustomer("local", customerId),
-      fetchHistoryEntriesForCustomer("local", customerId),
-    ]).then(([customerResult, quotesResult, historyResult]) => {
-      if (cancelled) return;
-      if (customerResult.ok) setCustomer(customerResult.data);
-      if (quotesResult.ok) setQuotes(quotesResult.data);
-      if (historyResult.ok) setHistory(historyResult.data);
-      setLoading(false);
-    });
+    Promise.all([fetchLocalCustomer(customerId), fetchQuotesForCustomer("local", customerId)]).then(
+      ([customerResult, quotesResult]) => {
+        if (cancelled) return;
+        if (customerResult.ok) setCustomer(customerResult.data);
+        if (quotesResult.ok) setQuotes(quotesResult.data);
+        setLoading(false);
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -124,32 +117,7 @@ export function QuoteCustomerDetailPage({ customerId }: { customerId?: string })
         {!quotes.length && <p>Bu müşteriye ait ERP teklifi bulunamadı.</p>}
       </section>
 
-      <section className="erp-card sales-detail-lines">
-        <h2>Geçmiş Teklifler</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Teklif No</th>
-              <th>Tarih</th>
-              <th>Tutar</th>
-              <th>Not</th>
-            </tr>
-          </thead>
-          <tbody>
-            {history.map((h) => (
-              <tr key={h.id}>
-                <td>{h.quote_no || "—"}</td>
-                <td>{h.quote_date || "—"}</td>
-                <td>
-                  {h.amount != null ? `${h.amount.toLocaleString("tr-TR")} ${h.currency ?? ""}` : "—"}
-                </td>
-                <td>{h.note || "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!history.length && <p>Bu müşteriye ait eski/manuel teklif kaydı yok.</p>}
-      </section>
+      <QuoteHistoryPanel source="local" parasutCustomerId={null} localCustomerId={customer.id} />
     </div>
   );
 }
