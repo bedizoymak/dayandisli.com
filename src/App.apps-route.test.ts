@@ -249,7 +249,7 @@ describe("route-parameter ownership boundary: only page files under src/pages/ap
       "src/pages/apps/crm/EditCustomerPage.tsx",
       "src/pages/apps/sales/QuoteDetailPage.tsx",
       "src/pages/apps/sales/EditQuotePage.tsx",
-      "src/pages/apps/sales/QuotePrintPage.tsx",
+      "src/pages/apps/sales/QuoteCustomerDetailPage.tsx",
     ];
     for (const file of dynamicPageFiles) {
       expect(readFileSync(file, "utf8")).toMatch(/useParams/);

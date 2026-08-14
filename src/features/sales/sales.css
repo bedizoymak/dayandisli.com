@@ -255,13 +255,22 @@
   overflow-x: auto;
 }
 .quote-line {
-  min-width: 1200px;
+  min-width: 1100px;
   display: grid;
-  grid-template-columns: 28px 95px 1.6fr 100px 65px 70px 95px 70px 65px 110px 30px;
+  grid-template-columns: 24px 1.6fr 1.2fr 80px 80px 100px 90px 60px 120px 30px;
   gap: 6px;
   align-items: center;
   padding: 7px 0;
   border-top: 1px solid #20364d;
+}
+.sales-form-error {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid #6e2b34;
+  border-radius: 8px;
+  background: #2a1116;
+  color: #ffb4bd;
+  font-size: 12px;
 }
 .quote-line.head {
   border: 0;

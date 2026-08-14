@@ -156,30 +156,17 @@ describe("dynamic-route parameter resolution (per-family, valid vs unknown vs ma
     expect(screen.getByRole("heading", { name: "Müşteri bulunamadı" })).toBeInTheDocument();
   });
 
-  it("quote detail: a valid id renders the matching quote's own number, not the first quote's number", async () => {
-    const view = renderAt("/apps/sales/quotes/q-78");
-    await waitForRouteToSettle();
-    expect(screen.getByText(/TKL-2026-0078/)).toBeInTheDocument();
-    expect(screen.queryByText(/TKL-2026-0092/)).not.toBeInTheDocument();
-    view.unmount();
-  });
-
-  it("quote detail: an unknown id renders controlled not-found, not quote[0]", async () => {
+  it("quote detail: an unknown/unreachable id renders controlled not-found with that exact id, not any other quote's data", async () => {
     renderAt("/apps/sales/quotes/no-such-quote");
     await waitForRouteToSettle();
-    expect(screen.getByRole("heading", { name: "Teklif bulunamadı" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Teklif bulunamadı" })).toBeInTheDocument());
+    expect(screen.getByText(/no-such-quote/)).toBeInTheDocument();
   });
 
-  it("quote print route resolves the intended record by :quoteId, not always the first quote", async () => {
-    renderAt("/apps/sales/quotes/q-78/print");
+  it("quote customer detail: an unknown local customer id renders controlled not-found", async () => {
+    renderAt("/apps/sales/quote-customers/no-such-customer");
     await waitForRouteToSettle();
-    expect(screen.getByText(/TKL-2026-0078/)).toBeInTheDocument();
-  });
-
-  it("quote print route with an unknown id shows a controlled not-found message, not a rendered PDF of sample data", async () => {
-    renderAt("/apps/sales/quotes/no-such-quote/print");
-    await waitForRouteToSettle();
-    expect(screen.getByText("Teklif bulunamadı.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Müşteri bulunamadı" })).toBeInTheDocument());
   });
 
   it("supplier detail: unknown supplier id renders controlled not-found, not the first supplier", async () => {

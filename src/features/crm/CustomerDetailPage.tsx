@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatMoney } from "@/lib/finance/financeLabels";
 import { CrmPageHeader, StatusBadge } from "./CrmShared";
 import { PartyLedgerEntryDialog } from "../finance/PartyLedgerEntryDialog";
+import { fetchQuotesForCustomer } from "../sales/quotesApi";
+import { effectiveQuoteStatus, QUOTE_STATUS_LABELS, type QuoteRow } from "../sales/quoteTypes";
 
 const parent = "/apps/crm/customers";
 
@@ -134,6 +136,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [checks, setChecks] = useState<CheckRow[]>([]);
   const [offers, setOffers] = useState<OfferApiRow[]>([]);
+  const [erpQuotes, setErpQuotes] = useState<QuoteRow[]>([]);
   const [invoiceSort, setInvoiceSort] = useState<"asc" | "desc">("desc");
   const [printFrom, setPrintFrom] = useState("");
   const [printTo, setPrintTo] = useState("");
@@ -193,6 +196,21 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
         setOffers([]);
         setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
+
+  useEffect(() => {
+    if (!customerId) {
+      setErpQuotes([]);
+      return;
+    }
+    let cancelled = false;
+    fetchQuotesForCustomer("parasut", customerId).then((result) => {
+      if (cancelled) return;
+      setErpQuotes(result.ok ? result.data : []);
+    });
     return () => {
       cancelled = true;
     };
@@ -551,8 +569,45 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
         </div>
       </section>
 
+      <ErpQuoteHistory quotes={erpQuotes} />
+
       <OfferHistory offers={offers} />
     </div>
+  );
+}
+
+function ErpQuoteHistory({ quotes }: { quotes: QuoteRow[] }) {
+  return (
+    <section className="crm-history">
+      <h2>Teklifler (ERP)</h2>
+      <div className="erp-card crm-table-wrap">
+        <table className="crm-table">
+          <thead>
+            <tr>
+              {["Teklif No", "Konu", "Toplam", "Durum", "Tarih"].map((h) => (
+                <th key={h}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {quotes.map((quote) => (
+              <tr key={quote.id}>
+                <td>
+                  <Link to={`/apps/sales/quotes/${quote.id}`}>{quote.quote_no}</Link>
+                </td>
+                <td>{quote.subject}</td>
+                <td>{invoiceAmount(quote.grand_total, quote.currency)}</td>
+                <td>
+                  <StatusBadge>{QUOTE_STATUS_LABELS[effectiveQuoteStatus(quote)]}</StatusBadge>
+                </td>
+                <td>{displayText(quote.issue_date)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!quotes.length && <div className="crm-empty">Bu müşteriye ait ERP teklifi bulunamadı.</div>}
+      </div>
+    </section>
   );
 }
 

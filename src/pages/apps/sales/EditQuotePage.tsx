@@ -5,5 +5,5 @@ import { usePageTitle } from "@/features/erp-shell/usePageTitle";
 export default function EditQuotePage() {
   const { quoteId } = useParams<{ quoteId: string }>();
   usePageTitle(quoteId ? `Teklif Düzenle · ${quoteId}` : "Teklif Bulunamadı");
-  return <QuoteFormPage />;
+  return <QuoteFormPage quoteId={quoteId} />;
 }

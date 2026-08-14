@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   Eye,
   FileDown,
@@ -11,22 +12,173 @@ import {
   FinanceExportMenu,
   type ExportColumn,
 } from "../finance/FinanceNavigationTools";
-import { salesActivities, salesOrders, salesQuotes } from "./salesData";
+import { salesActivities, salesOrders } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
-import { customerName, printQuote } from "./salesUtils";
+import { customerName } from "./salesUtils";
+import { fetchQuoteWithLines, fetchQuotes } from "./quotesApi";
+import { openQuotePdf } from "./pdf/quotePdfHtml";
+import { effectiveQuoteStatus, QUOTE_ISSUERS, QUOTE_STATUS_LABELS, type QuoteRow, type QuoteStatus } from "./quoteTypes";
 const root = "/apps/sales";
-const quoteColumns: ExportColumn<(typeof salesQuotes)[number]>[] = [
-  { header: "Teklif No", value: (r) => r.no },
-  { header: "Firma", value: (r) => customerName(r.customerId) },
-  { header: "İlgili Kişi", value: (r) => r.contact },
-  { header: "Proje", value: (r) => r.project },
-  { header: "Toplam", value: (r) => quoteTotal(r) },
-  { header: "Durum", value: (r) => r.status },
-  { header: "Oluşturulma Tarihi", value: (r) => r.created },
-  { header: "Geçerlilik Tarihi", value: (r) => r.validUntil },
+const quoteColumns: ExportColumn<QuoteRow>[] = [
+  { header: "Teklif No", value: (r) => r.quote_no },
+  { header: "Firma", value: (r) => QUOTE_ISSUERS[r.issuer].legalName },
+  { header: "Müşteri", value: (r) => r.customer_name },
+  { header: "Konu", value: (r) => r.subject },
+  { header: "Toplam", value: (r) => `${r.grand_total.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ${r.currency}` },
+  { header: "Durum", value: (r) => QUOTE_STATUS_LABELS[effectiveQuoteStatus(r)] },
+  { header: "Oluşturulma Tarihi", value: (r) => r.issue_date },
+  { header: "Geçerlilik Tarihi", value: (r) => r.valid_until ?? "—" },
 ];
-const quoteTotal = (q: (typeof salesQuotes)[number]) =>
-  `${q.lines.reduce((sum, l) => sum + l.quantity * l.unitPrice * (1 - l.discount / 100) * (1 + l.vat / 100), 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ${q.currency}`;
+export function QuotesPage() {
+  const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<QuoteStatus | "">("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchQuotes().then((result) => {
+      if (cancelled) return;
+      if (result.ok) setQuotes(result.data);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase("tr-TR");
+    return quotes.filter((q) => {
+      if (statusFilter && effectiveQuoteStatus(q) !== statusFilter) return false;
+      if (!term) return true;
+      const haystack = `${q.quote_no} ${q.customer_name} ${q.subject}`.toLocaleLowerCase("tr-TR");
+      return haystack.includes(term);
+    });
+  }, [quotes, search, statusFilter]);
+
+  async function downloadPdf(quote: QuoteRow) {
+    setDownloadingId(quote.id);
+    const result = await fetchQuoteWithLines(quote.id);
+    setDownloadingId(null);
+    if (result.ok) openQuotePdf(result.data.quote, result.data.lines);
+  }
+
+  return (
+    <div className="sales-page">
+      <SalesHeader
+        section="Teklifler"
+        title="Teklifler"
+        subtitle="Müşterilere hazırlanan teklifleri görüntüleyin, indirin ve siparişe dönüştürün."
+      >
+        <FinanceExportMenu
+          title="Teklifler"
+          filename="teklifler"
+          rows={filtered}
+          columns={quoteColumns}
+        />
+        <Link className="sales-primary" to={`${root}/quotes/new`}>
+          Yeni Teklif Oluştur
+        </Link>
+      </SalesHeader>
+      <div className="erp-card sales-filters">
+        <label className="search">
+          <Search />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Teklif no, müşteri, konu ara" />
+        </label>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as QuoteStatus | "")}>
+          <option value="">Tüm Durumlar</option>
+          {(Object.keys(QUOTE_STATUS_LABELS) as QuoteStatus[]).map((key) => (
+            <option key={key} value={key}>
+              {QUOTE_STATUS_LABELS[key]}
+            </option>
+          ))}
+        </select>
+        <button type="button" onClick={() => { setSearch(""); setStatusFilter(""); }}>
+          Filtreleri Temizle
+        </button>
+      </div>
+      <Table
+        headers={[
+          "Teklif No",
+          "Firma",
+          "Müşteri",
+          "Konu",
+          "Toplam",
+          "Durum",
+          "Oluşturulma Tarihi",
+          "Geçerlilik Tarihi",
+          "İşlemler",
+        ]}
+      >
+        {loading ? (
+          <tr>
+            <td colSpan={9}>Yükleniyor…</td>
+          </tr>
+        ) : filtered.length === 0 ? (
+          <tr>
+            <td colSpan={9}>Kayıtlı teklif bulunamadı.</td>
+          </tr>
+        ) : (
+          filtered.map((q) => {
+            const customerLink =
+              q.customer_source === "parasut" && q.parasut_customer_id
+                ? `/apps/crm/customers/${q.parasut_customer_id}`
+                : q.local_customer_id
+                  ? `${root}/quote-customers/${q.local_customer_id}`
+                  : null;
+            return (
+              <tr key={q.id}>
+                <td>
+                  <Link to={`${root}/quotes/${q.id}`}>{q.quote_no}</Link>
+                </td>
+                <td>{QUOTE_ISSUERS[q.issuer].legalName}</td>
+                <td>
+                  {customerLink ? (
+                    <Link className="sales-customer-link" to={customerLink}>
+                      {q.customer_name}
+                    </Link>
+                  ) : (
+                    q.customer_name
+                  )}
+                </td>
+                <td>{q.subject}</td>
+                <td>
+                  {q.grand_total.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} {q.currency}
+                </td>
+                <td>
+                  <SalesStatus>{QUOTE_STATUS_LABELS[effectiveQuoteStatus(q)]}</SalesStatus>
+                </td>
+                <td>{q.issue_date}</td>
+                <td>{q.valid_until ?? "—"}</td>
+                <td>
+                  <div className="sales-row-actions">
+                    <Link title="Görüntüle" to={`${root}/quotes/${q.id}`}>
+                      <Eye />
+                    </Link>
+                    <Link title="Düzenle" to={`${root}/quotes/${q.id}/edit`}>
+                      <Pencil />
+                    </Link>
+                    <button title="PDF İndir" disabled={downloadingId === q.id} onClick={() => downloadPdf(q)}>
+                      <FileDown />
+                    </button>
+                    <Link title="Siparişe Dönüştür" to={`${root}/orders/new?sourceQuoteId=${q.id}`}>
+                      <ShoppingCart />
+                    </Link>
+                    <Link title="Kopyala" to={`${root}/quotes/new?duplicateOf=${q.id}`}>
+                      <MoreHorizontal />
+                    </Link>
+                  </div>
+                </td>
+              </tr>
+            );
+          })
+        )}
+      </Table>
+    </div>
+  );
+}
 function Filters({ activity = false }: { activity?: boolean }) {
   return (
     <div className="erp-card sales-filters">
@@ -76,87 +228,6 @@ function Table({
         <button disabled>Önceki</button>
         <button disabled>Sonraki</button>
       </footer>
-    </div>
-  );
-}
-export function QuotesPage() {
-  return (
-    <div className="sales-page">
-      <SalesHeader
-        section="Teklifler"
-        title="Teklifler"
-        subtitle="Müşterilere hazırlanan teklifleri görüntüleyin, indirin ve siparişe dönüştürün."
-      >
-        <FinanceExportMenu
-          title="Teklifler"
-          filename="teklifler"
-          rows={salesQuotes}
-          columns={quoteColumns}
-        />
-        <Link className="sales-primary" to={`${root}/quotes/new`}>
-          Yeni Teklif Oluştur
-        </Link>
-      </SalesHeader>
-      <Filters />
-      <Table
-        headers={[
-          "Teklif No",
-          "Firma",
-          "İlgili Kişi",
-          "Proje",
-          "Toplam",
-          "Durum",
-          "Oluşturulma Tarihi",
-          "Geçerlilik Tarihi",
-          "İşlemler",
-        ]}
-      >
-        {salesQuotes.map((q) => (
-          <tr key={q.id}>
-            <td>
-              <Link to={`${root}/quotes/${q.id}`}>{q.no}</Link>
-            </td>
-            <td>
-              <Link
-                className="sales-customer-link"
-                to={`/apps/crm/customers/${q.customerId}`}
-              >
-                {customerName(q.customerId)}
-              </Link>
-            </td>
-            <td>{q.contact}</td>
-            <td>{q.project}</td>
-            <td>{quoteTotal(q)}</td>
-            <td>
-              <SalesStatus>{q.status}</SalesStatus>
-            </td>
-            <td>{q.created}</td>
-            <td>{q.validUntil}</td>
-            <td>
-              <div className="sales-row-actions">
-                <Link title="Görüntüle" to={`${root}/quotes/${q.id}`}>
-                  <Eye />
-                </Link>
-                <Link title="Düzenle" to={`${root}/quotes/${q.id}/edit`}>
-                  <Pencil />
-                </Link>
-                <button title="PDF İndir" onClick={() => printQuote(q)}>
-                  <FileDown />
-                </button>
-                <Link
-                  title="Siparişe Dönüştür"
-                  to={`${root}/orders/new?sourceQuoteId=${q.id}`}
-                >
-                  <ShoppingCart />
-                </Link>
-                <button title="Çoğalt / Arşivle">
-                  <MoreHorizontal />
-                </button>
-              </div>
-            </td>
-          </tr>
-        ))}
-      </Table>
     </div>
   );
 }

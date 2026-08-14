@@ -80,7 +80,7 @@ const QuotesPage = lazy(() => import("./pages/apps/sales/QuotesPage"));
 const NewQuotePage = lazy(() => import("./pages/apps/sales/NewQuotePage"));
 const EditQuotePage = lazy(() => import("./pages/apps/sales/EditQuotePage"));
 const QuoteDetailPage = lazy(() => import("./pages/apps/sales/QuoteDetailPage"));
-const QuotePrintPage = lazy(() => import("./pages/apps/sales/QuotePrintPage"));
+const QuoteCustomerDetailPage = lazy(() => import("./pages/apps/sales/QuoteCustomerDetailPage"));
 const SalesOrdersPage = lazy(() => import("./pages/apps/sales/OrdersPage"));
 const NewSalesOrderPage = lazy(() => import("./pages/apps/sales/NewOrderPage"));
 const SalesOrderDetailPage = lazy(() => import("./pages/apps/sales/OrderDetailPage"));
@@ -219,8 +219,8 @@ export const AppRoutes = () => {
           <Route path="sales/quotes" element={<QuotesPage />} />
           <Route path="sales/quotes/new" element={<NewQuotePage />} />
           <Route path="sales/quotes/:quoteId/edit" element={<EditQuotePage />} />
-          <Route path="sales/quotes/:quoteId/print" element={<QuotePrintPage />} />
           <Route path="sales/quotes/:quoteId" element={<QuoteDetailPage />} />
+          <Route path="sales/quote-customers/:customerId" element={<QuoteCustomerDetailPage />} />
           <Route path="sales/orders" element={<SalesOrdersPage />} />
           <Route path="sales/orders/new" element={<NewSalesOrderPage />} />
           <Route path="sales/orders/:orderId" element={<SalesOrderDetailPage />} />
