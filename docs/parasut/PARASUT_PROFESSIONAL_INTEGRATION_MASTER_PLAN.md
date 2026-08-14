@@ -1229,3 +1229,37 @@ No live Paraşüt API call. No Paraşüt write. No production database read of b
 - **Production activation (setting `PARASUT_TYPED_MAPPING_ENABLED=1` anywhere real, or adding the new wrappers to the production `RESOURCE_ORDER`): NOT AUTHORIZED.**
 - **Live Paraşüt write validation: NOT AUTHORIZED.**
 - **Remaining D8 fields: none.** 151/151 accounted for, 0 unresolved, 0 blocked.
+
+---
+
+## 20. Resource-Scoped Typed-Mapping Gate — `e_invoices` (owner-authorized, Phase 1 of a two-phase plan)
+
+**Trigger:** live QA on `/apps/finance/expense/incoming-invoices` showed all 1,209 real inbound e-invoice rows with `invoice_parasut_id` NULL. Root-caused (read-only diagnosis, this repository) to §18/§19's own documented state: `PARASUT_TYPED_MAPPING_ENABLED` has never been set to `"1"` in any real environment, so the typed-column write path — the only path that ever populates `invoice_parasut_id` (a `relationships`-derived column; the legacy numeric-only fallback can never produce it, and the Edge Function's `raw_payload.attributes` fallback structurally cannot either, since it isn't an attribute) — has never run in production for this or any other scoped resource.
+
+Globally setting `PARASUT_TYPED_MAPPING_ENABLED=1` would activate typed mapping for all 10 scoped resources at once, which is not approved. This section is **Phase 1 only**: a configuration mechanism that can enable typed mapping for `e_invoices` alone, without touching the other 9. **Nothing in this section was activated, run, or deployed** — see §20.4.
+
+### 20.1 New configuration
+
+**`PARASUT_TYPED_MAPPING_ENABLED_RESOURCES`** — a comma-separated list of exact resource-type names (e.g. `e_invoices`, or `e_invoices,contacts` for more than one). Implemented in `server/parasut/typed-mapping-gate.ts` as `isTypedMappingEnabledForResource()`, additive to the existing global `PARASUT_TYPED_MAPPING_ENABLED` flag — never a replacement for it. Absent or empty → nothing enabled via this path (same default-off invariant as the global flag). Entries are matched by **exact string equality only** (no wildcard/substring/prefix matching) and are further intersected with `TYPED_MAPPING_SCOPED_RESOURCES`, so an out-of-scope or misspelled name can never enable anything.
+
+`shouldUseTypedMapping(resourceType, env)` is now: `isResourceInTypedMappingScope(resourceType) && (isTypedMappingEnabled(env) || isTypedMappingEnabledForResource(resourceType, env))` — the global flag's own truth table is completely unchanged; this is a pure OR-addition.
+
+### 20.2 Tests
+
+`server/parasut/typed-mapping-gate.test.ts` — 7 new cases proving: every scoped resource stays disabled with the new var absent/empty; the global flag's existing behavior (default-off, exact-literal-`"1"`-only, activates all 10 scoped resources) is byte-for-byte unchanged; `e_invoices` activates independently of the global flag when listed; listing `e_invoices` does **not** enable `sales_invoices`, `purchase_bills`, `contacts`, `products`, or any other scoped resource; multiple comma-separated entries work with exact-name matching (`e_invoice` singular does not fuzzy-match `e_invoices`); an out-of-scope name listed in the var still fails closed.
+
+### 20.3 Future activation sequence (documented here for the record — **NONE OF THIS WAS EXECUTED**)
+
+1. **Config enable:** set `PARASUT_TYPED_MAPPING_ENABLED_RESOURCES=e_invoices` in the real sync execution environment (Edge Function / scheduler secrets). `PARASUT_TYPED_MAPPING_ENABLED` stays unset — the other 9 resources remain on the legacy path.
+2. **Controlled e_invoices-only force remap/backfill:** because `upsertResource`'s content-hash guard (`payload_hash`) skips rewriting rows whose Paraşüt payload hasn't changed, enabling the flag alone will not retroactively populate the 1,209 already-mirrored rows on the next routine sync. A deliberate, scoped backfill/re-derivation pass for `e_invoices` only is required to force those existing rows through the typed mapper.
+3. **Count/null verification:** read-only `information_schema`/aggregate query confirming `e_invoices.invoice_parasut_id` non-null count rose from 0 to the expected population, and that no other scoped resource's typed columns changed.
+4. **Browser QA:** manually confirm `/apps/finance/expense/incoming-invoices` now shows real links/row actions for e-invoices with a linked purchase bill, and still renders non-interactively for the (expected, legitimate) subset with no linked purchase bill.
+
+**Rollback:** unset `PARASUT_TYPED_MAPPING_ENABLED_RESOURCES` (or remove `e_invoices` from its list) — no code change or redeploy needed, same immediate-lever rollback design as §18.5's global flag. Already-written typed values from step 2 are not retroactively stripped (upsert is additive/idempotent, per §18.5) — reverting the config is itself never a destructive operation.
+
+### 20.4 Status
+
+- **Phase 1 (this section): COMPLETE** — gate code + tests only, local repository changes.
+- **Config activation (setting `PARASUT_TYPED_MAPPING_ENABLED_RESOURCES` anywhere real): NOT AUTHORIZED, NOT EXECUTED.**
+- **Backfill/re-sync, count verification, browser QA (§20.3 steps 2–4): NOT EXECUTED** — deferred to an explicitly authorized Phase 2.
+- **No Edge Function deploy, no frontend deploy, no production database write, no migration, no RLS change, no sync run.**

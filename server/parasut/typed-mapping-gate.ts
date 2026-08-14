@@ -43,10 +43,42 @@ export function isTypedMappingEnabled(env: Record<string, string | undefined> = 
   return env.PARASUT_TYPED_MAPPING_ENABLED === "1";
 }
 
+/**
+ * Resource-scoped opt-in, additive to (never a replacement for) the global
+ * PARASUT_TYPED_MAPPING_ENABLED flag above — that flag's own behavior is
+ * untouched by this function's existence. Lets a single in-scope resource
+ * (e.g. e_invoices, whose invoice_parasut_id is relationship-derived and so
+ * never gets written by the legacy numeric-only mapping) be activated on
+ * its own, without turning on the other 9 scoped resources.
+ *
+ * Value: PARASUT_TYPED_MAPPING_ENABLED_RESOURCES — a comma-separated list
+ * of exact resource-type names (e.g. "e_invoices" or "e_invoices,contacts").
+ * Absent/empty → nothing is enabled via this path (same default-off
+ * invariant as the global flag). Entries are matched by exact string
+ * equality only — no wildcards, no substring/prefix matching — and are
+ * intersected with TYPED_MAPPING_SCOPED_RESOURCES, so listing an
+ * unregistered or misspelled resource name here can never enable anything.
+ */
+export function isTypedMappingEnabledForResource(
+  resourceType: string,
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  const raw = env.PARASUT_TYPED_MAPPING_ENABLED_RESOURCES;
+  if (!raw) return false;
+  const enabledResources = new Set(
+    raw
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0),
+  );
+  return enabledResources.has(resourceType);
+}
+
 /** Combined check used at the exact point of row construction. */
 export function shouldUseTypedMapping(
   resourceType: string,
   env: Record<string, string | undefined> = process.env,
 ): boolean {
-  return isTypedMappingEnabled(env) && isResourceInTypedMappingScope(resourceType);
+  if (!isResourceInTypedMappingScope(resourceType)) return false;
+  return isTypedMappingEnabled(env) || isTypedMappingEnabledForResource(resourceType, env);
 }
