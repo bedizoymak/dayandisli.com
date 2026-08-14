@@ -11,7 +11,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { salesOrders, salesQuotes } from "./salesData";
 import { SalesHeader, SalesStatus } from "./SalesShared";
-import { customerName, printQuote } from "./salesUtils";
+import { customerName, openQuotePreview, printQuote } from "./salesUtils";
+import type { QuoteLine, SalesQuote } from "./salesTypes";
 const root = "/apps/sales";
 
 function sourceText(value: unknown) {
@@ -19,6 +20,22 @@ function sourceText(value: unknown) {
 }
 
 type QuoteCustomer = { id: string; name: string; phone: string; email: string };
+
+let lineSeq = 0;
+function newLine(): QuoteLine {
+  lineSeq += 1;
+  return {
+    productServiceId: `line-${Date.now()}-${lineSeq}`,
+    code: "",
+    name: "",
+    material: "",
+    quantity: 1,
+    unit: "Adet",
+    unitPrice: 0,
+    discount: 0,
+    vat: 20,
+  };
+}
 
 export function QuoteFormPage() {
   const [selector, setSelector] = useState(false);
@@ -28,6 +45,19 @@ export function QuoteFormPage() {
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerCustomers, setPickerCustomers] = useState<QuoteCustomer[]>([]);
   const [pickerLoaded, setPickerLoaded] = useState(false);
+  const [contactPerson, setContactPerson] = useState("");
+  const [currency, setCurrency] = useState("TRY");
+  const [lines, setLines] = useState<QuoteLine[]>([]);
+  const [details, setDetails] = useState({
+    subject: "",
+    notes: "",
+    optionValidity: "",
+    validUntil: "",
+    estimatedDelivery: "",
+    paymentTerms: "",
+    deliveryLocation: "",
+    project: "",
+  });
 
   useEffect(() => {
     if (!preselectedCustomerId) return;
@@ -86,6 +116,56 @@ export function QuoteFormPage() {
     customer.name.toLocaleLowerCase("tr-TR").includes(pickerSearch.toLocaleLowerCase("tr-TR")),
   );
 
+  const addLine = () => setLines((prev) => [...prev, newLine()]);
+  const removeLine = (id: string) =>
+    setLines((prev) => prev.filter((l) => l.productServiceId !== id));
+  const updateLine = (id: string, patch: Partial<QuoteLine>) =>
+    setLines((prev) =>
+      prev.map((l) => (l.productServiceId === id ? { ...l, ...patch } : l)),
+    );
+
+  const subtotal = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+  const discountTotal = lines.reduce(
+    (s, l) => s + (l.quantity * l.unitPrice * l.discount) / 100,
+    0,
+  );
+  const vatTotal = lines.reduce(
+    (s, l) =>
+      s + (l.quantity * l.unitPrice * (1 - l.discount / 100) * l.vat) / 100,
+    0,
+  );
+  const grandTotal = subtotal - discountTotal + vatTotal;
+  const money = (value: number) =>
+    `${value.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+
+  const buildQuote = (): SalesQuote => {
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+    return {
+      id: `draft-${stamp}`,
+      no: `TKF-${stamp}`,
+      customerId: selectedCustomer?.id ?? "",
+      customerName: selectedCustomer?.name ?? "",
+      customerPhone: selectedCustomer?.phone ?? "",
+      customerEmail: selectedCustomer?.email ?? "",
+      contactId: "",
+      contact: contactPerson,
+      projectId: "",
+      project: details.project,
+      subject: details.subject,
+      currency,
+      created: now.toLocaleDateString("tr-TR"),
+      validUntil: details.validUntil,
+      optionValidity: details.optionValidity,
+      estimatedDelivery: details.estimatedDelivery,
+      status: "Taslak",
+      lines,
+      notes: details.notes,
+      paymentTerms: details.paymentTerms,
+      deliveryTerms: details.deliveryLocation,
+    };
+  };
+
   return (
     <div className="sales-page">
       <SalesHeader
@@ -117,7 +197,11 @@ export function QuoteFormPage() {
               Firma *<input readOnly defaultValue={selectedCustomer?.name ?? ""} key={selectedCustomer?.name} />
             </label>
             <label>
-              İlgili Kişi *<input readOnly />
+              İlgili Kişi *
+              <input
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+              />
             </label>
             <label>
               Telefon
@@ -128,7 +212,10 @@ export function QuoteFormPage() {
             </label>
             <label className="wide">
               Konu
-              <input />
+              <input
+                value={details.subject}
+                onChange={(e) => setDetails((d) => ({ ...d, subject: e.target.value }))}
+              />
             </label>
           </div>
         </section>
@@ -136,16 +223,12 @@ export function QuoteFormPage() {
           <div className="sales-section-head">
             <h2>Ürün / Hizmet</h2>
             <div>
-              <select>
-                <option value="">—</option>
-                <option>TRY</option>
-                <option>USD</option>
-                <option>EUR</option>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                <option value="TRY">TRY</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
               </select>
-              <button
-                type="button"
-                disabled
-              >
+              <button type="button" onClick={addLine}>
                 <Plus />
                 Satır Ekle
               </button>
@@ -169,23 +252,86 @@ export function QuoteFormPage() {
                 <span key={h}>{h}</span>
               ))}
             </div>
+            {lines.map((line, i) => {
+              const lineTotal =
+                line.quantity *
+                line.unitPrice *
+                (1 - line.discount / 100) *
+                (1 + line.vat / 100);
+              return (
+                <div className="quote-line" key={line.productServiceId}>
+                  <span>{i + 1}</span>
+                  <input
+                    value={line.code}
+                    onChange={(e) => updateLine(line.productServiceId, { code: e.target.value })}
+                  />
+                  <input
+                    value={line.name}
+                    placeholder="Ürün / hizmet adı"
+                    onChange={(e) => updateLine(line.productServiceId, { name: e.target.value })}
+                  />
+                  <input
+                    value={line.material}
+                    onChange={(e) => updateLine(line.productServiceId, { material: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    value={line.quantity}
+                    onChange={(e) => updateLine(line.productServiceId, { quantity: Number(e.target.value) || 0 })}
+                  />
+                  <input
+                    value={line.unit}
+                    onChange={(e) => updateLine(line.productServiceId, { unit: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    value={line.unitPrice}
+                    onChange={(e) => updateLine(line.productServiceId, { unitPrice: Number(e.target.value) || 0 })}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={line.discount}
+                    onChange={(e) => updateLine(line.productServiceId, { discount: Number(e.target.value) || 0 })}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={line.vat}
+                    onChange={(e) => updateLine(line.productServiceId, { vat: Number(e.target.value) || 0 })}
+                  />
+                  <strong>{money(lineTotal)}</strong>
+                  <button
+                    type="button"
+                    onClick={() => removeLine(line.productServiceId)}
+                    aria-label="Satırı sil"
+                  >
+                    <X />
+                  </button>
+                </div>
+              );
+            })}
           </div>
           <div className="quote-totals">
             <p>
               <span>Ara Toplam</span>
-              <b>—</b>
+              <b>{money(subtotal)}</b>
             </p>
             <p>
               <span>İskonto</span>
-              <b>—</b>
+              <b>{money(discountTotal)}</b>
             </p>
             <p>
               <span>KDV</span>
-              <b>—</b>
+              <b>{money(vatTotal)}</b>
             </p>
             <p className="grand">
               <span>Genel Toplam</span>
-              <b>—</b>
+              <b>{money(grandTotal)}</b>
             </p>
           </div>
         </section>
@@ -194,37 +340,60 @@ export function QuoteFormPage() {
           <div className="sales-fields">
             <label className="wide">
               Notlar
-              <textarea />
+              <textarea
+                value={details.notes}
+                onChange={(e) => setDetails((d) => ({ ...d, notes: e.target.value }))}
+              />
             </label>
             <label>
               Opsiyon Süresi
-              <input />
+              <input
+                value={details.optionValidity}
+                onChange={(e) => setDetails((d) => ({ ...d, optionValidity: e.target.value }))}
+              />
             </label>
             <label>
               Teklif Geçerlilik Tarihi
-              <input type="date" />
+              <input
+                type="date"
+                value={details.validUntil}
+                onChange={(e) => setDetails((d) => ({ ...d, validUntil: e.target.value }))}
+              />
             </label>
             <label>
               Öngörülen Teslim Süresi
-              <input />
+              <input
+                value={details.estimatedDelivery}
+                onChange={(e) => setDetails((d) => ({ ...d, estimatedDelivery: e.target.value }))}
+              />
             </label>
             <label>
               Ödeme Şekli
-              <input />
+              <input
+                value={details.paymentTerms}
+                onChange={(e) => setDetails((d) => ({ ...d, paymentTerms: e.target.value }))}
+              />
             </label>
             <label>
               Teslim Yeri
-              <input />
+              <input
+                value={details.deliveryLocation}
+                onChange={(e) => setDetails((d) => ({ ...d, deliveryLocation: e.target.value }))}
+              />
             </label>
             <label>
               Proje
-              <input />
+              <input
+                value={details.project}
+                onChange={(e) => setDetails((d) => ({ ...d, project: e.target.value }))}
+              />
             </label>
             <label>
               Para Birimi
-              <select>
-                <option value="">—</option>
-                <option>TRY</option>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                <option value="TRY">TRY</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
               </select>
             </label>
             <label>
@@ -243,10 +412,10 @@ export function QuoteFormPage() {
         </section>
         <footer className="quote-actions">
           <button type="button">Taslak Kaydet</button>
-          <button type="button" disabled>
+          <button type="button" onClick={() => openQuotePreview(buildQuote())}>
             Önizle
           </button>
-          <button type="button" disabled>
+          <button type="button" onClick={() => printQuote(buildQuote())}>
             PDF İndir
           </button>
           <button type="button">Mail Gönder</button>
