@@ -141,4 +141,57 @@ describe("buildQuotePdfHtml — approved V6 template fields", () => {
     expect(html).not.toContain("TİCARİ ŞARTLAR");
     expect(html).toContain("TEKLİF KOŞULLARI");
   });
+
+  it("uses the exact fixed A4 header geometry (identical for both issuers)", () => {
+    const dayanHtml = buildQuotePdfHtml(baseQuote, lines);
+    const cehaHtml = buildQuotePdfHtml({ ...baseQuote, issuer: "ceha" }, lines);
+    for (const html of [dayanHtml, cehaHtml]) {
+      expect(html).toContain("height:43mm;box-sizing:border-box");
+      expect(html).toContain("padding:8mm 10mm 7mm 10mm");
+      expect(html).toContain("grid-template-columns:minmax(0,1fr) 1px 42mm");
+      expect(html).toContain("column-gap:7mm");
+      expect(html).toContain("border-bottom:3px solid #55b8e8");
+    }
+  });
+
+  it("renders one rotated divider element between the text block and the brand block, for both issuers", () => {
+    const html = buildQuotePdfHtml(baseQuote, lines);
+    expect(html).toContain('<div class="header-divider" aria-hidden="true"></div>');
+    expect(html).toContain("transform:rotate(14deg)");
+  });
+
+  it("sets Dayan's colors exactly: navy header, light-blue kicker, white title, light-blue-tinted tagline/divider", () => {
+    const html = buildQuotePdfHtml(baseQuote, lines);
+    const headerRuleStart = html.indexOf(".quote-header{");
+    const headerRule = html.slice(headerRuleStart, html.indexOf("}", headerRuleStart) + 1);
+    expect(headerRule).toContain("--header-bg:#09243d");
+    expect(headerRule).toContain("--header-ink:#fff");
+    expect(headerRule).toContain("--header-kicker:#55b8e8");
+    expect(headerRule).toContain("--header-tagline:#d9edf8");
+    expect(headerRule).toContain("--divider-color:rgba(217,237,248,.35)");
+  });
+
+  it("sets CEHA's colors exactly: white header, navy kicker+title, muted tagline/divider", () => {
+    const html = buildQuotePdfHtml(baseQuote, lines);
+    const cehaRuleStart = html.indexOf(".quote-header.issuer-ceha{");
+    const cehaRule = html.slice(cehaRuleStart, html.indexOf("}", cehaRuleStart) + 1);
+    expect(cehaRule).toContain("--header-bg:#ffffff");
+    expect(cehaRule).toContain("--header-ink:#09243d");
+    expect(cehaRule).toContain("--header-kicker:#09243d");
+    expect(cehaRule).toContain("--header-tagline:#607486");
+    expect(cehaRule).toContain("--divider-color:rgba(9,36,61,.25)");
+  });
+
+  it("measures the real logo's aspect ratio at load time (never a hardcoded per-issuer wide/compact guess)", () => {
+    const html = buildQuotePdfHtml(baseQuote, lines);
+    expect(html).toContain("var r=this.naturalWidth/this.naturalHeight");
+    expect(html).toContain('this.setAttribute("data-logo-shape",r>=1.65?"wide":"compact")');
+  });
+
+  it("renders the approved slogan text as the single line under the logo, in both issuers", () => {
+    for (const issuer of ["dayan", "ceha"] as const) {
+      const html = buildQuotePdfHtml({ ...baseQuote, issuer }, lines);
+      expect(html).toContain('<span class="slogan">HASSAS ÜRETİM • GÜVENİLİR TEDARİK</span>');
+    }
+  });
 });

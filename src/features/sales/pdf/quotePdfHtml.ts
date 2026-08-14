@@ -58,22 +58,29 @@ const PDF_STYLE = `
 *{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact;color-adjust:exact}
 body{margin:0;background:#e7edf2;color:var(--ink);font-family:Arial,"Helvetica Neue",sans-serif}
 .quote-sheet{width:210mm;min-height:297mm;margin:18px auto;background:var(--paper);padding:16mm 16mm 14mm;box-shadow:0 4px 24px #0e26341c}
+/* Fixed technical geometry — identical for both issuers; only colors,
+   the logo file, and the logo's own aspect-ratio-driven fit change. */
 .quote-header{
-  --header-bg:var(--navy);--header-ink:#fff;--header-kicker:var(--blue);--header-tagline:#d9edf8;
-  background:var(--header-bg);border-bottom:3px solid var(--blue);min-height:46mm;
-  padding:11mm 12mm;display:flex;justify-content:space-between;align-items:center;color:var(--header-ink);
+  --header-bg:#09243d;--header-ink:#fff;--header-kicker:#55b8e8;--header-tagline:#d9edf8;--divider-color:rgba(217,237,248,.35);
+  height:43mm;box-sizing:border-box;
+  padding:8mm 10mm 7mm 10mm;
+  border-bottom:3px solid #55b8e8;
+  display:grid;grid-template-columns:minmax(0,1fr) 1px 42mm;column-gap:7mm;
+  overflow:hidden;
+  background:var(--header-bg);color:var(--header-ink);
 }
-.quote-header.issuer-ceha{--header-bg:#ffffff;--header-ink:var(--navy);--header-kicker:#2f7fb0;--header-tagline:#5b7891}
-.header-copy{max-width:118mm}
-.issuer-kicker{margin:0 0 4mm;color:var(--header-kicker);font-size:11px;font-weight:700;letter-spacing:1.6px}
-.header-copy h1{margin:0;font-size:26px;line-height:1.15;letter-spacing:.2px;color:var(--header-ink)}
-.tagline{margin:4mm 0 0;color:var(--header-tagline);font-size:11px}
-.brand-lockup{width:44mm;display:flex;align-items:center;flex-direction:column;text-align:center;gap:2.4mm}
-.brand-logo{max-width:34mm;max-height:18mm;object-fit:contain}
-.logo-fallback{height:18mm;color:var(--header-ink);font-size:14px;font-weight:800;line-height:1.05;letter-spacing:1px;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.quote-header.issuer-ceha{--header-bg:#ffffff;--header-ink:#09243d;--header-kicker:#09243d;--header-tagline:#607486;--divider-color:rgba(9,36,61,.25)}
+.header-copy{min-width:0;display:flex;flex-direction:column;justify-content:center}
+.issuer-kicker{margin:0 0 3.2mm;color:var(--header-kicker);font-size:9pt;font-weight:700;letter-spacing:.9pt}
+.header-copy h1{margin:0;font-size:22pt;line-height:1.08;font-weight:800;letter-spacing:0;color:var(--header-ink)}
+.tagline{margin:3mm 0 0;color:var(--header-tagline);font-size:9.5pt;line-height:1.35}
+.header-divider{width:1px;height:30mm;background:var(--divider-color);transform:rotate(14deg);transform-origin:center;justify-self:center;align-self:center}
+.brand-lockup{width:42mm;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center}
+.brand-logo{display:block;object-fit:contain;margin:0 auto 3.2mm;max-width:31mm;max-height:12mm}
+.brand-logo[data-logo-shape="compact"]{max-width:24mm;max-height:17mm;margin-bottom:2.8mm}
+.logo-fallback{color:var(--header-ink);font-size:10pt;font-weight:800;letter-spacing:.7pt;line-height:1.1;display:flex;align-items:center;justify-content:center;flex-direction:column;margin-bottom:3.2mm}
 .logo-fallback span{color:var(--header-kicker)}
-.brand-lockup strong{font-size:9px;letter-spacing:.9px;color:var(--header-ink)}
-.brand-lockup>span.slogan{font-size:7.4px;color:var(--header-tagline);white-space:nowrap}
+.brand-lockup>span.slogan{font-size:6.4pt;font-weight:500;letter-spacing:.1pt;line-height:1.2;color:var(--header-tagline);text-align:center;white-space:nowrap}
 .meta-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-top:0;margin-bottom:9mm}
 .meta-grid div{padding:4.2mm 5mm;border-right:1px solid var(--line)}
 .meta-grid div:last-child{border-right:0}
@@ -146,8 +153,14 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
   const logoUrl = issuer.logoPath
     ? `${window.location.origin}${import.meta.env.BASE_URL}${issuer.logoPath}`
     : null;
+  // Shape (wide vs compact) is measured from the actual loaded file's
+  // naturalWidth/naturalHeight — never a hardcoded per-issuer guess — so a
+  // future logo swap for either issuer keeps fitting correctly with no
+  // CSS change. Threshold and both size sets are the given technical spec.
+  const logoShapeScript =
+    'var r=this.naturalWidth/this.naturalHeight;this.setAttribute("data-logo-shape",r>=1.65?"wide":"compact")';
   const brandBlock = logoUrl
-    ? `<img class="brand-logo" src="${escapeHtml(logoUrl)}" alt="${escapeHtml(issuer.legalName)}" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+    ? `<img class="brand-logo" src="${escapeHtml(logoUrl)}" alt="${escapeHtml(issuer.legalName)}" onload='${logoShapeScript}' onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
        <div class="logo-fallback" hidden>${escapeHtml(issuer.displayName.split(" ")[0])}<br /><span>${escapeHtml(issuer.displayName.split(" ").slice(1).join(" ") || issuer.displayName)}</span></div>`
     : `<div class="logo-fallback">${escapeHtml(issuer.displayName.split(" ")[0])}<br /><span>${escapeHtml(issuer.displayName.split(" ").slice(1).join(" ") || issuer.displayName)}</span></div>`;
 
@@ -163,6 +176,7 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
       <h1>ÜRÜN VE HİZMET TEKLİFİ</h1>
       <p class="tagline">Dişli imalatı, profil taşlama ve hassas mekanik çözümler</p>
     </section>
+    <div class="header-divider" aria-hidden="true"></div>
     <section class="brand-lockup" aria-label="Firma logosu">
       ${brandBlock}
       <span class="slogan">${escapeHtml(issuer.slogan)}</span>
