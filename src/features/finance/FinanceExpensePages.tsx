@@ -729,10 +729,11 @@ type EInvoiceApiRow = {
 
 // "Gelen Faturalar" previously rendered the static, permanently-empty
 // incomingInvoiceRows mock. The real equivalent is the existing e_invoices
-// resource's incoming direction (direction === "in") — already-built
-// generic list action, full-page-fetched the same way as
-// fetchAllPurchaseBills so a supplier's e-invoices aren't cut off past
-// page 1 either.
+// resource's incoming direction (direction === "inbound", per Paraşüt's
+// actual enum — not "in", which never matched and left the table always
+// empty) — already-built generic list action, full-page-fetched the same
+// way as fetchAllPurchaseBills so a supplier's e-invoices aren't cut off
+// past page 1 either.
 async function fetchAllIncomingEInvoices(cancelledRef: { cancelled: boolean }) {
   const pageSize = 100;
   const fetchPage = (page: number) =>
@@ -772,7 +773,7 @@ export function IncomingInvoicesPage() {
         if (cancelledRef.cancelled) return;
         setRows(
           allRows
-            .filter((row) => purchaseBillSourceText(row.attributes?.direction) === "in")
+            .filter((row) => purchaseBillSourceText(row.attributes?.direction) === "inbound")
             .map((row, index) => {
               const attributes = row.attributes ?? {};
               return {
