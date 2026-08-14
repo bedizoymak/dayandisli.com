@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dayan Dişli | İletişim</title>
+<meta name="description" content="Dayan Dişli dişli imalatı, profil taşlama ve hassas mekanik çözümler. Telefon, WhatsApp, konum ve iletişim bilgileri.">
+<meta name="theme-color" content="#151c28">
+<link rel="canonical" href="https://qr.dayandisli.com/">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+
+<meta property="og:title" content="Dayan Dişli | İletişim">
+<meta property="og:description" content="Dayan Dişli dişli imalatı, profil taşlama ve hassas mekanik çözümler. Telefon, WhatsApp, konum ve iletişim bilgileri.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://qr.dayandisli.com/">
+<meta property="og:image" content="https://dayandisli.com/og-image.png">
+<meta property="og:locale" content="tr_TR">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Dayan Dişli | İletişim">
+<meta name="twitter:description" content="Dişli imalatı, profil taşlama ve hassas mekanik çözümler için doğrudan iletişim.">
+
+<style>
+  :root{
+    --navy:#151c28;
+    --navy-deep:#0e131c;
+    --navy-light:#1d2534;
+    --navy-lighter:#252e41;
+    --blue:#5589f1;
+    --blue-strong:#719df4;
+    --whatsapp:#25d466;
+    --whatsapp-strong:#3cdd77;
+    --ink:#eef1f6;
+    --ink-muted:#98a5bb;
+    --ink-faint:#6c7994;
+    --hairline:rgba(255,255,255,.09);
+    --shadow-card:0 10px 26px -14px rgba(0,0,0,.6);
+    --shadow-panel:0 30px 80px -24px rgba(0,0,0,.65);
+    --radius-card:16px;
+    --radius-icon:12px;
+  }
+
+  *,*::before,*::after{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+  html,body{max-width:100%;overflow-x:hidden;}
+
+  body{
+    margin:0;
+    min-height:100dvh;
+    background:
+      radial-gradient(120% 60% at 50% -10%, var(--navy-lighter) 0%, var(--navy) 55%, var(--navy-deep) 100%);
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    padding-left:env(safe-area-inset-left);
+    padding-right:env(safe-area-inset-right);
+    padding-bottom:env(safe-area-inset-bottom);
+    position:relative;
+  }
+
+  /* faint brushed-steel texture, kept extremely subtle */
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:repeating-linear-gradient(
+      115deg,
+      rgba(255,255,255,.025) 0px,
+      rgba(255,255,255,.025) 1px,
+      transparent 1px,
+      transparent 5px
+    );
+    mix-blend-mode:overlay;
+  }
+
+  .page{
+    position:relative;
+    width:100%;
+    max-width:460px;
+    margin:0 auto;
+    padding:calc(36px + env(safe-area-inset-top)) 22px 28px;
+  }
+
+  /* ---------- hero ---------- */
+  .hero{
+    text-align:center;
+    padding-bottom:22px;
+  }
+
+  .hero-logo{
+    display:block;
+    width:min(220px,62%);
+    height:auto;
+    margin:0 auto 20px;
+  }
+
+  .hero-title{
+    margin:0;
+    font-size:clamp(1.5rem,6.4vw,1.9rem);
+    font-weight:800;
+    letter-spacing:.09em;
+    color:var(--ink);
+  }
+
+  .hero-subtitle{
+    margin:10px 0 0;
+    font-size:.86rem;
+    font-weight:600;
+    letter-spacing:.02em;
+    color:var(--blue-strong);
+  }
+
+  .hero-tagline{
+    margin:14px auto 0;
+    max-width:32ch;
+    font-size:.92rem;
+    line-height:1.55;
+    color:var(--ink-muted);
+  }
+
+  .hero-rule{
+    width:56px;
+    height:2px;
+    margin:24px auto 0;
+    border:0;
+    border-radius:2px;
+    background:linear-gradient(90deg,transparent,var(--blue),transparent);
+  }
+
+  /* ---------- actions ---------- */
+  .actions{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin-top:24px;
+  }
+
+  .card{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:16px 16px;
+    min-height:64px;
+    background:var(--navy-lighter);
+    border:1px solid var(--hairline);
+    border-radius:var(--radius-card);
+    box-shadow:var(--shadow-card);
+    text-decoration:none;
+    color:var(--ink);
+    -webkit-tap-highlight-color:transparent;
+    transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease;
+  }
+
+  .card:active{
+    transform:scale(.98);
+  }
+
+  @media (hover:hover){
+    .card:hover{
+      transform:translateY(-2px);
+      border-color:rgba(85,137,241,.45);
+      box-shadow:0 16px 34px -16px rgba(0,0,0,.65);
+    }
+    .card--whatsapp:hover{border-color:rgba(37,212,102,.5);}
+  }
+
+  .card:focus-visible{
+    outline:2px solid var(--blue-strong);
+    outline-offset:2px;
+  }
+
+  .card-icon{
+    flex:0 0 auto;
+    display:grid;
+    place-items:center;
+    width:46px;
+    height:46px;
+    border-radius:var(--radius-icon);
+    background:rgba(85,137,241,.14);
+    color:var(--blue-strong);
+  }
+
+  .card-icon svg{width:22px;height:22px;}
+
+  .card--whatsapp .card-icon{background:rgba(37,212,102,.16);color:var(--whatsapp-strong);}
+
+  .card-text{
+    flex:1 1 auto;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+
+  .card-title{
+    font-size:1rem;
+    font-weight:700;
+    letter-spacing:.01em;
+    color:var(--ink);
+  }
+
+  .card-sub{
+    font-size:.82rem;
+    color:var(--ink-muted);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .card-arrow{
+    flex:0 0 auto;
+    display:grid;
+    place-items:center;
+    width:20px;
+    height:20px;
+    color:var(--ink-faint);
+  }
+  .card-arrow svg{width:18px;height:18px;}
+
+  /* primary emphasis: WhatsApp + Call */
+  .card--primary{
+    padding:18px 16px;
+  }
+  .card--primary .card-title{font-size:1.06rem;}
+
+  .card--whatsapp{
+    background:linear-gradient(155deg,var(--navy-lighter),var(--navy-light));
+    border-color:rgba(37,212,102,.28);
+  }
+
+  .card--call{
+    border-color:rgba(85,137,241,.28);
+  }
+
+  /* two-up row for maps + website */
+  .card-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+
+  .card--compact{
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    justify-content:center;
+    gap:10px;
+    padding:20px 12px;
+    min-height:120px;
+  }
+
+  .card--compact .card-text{align-items:center;}
+  .card--compact .card-sub{white-space:normal;}
+
+  /* ---------- footer ---------- */
+  .site-footer{
+    margin-top:34px;
+    text-align:center;
+  }
+
+  .footer-name{
+    margin:0;
+    font-size:.86rem;
+    font-weight:700;
+    letter-spacing:.04em;
+    color:var(--ink-muted);
+  }
+
+  .footer-tag{
+    margin:4px 0 0;
+    font-size:.76rem;
+    color:var(--ink-faint);
+  }
+
+  .footer-copy{
+    margin:10px 0 0;
+    font-size:.72rem;
+    color:var(--ink-faint);
+  }
+
+  /* ---------- desktop / larger viewports ---------- */
+  @media (min-width:640px){
+    body{padding:48px 20px;}
+    .page{
+      padding:44px 34px 36px;
+      background:linear-gradient(180deg,var(--navy-light),var(--navy) 70%);
+      border:1px solid var(--hairline);
+      border-radius:28px;
+      box-shadow:var(--shadow-panel);
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <img class="hero-logo" src="logo-header.png" alt="Dayan Dişli" width="400" height="150" fetchpriority="high">
+      <h1 class="hero-title">DAYAN DİŞLİ</h1>
+      <p class="hero-subtitle">Dişli İmalatı • Profil Taşlama • Hassas Mekanik Çözümler</p>
+      <p class="hero-tagline">Hassas üretim ihtiyaçlarınız için bize doğrudan ulaşın.</p>
+      <hr class="hero-rule">
+    </header>
+
+    <section class="actions" aria-label="İletişim seçenekleri">
+
+      <a class="card card--primary card--whatsapp" href="https://wa.me/905365837420?text=Merhaba%2C%20Dayan%20Di%C5%9Fli%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener">
+        <span class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3C7.03 3 3 6.86 3 11.6c0 1.94.67 3.73 1.8 5.18L3.6 21l4.4-1.36c1.19.55 2.53.87 3.99.87 4.97 0 9-3.86 9-8.6S16.97 3 12 3z"/>
+            <path d="M8.6 10.4c.4 2.1 2.2 3.9 4.3 4.3.9.17 1.5-.5 1.9-1.1.15-.23-.02-.5-.27-.6l-1.4-.55a.5.5 0 0 0-.55.13l-.35.4a5.6 5.6 0 0 1-2.3-2.3l.4-.35a.5.5 0 0 0 .13-.55l-.55-1.4c-.1-.25-.37-.42-.6-.27-.6.4-1.27 1-1.1 1.9.03.14.06.28.09.4z"/>
+          </svg>
+        </span>
+        <span class="card-text">
+          <span class="card-title">WhatsApp</span>
+          <span class="card-sub">+90 536 583 74 20</span>
+        </span>
+        <span class="card-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </span>
+      </a>
+
+      <a class="card card--primary card--call" href="tel:+905365837420">
+        <span class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.28-.28.7-.38 1.06-.24 1.1.4 2.3.62 3.54.62.6 0 1 .44 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.24.22 2.44.62 3.54.14.36.04.78-.24 1.06L6.6 10.8z"/>
+          </svg>
+        </span>
+        <span class="card-text">
+          <span class="card-title">Hemen Ara</span>
+          <span class="card-sub">+90 536 583 74 20</span>
+        </span>
+        <span class="card-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </span>
+      </a>
+
+      <div class="card-row">
+        <a class="card card--compact" href="https://maps.app.goo.gl/tCoKcR1oVPUUt7Nf7" target="_blank" rel="noopener">
+          <span class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 21s7-7.58 7-12a7 7 0 1 0-14 0c0 4.42 7 12 7 12z"/>
+              <circle cx="12" cy="9" r="2.5"/>
+            </svg>
+          </span>
+          <span class="card-text">
+            <span class="card-title">Yol Tarifi Al</span>
+            <span class="card-sub">Google Haritalar</span>
+          </span>
+        </a>
+
+        <a class="card card--compact" href="https://dayandisli.com" target="_blank" rel="noopener">
+          <span class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <ellipse cx="12" cy="12" rx="4" ry="9"/>
+              <path d="M3 12h18"/>
+            </svg>
+          </span>
+          <span class="card-text">
+            <span class="card-title">Web Sitesini Ziyaret Et</span>
+            <span class="card-sub">dayandisli.com</span>
+          </span>
+        </a>
+      </div>
+
+      <a class="card" href="mailto:info@dayandisli.com">
+        <span class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="5" width="18" height="14" rx="2.5"/>
+            <path d="m3.5 7 8.5 6 8.5-6"/>
+          </svg>
+        </span>
+        <span class="card-text">
+          <span class="card-title">E-posta Gönder</span>
+          <span class="card-sub">info@dayandisli.com</span>
+        </span>
+        <span class="card-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </span>
+      </a>
+
+    </section>
+
+    <footer class="site-footer">
+      <p class="footer-name">Dayan Dişli</p>
+      <p class="footer-tag">Dişli İmalatı &amp; Profil Taşlama</p>
+      <p class="footer-copy">© 2026 Dayan Dişli</p>
+    </footer>
+  </main>
+</body>
+</html>

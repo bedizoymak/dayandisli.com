@@ -21,6 +21,9 @@ export type SalesQuote = {
   id: string;
   no: string;
   customerId: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
   contactId: string;
   contact: string;
   projectId: string;
@@ -29,6 +32,8 @@ export type SalesQuote = {
   currency: string;
   created: string;
   validUntil: string;
+  optionValidity?: string;
+  estimatedDelivery?: string;
   status: QuoteStatus;
   lines: QuoteLine[];
   notes: string;
