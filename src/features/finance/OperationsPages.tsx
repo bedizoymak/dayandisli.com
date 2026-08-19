@@ -12,6 +12,10 @@ import {
   type ExportColumn,
 } from "./FinanceNavigationTools";
 import { PartyLedgerEntryDialog } from "./PartyLedgerEntryDialog";
+import { listAllChecks } from "./checks/checksApi";
+import { formatCheckMoney } from "./checks/checkDomain";
+import { projectPartyCheckLedger } from "./checks/checkProjections";
+import type { CheckListRow } from "./checks/types";
 import {
   dispatches,
   orders,
@@ -1011,6 +1015,8 @@ export function SuppliersPage() {
 export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
   const [loading, setLoading] = useState(true);
   const [attributes, setAttributes] = useState<Record<string, unknown> | null>(null);
+  const [linkedChecks, setLinkedChecks] = useState<CheckListRow[]>([]);
+  const [linkedChecksStatus, setLinkedChecksStatus] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
     if (!supplierId) {
@@ -1034,6 +1040,38 @@ export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
         if (!cancelled) {
           setAttributes(null);
           setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supplierId]);
+
+  useEffect(() => {
+    if (!supplierId) {
+      setLinkedChecks([]);
+      setLinkedChecksStatus("ready");
+      return;
+    }
+    let cancelled = false;
+    setLinkedChecksStatus("loading");
+    listAllChecks({
+      filters: { contactParasutId: supplierId, direction: "issued" },
+    })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok === false) {
+          setLinkedChecks([]);
+          setLinkedChecksStatus("error");
+          return;
+        }
+        setLinkedChecks(result.data);
+        setLinkedChecksStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLinkedChecks([]);
+          setLinkedChecksStatus("error");
         }
       });
     return () => {
@@ -1068,6 +1106,7 @@ export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
 
   const name = supplierText(attributes.name);
   const balance = supplierBalanceText(attributes.trl_balance);
+  const supplierChecks = projectPartyCheckLedger(linkedChecks, supplierId, "issued");
 
   return (
     <div className="ops-page">
@@ -1131,6 +1170,67 @@ export function SupplierDetailPage({ supplierId }: { supplierId?: string }) {
             </dl>
           </div>
         </div>
+      </section>
+      <section className="erp-card ops-supplier-card">
+        <header className="ops-supplier-head">
+          <div>
+            <h2>Yaklaşan Ödemeler ve Çek Hareketleri</h2>
+            <span>Açık çekler ödeme sayılmaz; ödenmiş ERP çekleri ayrı cari etkisiyle gösterilir.</span>
+          </div>
+        </header>
+        {linkedChecksStatus === "loading" && <p className="ops-empty">Bağlı çekler yükleniyor…</p>}
+        {linkedChecksStatus === "error" && (
+          <p className="ops-empty" role="alert">Bağlı çekler yüklenemedi; mevcut tedarikçi bakiyesi değiştirilmedi.</p>
+        )}
+        {linkedChecksStatus === "ready" && supplierChecks.length === 0 && (
+          <p className="ops-empty">Bu tedarikçiye atanmış verilen çek bulunmuyor.</p>
+        )}
+        {supplierChecks.length > 0 && (
+          <div className="ops-table">
+            <table>
+              <thead>
+                <tr>
+                  {[
+                    "Çek No",
+                    "Banka",
+                    "Vade",
+                    "Tutar",
+                    "Kalan",
+                    "Durum",
+                    "Kaynak",
+                    "Cari Etkisi",
+                  ].map((heading) => <th key={heading}>{heading}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {supplierChecks.map((check) => (
+                  <tr key={check.id}>
+                    <td>
+                      <Link className="ops-cell-link" to={`/apps/finance/cash/checks/${encodeURIComponent(check.id)}`}>
+                        {check.checkNumber || "—"}
+                      </Link>
+                    </td>
+                    <td>{check.bankName || "—"}</td>
+                    <td>{check.dueDate || "—"}</td>
+                    <td>{formatCheckMoney(check.originalAmount, check.currency)}</td>
+                    <td>{formatCheckMoney(check.remainingAmount, check.currency)}</td>
+                    <td>{({
+                      open: "Açık",
+                      upcoming: "Vadesi Gelmedi",
+                      due_today: "Bugün Vadeli",
+                      overdue: "Gecikmiş",
+                      paid: "Ödendi",
+                      cancelled: "İptal",
+                      returned: "İade",
+                    } as const)[check.effectiveStatus]}</td>
+                    <td>{check.sourceLabel}</td>
+                    <td>{check.debit > 0 ? formatMoney(check.debit, check.currency) : "Bekleyen / bilgi"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

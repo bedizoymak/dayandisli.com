@@ -1,15 +1,50 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FilePlus2, ReceiptText, Sun, UserRound, BarChart3 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { quickActions } from "@/features/erp-shell/shellNavigationData";
 import { useErpIdentity } from "@/features/erp-shell/erpIdentity";
+import { listAllChecks } from "@/features/finance/checks/checksApi";
+import { buildCheckReminder, checkDirectionLabel, checkPartyLabel, formatCheckMoney, istanbulTodayIso } from "@/features/finance/checks/checkDomain";
+import type { CheckListRow } from "@/features/finance/checks/types";
 
 const quickIcons = [FilePlus2, ReceiptText, UserRound, BarChart3];
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { erpUser } = useErpIdentity();
+  const { erpUser, hasPermission } = useErpIdentity();
+  const canViewChecks = hasPermission("finance.view");
   const [now] = useState(() => new Date());
+  const [checks, setChecks] = useState<CheckListRow[]>([]);
+  const [checksStatus, setChecksStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    if (!canViewChecks) {
+      setChecks([]);
+      setChecksStatus("ready");
+      return;
+    }
+    let cancelled = false;
+    listAllChecks({ filters: { openOnly: true } })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok === false) {
+          setChecks([]);
+          setChecksStatus("error");
+          return;
+        }
+        setChecks(result.data);
+        setChecksStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChecks([]);
+          setChecksStatus("error");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canViewChecks]);
   const istanbulParts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Istanbul",
     hour: "2-digit",
@@ -32,6 +67,12 @@ export default function DashboardPage() {
   const displayName = userLabel
     ? userLabel.replace(/(^|\s)\S/g, (letter) => letter.toLocaleUpperCase("tr-TR"))
     : "—";
+  const todayIso = istanbulTodayIso(now);
+  const reminders = checks
+    .map((check) => ({ check, reminder: buildCheckReminder(check, todayIso) }))
+    .filter((item): item is { check: CheckListRow; reminder: NonNullable<typeof item.reminder> } => item.reminder !== null)
+    .sort((left, right) => left.reminder.dueDate.localeCompare(right.reminder.dueDate))
+    .slice(0, 6);
 
   return (
     <div className="erp-content">
@@ -114,12 +155,37 @@ export default function DashboardPage() {
         <article className="erp-card erp-panel">
           <div className="erp-panel-head">
             <h2 className="erp-section-title">Yaklaşan Ödeme ve Tahsilatlar</h2>
-            <button type="button" onClick={() => navigate("/apps/finance/income/collection-report")}>
+            <button type="button" onClick={() => navigate("/apps/finance/cash/checks")}>
               Tümünü Gör
             </button>
           </div>
           <div className="erp-upcoming-list">
-            <div className="erp-empty-search">Gösterilecek ödeme veya tahsilat bulunmuyor.</div>
+            {checksStatus === "loading" && <div className="erp-empty-search">Çek vadeleri yükleniyor…</div>}
+            {checksStatus === "error" && (
+              <div className="erp-empty-search" role="alert">Çek vade verisi yüklenemedi.</div>
+            )}
+            {checksStatus === "ready" && reminders.length === 0 && (
+              <div className="erp-empty-search">Yaklaşan veya gecikmiş açık çek bulunmuyor.</div>
+            )}
+            {reminders.map(({ check, reminder }) => {
+              const [, month = ""] = reminder.dueDate.split("-");
+              const day = reminder.dueDate.slice(8, 10);
+              return (
+                <Link className="erp-upcoming-row" to={`/apps/finance/cash/checks/${encodeURIComponent(check.id)}`} key={check.id}>
+                  <span className="erp-upcoming-date">
+                    <strong>{day}</strong>
+                    <small>{month}</small>
+                  </span>
+                  <span className="erp-upcoming-copy">
+                    <strong>{reminder.title} · {checkDirectionLabel(check.direction)}</strong>
+                    <small>{check.checkNumber || "Çek no —"} · {checkPartyLabel(check.party)}</small>
+                  </span>
+                  <strong className={`erp-amount ${check.direction === "issued" ? "expense" : ""}`}>
+                    {formatCheckMoney(check.remainingAmount, check.currency)}
+                  </strong>
+                </Link>
+              );
+            })}
           </div>
         </article>
         <div className="erp-right-stack">

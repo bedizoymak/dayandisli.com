@@ -283,6 +283,25 @@ describe("syncChecks", () => {
     expect(tables.checks).toHaveLength(40);
   });
 
+  it("inserts a newly-added Paraşüt cheque on the next GET sync without removing the existing 40", async () => {
+    const { database, tables } = createFakeDatabase();
+    const initialResources = Array.from({ length: 40 }, (_, index) =>
+      checkResource({ id: String(index + 1) }),
+    );
+
+    const initial = await syncChecks(buildContext(database, fakeClient([page(1, initialResources)])));
+    expect(initial.inserted).toBe(40);
+    expect(tables.checks).toHaveLength(40);
+
+    const next = await syncChecks(
+      buildContext(database, fakeClient([page(1, [checkResource({ id: "41", attributes: { serial_number: "NEW-41" } })])])),
+    );
+
+    expect(next.inserted).toBe(1);
+    expect(tables.checks).toHaveLength(41);
+    expect(tables.checks.find((row) => row.parasut_id === "41")?.attributes).toMatchObject({ serial_number: "NEW-41" });
+  });
+
   it("does not enable deletion reconciliation (no reconciliation field on the result)", async () => {
     const { database } = createFakeDatabase();
     const client = fakeClient([page(1, [checkResource({ id: "6" })])]);

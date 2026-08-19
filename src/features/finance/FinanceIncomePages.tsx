@@ -22,6 +22,7 @@ import {
   type InvoiceRow,
 } from "./financeIncomeData";
 import { crmCustomers } from "../crm/crmCustomerData";
+import { OpenChecksReportSection } from "./checks/OpenChecksReportSection";
 import "./finance-income.css";
 
 const incomeInvoicesBase = "/apps/finance/income/invoices";
@@ -573,6 +574,7 @@ export function CollectionReportPage() {
           },
         }}
       />
+      <OpenChecksReportSection direction="received" title="Yaklaşan Tahsilatlar — Açık Alınan Çekler" />
       <section className="income-kpis">
         {collectionKpis.map((item) => (
           <article className="erp-card" key={item.label}>

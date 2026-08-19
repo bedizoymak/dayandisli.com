@@ -12,6 +12,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatMoney } from "@/lib/finance/financeLabels";
 import { FinanceBreadcrumb } from "./FinanceNavigationTools";
 import { financeOverviewData } from "./financeNavigation";
+import { listAllChecks } from "./checks/checksApi";
+import { buildCheckReminder, istanbulTodayIso } from "./checks/checkDomain";
+import type { CheckListRow } from "./checks/types";
 import "./finance-overview.css";
 
 interface ReceivablesSummary {
@@ -169,6 +172,38 @@ function useAccountsList() {
   return { accounts, status };
 }
 
+/** Open cheque projections stay separate from invoice/payment settlement totals. */
+function useOpenChecks() {
+  const [checks, setChecks] = useState<CheckListRow[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    listAllChecks({ filters: { openOnly: true } })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok === false) {
+          setChecks([]);
+          setStatus("error");
+          return;
+        }
+        setChecks(result.data);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChecks([]);
+          setStatus("error");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { checks, status };
+}
+
 /** Paraşüt's own currency code for Turkish lira; Intl.NumberFormat requires the ISO 4217 code TRY. */
 function toIntlCurrency(currency: string): string {
   return currency === "TRL" ? "TRY" : currency;
@@ -240,6 +275,7 @@ export function FinanceOverview() {
   const { summary: payablesSummary, status: payablesStatus } = usePayablesSummary();
   const { summary: vatSummary, status: vatStatus } = useVatSummary();
   const { accounts, status: accountsStatus } = useAccountsList();
+  const { checks: openChecks, status: openChecksStatus } = useOpenChecks();
 
   const sortedAccounts =
     accountsStatus === "ready" && accounts
@@ -337,6 +373,42 @@ export function FinanceOverview() {
     }
     return detail;
   });
+  const receivedOpenTry = openChecks.reduce(
+    (sum, check) =>
+      sum + (check.direction === "received" && check.currency === "TRY" && check.remainingAmount !== null
+        ? check.remainingAmount
+        : 0),
+    0,
+  );
+  const issuedOpenTry = openChecks.reduce(
+    (sum, check) =>
+      sum + (check.direction === "issued" && check.currency === "TRY" && check.remainingAmount !== null
+        ? check.remainingAmount
+        : 0),
+    0,
+  );
+  const cashFlow = financeOverviewData.cashFlow.map((item, index) => {
+    if (index === 1) {
+      return {
+        ...item,
+        label: "Açık Çek Tahsilatı (TRY)",
+        value: openChecksStatus === "ready" ? formatMoney(receivedOpenTry) : openChecksStatus === "error" ? "—" : "…",
+      };
+    }
+    if (index === 2) {
+      return {
+        ...item,
+        label: "Açık Çek Ödemesi (TRY)",
+        value: openChecksStatus === "ready" ? formatMoney(issuedOpenTry) : openChecksStatus === "error" ? "—" : "…",
+      };
+    }
+    return item;
+  });
+  const todayIso = istanbulTodayIso();
+  const checkTimeline = openChecks
+    .map((check) => ({ check, reminder: buildCheckReminder(check, todayIso) }))
+    .filter((item): item is { check: CheckListRow; reminder: NonNullable<typeof item.reminder> } => item.reminder !== null)
+    .sort((left, right) => left.reminder.dueDate.localeCompare(right.reminder.dueDate));
 
   return (
     <div className="finance-overview">
@@ -435,7 +507,7 @@ export function FinanceOverview() {
               </button>
             </div>
             <div className="finance-cash-kpis">
-              {financeOverviewData.cashFlow.map((item) => (
+              {cashFlow.map((item) => (
                 <div key={item.label}>
                   <span>{item.label}</span>
                   <strong className={item.tone || ""}>{item.value}</strong>
@@ -453,14 +525,17 @@ export function FinanceOverview() {
             </button>
           </div>
           <div className="finance-timeline">
-            {financeOverviewData.timeline.map((item) => (
-              <div key={`${item.timing}-${item.title}`}>
-                <div className={`finance-timeline-item ${item.status}`}>
+            {openChecksStatus === "loading" && <p>Çek vadeleri yükleniyor…</p>}
+            {openChecksStatus === "error" && <p role="alert">Çek vade verisi yüklenemedi.</p>}
+            {openChecksStatus === "ready" && checkTimeline.length === 0 && <p>Yaklaşan veya gecikmiş açık çek bulunmuyor.</p>}
+            {checkTimeline.map(({ check, reminder }) => (
+              <Link key={check.id} to={`/apps/finance/cash/checks/${encodeURIComponent(check.id)}`}>
+                <div className={`finance-timeline-item ${reminder.urgency}`}>
                   <i />
-                  <small>{item.timing}</small>
-                  <strong>{item.title}</strong>
+                  <small>{reminder.dueDate} · {check.sourceLabel}</small>
+                  <strong>{reminder.title} · {check.checkNumber || "Çek no —"}</strong>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </aside>

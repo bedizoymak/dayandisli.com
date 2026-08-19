@@ -59,6 +59,8 @@ const NewCashAccountPage = lazy(() => import("./pages/apps/finance/cash/NewCashA
 const NewBankAccountPage = lazy(() => import("./pages/apps/finance/cash/NewBankAccountPage"));
 const ChecksPage = lazy(() => import("./pages/apps/finance/cash/ChecksPage"));
 const NewCheckPage = lazy(() => import("./pages/apps/finance/cash/NewCheckPage"));
+const CheckDetailPage = lazy(() => import("./pages/apps/finance/cash/CheckDetailPage"));
+const EditCheckPage = lazy(() => import("./pages/apps/finance/cash/EditCheckPage"));
 const CashBankReportPage = lazy(() => import("./pages/apps/finance/cash/CashBankReportPage"));
 const CashFlowReportPage = lazy(() => import("./pages/apps/finance/cash/CashFlowReportPage"));
 const ProductsPage = lazy(() => import("./pages/apps/finance/inventory/ProductsPage"));
@@ -196,6 +198,8 @@ export const AppRoutes = () => {
           <Route path="finance/cash/accounts/new-bank" element={<NewBankAccountPage />} />
           <Route path="finance/cash/checks" element={<ChecksPage />} />
           <Route path="finance/cash/checks/new" element={<NewCheckPage />} />
+          <Route path="finance/cash/checks/:checkId/edit" element={<EditCheckPage />} />
+          <Route path="finance/cash/checks/:checkId" element={<CheckDetailPage />} />
           <Route path="finance/cash/cash-bank-report" element={<CashBankReportPage />} />
           <Route path="finance/cash/cash-flow-report" element={<CashFlowReportPage />} />
 

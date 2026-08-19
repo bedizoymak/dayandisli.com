@@ -95,6 +95,35 @@ function seedTwoCompanies(): Record<string, FakeRow[]> {
 }
 
 describe("handleList — cross-company isolation", () => {
+  it("list (checks): archived=false keeps all 40 real-style NULL source_archived rows visible", async () => {
+    const seed = seedTwoCompanies();
+    seed["parasut.checks"] = Array.from({ length: 40 }, (_, index) => ({
+      parasut_id: String(index + 1),
+      company_id: COMPANY_A,
+      attributes: {
+        serial_number: `CHECK-${index + 1}`,
+        due_date: "2026-09-01",
+        currency: "TRL",
+        remaining: "100",
+      },
+      relationships: {},
+      source_archived: null,
+      last_seen_at: "2026-08-14T00:00:00Z",
+      synced_at: "2026-08-14T00:00:00Z",
+    }));
+    const admin = createFakeSupabaseAdmin(seed);
+
+    const result = await handleList(
+      admin,
+      { resource: "checks", page: 1, pageSize: 100, filters: { archived: false } },
+      COMPANY_A,
+    );
+
+    expect(result.total).toBe(40);
+    expect(result.rows).toHaveLength(40);
+    expect(result.rows.every((row) => row.source_archived === null)).toBe(true);
+  });
+
   it("dashboard: never includes another company's rows or aggregates", async () => {
     const admin = createFakeSupabaseAdmin(seedTwoCompanies());
     const result = await handleDashboard(admin, COMPANY_A);
@@ -507,6 +536,21 @@ describe("resolveContactNames — company-aware relationship resolution", () => 
 });
 
 describe("handleDetail — exact company_id + exact parasut_id, never maybeSingle() on parasut_id alone", () => {
+  it("check detail resolves an exact company-scoped mirror record", async () => {
+    const seed = seedTwoCompanies();
+    seed["parasut.checks"] = [
+      { parasut_id: "check-1", company_id: COMPANY_A, attributes: { serial_number: "A-1" }, relationships: {}, source_archived: null },
+      { parasut_id: "check-1", company_id: COMPANY_B, attributes: { serial_number: "B-1" }, relationships: {}, source_archived: null },
+    ];
+    const admin = createFakeSupabaseAdmin(seed);
+
+    const detailA = await handleDetail(admin, "checks", "check-1", COMPANY_A);
+    const detailB = await handleDetail(admin, "checks", "check-1", COMPANY_B);
+
+    expect(((detailA as { record: FakeRow }).record.attributes as FakeRow).serial_number).toBe("A-1");
+    expect(((detailB as { record: FakeRow }).record.attributes as FakeRow).serial_number).toBe("B-1");
+  });
+
   it("sales invoice detail: parasut_id '900' resolves to the ACTIVE company's invoice and its own contact, never the other company's", async () => {
     const admin = createFakeSupabaseAdmin(seedTwoCompanies());
     const detailA = await handleDetail(admin, "sales_invoices", "900", COMPANY_A);

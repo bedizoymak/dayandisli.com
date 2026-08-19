@@ -22,6 +22,7 @@ function segmentRoute(label: string, all: string[]) {
   if (label === "Gider Yönetimi")
     return "/apps/finance/expense/list";
   if (label === "Kasa") return "/apps/finance/cash/accounts";
+  if (label === "Çekler") return "/apps/finance/cash/checks";
   if (label === "Stok Yönetimi")
     return "/apps/finance/inventory/products";
   if (label === "Hizmet ve Ürünler")

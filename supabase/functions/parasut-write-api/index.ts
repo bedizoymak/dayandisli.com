@@ -22,6 +22,7 @@ import { syncProducts } from "../../../server/parasut/sync-products.ts";
 import { syncAccounts } from "../../../server/parasut/sync-accounts.ts";
 import { syncSalesInvoices } from "../../../server/parasut/sync-sales-invoices.ts";
 import { syncPurchaseBills } from "../../../server/parasut/sync-purchase-bills.ts";
+import { syncChecks } from "../../../server/parasut/sync-checks.ts";
 import { CreateCustomerCommandHandler } from "../../../server/erp/commands/create-customer-command.ts";
 import { ParasutCustomerWriteProvider } from "../../../server/erp/providers/parasut-customer-write-provider.ts";
 import { ParasutContactVerifier, type MinimalParasutReadClient } from "../../../server/erp/providers/parasut-contact-verifier.ts";
@@ -122,6 +123,7 @@ const SYNCABLE_RESOURCES: Record<string, { resourceType: string; run: (context: 
   accounts: { resourceType: "accounts", run: syncAccounts },
   sales_invoices: { resourceType: "sales_invoices", run: syncSalesInvoices },
   purchase_bills: { resourceType: "purchase_bills", run: syncPurchaseBills },
+  checks: { resourceType: "checks", run: syncChecks },
 };
 
 serve(async (req) => {

@@ -8,6 +8,12 @@ import { PartyLedgerEntryDialog } from "../finance/PartyLedgerEntryDialog";
 import { fetchQuotesForCustomer } from "../sales/quotesApi";
 import { effectiveQuoteStatus, QUOTE_STATUS_LABELS, type QuoteRow } from "../sales/quoteTypes";
 import { QuoteHistoryPanel } from "../sales/QuoteHistoryPanel";
+import {
+  projectPartyCheckLedger,
+} from "../finance/checks/checkProjections";
+import { listAllChecks } from "../finance/checks/checksApi";
+import { istanbulTodayIso } from "../finance/checks/checkDomain";
+import type { CheckListRow } from "../finance/checks/types";
 
 const parent = "/apps/crm/customers";
 
@@ -27,16 +33,10 @@ type PaymentRow = {
   attributes?: Record<string, unknown> | null;
 };
 
-type CheckRow = {
-  parasut_id?: unknown;
-  attributes?: Record<string, unknown> | null;
-};
-
 type DetailResponse = {
   contact?: ContactRecord | null;
   recentDocuments?: DocumentRow[] | null;
   payments?: PaymentRow[] | null;
-  checks?: CheckRow[] | null;
 } | null;
 
 type OfferApiRow = {
@@ -135,7 +135,8 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const [contact, setContact] = useState<ContactRecord | null>(null);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
-  const [checks, setChecks] = useState<CheckRow[]>([]);
+  const [linkedChecks, setLinkedChecks] = useState<CheckListRow[]>([]);
+  const [linkedChecksStatus, setLinkedChecksStatus] = useState<"loading" | "ready" | "error">("loading");
   const [offers, setOffers] = useState<OfferApiRow[]>([]);
   const [erpQuotes, setErpQuotes] = useState<QuoteRow[]>([]);
   const [invoiceSort, setInvoiceSort] = useState<"asc" | "desc">("desc");
@@ -149,7 +150,6 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
       setContact(null);
       setDocuments([]);
       setPayments([]);
-      setChecks([]);
       setOffers([]);
       return;
     }
@@ -169,12 +169,10 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
           setContact(null);
           setDocuments([]);
           setPayments([]);
-          setChecks([]);
         } else {
           setContact(response.contact);
           setDocuments(Array.isArray(response.recentDocuments) ? response.recentDocuments : []);
           setPayments(Array.isArray(response.payments) ? response.payments : []);
-          setChecks(Array.isArray(response.checks) ? response.checks : []);
         }
         const offersResponse = offersResult.data as { rows?: unknown } | null;
         if (!offersResult.error && offersResponse && Array.isArray(offersResponse.rows)) {
@@ -193,10 +191,43 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
         setContact(null);
         setDocuments([]);
         setPayments([]);
-        setChecks([]);
         setOffers([]);
         setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
+
+  useEffect(() => {
+    if (!customerId) {
+      setLinkedChecks([]);
+      setLinkedChecksStatus("ready");
+      return;
+    }
+
+    let cancelled = false;
+    setLinkedChecksStatus("loading");
+    listAllChecks({
+      filters: { contactParasutId: customerId, direction: "received" },
+    })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok === false) {
+          setLinkedChecks([]);
+          setLinkedChecksStatus("error");
+          return;
+        }
+        setLinkedChecks(result.data);
+        setLinkedChecksStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLinkedChecks([]);
+          setLinkedChecksStatus("error");
+        }
+      });
+
     return () => {
       cancelled = true;
     };
@@ -278,28 +309,47 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
         description: notes || reference,
       };
     });
-    // Received checks: only rows the backend already matched to this
-    // customer via the checks mirror's real issued_by_parasut_id/is_in
-    // columns (supabase/migrations/20260811000000_parasut_checks_mirror.sql)
-    // — nothing here re-derives or guesses the relationship.
-    const checkRows: LedgerRow[] = checks.map((check) => {
-      const attributes = check.attributes ?? {};
-      const amount = numericValue(attributes.net_total) ?? 0;
-      const serial = sourceText(attributes.serial_number);
-      const bank = sourceText(attributes.bank_name);
+    // The unified checks API only returns an exact, persisted party link.
+    // Open cheques are visible but have no credit effect; a paid ERP-local
+    // cheque is credited separately. Paraşüt mirror cheques remain
+    // informational so an existing mirrored payment can never be doubled.
+    const checkRows: LedgerRow[] = projectPartyCheckLedger(
+      linkedChecks,
+      customerId ?? "",
+      "received",
+    ).map((check) => {
+      const amount = invoiceAmount(check.originalAmount, check.currency);
+      const remaining = invoiceAmount(check.remainingAmount, check.currency);
+      const status = {
+        open: "Açık",
+        upcoming: "Vadesi Gelmedi",
+        due_today: "Bugün Vadeli",
+        overdue: "Gecikmiş",
+        paid: "Ödendi",
+        cancelled: "İptal",
+        returned: "İade",
+      }[check.effectiveStatus];
       return {
-        key: `check-${sourceText(check.parasut_id)}`,
-        date: sourceText(attributes.issue_date),
-        type: "Alınan Çek",
+        key: `check-${check.id}`,
+        date: check.date,
+        type: check.documentType,
         debit: 0,
-        credit: amount,
-        description: [serial, bank].filter(Boolean).join(" · "),
+        credit: check.credit,
+        description: [
+          check.checkNumber ? `Çek ${check.checkNumber}` : "Çek no —",
+          check.bankName || "Banka —",
+          check.dueDate ? `Vade ${check.dueDate}` : "Vade —",
+          `Alınan · ${amount}`,
+          `Kalan ${remaining}`,
+          status,
+          check.sourceLabel,
+        ].join(" · "),
       };
     });
     return [...debitRows, ...creditRows, ...checkRows]
       .filter((row) => row.date)
       .sort((a, b) => a.date.localeCompare(b.date));
-  }, [balanceDocuments, payments, checks, documentByPaymentId]);
+  }, [balanceDocuments, payments, linkedChecks, customerId, documentByPaymentId]);
 
   const ledgerWithBalance = useMemo(() => {
     let running = 0;
@@ -336,21 +386,38 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   // remaining_in_trl is Paraşüt's own already-net (unpaid), TRY-denominated
   // per-invoice figure — using it (rather than re-deriving from gross_total
   // minus matched payments) avoids re-guessing what Paraşüt already computed.
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = istanbulTodayIso();
+  const openTryChecks = linkedChecks.filter(
+    (check) =>
+      check.direction === "received" &&
+      check.party.parasutId === customerId &&
+      check.settlementStatus === "open" &&
+      check.remainingAmount !== null &&
+      check.remainingAmount > 0 &&
+      check.currency === "TRY",
+  );
+  const overdueCheckTotal = openTryChecks.reduce(
+    (sum, check) => sum + (check.dueDate && check.dueDate < todayIso && check.remainingAmount !== null ? check.remainingAmount : 0),
+    0,
+  );
+  const upcomingCheckTotal = openTryChecks.reduce(
+    (sum, check) => sum + (check.dueDate && check.dueDate >= todayIso && check.remainingAmount !== null ? check.remainingAmount : 0),
+    0,
+  );
   const overdueTotal = balanceDocuments.reduce((sum, document) => {
     const attributes = document.attributes ?? {};
     const remaining = numericValue(attributes.remaining_in_trl);
     const dueDate = sourceText(attributes.due_date);
     if (remaining === null || !dueDate || dueDate >= todayIso) return sum;
     return sum + remaining;
-  }, 0);
+  }, overdueCheckTotal);
   const upcomingTotal = balanceDocuments.reduce((sum, document) => {
     const attributes = document.attributes ?? {};
     const remaining = numericValue(attributes.remaining_in_trl);
     const dueDate = sourceText(attributes.due_date);
     if (remaining === null || !dueDate || dueDate < todayIso) return sum;
     return sum + remaining;
-  }, 0);
+  }, upcomingCheckTotal);
 
   const sortedDocuments = useMemo(() => {
     return [...documents].sort((a, b) => {
@@ -514,6 +581,16 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
         <div className="crm-empty" style={{ marginBottom: "0.5rem" }}>
           Bu tablo mutabakatı henüz doğrulanmadı; bazı tahsilatlar Paraşüt'te ayrı parçalar halinde kayıtlı olabilir. Güncel bakiye için üstteki Müşteri Bakiyesi kartını esas alın.
         </div>
+        {linkedChecksStatus === "loading" && (
+          <div className="crm-empty" style={{ marginBottom: "0.5rem" }}>
+            Bağlı çek hareketleri yükleniyor…
+          </div>
+        )}
+        {linkedChecksStatus === "error" && (
+          <div className="crm-empty" role="alert" style={{ marginBottom: "0.5rem" }}>
+            Bağlı çek hareketleri yüklenemedi; fatura ve tahsilat hareketleri etkilenmedi.
+          </div>
+        )}
         <div className="erp-card crm-table-wrap">
           <table className="crm-table">
             <thead>

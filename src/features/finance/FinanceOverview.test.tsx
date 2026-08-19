@@ -19,9 +19,37 @@ const LIVE_ACCOUNTS = [
   { parasut_id: "1000340091", attributes: { name: "HAYRETTİN DAYAN CEHA DİŞLİ SANAYİ", balance: "0.0", account_type: "bank", currency: "TRL", bank_identifier: "KUVEYTTURK", archived: false }, source_archived: false },
 ];
 
+const OPEN_CHECKS = [
+  {
+    id: "erp:11111111-1111-4111-8111-111111111111",
+    source: "erp",
+    sourceLabel: "ERP",
+    direction: "received",
+    party: { parasutId: "customer-1", localQuoteCustomerId: null, name: "Gerçek Müşteri", assigned: true },
+    bankName: "ISBANK",
+    checkNumber: "CHK-OPEN-1",
+    issueDate: "2026-08-10",
+    dueDate: new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
+    currency: "TRY",
+    originalAmount: 250,
+    remainingAmount: 250,
+    settlementStatus: "open",
+    effectiveStatus: "due_today",
+    paidAt: null,
+    notes: null,
+    syncedAt: null,
+    editable: true,
+    statusEditable: true,
+  },
+];
+
 /** Dispatches parasut-api mock responses by action/resource, mirroring FinanceOverview's real invocation shape. */
-function mockInvokeImplementation(accountsResult: { data: unknown; error: unknown }) {
-  invoke.mockImplementation((_fn: string, opts: { body: { action: string; resource?: string } }) => {
+function mockInvokeImplementation(
+  accountsResult: { data: unknown; error: unknown },
+  checksResult: { data: unknown; error: unknown } = { data: { rows: [], total: 0, page: 1, pageSize: 100, latestSyncAt: null }, error: null },
+) {
+  invoke.mockImplementation((fn: string, opts: { body: { action: string; resource?: string } }) => {
+    if (fn === "checks-api" && opts.body.action === "list") return Promise.resolve(checksResult);
     if (opts.body.action === "receivables-summary") return Promise.resolve({ data: RECEIVABLES_OK, error: null });
     if (opts.body.action === "payables-summary") return Promise.resolve({ data: PAYABLES_OK, error: null });
     if (opts.body.action === "vat-summary") return Promise.resolve({ data: VAT_OK, error: null });
@@ -125,5 +153,20 @@ describe("FinanceOverview — Kasa ve Bankalar live accounts", () => {
     expect(screen.getByText(/₺50,00/)).toBeInTheDocument(); // payables outstanding_total
     expect(screen.getByText(/₺20,00/)).toBeInTheDocument(); // vat_this_month
     await waitFor(() => expect(screen.getByText("Kasa Hesabı")).toBeInTheDocument());
+  });
+
+  it("shows open cheques as a separate cash-flow/reminder category without marking them as invoice collections", async () => {
+    mockInvokeImplementation(
+      { data: { rows: LIVE_ACCOUNTS, total: 3, page: 1, pageSize: 50 }, error: null },
+      { data: { rows: OPEN_CHECKS, total: 1, page: 1, pageSize: 100, latestSyncAt: null }, error: null },
+    );
+    renderOverview();
+
+    await waitFor(() => expect(screen.getByText("Açık Çek Tahsilatı (TRY)")).toBeInTheDocument());
+    expect(screen.getByText(/CHK-OPEN-1/)).toBeInTheDocument();
+    expect(screen.getByText(/₺250,00/)).toBeInTheDocument();
+    // Existing invoice/payment summary stays exactly at the API's ₺100; the
+    // open cheque is displayed separately and is not promoted to "collected".
+    expect(screen.getByText(/₺100,00/)).toBeInTheDocument();
   });
 });

@@ -37,6 +37,10 @@ const requiredRoutes: Array<[string, string]> = [
   ["finance/purchasing/orders", "src/pages/apps/finance/purchasing/OrdersPage.tsx"],
   ["finance/purchasing/suppliers", "src/pages/apps/finance/purchasing/SuppliersPage.tsx"],
   ["finance/cash/accounts", "src/pages/apps/finance/cash/CashAccountsPage.tsx"],
+  ["finance/cash/checks", "src/pages/apps/finance/cash/ChecksPage.tsx"],
+  ["finance/cash/checks/new", "src/pages/apps/finance/cash/NewCheckPage.tsx"],
+  ["finance/cash/checks/:checkId/edit", "src/pages/apps/finance/cash/EditCheckPage.tsx"],
+  ["finance/cash/checks/:checkId", "src/pages/apps/finance/cash/CheckDetailPage.tsx"],
   ["finance/inventory/products", "src/pages/apps/finance/inventory/ProductsPage.tsx"],
   ["finance/inventory/history", "src/pages/apps/finance/inventory/StockHistoryPage.tsx"],
   ["crm/customers", "src/pages/apps/crm/CustomersPage.tsx"],
@@ -212,23 +216,25 @@ describe("mechanical route count derived from the actual router (not an assumed/
   const appsBlock = appSource.slice(appsBlockStart, appsBlockEnd);
   const childRouteLines = appsBlock.split("\n").filter((line) => /<Route (index|path=)/.test(line));
 
-  // Bumped from 59/11/47 to 64/16/47: added 5 dynamic detail routes this
+  // Bumped from 64/16/47 to 66/18/47: added the check detail/edit routes;
+  // the existing check list/new routes remain static.
+  // Previous bump added 5 dynamic detail routes this
   // session (sales/orders/:orderId, finance/purchasing/orders/:orderNo,
   // finance/inventory/products/:productId, and the incoming/outgoing
   // dispatch detail routes) to fix previously-unclickable list rows.
-  it("finds exactly 64 explicit /apps routes (1 index + 63 path routes)", () => {
-    expect(childRouteLines.length).toBe(64);
+  it("finds exactly 66 explicit /apps routes (1 index + 65 path routes)", () => {
+    expect(childRouteLines.length).toBe(66);
   });
 
-  it("finds exactly 16 dynamic (:param) routes among them", () => {
+  it("finds exactly 18 dynamic (:param) routes among them", () => {
     const dynamic = childRouteLines.filter((line) => line.includes(":"));
-    expect(dynamic.length).toBe(16);
+    expect(dynamic.length).toBe(18);
   });
 
-  it("finds exactly 47 static path routes (63 path routes minus 16 dynamic)", () => {
+  it("finds exactly 47 static path routes (65 path routes minus 18 dynamic)", () => {
     const pathRoutes = childRouteLines.filter((line) => line.includes("path="));
     const staticRoutes = pathRoutes.filter((line) => !line.includes(":"));
-    expect(pathRoutes.length).toBe(63);
+    expect(pathRoutes.length).toBe(65);
     expect(staticRoutes.length).toBe(47);
   });
 });
@@ -247,6 +253,8 @@ describe("route-parameter ownership boundary: only page files under src/pages/ap
       "src/pages/apps/finance/expense/ExpenseDetailPage.tsx",
       "src/pages/apps/finance/expense/IncomingInvoiceDetailPage.tsx",
       "src/pages/apps/finance/purchasing/SupplierDetailPage.tsx",
+      "src/pages/apps/finance/cash/CheckDetailPage.tsx",
+      "src/pages/apps/finance/cash/EditCheckPage.tsx",
       "src/pages/apps/crm/CustomerDetailPage.tsx",
       "src/pages/apps/crm/EditCustomerPage.tsx",
       "src/pages/apps/sales/QuoteDetailPage.tsx",

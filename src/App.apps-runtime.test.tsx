@@ -9,14 +9,45 @@ import { AppRoutes } from "./App";
 const invoke = vi.hoisted(() =>
   vi.fn(
     async (
-      _functionName: string,
+      functionName: string,
       options?: {
-        body?: { action?: unknown; resource?: unknown; parasutId?: unknown };
+        body?: { action?: unknown; resource?: unknown; parasutId?: unknown; id?: unknown };
       },
     ) => {
       const action = options?.body?.action;
       const resource = options?.body?.resource;
       const parasutId = options?.body?.parasutId;
+      const id = options?.body?.id;
+
+      if (functionName === "checks-api" && action === "detail" && id === "parasut:1001") {
+        return {
+          data: {
+            record: {
+              id: "parasut:1001",
+              source: "parasut",
+              direction: "received",
+              party: { parasutId: null, localQuoteCustomerId: null, name: null, assigned: false },
+              bankName: "ISBANK",
+              checkNumber: "CHK-1001",
+              issueDate: "2026-08-01",
+              dueDate: "2026-08-20",
+              currency: "TRY",
+              originalAmount: 1000,
+              remainingAmount: 1000,
+              settlementStatus: "open",
+              effectiveStatus: "upcoming",
+              paidAt: null,
+              notes: null,
+              syncedAt: "2026-08-15T00:00:00Z",
+              editable: false,
+              statusEditable: false,
+            },
+            history: [],
+          },
+          error: null,
+        };
+      }
+      if (functionName === "checks-api" && action === "detail") return { data: null, error: null };
 
       if (action === "detail" && resource === "sales_invoices" && parasutId === "SF-2026-137") {
         return {
@@ -185,6 +216,18 @@ describe("dynamic-route parameter resolution (per-family, valid vs unknown vs ma
     expect(screen.queryByRole("heading", { name: /SF-2026-148/ })).not.toBeInTheDocument();
   });
 
+  it("renders the real checks list and local-create routes", async () => {
+    const listView = renderAt("/apps/finance/cash/checks");
+    await waitForRouteToSettle();
+    expect(screen.getByRole("heading", { name: "Çekler" })).toBeInTheDocument();
+    listView.unmount();
+
+    renderAt("/apps/finance/cash/checks/new");
+    await waitForRouteToSettle();
+    expect(screen.getByRole("heading", { name: "Yeni ERP Çeki" })).toBeInTheDocument();
+    expect(document.querySelector("form")).not.toBeNull();
+  });
+
   it("invoice detail: an unknown invoice number renders a controlled not-found state, not sample data", async () => {
     renderAt("/apps/finance/income/invoices/DOES-NOT-EXIST-999");
     await waitForRouteToSettle();
@@ -254,6 +297,18 @@ describe("dynamic-route parameter resolution (per-family, valid vs unknown vs ma
     renderAt("/apps/finance/expense/incoming-invoices/no-such-incoming-invoice");
     await waitForRouteToSettle();
     expect(screen.getByRole("heading", { name: "Fatura Bulunamadı" })).toBeInTheDocument();
+  });
+
+  it("check detail resolves a prefixed real id and an unknown id renders controlled not-found", async () => {
+    const valid = renderAt("/apps/finance/cash/checks/parasut%3A1001");
+    await waitForRouteToSettle();
+    expect(screen.getByRole("heading", { name: "CHK-1001" })).toBeInTheDocument();
+    expect(screen.getByText("Taraf atanmadı")).toBeInTheDocument();
+    valid.unmount();
+
+    renderAt("/apps/finance/cash/checks/parasut%3Ano-such-check");
+    await waitForRouteToSettle();
+    expect(screen.getByRole("heading", { name: "Çek Bulunamadı" })).toBeInTheDocument();
   });
 });
 

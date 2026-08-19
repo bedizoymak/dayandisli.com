@@ -1,4 +1,4 @@
-import { CheckFormPage } from "@/features/finance/OperationsPages";
+import { CheckFormPage } from "@/features/finance/checks/CheckFormPage";
 
 export default function NewCheckPage() {
   return <CheckFormPage />;

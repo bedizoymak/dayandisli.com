@@ -357,7 +357,15 @@ export async function handleList(admin: SupabaseAdminLike, params: ListParams, a
 
   if (!table) throw new Error("Desteklenmeyen Paraşüt liste kaynağı.");
   const filters = params.filters ?? {};
-  if (filters.archived === false) table = table.eq("source_archived", false);
+  if (filters.archived === false) {
+    // The checks endpoint does not expose a reliable archived flag, so the
+    // mirror deliberately stores source_archived as NULL. NULL means
+    // "unknown / not proven archived", not archived. An equality filter
+    // would therefore hide every real cheque currently in production.
+    table = params.resource === "checks"
+      ? table.or("source_archived.eq.false,source_archived.is.null")
+      : table.eq("source_archived", false);
+  }
   if (filters.currency && typeof filters.currency === "string") table = table.eq("attributes->>currency", filters.currency);
   if (filters.dueFrom && typeof filters.dueFrom === "string") table = table.gte("attributes->>due_date", filters.dueFrom);
   if (filters.dueTo && typeof filters.dueTo === "string") table = table.lte("attributes->>due_date", filters.dueTo);
@@ -544,7 +552,7 @@ export async function handleDetail(admin: SupabaseAdminLike, resource: ListResou
     return { contact, recentDocuments: documentRows, payments: payments ?? [], checks };
   }
 
-  if (resource === "products" || resource === "accounts" || resource === "payments") {
+  if (resource === "products" || resource === "accounts" || resource === "payments" || resource === "checks") {
     const table = resource;
     const { data, error } = await scopedParasutTable<MirrorRecord>(admin, table, activeCompanyId, "*").eq("parasut_id", parasutId).maybeSingle();
     if (error) throw new Error(error.message);

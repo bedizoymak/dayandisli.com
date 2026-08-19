@@ -26,6 +26,7 @@ import {
   flowTransactions,
   type CashAccount,
 } from "./cashReportData";
+import { OpenChecksReportSection } from "./checks/OpenChecksReportSection";
 import "./finance-reports.css";
 
 function Header<T>({
@@ -242,6 +243,7 @@ export function PaymentsReportPage() {
           },
         }}
       />
+      <OpenChecksReportSection direction="issued" title="Yaklaşan Ödemeler — Açık Verilen Çekler" />
       <DateFilters />
       <section className="report-kpis">
         {paymentsReportKpis.map((kpi) => (

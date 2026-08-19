@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { assertCreateCustomerAllowed, computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResync, parseCreateCustomerRequestBody, toSafeResponse } from "./handlers.ts";
 import { SyncAlreadyRunningError } from "../../../server/parasut/types.ts";
@@ -246,5 +247,15 @@ describe("handleResync", () => {
     expect(response.pagesProcessedThisInvocation).toBe(2);
     expect(response.totalPagesProcessed).toBe(8);
     expect(response.resumeAfterSeconds).toBe(1);
+  });
+});
+
+describe("parasut-write-api checks resync wiring", () => {
+  it("routes checks through the existing GET-only syncChecks wrapper", () => {
+    const source = readFileSync("supabase/functions/parasut-write-api/index.ts", "utf8");
+
+    expect(source).toContain('import { syncChecks } from "../../../server/parasut/sync-checks.ts"');
+    expect(source).toMatch(/checks:\s*\{\s*resourceType:\s*"checks",\s*run:\s*syncChecks\s*\}/);
+    expect(source).toContain("mapping.run(context, { concurrencyLock: true })");
   });
 });

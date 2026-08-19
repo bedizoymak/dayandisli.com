@@ -57,3 +57,8 @@ entrypoint = "./functions/parasut-api/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/parasut-write-api/index.ts"
+
+[functions.checks-api]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/checks-api/index.ts"
