@@ -12,13 +12,12 @@ import { listAllChecks } from "../finance/checks/checksApi";
 import { istanbulTodayIso } from "../finance/checks/checkDomain";
 import type { CheckListRow } from "../finance/checks/types";
 import {
-  buildCustomerLedgerRows,
+  buildAuthoritativeLedgerRows,
+  buildLedgerPrintRows,
   buildPaymentToDocumentMap,
   LEDGER_TYPE_LABELS,
-  type LedgerCheckInput,
-  type LedgerCheckSettlementStatus,
-  type LedgerDocumentRow,
-  type LedgerPaymentRow,
+  statementWarning,
+  type AuthoritativeStatement,
   type LedgerRow,
 } from "./customerLedger";
 
@@ -49,6 +48,7 @@ type DetailResponse = {
   // customerLedger.ts's doc comment and ACCOUNT_STATEMENT_AND_PARASUT_SYNC_AUDIT.md.
   supplierDocuments?: DocumentRow[] | null;
   supplierPayments?: PaymentRow[] | null;
+  statement?: AuthoritativeStatement | null;
 } | null;
 
 type OfferApiRow = {
@@ -133,6 +133,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [supplierDocuments, setSupplierDocuments] = useState<DocumentRow[]>([]);
   const [supplierPayments, setSupplierPayments] = useState<PaymentRow[]>([]);
+  const [statement, setStatement] = useState<AuthoritativeStatement | null>(null);
   const [receivedChecks, setReceivedChecks] = useState<CheckListRow[]>([]);
   const [issuedChecks, setIssuedChecks] = useState<CheckListRow[]>([]);
   const [linkedChecksStatus, setLinkedChecksStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -172,12 +173,14 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
           setPayments([]);
           setSupplierDocuments([]);
           setSupplierPayments([]);
+          setStatement(null);
         } else {
           setContact(response.contact);
           setDocuments(Array.isArray(response.recentDocuments) ? response.recentDocuments : []);
           setPayments(Array.isArray(response.payments) ? response.payments : []);
           setSupplierDocuments(Array.isArray(response.supplierDocuments) ? response.supplierDocuments : []);
           setSupplierPayments(Array.isArray(response.supplierPayments) ? response.supplierPayments : []);
+          setStatement(response.statement ?? null);
         }
         const offersResponse = offersResult.data as { rows?: unknown } | null;
         if (!offersResult.error && offersResponse && Array.isArray(offersResponse.rows)) {
@@ -281,59 +284,13 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
     [documents],
   );
 
-  // A real received/issued check is its own financial event on the
-  // authoritative Paraşüt statement (credit/debit respectively) — see
-  // customerLedger.ts's doc comment. This module only resolves the party
-  // (via checks-api's existing issued_by/given_to-backed partyFromMirror,
-  // already filtered into receivedChecks/issuedChecks by listAllChecks'
-  // contactParasutId filter) and shapes each check into the ledger's input
-  // contract; the actual face-value/direction/fragment-attribution logic
-  // lives in customerLedger.ts.
-  const toLedgerCheck = (check: CheckListRow, direction: "received" | "issued"): LedgerCheckInput => ({
-    id: check.id,
-    direction,
-    date: check.issueDate || check.dueDate || "",
-    dueDate: check.dueDate,
-    currency: check.currency ?? "TRY",
-    originalAmount: check.originalAmount,
-    // Only a TRY/TRL check's own face value is a TRY amount by definition;
-    // a foreign-currency check has no reliable TRY conversion available at
-    // this layer (checks-api does not expose remaining_in_trl — see the
-    // audit report) — customerLedger.ts's resolveCheckTryAmount() shows the
-    // check without counting a guessed figure rather than fabricate one.
-    amountTry: check.currency === "TRY" ? check.originalAmount : null,
-    settlementStatus: (check.settlementStatus as LedgerCheckSettlementStatus) ?? "open",
-    description: [
-      check.checkNumber ? `Çek ${check.checkNumber}` : "Çek no —",
-      check.bankName || "Banka —",
-      check.dueDate ? `Vade ${check.dueDate}` : "Vade —",
-      check.sourceLabel,
-    ].join(" · "),
-  });
-
   const ledgerRows = useMemo<LedgerRow[]>(
-    () =>
-      buildCustomerLedgerRows({
-        contactParasutId: customerId ?? "",
-        documents: documents as LedgerDocumentRow[],
-        payments: payments as LedgerPaymentRow[],
-        supplierDocuments: supplierDocuments as LedgerDocumentRow[],
-        supplierPayments: supplierPayments as LedgerPaymentRow[],
-        receivedChecks: receivedChecks.map((check) => toLedgerCheck(check, "received")),
-        issuedChecks: issuedChecks.map((check) => toLedgerCheck(check, "issued")),
-        trlBalance: numericValue(contact?.attributes?.trl_balance),
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- toLedgerCheck is a stable pure mapper recreated each render; including it would invalidate the memo every render for no benefit
-    [documents, payments, supplierDocuments, supplierPayments, receivedChecks, issuedChecks, customerId, contact],
+    () => buildAuthoritativeLedgerRows(statement, customerId ?? ""),
+    [statement, customerId],
   );
 
-  const ledgerWithBalance = useMemo(() => {
-    let running = 0;
-    return ledgerRows.map((row) => {
-      running += row.debit - row.credit;
-      return { ...row, balance: running };
-    });
-  }, [ledgerRows]);
+  const ledgerWithBalance = ledgerRows;
+  const reconciliationWarning = useMemo(() => statementWarning(statement, ledgerRows), [statement, ledgerRows]);
 
   const totalDebit = ledgerRows.reduce((sum, row) => sum + row.debit, 0);
   const totalCredit = ledgerRows.reduce((sum, row) => sum + row.credit, 0);
@@ -455,6 +412,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
       { totalDebit: rangeFilteredLedger.totalDebit, totalCredit: rangeFilteredLedger.totalCredit, totalBalance: rangeFilteredLedger.totalBalance },
       rangeFilteredLedger.carryForward,
       `${window.location.origin}${import.meta.env.BASE_URL}logo-header.png`,
+      reconciliationWarning,
     );
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
     const printWindow = window.open(url, "_blank", "noopener,noreferrer");
@@ -555,12 +513,10 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
           </div>
         </div>
         <div className="crm-empty" style={{ marginBottom: "0.5rem" }}>
-          Bu tablodaki her satır Paraşüt'teki gerçek bir kayıttır (fatura, tahsilat, ödeme veya çek); tutarlar bölünmez,
-          birleştirilmez veya tekrarlanmaz — bir çek her zaman tam nominal tutarıyla tek satır olarak görünür. "(türetilmiş)"
-          işaretli Devir Bakiyesi satırı Paraşüt'te ayrı bir kayıt değildir; bilinen tüm hareketler ile Paraşüt'ün trl_balance
-          değeri arasındaki farktan hesaplanır ve yalnızca bu fark anlamlıysa eklenir. Güncel, kesin bakiye için üstteki
-          Müşteri Bakiyesi kartını (Paraşüt trl_balance) esas alın.
+          Her satır Paraşüt işlem geçmişindeki tek bir gerçek transaction kimliğidir. Tahsisler yalnızca bağlantı ayrıntısıdır
+          ve bakiyeyi ikinci kez etkilemez; açılış bakiyesi yalnızca Paraşüt'ün gerçek açılış-bakiyesi işlemi varsa görünür.
         </div>
+        {reconciliationWarning && <div className="crm-empty" role="alert" style={{ marginBottom: "0.5rem", color: "#b42318" }}>{reconciliationWarning}</div>}
         {linkedChecksStatus === "loading" && (
           <div className="crm-empty" style={{ marginBottom: "0.5rem" }}>
             Bağlı çek hareketleri yükleniyor…
@@ -592,11 +548,10 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
                 </tr>
               )}
               {rangeFilteredLedger.rows.map((row) => (
-                <tr key={`${row.sourceResource}:${row.sourceId}`} title={row.provenance === "derived" ? row.derivationNote : row.attributionNote}>
+                <tr key={row.transactionId} title={`Paraşüt transaction ${row.transactionId}`}>
                   <td>{row.date || "—"}</td>
                   <td>
                     {LEDGER_TYPE_LABELS[row.transactionType]}
-                    {row.provenance === "derived" && <sup title={row.derivationNote}> (türetilmiş)</sup>}
                   </td>
                   <td>{row.description || "—"}</td>
                   <td>{row.debit ? formatMoney(row.debit) : "—"}</td>
@@ -681,22 +636,23 @@ const escapeHtml = (value: unknown) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] ?? character,
   );
 
-function buildLedgerPrintHtml(
+export function buildLedgerPrintHtml(
   title: string,
   subtitle: string,
   rows: (LedgerRow & { balance: number })[],
   totals: { totalDebit: number; totalCredit: number; totalBalance: number },
   carryForward: number | null,
   logoUrl: string,
+  warning: string | null = null,
 ) {
   const headers = ["Tarih", "İşlem", "Açıklama", "Borç", "Alacak", "Bakiye"];
   const carryRow =
     carryForward !== null
       ? `<tr class="carry"><td>—</td><td>Devir Bakiyesi</td><td>Seçilen dönem öncesi gerçek bakiye</td><td>—</td><td>—</td><td>${escapeHtml(formatSignedBalance(carryForward))}</td></tr>`
       : "";
-  const bodyRows = rows
+  const bodyRows = buildLedgerPrintRows(rows)
     .map((row) => {
-      const typeLabel = LEDGER_TYPE_LABELS[row.transactionType] + (row.provenance === "derived" ? " (türetilmiş)" : "");
+      const typeLabel = LEDGER_TYPE_LABELS[row.transactionType];
       return `<tr><td>${escapeHtml(row.date || "—")}</td><td>${escapeHtml(typeLabel)}</td><td>${escapeHtml(row.description || "—")}</td><td>${escapeHtml(row.debit ? formatMoney(row.debit) : "—")}</td><td>${escapeHtml(row.credit ? formatMoney(row.credit) : "—")}</td><td>${escapeHtml(formatSignedBalance(row.balance))}</td></tr>`;
     })
     .join("");
@@ -719,7 +675,7 @@ tr.carry td{font-style:italic;background:#f4f7fa}
 .page-number:after{content:"Sayfa " counter(page) " / " counter(pages)}
 @page{size:A4;margin:12mm 12mm 18mm 12mm}
 @media print{.page-number{position:fixed;bottom:6mm;right:12mm;font-size:9px;color:#687684}}
-</style></head><body><div class="sheet"><header><div><strong>Dayan Dişli</strong><h1>${escapeHtml(title)}</h1><div class="meta">${escapeHtml(subtitle)}</div></div><img src="${escapeHtml(logoUrl)}" alt="Dayan Dişli" /></header><section class="pdf-kpis"><article><span>Toplam Borç</span><strong>${escapeHtml(formatMoney(totals.totalDebit))}</strong></article><article><span>Toplam Alacak</span><strong>${escapeHtml(formatMoney(totals.totalCredit))}</strong></article><article><span>Toplam Bakiye</span><strong>${escapeHtml(formatSignedBalance(totals.totalBalance))}</strong></article></section><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${carryRow}${bodyRows}</tbody></table><div class="page-number"></div></div><script>window.onload=()=>window.print();</script></body></html>`;
+</style></head><body><div class="sheet"><header><div><strong>Dayan Dişli</strong><h1>${escapeHtml(title)}</h1><div class="meta">${escapeHtml(subtitle)}</div></div><img src="${escapeHtml(logoUrl)}" alt="Dayan Dişli" /></header>${warning ? `<div role="alert" style="border:2px solid #b42318;color:#b42318;padding:8px;margin:10px 0">${escapeHtml(warning)}</div>` : ""}<section class="pdf-kpis"><article><span>Toplam Borç</span><strong>${escapeHtml(formatMoney(totals.totalDebit))}</strong></article><article><span>Toplam Alacak</span><strong>${escapeHtml(formatMoney(totals.totalCredit))}</strong></article><article><span>Toplam Bakiye</span><strong>${escapeHtml(formatSignedBalance(totals.totalBalance))}</strong></article></section><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${carryRow}${bodyRows}</tbody></table><div class="page-number"></div></div><script>window.onload=()=>window.print();</script></body></html>`;
 }
 
 function InvoiceHistory({
