@@ -24,7 +24,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useErpIdentity } from "@/features/erp-shell/erpIdentity";
+import { getInitials, resolveDisplayName, useErpIdentity } from "@/features/erp-shell/erpIdentity";
 import { quickActions, searchRoutes, sidebarItems } from "@/features/erp-shell/shellNavigationData";
 import { financeNavigation } from "@/features/finance/financeNavigation";
 import { crmSubmenu } from "@/features/crm/crmCustomerData";
@@ -35,17 +35,6 @@ import "@/features/sales/sales.css";
 import "@/features/erp-shell/erp-shell.css";
 
 const navIcons = [Gauge, Star, WalletCards, HeartHandshake, BarChart3, ReceiptText, ShoppingCart, Factory, Wrench, Users, Globe2, Settings];
-
-function initials(value: string) {
-  return (
-    value
-      .split(/[\s.@_-]+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toLocaleUpperCase("tr-TR"))
-      .join("") || "—"
-  );
-}
 
 function sectionForPath(pathname: string): string | null {
   if (pathname.startsWith("/apps/finance")) return "finance";
@@ -65,7 +54,7 @@ function financeGroupForPath(pathname: string): string | null {
 export default function ErpLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { erpUser, roles, signOut } = useErpIdentity();
+  const { erpUser, roles, signOut, isLoading } = useErpIdentity();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -83,8 +72,7 @@ export default function ErpLayout() {
   const quickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeSection = sectionForPath(location.pathname);
-  const userLabel = erpUser?.email?.split("@")[0]?.replace(/[._-]+/g, " ") || "—";
-  const displayName = userLabel.replace(/(^|\s)\S/g, (letter) => letter.toLocaleUpperCase("tr-TR"));
+  const displayName = resolveDisplayName(erpUser, isLoading);
   const roleLabel = roles[0] || "—";
 
   const matches = useMemo(() => {
@@ -352,7 +340,7 @@ export default function ErpLayout() {
               <span>Çıkış Yap</span>
             </button>
             <div className="erp-profile">
-              <span className="erp-avatar">{initials(displayName)}</span>
+              <span className="erp-avatar">{getInitials(displayName)}</span>
               <span className="erp-profile-copy">
                 <strong>{displayName}</strong>
                 <small>{roleLabel}</small>
@@ -420,7 +408,7 @@ export default function ErpLayout() {
               </button>
               <div className="erp-user-menu-wrap" ref={userMenuRef}>
                 <button className="erp-avatar erp-topbar-avatar" onClick={() => setUserMenuOpen((value) => !value)} aria-label="Kullanıcı menüsü" aria-expanded={userMenuOpen}>
-                  {initials(displayName)}
+                  {getInitials(displayName)}
                 </button>
                 {userMenuOpen && (
                   <div className="erp-user-menu">

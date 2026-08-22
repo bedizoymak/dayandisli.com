@@ -81,22 +81,26 @@ describe("no precise coordinates persisted or logged", () => {
     }
   });
 
-  // Superseded by the day-over-day change feature: the function now
-  // intentionally writes daily closing values (never coordinates) to
-  // market_rate_history via the service role. The privacy guarantee this
-  // test protects — caller coordinates are never persisted — is preserved
-  // below, scoped to what actually matters: no write call ever carries a
-  // coordinate field, and the only table ever written to is
-  // market_rate_history.
-  it("the market-data function's only persistence is market_rate_history, and no write ever includes coordinates", () => {
+  // Superseded by the day-over-day change feature and the MetalpriceAPI
+  // rate-limit cache: the function now intentionally writes daily closing
+  // values (never coordinates) to market_rate_history, and rate-limit state
+  // (last call time, monthly count, last successful EUR/XAU/XAG rates —
+  // never coordinates) to metalprice_api_state, both via the service role.
+  // The privacy guarantee this test protects — caller coordinates are never
+  // persisted — is preserved below, scoped to what actually matters: no
+  // write/RPC call ever carries a coordinate field, and persistence is only
+  // ever to these two known tables/functions.
+  it("the market-data function's only persistence is market_rate_history and metalprice_api_state, and no write ever includes coordinates", () => {
     for (const file of ["supabase/functions/market-data/index.ts", "supabase/functions/market-data/handlers.ts"]) {
       const source = readSource(file);
-      expect(source).not.toMatch(/\.(insert|update|upsert|delete)\([^)]*(latitude|longitude|\blat\b|\blon\b)/is);
+      expect(source).not.toMatch(/\.(insert|update|upsert|delete|rpc)\([^)]*(latitude|longitude|\blat\b|\blon\b)/is);
     }
     const indexSource = readSource("supabase/functions/market-data/index.ts");
     const writeCalls = indexSource.match(/\.(insert|update|upsert|delete)\(/g) ?? [];
     expect(writeCalls.length).toBeGreaterThan(0);
     expect(indexSource).toMatch(/from\(["']market_rate_history["']\)/);
+    expect(indexSource).toMatch(/rpc\(["']claim_metalprice_refresh["']/);
+    expect(indexSource).toMatch(/rpc\(["']record_metalprice_result["']/);
   });
 
   it("the frontend never persists geolocation coordinates (no localStorage/sessionStorage write of lat/lon)", () => {

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { quickActions } from "@/features/erp-shell/shellNavigationData";
-import { useErpIdentity } from "@/features/erp-shell/erpIdentity";
+import { resolveDisplayName, useErpIdentity } from "@/features/erp-shell/erpIdentity";
 import { listAllChecks } from "@/features/finance/checks/checksApi";
 import { buildCheckReminder, checkDirectionLabel, checkPartyLabel, formatCheckMoney, istanbulTodayIso } from "@/features/finance/checks/checkDomain";
 import type { CheckListRow } from "@/features/finance/checks/types";
@@ -42,7 +42,7 @@ const weatherIcons: Record<WeatherIconKey, LucideIcon> = {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { erpUser, hasPermission } = useErpIdentity();
+  const { erpUser, hasPermission, isLoading } = useErpIdentity();
   const canViewChecks = hasPermission("finance.view");
   const [now] = useState(() => new Date());
   const [checks, setChecks] = useState<CheckListRow[]>([]);
@@ -95,10 +95,7 @@ export default function DashboardPage() {
   })
     .format(now)
     .replace(",", "");
-  const userLabel = erpUser?.email?.split("@")[0]?.replace(/[._-]+/g, " ") ?? "";
-  const displayName = userLabel
-    ? userLabel.replace(/(^|\s)\S/g, (letter) => letter.toLocaleUpperCase("tr-TR"))
-    : "—";
+  const displayName = resolveDisplayName(erpUser, isLoading);
   const todayIso = istanbulTodayIso(now);
   const reminders = checks
     .map((check) => ({ check, reminder: buildCheckReminder(check, todayIso) }))

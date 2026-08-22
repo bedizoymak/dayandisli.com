@@ -3,12 +3,14 @@ import {
   buildMarketDataResponse,
   fetchCurrency,
   fetchGold,
+  fetchMetalRates,
   fetchWeather,
   mapWeatherCodeToTurkish,
   reverseGeocode,
   roundCoordinate,
   type MarketDataDeps,
   type MarketHistoryRepository,
+  type MetalPriceCacheRepository,
 } from "./handlers";
 
 const NOW = new Date("2026-07-24T04:15:00.000Z"); // 2026-07-24 07:15 Europe/Istanbul
@@ -22,6 +24,24 @@ function jsonResponse(body: unknown, opts: { ok?: boolean; status?: number; cont
   } as Response;
 }
 
+/** Routes a mocked fetchImpl by matching a substring of the requested URL —
+ * used wherever a test exercises more than one provider at once (e.g.
+ * buildMarketDataResponse), since fetchRatesData now awaits currency before
+ * starting gold (see fetchRatesData's doc comment), so the exact dispatch
+ * order of fetchImpl calls is an internal detail these tests should not
+ * depend on. */
+function fetchByUrl(routes: Record<string, unknown | { ok: false; status: number }>): ReturnType<typeof vi.fn> {
+  return vi.fn(async (url: string) => {
+    const key = Object.keys(routes).find((candidate) => String(url).includes(candidate));
+    if (!key) throw new Error(`unexpected fetch url in test: ${url}`);
+    const route = routes[key];
+    if (typeof route === "object" && route !== null && "ok" in route && route.ok === false) {
+      return jsonResponse({}, { ok: false, status: (route as { status: number }).status });
+    }
+    return jsonResponse(route);
+  });
+}
+
 /** Defaults to "no history available" (previousClose always null, writes
  * are no-ops) so existing tests that don't care about day-over-day change
  * don't need to know about the history repository at all. */
@@ -29,6 +49,18 @@ function fakeHistory(overrides: Partial<MarketHistoryRepository> = {}): MarketHi
   return {
     getPreviousClose: vi.fn().mockResolvedValue(null),
     recordClose: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+/** Defaults to "always claims, no prior cache" — the common case for tests
+ * that only care about the HTTP/parsing/conversion logic, not the rate
+ * limiter itself (see the dedicated "fetchMetalRates (rate limit + cache)"
+ * suite below for that). */
+function fakeMetalPriceCache(overrides: Partial<MetalPriceCacheRepository> = {}): MetalPriceCacheRepository {
+  return {
+    claimRefresh: vi.fn().mockResolvedValue({ claimed: true, cachedRates: null }),
+    recordResult: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -41,6 +73,7 @@ function deps(overrides: Partial<MarketDataDeps> = {}): MarketDataDeps {
     weatherApiKey: "test-key",
     coordinates: null,
     history: fakeHistory(),
+    metalPriceCache: fakeMetalPriceCache(),
     ...overrides,
   };
 }
@@ -65,9 +98,23 @@ const WEATHER_OK = {
   location: { lat: 41.0082, lon: 28.9784 },
 };
 // Matches the real api.metalpriceapi.com/v1/latest response shape for
-// base=XAU&currencies=TRY — rates.TRY is the TRY price of 1 troy ounce.
-const GOLD_OUNCE_PRICE_TRY = 150881.2;
-const GOLD_OK = { success: true, base: "XAU", timestamp: 1753333333, rates: { TRY: GOLD_OUNCE_PRICE_TRY } };
+// base=USD&currencies=EUR,XAU,XAG — each rates.<X> is the amount of that
+// currency/metal equal to 1 USD (documented pattern: "1 <base> =
+// rates.<quote> <quote>").
+const XAU_PER_USD = 0.0003; // => ~$3,333.33/troy ounce
+const METAL_RATES_OK = {
+  success: true,
+  base: "USD",
+  timestamp: 1753333333,
+  rates: { EUR: 0.86, XAU: XAU_PER_USD, XAG: 0.025 },
+};
+const METAL_RATES_PARSED = { eurPerUsd: 0.86, xauPerUsd: XAU_PER_USD, xagPerUsd: 0.025 };
+/** gramTry = (1/xauPerUsd / OUNCE_TO_GRAM) * usdTry — the same
+ * gram-conversion math the old direct base=XAU&currencies=TRY response
+ * used, just fed by a USD-cross-rate now instead of a direct TRY quote. */
+function expectedGramTry(usdTry: number): number {
+  return (1 / XAU_PER_USD / 31.1034768) * usdTry;
+}
 // Matches a real nominatim.openstreetmap.org/reverse response for an
 // Istanbul coordinate — confirmed against the live API.
 const NOMINATIM_EYUPSULTAN = {
@@ -290,69 +337,121 @@ describe("mapWeatherCodeToTurkish", () => {
   });
 });
 
-describe("fetchGold", () => {
-  it("converts the ounce price to a gram price", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(GOLD_OK));
-    const result = await fetchGold(deps({ fetchImpl }));
-    expect(result.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
+describe("fetchMetalRates (rate limit + cache)", () => {
+  it("throws missing_credential when no GOLD_API_KEY is configured, without claiming or calling fetch", async () => {
+    const fetchImpl = vi.fn();
+    const claimRefresh = vi.fn();
+    await expect(fetchMetalRates(deps({ fetchImpl, goldApiKey: null, metalPriceCache: fakeMetalPriceCache({ claimRefresh }) }))).rejects.toThrow(
+      "missing_credential",
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(claimRefresh).not.toHaveBeenCalled();
+  });
+
+  it("calls MetalpriceAPI and records success when the claim is granted", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(METAL_RATES_OK));
+    const recordResult = vi.fn().mockResolvedValue(undefined);
+    const result = await fetchMetalRates(deps({ fetchImpl, metalPriceCache: fakeMetalPriceCache({ recordResult }) }));
+    expect(result).toEqual(METAL_RATES_PARSED);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0][0]).toContain("base=USD&currencies=EUR,XAU,XAG");
+    expect(recordResult).toHaveBeenCalledWith(NOW, true, METAL_RATES_PARSED, null);
+  });
+
+  it("never calls the provider and reuses the cached rates when the claim is not granted (rate-limited)", async () => {
+    const fetchImpl = vi.fn();
+    const claimRefresh = vi.fn().mockResolvedValue({ claimed: false, cachedRates: METAL_RATES_PARSED });
+    const result = await fetchMetalRates(deps({ fetchImpl, metalPriceCache: fakeMetalPriceCache({ claimRefresh }) }));
+    expect(result).toEqual(METAL_RATES_PARSED);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("throws when the claim is not granted and there is no cached data yet (first-ever call, refresh not due)", async () => {
+    const claimRefresh = vi.fn().mockResolvedValue({ claimed: false, cachedRates: null });
+    await expect(fetchMetalRates(deps({ metalPriceCache: fakeMetalPriceCache({ claimRefresh }) }))).rejects.toThrow();
+  });
+
+  it("falls back to the cached rates and records the failure when a claimed provider call fails", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: false, error: { statusCode: 105, message: "quota exceeded" } }));
+    const claimRefresh = vi.fn().mockResolvedValue({ claimed: true, cachedRates: METAL_RATES_PARSED });
+    const recordResult = vi.fn().mockResolvedValue(undefined);
+    const result = await fetchMetalRates(deps({ fetchImpl, metalPriceCache: fakeMetalPriceCache({ claimRefresh, recordResult }) }));
+    expect(result).toEqual(METAL_RATES_PARSED);
+    expect(recordResult).toHaveBeenCalledWith(NOW, false, null, expect.stringContaining("quota exceeded"));
+  });
+
+  it("rethrows when a claimed provider call fails and there is no cached data to fall back to", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}, { ok: false, status: 500 }));
+    const claimRefresh = vi.fn().mockResolvedValue({ claimed: true, cachedRates: null });
+    await expect(fetchMetalRates(deps({ fetchImpl, metalPriceCache: fakeMetalPriceCache({ claimRefresh }) }))).rejects.toThrow();
+  });
+
+  it("rejects a response with success:false even though HTTP status is 200 (MetalpriceAPI's actual failure signal)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: false, error: { statusCode: 101, message: "User did not supply an API Key" } }));
+    await expect(fetchMetalRates(deps({ fetchImpl }))).rejects.toThrow();
+  });
+
+  it("rejects a non-positive XAU rate", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: true, rates: { EUR: 0.86, XAU: 0, XAG: 0.025 } }));
+    await expect(fetchMetalRates(deps({ fetchImpl }))).rejects.toThrow();
+  });
+
+  it("rejects a missing rates.EUR/XAU/XAG field", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: true, rates: { XAU: XAU_PER_USD } }));
+    await expect(fetchMetalRates(deps({ fetchImpl }))).rejects.toThrow();
+  });
+});
+
+describe("fetchGold (USD/TRY cross-rate conversion)", () => {
+  it("converts the USD-relative XAU rate to a gram/TRY price using the supplied USD/TRY rate", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(METAL_RATES_OK));
+    const result = await fetchGold(deps({ fetchImpl }), 47.23);
+    expect(result.gramTry).toBeCloseTo(expectedGramTry(47.23), 6);
     expect(result.gramTryPreviousClose).toBeNull();
     expect(result.updatedAt).toBe(NOW.toISOString());
     expect(result.source).toBe("metalpriceapi.com");
   });
 
   it("returns the stored previous close and records today's close", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(GOLD_OK));
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(METAL_RATES_OK));
     const getPreviousClose = vi.fn().mockResolvedValue(4700.5);
     const recordClose = vi.fn().mockResolvedValue(undefined);
-    const result = await fetchGold(deps({ fetchImpl, history: fakeHistory({ getPreviousClose, recordClose }) }));
+    const result = await fetchGold(deps({ fetchImpl, history: fakeHistory({ getPreviousClose, recordClose }) }), 47.23);
     expect(result.gramTryPreviousClose).toBe(4700.5);
     expect(getPreviousClose).toHaveBeenCalledWith("gramTry", "2026-07-24");
     expect(recordClose).toHaveBeenCalledWith("gramTry", "2026-07-24", result.gramTry, "metalpriceapi.com");
   });
 
-  it("rejects a response with success:false even though HTTP status is 200 (MetalpriceAPI's actual failure signal)", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: false, error: { statusCode: 101, message: "User did not supply an API Key" } }));
-    await expect(fetchGold(deps({ fetchImpl }))).rejects.toThrow();
-  });
-
-  it("throws missing_credential when no GOLD_API_KEY is configured, without calling fetch", async () => {
+  it("reuses the cached metal rates (no fetch call) when a refresh is not due, and still converts with the fresh USD/TRY rate", async () => {
     const fetchImpl = vi.fn();
-    await expect(fetchGold(deps({ fetchImpl, goldApiKey: null }))).rejects.toThrow("missing_credential");
+    const claimRefresh = vi.fn().mockResolvedValue({ claimed: false, cachedRates: METAL_RATES_PARSED });
+    const result = await fetchGold(deps({ fetchImpl, metalPriceCache: fakeMetalPriceCache({ claimRefresh }) }), 50);
     expect(fetchImpl).not.toHaveBeenCalled();
-  });
-
-  it("rejects a non-positive gold price", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: true, rates: { TRY: 0 } }));
-    await expect(fetchGold(deps({ fetchImpl }))).rejects.toThrow();
-  });
-
-  it("rejects a missing rates.TRY field", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ success: true, rates: {} }));
-    await expect(fetchGold(deps({ fetchImpl }))).rejects.toThrow();
+    expect(result.gramTry).toBeCloseTo(expectedGramTry(50), 6);
   });
 });
 
 describe("buildMarketDataResponse (failure isolation)", () => {
   it("returns all three sections when every provider succeeds", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(USD_TCMB))
-      .mockResolvedValueOnce(jsonResponse(EUR_TCMB))
-      .mockResolvedValueOnce(jsonResponse(GOLD_OK))
-      .mockResolvedValueOnce(jsonResponse(WEATHER_OK));
+    const fetchImpl = fetchByUrl({
+      "frankfurter.dev/v2/rate/USD": USD_TCMB,
+      "frankfurter.dev/v2/rate/EUR": EUR_TCMB,
+      "tomorrow.io": WEATHER_OK,
+      "metalpriceapi.com": METAL_RATES_OK,
+    });
     const result = await buildMarketDataResponse(deps({ fetchImpl }));
     expect(result.currency).not.toBeNull();
-    expect(result.gold.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
+    expect(result.gold.gramTry).toBeCloseTo(expectedGramTry(47.23), 6);
     expect(result.weather).not.toBeNull();
     expect(result.errors).toEqual({ currency: null, gold: null, weather: null });
   });
 
-  it("keeps currency and weather valid when gold fails", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(USD_TCMB))
-      .mockResolvedValueOnce(jsonResponse(EUR_TCMB))
-      .mockResolvedValueOnce(jsonResponse(WEATHER_OK));
+  it("keeps currency and weather valid when gold's credential is missing", async () => {
+    const fetchImpl = fetchByUrl({
+      "frankfurter.dev/v2/rate/USD": USD_TCMB,
+      "frankfurter.dev/v2/rate/EUR": EUR_TCMB,
+      "tomorrow.io": WEATHER_OK,
+    });
     const result = await buildMarketDataResponse(deps({ fetchImpl, goldApiKey: null }));
     expect(result.currency).not.toBeNull();
     expect(result.weather).not.toBeNull();
@@ -361,43 +460,44 @@ describe("buildMarketDataResponse (failure isolation)", () => {
   });
 
   it("keeps currency and gold valid when weather fails", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(USD_TCMB))
-      .mockResolvedValueOnce(jsonResponse(EUR_TCMB))
-      .mockResolvedValueOnce(jsonResponse(GOLD_OK))
-      .mockResolvedValueOnce(jsonResponse({}, { ok: false, status: 500 }));
+    const fetchImpl = fetchByUrl({
+      "frankfurter.dev/v2/rate/USD": USD_TCMB,
+      "frankfurter.dev/v2/rate/EUR": EUR_TCMB,
+      "tomorrow.io": { ok: false, status: 500 },
+      "metalpriceapi.com": METAL_RATES_OK,
+    });
     const result = await buildMarketDataResponse(deps({ fetchImpl }));
     expect(result.currency).not.toBeNull();
-    expect(result.gold.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
+    expect(result.gold.gramTry).toBeCloseTo(expectedGramTry(47.23), 6);
     expect(result.weather).toBeNull();
     expect(result.errors.weather).toBe("unavailable");
   });
 
   it("keeps currency and gold valid when weather is missing its credential", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(USD_TCMB))
-      .mockResolvedValueOnce(jsonResponse(EUR_TCMB))
-      .mockResolvedValueOnce(jsonResponse(GOLD_OK));
+    const fetchImpl = fetchByUrl({
+      "frankfurter.dev/v2/rate/USD": USD_TCMB,
+      "frankfurter.dev/v2/rate/EUR": EUR_TCMB,
+      "metalpriceapi.com": METAL_RATES_OK,
+    });
     const result = await buildMarketDataResponse(deps({ fetchImpl, weatherApiKey: null }));
     expect(result.currency).not.toBeNull();
-    expect(result.gold.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
+    expect(result.gold.gramTry).toBeCloseTo(expectedGramTry(47.23), 6);
     expect(result.weather).toBeNull();
     expect(result.errors.weather).toBe("missing_credential");
   });
 
-  it("isolates a partial failure (currency down, gold and weather fine)", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse({}, { ok: false, status: 503 }))
-      .mockResolvedValueOnce(jsonResponse(EUR_TCMB))
-      .mockResolvedValueOnce(jsonResponse(GOLD_OK))
-      .mockResolvedValueOnce(jsonResponse(WEATHER_OK));
+  it("marks gold unavailable (not missing_credential) when currency fails, even though weather is unaffected — gold's TRY conversion now needs the USD/TRY rate MetalpriceAPI's base=USD response no longer carries directly", async () => {
+    const fetchImpl = fetchByUrl({
+      "frankfurter.dev/v2/rate/USD": { ok: false, status: 503 },
+      "frankfurter.dev/v2/rate/EUR": EUR_TCMB,
+      "tomorrow.io": WEATHER_OK,
+      "metalpriceapi.com": METAL_RATES_OK,
+    });
     const result = await buildMarketDataResponse(deps({ fetchImpl }));
     expect(result.currency).toBeNull();
     expect(result.errors.currency).toBe("unavailable");
-    expect(result.gold.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
+    expect(result.gold.gramTry).toBeNull();
+    expect(result.errors.gold).toBe("unavailable");
     expect(result.weather).not.toBeNull();
   });
 
@@ -407,7 +507,10 @@ describe("buildMarketDataResponse (failure isolation)", () => {
     expect(result.currency).toBeNull();
     expect(result.weather).toBeNull();
     expect(result.gold.gramTry).toBeNull();
-    expect(result.errors).toEqual({ currency: "unavailable", gold: "missing_credential", weather: "unavailable" });
+    // Currency fails first, so gold is never even reached to discover its
+    // own credential is also missing — it reports "unavailable" here, not
+    // "missing_credential" (see the dedicated coupling test above).
+    expect(result.errors).toEqual({ currency: "unavailable", gold: "unavailable", weather: "unavailable" });
     expect(result.fetchedAt).toBe(NOW.toISOString());
   });
 });

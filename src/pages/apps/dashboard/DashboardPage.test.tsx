@@ -39,9 +39,13 @@ const checksResult = {
 };
 
 vi.mock("@/features/finance/checks/checksApi", () => ({ listAllChecks }));
-vi.mock("@/features/erp-shell/erpIdentity", () => ({
-  useErpIdentity: () => ({ erpUser: { email: "finance.user@dayandisli.com" }, hasPermission: () => true }),
-}));
+vi.mock("@/features/erp-shell/erpIdentity", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/erp-shell/erpIdentity")>();
+  return {
+    ...actual,
+    useErpIdentity: () => ({ erpUser: { email: "finance.user@dayandisli.com" }, hasPermission: () => true }),
+  };
+});
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { functions: { invoke: (...args: unknown[]) => invoke(...args) } },
 }));

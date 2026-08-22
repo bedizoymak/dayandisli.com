@@ -6,8 +6,15 @@
 //  - Currency: Frankfurter (api.frankfurter.dev), TCMB indicative rates.
 //  - Weather: Tomorrow.io realtime weather, at the caller's coordinates
 //    (fixed Istanbul coordinates when none are supplied).
-//  - Gold: MetalpriceAPI (https://api.metalpriceapi.com/v1/latest,
-//    base=XAU&currencies=TRY&api_key=..., ounce price converted to grams).
+//  - Gold/metals: MetalpriceAPI (https://api.metalpriceapi.com/v1/latest,
+//    base=USD&currencies=EUR,XAU,XAG&api_key=...). This shape returns
+//    EUR/XAU/XAG *per 1 USD* (not TRY directly), so the gram/TRY gold price
+//    is derived by combining it with the USD/TRY rate from fetchCurrency —
+//    see fetchGold below. MetalpriceAPI calls are rate-limited to at most
+//    once per 8 hours and 99/month via a Postgres-backed claim (see
+//    MetalPriceCacheRepository / metalprice_api_state migration) so the
+//    quota is shared globally across every caller and edge function
+//    instance, and survives cold starts/restarts.
 //  - Reverse geocoding: Nominatim (OpenStreetMap), no API key. Open-Meteo
 //    was the originally preferred provider but does not offer reverse
 //    geocoding (confirmed against its docs) — Nominatim's `address.town`
@@ -72,6 +79,46 @@ export const noopHistoryRepository: MarketHistoryRepository = {
   recordClose: async () => {},
 };
 
+/** Raw MetalpriceAPI /v1/latest rates with base=USD — each field is the
+ * amount of that currency/metal equal to 1 USD (documented pattern: "1
+ * <base> = rates.<quote> <quote>"). EUR/XAG are fetched (required by the
+ * single combined request) but only XAU currently feeds the gold/TRY card. */
+export interface MetalRates {
+  eurPerUsd: number;
+  xauPerUsd: number;
+  xagPerUsd: number;
+}
+
+export interface MetalPriceClaim {
+  /** true if this call won the right to hit MetalpriceAPI right now (8h
+   * elapsed, monthly cap not reached, no other request currently in
+   * flight). false means "reuse cachedRates" — never treat it as an error. */
+  claimed: boolean;
+  cachedRates: MetalRates | null;
+}
+
+/** Backs the 8-hour/99-per-month MetalpriceAPI rate limit. Must be a
+ * globally shared, persistent, race-safe store (see
+ * supabase/migrations/20260822100000_metalprice_api_state.sql) — an
+ * in-memory cache would neither survive a cold start nor coordinate across
+ * concurrent edge function instances. */
+export interface MetalPriceCacheRepository {
+  claimRefresh(now: Date): Promise<MetalPriceClaim>;
+  recordResult(now: Date, success: boolean, rates: MetalRates | null, errorMessage: string | null): Promise<void>;
+}
+
+/** Fails closed (claimed: false, no cached rates) rather than open — without
+ * a working persistent store there is no way to safely enforce the monthly
+ * cap, and the cap is a hard requirement ("must NEVER exceed 99 calls"), so
+ * degrading to "call anyway" is not an acceptable fallback here (unlike
+ * noopHistoryRepository, where the worst case is just no previous-close
+ * shown). In practice this path is unreachable in production, since
+ * SUPABASE_SERVICE_ROLE_KEY is auto-provisioned for every edge function. */
+export const noopMetalPriceCacheRepository: MetalPriceCacheRepository = {
+  claimRefresh: async () => ({ claimed: false, cachedRates: null }),
+  recordResult: async () => {},
+};
+
 export interface WeatherInfo {
   temperatureC: number;
   apparentTemperatureC: number;
@@ -102,6 +149,7 @@ export interface MarketDataDeps {
   weatherApiKey: string | null;
   coordinates: Coordinates | null;
   history: MarketHistoryRepository;
+  metalPriceCache: MetalPriceCacheRepository;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -322,25 +370,71 @@ export function mapWeatherCodeToTurkish(code: number): string {
 
 /** MetalpriceAPI's /v1/latest returns HTTP 200 even on failure — the only
  * reliable signal is the `success` field, never response.ok alone. With
- * base=XAU&currencies=TRY, `rates.TRY` is the TRY price of one troy ounce
- * of gold (documented pattern: "1 <base> = rates.<quote> <quote>"). */
-export async function fetchGold(deps: MarketDataDeps): Promise<GoldRate> {
+ * base=USD&currencies=EUR,XAU,XAG, each `rates.<X>` is the amount of that
+ * currency/metal equal to 1 USD (documented pattern: "1 <base> = rates.<quote>
+ * <quote>") — the actual HTTP call, made only when fetchMetalRates has
+ * already won a claim (see below). Never called more than once per claim. */
+async function fetchMetalRatesFromProvider(deps: MarketDataDeps): Promise<MetalRates> {
+  const payload = await fetchJson(
+    deps.fetchImpl,
+    `https://api.metalpriceapi.com/v1/latest?api_key=${encodeURIComponent(deps.goldApiKey!)}&base=USD&currencies=EUR,XAU,XAG`,
+  );
+  if (typeof payload !== "object" || payload === null) throw new Error("malformed metal price response");
+  const record = payload as Record<string, unknown>;
+  if (record.success !== true) throw new Error("metal price provider reported failure: " + JSON.stringify(record.error ?? record));
+
+  const rates = record.rates as Record<string, unknown> | undefined;
+  const eurPerUsd = rates?.EUR;
+  const xauPerUsd = rates?.XAU;
+  const xagPerUsd = rates?.XAG;
+  if (!isPositiveFiniteNumber(eurPerUsd)) throw new Error("invalid EUR rate");
+  if (!isPositiveFiniteNumber(xauPerUsd)) throw new Error("invalid XAU rate");
+  if (!isPositiveFiniteNumber(xagPerUsd)) throw new Error("invalid XAG rate");
+
+  return { eurPerUsd, xauPerUsd, xagPerUsd };
+}
+
+/** Enforces the 8-hour/99-per-month MetalpriceAPI call budget via the
+ * shared Postgres claim (see MetalPriceCacheRepository). Only actually
+ * calls the provider when claimRefresh() grants the claim; otherwise reuses
+ * the last successfully cached rates. A failed provider call also falls
+ * back to the last cached rates rather than failing the whole request, same
+ * as every other provider in this file — only throws when there is truly
+ * no cached data to fall back to (e.g. the very first call ever fails). */
+export async function fetchMetalRates(deps: MarketDataDeps): Promise<MetalRates> {
   if (!deps.goldApiKey) {
     throw new Error("missing_credential");
   }
-  const payload = await fetchJson(
-    deps.fetchImpl,
-    `https://api.metalpriceapi.com/v1/latest?api_key=${encodeURIComponent(deps.goldApiKey)}&base=XAU&currencies=TRY`,
-  );
-  if (typeof payload !== "object" || payload === null) throw new Error("malformed gold response");
-  const record = payload as Record<string, unknown>;
-  if (record.success !== true) throw new Error("gold provider reported failure");
 
-  const rates = record.rates as Record<string, unknown> | undefined;
-  const ouncePriceTry = rates?.TRY;
-  if (!isPositiveFiniteNumber(ouncePriceTry)) throw new Error("invalid gold price");
+  const claim = await deps.metalPriceCache.claimRefresh(deps.now());
+  if (!claim.claimed) {
+    if (claim.cachedRates) return claim.cachedRates;
+    throw new Error("metal price unavailable: no cached rates yet and refresh not due");
+  }
 
-  const gramTry = ouncePriceTry / OUNCE_TO_GRAM;
+  try {
+    const rates = await fetchMetalRatesFromProvider(deps);
+    await deps.metalPriceCache.recordResult(deps.now(), true, rates, null);
+    return rates;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await deps.metalPriceCache.recordResult(deps.now(), false, null, message);
+    if (claim.cachedRates) return claim.cachedRates;
+    throw error;
+  }
+}
+
+/** Converts MetalpriceAPI's USD-relative XAU rate into a TRY gram price:
+ * rates.XAU is XAU per 1 USD, so 1/rates.XAU is USD per troy ounce; dividing
+ * by OUNCE_TO_GRAM and multiplying by the caller-supplied USD/TRY rate
+ * preserves the exact same gram-conversion math the old direct
+ * base=XAU&currencies=TRY response used — only the sourcing of "ounce price
+ * in TRY" changed, since the new required request shape has no TRY quote. */
+export async function fetchGold(deps: MarketDataDeps, usdTry: number): Promise<GoldRate> {
+  const metalRates = await fetchMetalRates(deps);
+  const ouncePriceUsd = 1 / metalRates.xauPerUsd;
+  const gramTry = (ouncePriceUsd / OUNCE_TO_GRAM) * usdTry;
+
   const todayIso = istanbulDateIso(deps.now());
   const gramTryPreviousClose = await getPreviousCloseSafe(deps, "gramTry", todayIso);
   await recordCloseSafe(deps, "gramTry", todayIso, gramTry, "metalpriceapi.com");
@@ -353,32 +447,97 @@ export async function fetchGold(deps: MarketDataDeps): Promise<GoldRate> {
   };
 }
 
-export async function buildMarketDataResponse(deps: MarketDataDeps): Promise<MarketDataResponse> {
-  const [currencyResult, goldResult, weatherResult] = await Promise.allSettled([
-    fetchCurrency(deps),
-    fetchGold(deps),
-    fetchWeather(deps),
-  ]);
+function isMissingCredential(result: PromiseSettledResult<unknown>): boolean {
+  return result.status === "rejected" && result.reason instanceof Error && result.reason.message === "missing_credential";
+}
 
-  const currency = currencyResult.status === "fulfilled" ? currencyResult.value : null;
-  const weather = weatherResult.status === "fulfilled" ? weatherResult.value : null;
-  const gold: GoldRate =
-    goldResult.status === "fulfilled"
-      ? goldResult.value
-      : { gramTry: null, gramTryPreviousClose: null, updatedAt: deps.now().toISOString(), source: "metalpriceapi.com" };
+export interface RatesData {
+  currency: CurrencyRate | null;
+  gold: GoldRate;
+  errors: { currency: string | null; gold: string | null };
+}
 
-  const missingCredential = (result: PromiseSettledResult<unknown>) =>
-    result.status === "rejected" && result.reason instanceof Error && result.reason.message === "missing_credential";
+export interface WeatherData {
+  weather: WeatherInfo | null;
+  errors: { weather: string | null };
+}
+
+function isMissingCredentialError(error: unknown): boolean {
+  return error instanceof Error && error.message === "missing_credential";
+}
+
+/** Currency and gold prices do not depend on the caller's coordinates —
+ * split out from weather so index.ts can cache them under one global key
+ * shared by every caller, instead of the per-coordinate key weather needs.
+ * Previously both were fetched (and cached) together keyed by the caller's
+ * rounded coordinates, so every visitor opening the dashboard from a
+ * distinct location re-hit MetalpriceAPI instead of sharing the 15-minute
+ * cache — this is what was burning through the plan's monthly request
+ * allowance well ahead of the TTL alone.
+ *
+ * Currency is fetched first (not in parallel with gold): fetchGold now
+ * needs the resolved USD/TRY rate to convert MetalpriceAPI's USD-relative
+ * XAU price into TRY (see fetchGold's doc comment), so a successful
+ * currency fetch is a prerequisite for gold — a new coupling forced by the
+ * required base=USD&currencies=EUR,XAU,XAG request shape, which carries no
+ * TRY quote the way the old base=XAU&currencies=TRY shape did. */
+export async function fetchRatesData(deps: MarketDataDeps): Promise<RatesData> {
+  let currency: CurrencyRate | null = null;
+  let currencyError: string | null = null;
+  try {
+    currency = await fetchCurrency(deps);
+  } catch (error) {
+    // Server-side only (Supabase function logs) — never included in the
+    // response body, so this never reaches the browser or leaks a
+    // credential. The client only ever sees the categorized
+    // "unavailable"/"missing_credential" string in `errors`.
+    console.error("[market-data] currency fetch failed:", error);
+    currencyError = "unavailable";
+  }
+
+  let gold: GoldRate = { gramTry: null, gramTryPreviousClose: null, updatedAt: deps.now().toISOString(), source: "metalpriceapi.com" };
+  let goldError: string | null = null;
+  if (currency) {
+    try {
+      gold = await fetchGold(deps, currency.usdTry);
+    } catch (error) {
+      console.error("[market-data] gold fetch failed:", error);
+      goldError = isMissingCredentialError(error) ? "missing_credential" : "unavailable";
+    }
+  } else {
+    goldError = "unavailable";
+  }
 
   return {
     currency,
     gold,
-    weather,
+    errors: { currency: currencyError, gold: goldError },
+  };
+}
+
+export async function fetchWeatherData(deps: MarketDataDeps): Promise<WeatherData> {
+  const [weatherResult] = await Promise.allSettled([fetchWeather(deps)]);
+  if (weatherResult.status === "rejected") console.error("[market-data] weather fetch failed:", weatherResult.reason);
+
+  return {
+    weather: weatherResult.status === "fulfilled" ? weatherResult.value : null,
+    errors: {
+      weather: weatherResult.status === "rejected" ? (isMissingCredential(weatherResult) ? "missing_credential" : "unavailable") : null,
+    },
+  };
+}
+
+export async function buildMarketDataResponse(deps: MarketDataDeps): Promise<MarketDataResponse> {
+  const [rates, weatherData] = await Promise.all([fetchRatesData(deps), fetchWeatherData(deps)]);
+  return {
+    currency: rates.currency,
+    gold: rates.gold,
+    weather: weatherData.weather,
     fetchedAt: deps.now().toISOString(),
     errors: {
-      currency: currencyResult.status === "rejected" ? "unavailable" : null,
-      gold: goldResult.status === "rejected" ? (missingCredential(goldResult) ? "missing_credential" : "unavailable") : null,
-      weather: weatherResult.status === "rejected" ? (missingCredential(weatherResult) ? "missing_credential" : "unavailable") : null,
+      currency: rates.errors.currency,
+      gold: rates.errors.gold,
+      weather: weatherData.errors.weather,
     },
   };
 }
