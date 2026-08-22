@@ -52,6 +52,15 @@ function isValidIsoTimestamp(value: unknown): value is string {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
 }
 
+/** A missing previousClose field (older payload shape) or an explicit
+ * `null` both mean "no change to show" — only a present-but-malformed
+ * value is treated as an error. */
+function validatePreviousClose(value: unknown, fieldName: string): number | null {
+  if (value === null || value === undefined) return null;
+  if (!isPositiveFiniteNumber(value)) throw new Error(`Piyasa verisi geçersiz: ${fieldName}.`);
+  return value;
+}
+
 function validateCurrency(candidate: unknown): CurrencyRate | null {
   if (candidate === null) return null;
   if (typeof candidate !== "object") throw new Error("Piyasa verisi geçersiz: currency.");
@@ -60,7 +69,14 @@ function validateCurrency(candidate: unknown): CurrencyRate | null {
   if (!isPositiveFiniteNumber(record.eurTry)) throw new Error("Piyasa verisi geçersiz: eurTry.");
   if (typeof record.rateDate !== "string" || !record.rateDate) throw new Error("Piyasa verisi geçersiz: rateDate.");
   if (typeof record.source !== "string" || !record.source) throw new Error("Piyasa verisi geçersiz: currency source.");
-  return { usdTry: record.usdTry, eurTry: record.eurTry, rateDate: record.rateDate, source: record.source };
+  return {
+    usdTry: record.usdTry,
+    usdTryPreviousClose: validatePreviousClose(record.usdTryPreviousClose, "usdTryPreviousClose"),
+    eurTry: record.eurTry,
+    eurTryPreviousClose: validatePreviousClose(record.eurTryPreviousClose, "eurTryPreviousClose"),
+    rateDate: record.rateDate,
+    source: record.source,
+  };
 }
 
 function validateGold(candidate: unknown): GoldRate {
@@ -70,7 +86,12 @@ function validateGold(candidate: unknown): GoldRate {
   if (gramTry !== null && !isPositiveFiniteNumber(gramTry)) throw new Error("Piyasa verisi geçersiz: goldGramTry.");
   if (!isValidIsoTimestamp(record.updatedAt)) throw new Error("Piyasa verisi geçersiz: gold updatedAt.");
   if (typeof record.source !== "string" || !record.source) throw new Error("Piyasa verisi geçersiz: gold source.");
-  return { gramTry: gramTry as number | null, updatedAt: record.updatedAt as string, source: record.source };
+  return {
+    gramTry: gramTry as number | null,
+    gramTryPreviousClose: validatePreviousClose(record.gramTryPreviousClose, "gramTryPreviousClose"),
+    updatedAt: record.updatedAt as string,
+    source: record.source,
+  };
 }
 
 function validateWeather(candidate: unknown): WeatherInfo | null {

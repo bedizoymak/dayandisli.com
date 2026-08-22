@@ -11,13 +11,63 @@
 // handlers.ts — neither is ever logged, included in the response, or
 // reachable by any code path in this file.
 //
+// SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY (auto-provisioned for every edge
+// function, never set manually) back the market_rate_history repository
+// below, used only to compute day-over-day change for the FX/gold tiles.
+// That table holds daily closing values only — never caller coordinates or
+// any tenant/user data — and has no RLS policies, so only the service role
+// can reach it.
+//
 // PRIVACY: an optional ?lat=&lon= query pair (the caller's browser
 // geolocation) is parsed here, rounded, and cached only in this in-memory
 // Map (cleared on cold start, never persisted, never logged). The cache
 // key is the rounded coordinate pair itself, never the full response body
 // keyed by anything more precise.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { buildMarketDataResponse, roundCoordinate, type Coordinates, type MarketDataResponse } from "./handlers.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import {
+  buildMarketDataResponse,
+  noopHistoryRepository,
+  roundCoordinate,
+  type Coordinates,
+  type MarketDataResponse,
+  type MarketHistoryRepository,
+  type MarketInstrument,
+} from "./handlers.ts";
+
+/** Reads/writes market_rate_history for the day-over-day change shown on
+ * each FX/gold tile. Uses the service role because the table has no RLS
+ * policies (see the migration) — anon/authenticated access is intentionally
+ * denied. Falls back to a no-op repository (previousClose always null,
+ * writes silently skipped) if the service role credential is unavailable,
+ * so a misconfigured secret degrades to "no change shown" rather than
+ * breaking the rate/gold response. */
+function createHistoryRepository(): MarketHistoryRepository {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) return noopHistoryRepository;
+
+  const client = createClient(supabaseUrl, serviceRoleKey);
+  return {
+    async getPreviousClose(instrument: MarketInstrument, beforeDateIso: string): Promise<number | null> {
+      const { data, error } = await client
+        .from("market_rate_history")
+        .select("value")
+        .eq("instrument", instrument)
+        .lt("rate_date", beforeDateIso)
+        .order("rate_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return null;
+      return typeof data.value === "number" ? data.value : Number(data.value);
+    },
+    async recordClose(instrument: MarketInstrument, dateIso: string, value: number, source: string): Promise<void> {
+      await client
+        .from("market_rate_history")
+        .upsert({ instrument, rate_date: dateIso, value, source }, { onConflict: "instrument,rate_date" });
+    },
+  };
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,9 +79,10 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
-const CACHE_TTL_MS = 5 * 60_000; // shortest of the recommended per-provider windows; each provider is still fetched fresh at this cadence
+const CACHE_TTL_MS = 15 * 60_000; // upstream providers are never called more often than this, per caller-independent cache key
 const responseCache = new Map<string, { body: MarketDataResponse; expiresAt: number }>();
 const FALLBACK_CACHE_KEY = "fallback";
+const historyRepository = createHistoryRepository();
 
 function parseCoordinates(url: URL): Coordinates | null {
   const latParam = url.searchParams.get("lat");
@@ -64,6 +115,7 @@ serve(async (req) => {
       goldApiKey: Deno.env.get("GOLD_API_KEY") ?? null,
       weatherApiKey: Deno.env.get("TOMORROW_API_KEY") ?? null,
       coordinates,
+      history: historyRepository,
     });
     responseCache.set(cacheKey, { body, expiresAt: now + CACHE_TTL_MS });
     return json(body);

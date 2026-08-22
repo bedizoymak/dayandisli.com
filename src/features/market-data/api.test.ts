@@ -8,8 +8,8 @@ vi.mock("@/integrations/supabase/client", () => ({
 const { fetchMarketData } = await import("./api.ts");
 
 const VALID_PAYLOAD = {
-  currency: { usdTry: 47.23, eurTry: 53.9, rateDate: "2026-07-24", source: "TCMB" },
-  gold: { gramTry: 4850.32, updatedAt: "2026-07-24T04:15:00.000Z", source: "goldapi.io" },
+  currency: { usdTry: 47.23, usdTryPreviousClose: null, eurTry: 53.9, eurTryPreviousClose: null, rateDate: "2026-07-24", source: "TCMB" },
+  gold: { gramTry: 4850.32, gramTryPreviousClose: null, updatedAt: "2026-07-24T04:15:00.000Z", source: "goldapi.io" },
   weather: {
     temperatureC: 29,
     apparentTemperatureC: 31.2,

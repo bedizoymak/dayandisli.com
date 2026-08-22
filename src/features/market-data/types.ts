@@ -1,12 +1,15 @@
 export interface CurrencyRate {
   usdTry: number;
+  usdTryPreviousClose: number | null;
   eurTry: number;
+  eurTryPreviousClose: number | null;
   rateDate: string;
   source: string;
 }
 
 export interface GoldRate {
   gramTry: number | null;
+  gramTryPreviousClose: number | null;
   updatedAt: string;
   source: string;
 }

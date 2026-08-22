@@ -11,7 +11,19 @@ The build produces one `dist/` tree containing both production targets:
 
 Because `dist/erp` is already nested inside `dist`, a single recursive
 upload of `dist/` onto the remote deployment root reproduces both targets
-in one pass. Two account topologies are both supported, controlled by
+in one pass.
+
+A third target, the qr.dayandisli.com contact card, is a small static
+folder checked straight into the repo (it is not part of the Vite build):
+
+    public_html/qr/index.html  -> https://qr.dayandisli.com
+    public_html/qr/*
+
+It is deployed as a second pass onto REMOTE_ROOT + "/qr", the same
+sibling-folder convention already proven by dist/erp -> REMOTE_ROOT + "/erp"
+on this account.
+
+Two account topologies are both supported, controlled by
 DAYAN_FTP_REMOTE_ROOT:
 
   - The FTP account's own root is already jailed to the site's document
@@ -72,6 +84,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 ROOT = Path(__file__).resolve().parents[1]
 LOCAL_DIST = (ROOT / "dist").resolve()
 LOCAL_ERP_DIR = (LOCAL_DIST / "erp").resolve()
+LOCAL_QR_DIR = (ROOT / "public_html" / "qr").resolve()
 
 FTP_HOST = os.getenv("DAYAN_FTP_HOST")
 FTP_USER = os.getenv("DAYAN_FTP_USER")
@@ -134,10 +147,10 @@ def resolve_remote_root() -> str:
 
 REMOTE_ROOT = resolve_remote_root()
 
-PROTECTED_REMOTE = frozenset(
-    remote_join(REMOTE_ROOT, name) for name in PROTECTED_NAMES
-) | frozenset(
-    remote_join(remote_join(REMOTE_ROOT, "erp"), name) for name in PROTECTED_NAMES
+PROTECTED_REMOTE = (
+    frozenset(remote_join(REMOTE_ROOT, name) for name in PROTECTED_NAMES)
+    | frozenset(remote_join(remote_join(REMOTE_ROOT, "erp"), name) for name in PROTECTED_NAMES)
+    | frozenset(remote_join(remote_join(REMOTE_ROOT, "qr"), name) for name in PROTECTED_NAMES)
 )
 
 
@@ -351,15 +364,28 @@ def validate_local_build() -> None:
     if not erp_index.is_file():
         raise SystemExit(f"Missing required build output: {erp_index}")
 
+    expected_qr = ROOT / "public_html" / "qr"
+    if LOCAL_QR_DIR != expected_qr.resolve():
+        raise SystemExit(f"Local qr source must be exactly {expected_qr.resolve()}; got {LOCAL_QR_DIR}")
+    if not LOCAL_QR_DIR.is_dir():
+        raise SystemExit(f"qr source folder not found: {LOCAL_QR_DIR}")
+
+    qr_index = LOCAL_QR_DIR / "index.html"
+    if not qr_index.is_file():
+        raise SystemExit(f"Missing required qr source file: {qr_index}")
+
 
 def print_mapping_proof() -> None:
     root_index_remote = remote_join(REMOTE_ROOT, "index.html")
     erp_index_remote = remote_join(remote_join(REMOTE_ROOT, "erp"), "index.html")
+    qr_index_remote = remote_join(remote_join(REMOTE_ROOT, "qr"), "index.html")
     print("Effective deployment mapping (proof):")
     print(f"  LOCAL dist/index.html")
     print(f"    -> REMOTE {root_index_remote}")
     print(f"  LOCAL dist/erp/index.html")
     print(f"    -> REMOTE {erp_index_remote}")
+    print(f"  LOCAL public_html/qr/index.html")
+    print(f"    -> REMOTE {qr_index_remote}")
     print()
 
 
@@ -454,9 +480,17 @@ def needs_upload(
     return local_digest != remote_digest, "binary-compare"
 
 
-def deploy_diff(conn: Connection, stats: Stats, *, checksum_mode: bool, dry_run: bool) -> None:
-    total = count_local_files(LOCAL_DIST)
-    index, known_dirs = build_remote_index(conn, REMOTE_ROOT)
+def deploy_diff(
+    conn: Connection,
+    stats: Stats,
+    *,
+    local_root: Path,
+    remote_root: str,
+    checksum_mode: bool,
+    dry_run: bool,
+) -> None:
+    total = count_local_files(local_root)
+    index, known_dirs = build_remote_index(conn, remote_root)
 
     print(f"\n  Remote files indexed: {len(index)}")
     print(f"  Local files to check: {total}\n")
@@ -496,18 +530,22 @@ def deploy_diff(conn: Connection, stats: Stats, *, checksum_mode: bool, dry_run:
                 stats.unchanged += 1
                 log("UNCHANGED", f"[{counter[0]}/{total}] ({method}) {remote_path}")
 
-    walk(LOCAL_DIST, REMOTE_ROOT)
+    walk(local_root, remote_root)
 
 
-def deploy_full(conn: Connection, stats: Stats, *, dry_run: bool) -> None:
+def deploy_full(
+    conn: Connection,
+    stats: Stats,
+    *,
+    local_root: Path,
+    remote_root: str,
+    clear_asset_dirs: tuple[str, ...] = (),
+    dry_run: bool,
+) -> None:
     # Only the explicitly-managed generated asset directories are cleared —
     # everything else under /public_html (server config, uploads, mail,
     # backups, unrelated backend resources, etc.) is left untouched.
-    managed_asset_dirs = (
-        remote_join(REMOTE_ROOT, "assets"),
-        remote_join(remote_join(REMOTE_ROOT, "erp"), "assets"),
-    )
-    for assets_dir in managed_asset_dirs:
+    for assets_dir in clear_asset_dirs:
         assert_not_double_nested(assets_dir)
         if dry_run:
             log("DRY-RUN", f"would clear {assets_dir}")
@@ -515,7 +553,7 @@ def deploy_full(conn: Connection, stats: Stats, *, dry_run: bool) -> None:
             log("CLEAR", assets_dir)
             conn.clear_dir(assets_dir)
 
-    total = count_local_files(LOCAL_DIST)
+    total = count_local_files(local_root)
     counter = [0]
 
     def walk(local_dir: Path, remote_dir: str) -> None:
@@ -538,7 +576,7 @@ def deploy_full(conn: Connection, stats: Stats, *, dry_run: bool) -> None:
             log("CHECK", f"[{counter[0]}/{total}] full {remote_path}")
             conn.upload(item, remote_path, stats, dry_run=dry_run)
 
-    walk(LOCAL_DIST, REMOTE_ROOT)
+    walk(local_root, remote_root)
 
 
 def print_summary(stats: Stats) -> None:
@@ -602,15 +640,49 @@ def main() -> None:
     print(f"Remote: {REMOTE_ROOT}\n")
     print_mapping_proof()
 
+    remote_qr_root = remote_join(REMOTE_ROOT, "qr")
+
     stats = Stats()
     conn = Connection()
     conn.connect()
     try:
         validate_remote_root(conn)
         if args.full:
-            deploy_full(conn, stats, dry_run=args.dry_run)
+            deploy_full(
+                conn,
+                stats,
+                local_root=LOCAL_DIST,
+                remote_root=REMOTE_ROOT,
+                clear_asset_dirs=(
+                    remote_join(REMOTE_ROOT, "assets"),
+                    remote_join(remote_join(REMOTE_ROOT, "erp"), "assets"),
+                ),
+                dry_run=args.dry_run,
+            )
+            deploy_full(
+                conn,
+                stats,
+                local_root=LOCAL_QR_DIR,
+                remote_root=remote_qr_root,
+                dry_run=args.dry_run,
+            )
         else:
-            deploy_diff(conn, stats, checksum_mode=args.checksum, dry_run=args.dry_run)
+            deploy_diff(
+                conn,
+                stats,
+                local_root=LOCAL_DIST,
+                remote_root=REMOTE_ROOT,
+                checksum_mode=args.checksum,
+                dry_run=args.dry_run,
+            )
+            deploy_diff(
+                conn,
+                stats,
+                local_root=LOCAL_QR_DIR,
+                remote_root=remote_qr_root,
+                checksum_mode=args.checksum,
+                dry_run=args.dry_run,
+            )
     finally:
         conn.disconnect()
 

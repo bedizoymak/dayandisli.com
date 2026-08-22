@@ -20,6 +20,36 @@ export function formatTemperature(celsius: number): string {
   return `${Math.round(celsius)}°`;
 }
 
+export type ChangeDirection = "up" | "down" | "flat";
+
+export interface ChangeIndicator {
+  direction: ChangeDirection;
+  label: string;
+}
+
+export const CHANGE_DIRECTION_COLOR: Record<ChangeDirection, string> = {
+  up: "#3ddc84",
+  down: "#ff6b6b",
+  flat: "#b1c0d0",
+};
+
+const changePercentFormatter = new Intl.NumberFormat("tr-TR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  signDisplay: "exceptZero",
+});
+
+/** Day-over-day change for the FX/gold tiles' <small> slot. Returns `null`
+ * (never a fabricated "0.00%") when there is no previous-close value yet —
+ * the caller should fall back to the placeholder dash in that case. */
+export function formatChangeIndicator(current: number, previousClose: number | null): ChangeIndicator | null {
+  if (previousClose === null) return null;
+  const percent = ((current - previousClose) / previousClose) * 100;
+  const direction: ChangeDirection = percent > 0 ? "up" : percent < 0 ? "down" : "flat";
+  const arrow = direction === "up" ? "▲" : direction === "down" ? "▼" : "→";
+  return { direction, label: `${arrow} ${changePercentFormatter.format(percent)}%` };
+}
+
 const STALE_THRESHOLD_MS = 20 * 60_000;
 
 export function isMarketDataStale(dataUpdatedAtMs: number, nowMs: number = Date.now()): boolean {

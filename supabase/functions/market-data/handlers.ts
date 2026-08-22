@@ -42,16 +42,35 @@ export interface LocationLabel {
 
 export interface CurrencyRate {
   usdTry: number;
+  usdTryPreviousClose: number | null;
   eurTry: number;
+  eurTryPreviousClose: number | null;
   rateDate: string;
   source: string;
 }
 
 export interface GoldRate {
   gramTry: number | null;
+  gramTryPreviousClose: number | null;
   updatedAt: string;
   source: string;
 }
+
+export type MarketInstrument = "usdTry" | "eurTry" | "gramTry";
+
+/** Backs the day-over-day change shown in each FX/gold tile's <small> slot.
+ * Implementations must never throw for a missing history row — return
+ * `null` from getPreviousClose instead — since a history lookup/write
+ * failure must never take down the rate itself. */
+export interface MarketHistoryRepository {
+  getPreviousClose(instrument: MarketInstrument, beforeDateIso: string): Promise<number | null>;
+  recordClose(instrument: MarketInstrument, dateIso: string, value: number, source: string): Promise<void>;
+}
+
+export const noopHistoryRepository: MarketHistoryRepository = {
+  getPreviousClose: async () => null,
+  recordClose: async () => {},
+};
 
 export interface WeatherInfo {
   temperatureC: number;
@@ -82,6 +101,7 @@ export interface MarketDataDeps {
   goldApiKey: string | null;
   weatherApiKey: string | null;
   coordinates: Coordinates | null;
+  history: MarketHistoryRepository;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -101,6 +121,43 @@ function pickString(value: unknown): string | null {
  * geocoding cache key so nearby requests share one lookup. */
 export function roundCoordinate(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+/** Calendar date (Europe/Istanbul) used as the history table's rate_date —
+ * matches the en-CA-locale-as-YYYY-MM-DD convention already used on the
+ * frontend (see checkDomain.ts's istanbulTodayIso). */
+function istanbulDateIso(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return `${year}-${month}-${day}`;
+}
+
+/** A history lookup failure degrades to "no change shown" (previousClose:
+ * null) rather than ever failing the rate/gold fetch itself. */
+async function getPreviousCloseSafe(deps: MarketDataDeps, instrument: MarketInstrument, todayIso: string): Promise<number | null> {
+  try {
+    return await deps.history.getPreviousClose(instrument, todayIso);
+  } catch {
+    return null;
+  }
+}
+
+/** A history write failure is swallowed — persisting today's close is a
+ * best-effort enhancement for tomorrow's change display, never a
+ * requirement for today's response. */
+async function recordCloseSafe(deps: MarketDataDeps, instrument: MarketInstrument, todayIso: string, value: number, source: string): Promise<void> {
+  try {
+    await deps.history.recordClose(instrument, todayIso, value, source);
+  } catch {
+    // best-effort by design — see doc comment above
+  }
 }
 
 async function fetchJson(fetchImpl: typeof fetch, url: string, headers?: Record<string, string>): Promise<unknown> {
@@ -141,9 +198,20 @@ export async function fetchCurrency(deps: MarketDataDeps): Promise<CurrencyRate>
     fetchFrankfurterRate(deps.fetchImpl, "USD"),
     fetchFrankfurterRate(deps.fetchImpl, "EUR"),
   ]);
+  const todayIso = istanbulDateIso(deps.now());
+  const [usdTryPreviousClose, eurTryPreviousClose] = await Promise.all([
+    getPreviousCloseSafe(deps, "usdTry", todayIso),
+    getPreviousCloseSafe(deps, "eurTry", todayIso),
+  ]);
+  await Promise.all([
+    recordCloseSafe(deps, "usdTry", todayIso, usd.rate, "TCMB"),
+    recordCloseSafe(deps, "eurTry", todayIso, eur.rate, "TCMB"),
+  ]);
   return {
     usdTry: usd.rate,
+    usdTryPreviousClose,
     eurTry: eur.rate,
+    eurTryPreviousClose,
     rateDate: usd.date,
     source: "TCMB",
   };
@@ -272,8 +340,14 @@ export async function fetchGold(deps: MarketDataDeps): Promise<GoldRate> {
   const ouncePriceTry = rates?.TRY;
   if (!isPositiveFiniteNumber(ouncePriceTry)) throw new Error("invalid gold price");
 
+  const gramTry = ouncePriceTry / OUNCE_TO_GRAM;
+  const todayIso = istanbulDateIso(deps.now());
+  const gramTryPreviousClose = await getPreviousCloseSafe(deps, "gramTry", todayIso);
+  await recordCloseSafe(deps, "gramTry", todayIso, gramTry, "metalpriceapi.com");
+
   return {
-    gramTry: ouncePriceTry / OUNCE_TO_GRAM,
+    gramTry,
+    gramTryPreviousClose,
     updatedAt: deps.now().toISOString(),
     source: "metalpriceapi.com",
   };
@@ -291,7 +365,7 @@ export async function buildMarketDataResponse(deps: MarketDataDeps): Promise<Mar
   const gold: GoldRate =
     goldResult.status === "fulfilled"
       ? goldResult.value
-      : { gramTry: null, updatedAt: deps.now().toISOString(), source: "metalpriceapi.com" };
+      : { gramTry: null, gramTryPreviousClose: null, updatedAt: deps.now().toISOString(), source: "metalpriceapi.com" };
 
   const missingCredential = (result: PromiseSettledResult<unknown>) =>
     result.status === "rejected" && result.reason instanceof Error && result.reason.message === "missing_credential";

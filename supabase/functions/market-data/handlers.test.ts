@@ -8,9 +8,10 @@ import {
   reverseGeocode,
   roundCoordinate,
   type MarketDataDeps,
+  type MarketHistoryRepository,
 } from "./handlers";
 
-const NOW = new Date("2026-07-24T04:15:00.000Z");
+const NOW = new Date("2026-07-24T04:15:00.000Z"); // 2026-07-24 07:15 Europe/Istanbul
 
 function jsonResponse(body: unknown, opts: { ok?: boolean; status?: number; contentType?: string } = {}) {
   return {
@@ -21,6 +22,17 @@ function jsonResponse(body: unknown, opts: { ok?: boolean; status?: number; cont
   } as Response;
 }
 
+/** Defaults to "no history available" (previousClose always null, writes
+ * are no-ops) so existing tests that don't care about day-over-day change
+ * don't need to know about the history repository at all. */
+function fakeHistory(overrides: Partial<MarketHistoryRepository> = {}): MarketHistoryRepository {
+  return {
+    getPreviousClose: vi.fn().mockResolvedValue(null),
+    recordClose: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 function deps(overrides: Partial<MarketDataDeps> = {}): MarketDataDeps {
   return {
     fetchImpl: vi.fn(),
@@ -28,6 +40,7 @@ function deps(overrides: Partial<MarketDataDeps> = {}): MarketDataDeps {
     goldApiKey: "test-key",
     weatherApiKey: "test-key",
     coordinates: null,
+    history: fakeHistory(),
     ...overrides,
   };
 }
@@ -82,7 +95,58 @@ describe("fetchCurrency", () => {
       .mockResolvedValueOnce(jsonResponse(USD_TCMB))
       .mockResolvedValueOnce(jsonResponse(EUR_TCMB));
     const result = await fetchCurrency(deps({ fetchImpl }));
-    expect(result).toEqual({ usdTry: 47.23, eurTry: 53.9, rateDate: "2026-07-24", source: "TCMB" });
+    expect(result).toEqual({
+      usdTry: 47.23,
+      usdTryPreviousClose: null,
+      eurTry: 53.9,
+      eurTryPreviousClose: null,
+      rateDate: "2026-07-24",
+      source: "TCMB",
+    });
+  });
+
+  it("returns the stored previous close for both currencies", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(USD_TCMB))
+      .mockResolvedValueOnce(jsonResponse(EUR_TCMB));
+    const getPreviousClose = vi.fn().mockResolvedValueOnce(46.9).mockResolvedValueOnce(53.5);
+    const result = await fetchCurrency(deps({ fetchImpl, history: fakeHistory({ getPreviousClose }) }));
+    expect(result.usdTryPreviousClose).toBe(46.9);
+    expect(result.eurTryPreviousClose).toBe(53.5);
+    expect(getPreviousClose).toHaveBeenCalledWith("usdTry", "2026-07-24");
+    expect(getPreviousClose).toHaveBeenCalledWith("eurTry", "2026-07-24");
+  });
+
+  it("records today's close for both currencies", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(USD_TCMB))
+      .mockResolvedValueOnce(jsonResponse(EUR_TCMB));
+    const recordClose = vi.fn().mockResolvedValue(undefined);
+    await fetchCurrency(deps({ fetchImpl, history: fakeHistory({ recordClose }) }));
+    expect(recordClose).toHaveBeenCalledWith("usdTry", "2026-07-24", 47.23, "TCMB");
+    expect(recordClose).toHaveBeenCalledWith("eurTry", "2026-07-24", 53.9, "TCMB");
+  });
+
+  it("still returns the rate with previousClose null when the history read fails", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(USD_TCMB))
+      .mockResolvedValueOnce(jsonResponse(EUR_TCMB));
+    const getPreviousClose = vi.fn().mockRejectedValue(new Error("db unreachable"));
+    const result = await fetchCurrency(deps({ fetchImpl, history: fakeHistory({ getPreviousClose }) }));
+    expect(result.usdTry).toBe(47.23);
+    expect(result.usdTryPreviousClose).toBeNull();
+  });
+
+  it("still returns the rate when the history write fails", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(USD_TCMB))
+      .mockResolvedValueOnce(jsonResponse(EUR_TCMB));
+    const recordClose = vi.fn().mockRejectedValue(new Error("db unreachable"));
+    await expect(fetchCurrency(deps({ fetchImpl, history: fakeHistory({ recordClose }) }))).resolves.toMatchObject({ usdTry: 47.23 });
   });
 
   it("rejects a malformed currency response (missing rate)", async () => {
@@ -231,8 +295,19 @@ describe("fetchGold", () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(GOLD_OK));
     const result = await fetchGold(deps({ fetchImpl }));
     expect(result.gramTry).toBeCloseTo(GOLD_OUNCE_PRICE_TRY / 31.1034768, 6);
+    expect(result.gramTryPreviousClose).toBeNull();
     expect(result.updatedAt).toBe(NOW.toISOString());
     expect(result.source).toBe("metalpriceapi.com");
+  });
+
+  it("returns the stored previous close and records today's close", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(GOLD_OK));
+    const getPreviousClose = vi.fn().mockResolvedValue(4700.5);
+    const recordClose = vi.fn().mockResolvedValue(undefined);
+    const result = await fetchGold(deps({ fetchImpl, history: fakeHistory({ getPreviousClose, recordClose }) }));
+    expect(result.gramTryPreviousClose).toBe(4700.5);
+    expect(getPreviousClose).toHaveBeenCalledWith("gramTry", "2026-07-24");
+    expect(recordClose).toHaveBeenCalledWith("gramTry", "2026-07-24", result.gramTry, "metalpriceapi.com");
   });
 
   it("rejects a response with success:false even though HTTP status is 200 (MetalpriceAPI's actual failure signal)", async () => {

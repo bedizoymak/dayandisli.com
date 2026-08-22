@@ -81,11 +81,22 @@ describe("no precise coordinates persisted or logged", () => {
     }
   });
 
-  it("the market-data function performs no database write (no insert/update/upsert/delete anywhere in it)", () => {
+  // Superseded by the day-over-day change feature: the function now
+  // intentionally writes daily closing values (never coordinates) to
+  // market_rate_history via the service role. The privacy guarantee this
+  // test protects — caller coordinates are never persisted — is preserved
+  // below, scoped to what actually matters: no write call ever carries a
+  // coordinate field, and the only table ever written to is
+  // market_rate_history.
+  it("the market-data function's only persistence is market_rate_history, and no write ever includes coordinates", () => {
     for (const file of ["supabase/functions/market-data/index.ts", "supabase/functions/market-data/handlers.ts"]) {
       const source = readSource(file);
-      expect(source).not.toMatch(/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+      expect(source).not.toMatch(/\.(insert|update|upsert|delete)\([^)]*(latitude|longitude|\blat\b|\blon\b)/is);
     }
+    const indexSource = readSource("supabase/functions/market-data/index.ts");
+    const writeCalls = indexSource.match(/\.(insert|update|upsert|delete)\(/g) ?? [];
+    expect(writeCalls.length).toBeGreaterThan(0);
+    expect(indexSource).toMatch(/from\(["']market_rate_history["']\)/);
   });
 
   it("the frontend never persists geolocation coordinates (no localStorage/sessionStorage write of lat/lon)", () => {

@@ -3,6 +3,7 @@ import {
   formatTryAmount,
   formatProviderLabel,
   formatTemperature,
+  formatChangeIndicator,
   isMarketDataStale,
   getWeatherIconKey,
 } from "./format";
@@ -48,6 +49,30 @@ describe("isMarketDataStale", () => {
 
   it("is stale after the threshold elapses", () => {
     expect(isMarketDataStale(now - 30 * 60_000, now)).toBe(true);
+  });
+});
+
+describe("formatChangeIndicator", () => {
+  it("returns null (never a fabricated 0.00%) when there is no previous close yet", () => {
+    expect(formatChangeIndicator(47.89, null)).toBeNull();
+  });
+
+  it("marks an increase as up with a leading + sign", () => {
+    const result = formatChangeIndicator(47.89, 47.23);
+    expect(result?.direction).toBe("up");
+    expect(result?.label).toBe("▲ +1,40%");
+  });
+
+  it("marks a decrease as down with a leading - sign", () => {
+    const result = formatChangeIndicator(46.50, 47.23);
+    expect(result?.direction).toBe("down");
+    expect(result?.label).toBe("▼ -1,55%");
+  });
+
+  it("marks an unchanged value as flat with no sign", () => {
+    const result = formatChangeIndicator(47.23, 47.23);
+    expect(result?.direction).toBe("flat");
+    expect(result?.label).toBe("→ 0,00%");
   });
 });
 

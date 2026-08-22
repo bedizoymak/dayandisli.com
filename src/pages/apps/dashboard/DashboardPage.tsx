@@ -1,13 +1,44 @@
 import { useEffect, useState } from "react";
-import { FilePlus2, ReceiptText, Sun, UserRound, BarChart3 } from "lucide-react";
+import {
+  FilePlus2,
+  ReceiptText,
+  UserRound,
+  BarChart3,
+  Sun,
+  Moon,
+  CloudSun,
+  Cloud,
+  CloudFog,
+  CloudDrizzle,
+  CloudRain,
+  CloudRainWind,
+  Snowflake,
+  CloudLightning,
+  type LucideIcon,
+} from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { quickActions } from "@/features/erp-shell/shellNavigationData";
 import { useErpIdentity } from "@/features/erp-shell/erpIdentity";
 import { listAllChecks } from "@/features/finance/checks/checksApi";
 import { buildCheckReminder, checkDirectionLabel, checkPartyLabel, formatCheckMoney, istanbulTodayIso } from "@/features/finance/checks/checkDomain";
 import type { CheckListRow } from "@/features/finance/checks/types";
+import { useMarketData } from "@/features/market-data/useMarketData";
+import { formatTryAmount, formatTemperature, formatChangeIndicator, CHANGE_DIRECTION_COLOR, getWeatherIconKey, type WeatherIconKey } from "@/features/market-data/format";
 
 const quickIcons = [FilePlus2, ReceiptText, UserRound, BarChart3];
+
+const weatherIcons: Record<WeatherIconKey, LucideIcon> = {
+  sun: Sun,
+  moon: Moon,
+  "cloud-sun": CloudSun,
+  cloud: Cloud,
+  fog: CloudFog,
+  drizzle: CloudDrizzle,
+  rain: CloudRain,
+  showers: CloudRainWind,
+  snow: Snowflake,
+  thunder: CloudLightning,
+};
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -16,6 +47,7 @@ export default function DashboardPage() {
   const [now] = useState(() => new Date());
   const [checks, setChecks] = useState<CheckListRow[]>([]);
   const [checksStatus, setChecksStatus] = useState<"loading" | "ready" | "error">("loading");
+  const { data: marketData } = useMarketData();
 
   useEffect(() => {
     if (!canViewChecks) {
@@ -74,6 +106,14 @@ export default function DashboardPage() {
     .sort((left, right) => left.reminder.dueDate.localeCompare(right.reminder.dueDate))
     .slice(0, 6);
 
+  const weather = marketData?.weather ?? null;
+  const WeatherIcon = weather ? weatherIcons[getWeatherIconKey(weather.weatherCode, weather.isDay)] : Sun;
+  const currency = marketData?.currency ?? null;
+  const gold = marketData?.gold ?? null;
+  const usdChange = currency ? formatChangeIndicator(currency.usdTry, currency.usdTryPreviousClose) : null;
+  const eurChange = currency ? formatChangeIndicator(currency.eurTry, currency.eurTryPreviousClose) : null;
+  const goldChange = gold?.gramTry != null ? formatChangeIndicator(gold.gramTry, gold.gramTryPreviousClose) : null;
+
   return (
     <div className="erp-content">
       <section className="erp-top-grid">
@@ -89,28 +129,34 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="erp-weather">
-                <Sun color="#ffd33d" />
+                <WeatherIcon color="#ffd33d" />
                 <div>
-                  <strong>—</strong>
-                  <small>—</small>
+                  <strong>{weather ? formatTemperature(weather.temperatureC) : "—"}</strong>
+                  <small>{weather ? weather.condition : "—"}</small>
                 </div>
               </div>
             </div>
             <div className="erp-fx-grid">
               <div className="erp-fx">
                 <span>Dolar / TL</span>
-                <strong>—</strong>
-                <small>—</small>
+                <strong>{currency ? formatTryAmount(currency.usdTry) : "—"}</strong>
+                <small style={usdChange ? { color: CHANGE_DIRECTION_COLOR[usdChange.direction] } : undefined}>
+                  {usdChange ? usdChange.label : "—"}
+                </small>
               </div>
               <div className="erp-fx">
                 <span>Euro / TL</span>
-                <strong>—</strong>
-                <small>—</small>
+                <strong>{currency ? formatTryAmount(currency.eurTry) : "—"}</strong>
+                <small style={eurChange ? { color: CHANGE_DIRECTION_COLOR[eurChange.direction] } : undefined}>
+                  {eurChange ? eurChange.label : "—"}
+                </small>
               </div>
               <div className="erp-fx">
                 <span>Altın / TL (Gr)</span>
-                <strong>—</strong>
-                <small>—</small>
+                <strong>{gold?.gramTry != null ? formatTryAmount(gold.gramTry) : "—"}</strong>
+                <small style={goldChange ? { color: CHANGE_DIRECTION_COLOR[goldChange.direction] } : undefined}>
+                  {goldChange ? goldChange.label : "—"}
+                </small>
               </div>
             </div>
           </div>
