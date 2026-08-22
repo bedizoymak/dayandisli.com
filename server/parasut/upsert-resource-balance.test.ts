@@ -219,4 +219,24 @@ describe("upsertResource — trl_balance sync mapping", () => {
     expect(captured.inserted?.gross_total).toBe(1127109.11);
     expect((captured.inserted?.attributes as Record<string, unknown>).gross_total).toBe("1127109.11");
   });
+
+  it.each(["transaction_history_items", "opening_balances"])(
+    "normalizes an omitted archived flag to false for required authoritative %s rows",
+    async (resourceType) => {
+      const resource: JsonApiResource = {
+        id: "statement-1",
+        type: resourceType,
+        attributes: {},
+        relationships: {},
+      };
+      const captured: { inserted: Record<string, unknown> | null } = { inserted: null };
+      await upsertResource(
+        fakeInsertDatabase(captured),
+        { resourceType, table: resourceType },
+        resource,
+        { companyId: "company", parasutCompanyId: "666034", now: new Date("2026-07-25T00:00:00Z") },
+      );
+      expect(captured.inserted?.source_archived).toBe(false);
+    },
+  );
 });

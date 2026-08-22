@@ -127,6 +127,7 @@ function authoritativeStatementColumns(resource: JsonApiResource): Record<string
   if (resource.type === "transaction_history_items") {
     const order = numericAttributeValue(attributes, "order") ?? numericAttributeValue(attributes, "position") ?? Number(resource.id);
     return {
+      source_archived: false,
       contact_parasut_id: relationshipId(relationships, "contact"),
       transaction_parasut_id: relationshipId(relationships, "transaction"),
       statement_order: Number.isFinite(order) ? order : 0,
@@ -135,6 +136,7 @@ function authoritativeStatementColumns(resource: JsonApiResource): Record<string
   }
   if (resource.type === "opening_balances") {
     return {
+      source_archived: false,
       contact_parasut_id: relationshipId(relationships, "contact"),
       currency: attributes.currency ?? null,
       description: attributes.description ?? null,
