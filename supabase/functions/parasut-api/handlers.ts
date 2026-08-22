@@ -510,6 +510,106 @@ async function fetchPartyDocumentsAndPayments(
   return { documentRows, payments: payments ?? [] };
 }
 
+async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: string, activeCompanyId: string, contactBalance: unknown) {
+  const { data: history, error } = await scopedParasutTable<Record<string, unknown>>(
+    admin,
+    "transaction_history_items",
+    activeCompanyId,
+    "*",
+  ).eq("contact_parasut_id", contactId).eq("source_archived", false).order("statement_order", { ascending: true }).range(0, 24999);
+  if (error) return { version: 1, status: "unavailable", rows: [], diagnostics: [error.message] };
+  const historyRows = history ?? [];
+  if (historyRows.length === 0) return { version: 1, status: "unavailable", rows: [], diagnostics: ["authoritative_history_not_synced"] };
+
+  const transactionIds = historyRows.map((row) => String(row.transaction_parasut_id ?? "")).filter(Boolean);
+  const { data: transactions, error: transactionError } = await scopedParasutTable<Record<string, unknown>>(admin, "transactions", activeCompanyId, "*").in("parasut_id", transactionIds);
+  if (transactionError) return { version: 1, status: "incomplete", rows: [], diagnostics: [transactionError.message] };
+  const transactionById = new Map((transactions ?? []).map((row) => [String(row.parasut_id), row]));
+  const checkIds = (transactions ?? []).map((row) => String(row.check_parasut_id ?? "")).filter(Boolean);
+  const { data: checks } = checkIds.length
+    ? await scopedParasutTable<Record<string, unknown>>(admin, "checks", activeCompanyId, "*").in("parasut_id", checkIds)
+    : { data: [] as Record<string, unknown>[] };
+  const checkById = new Map((checks ?? []).map((row) => [String(row.parasut_id), row]));
+  const { data: allocations } = transactionIds.length
+    ? await scopedParasutTable<Record<string, unknown>>(admin, "payments", activeCompanyId, "*").in("transaction_parasut_id", transactionIds)
+    : { data: [] as Record<string, unknown>[] };
+  const allocationsByTransaction = new Map<string, Record<string, unknown>[]>();
+  for (const allocation of allocations ?? []) {
+    const id = String(allocation.transaction_parasut_id ?? "");
+    allocationsByTransaction.set(id, [...(allocationsByTransaction.get(id) ?? []), allocation]);
+  }
+
+  const diagnostics: string[] = [];
+  const seen = new Set<string>();
+  const rows = historyRows.map((historyRow) => {
+    const transactionId = String(historyRow.transaction_parasut_id ?? "");
+    if (!transactionId) diagnostics.push("missing_transaction_id");
+    if (seen.has(transactionId)) diagnostics.push(`duplicate_transaction_id:${transactionId}`);
+    seen.add(transactionId);
+    const transaction = transactionById.get(transactionId);
+    if (!transaction) diagnostics.push(`missing_transaction:${transactionId}`);
+    const attributes = (transaction?.attributes ?? {}) as Record<string, unknown>;
+    const checkId = String(transaction?.check_parasut_id ?? "") || null;
+    const check = checkId ? checkById.get(checkId) : undefined;
+    const checkAttributes = (check?.attributes ?? {}) as Record<string, unknown>;
+    return {
+      historyItemId: String(historyRow.parasut_id ?? ""),
+      order: Number(historyRow.statement_order ?? 0),
+      transactionId,
+      transactionType: String(transaction?.transaction_type ?? attributes.transaction_type ?? "unknown"),
+      date: String(transaction?.date ?? attributes.date ?? historyRow.transaction_date ?? ""),
+      description: String(transaction?.description ?? attributes.description ?? ""),
+      amountInTrl: Number(transaction?.amount_in_trl ?? attributes.amount_in_trl ?? 0),
+      debitAmount: Number(transaction?.debit_amount ?? attributes.debit_amount ?? 0),
+      debitCurrency: transaction?.debit_currency ?? attributes.debit_currency ?? null,
+      creditAmount: Number(transaction?.credit_amount ?? attributes.credit_amount ?? 0),
+      creditCurrency: transaction?.credit_currency ?? attributes.credit_currency ?? null,
+      unmatchedDebitAmount: Number(transaction?.unmatched_debit_amount ?? attributes.unmatched_debit_amount ?? 0),
+      unmatchedCreditAmount: Number(transaction?.unmatched_credit_amount ?? attributes.unmatched_credit_amount ?? 0),
+      trlBalance: Number(historyRow.trl_balance ?? 0),
+      linked: {
+        checkId,
+        salesInvoiceId: transaction?.sales_invoice_parasut_id ?? null,
+        purchaseBillId: transaction?.purchase_bill_parasut_id ?? null,
+        reimbursementPurchaseBillId: transaction?.reimbursement_purchase_bill_parasut_id ?? null,
+        openingBalanceId: transaction?.opening_balance_parasut_id ?? null,
+        contactTransferId: transaction?.contact_transfer_parasut_id ?? null,
+      },
+      check: check ? {
+        id: checkId,
+        serialNumber: checkAttributes.serial_number ?? null,
+        bank: checkAttributes.bank_name ?? checkAttributes.bank ?? null,
+        issueDate: checkAttributes.issue_date ?? null,
+        dueDate: checkAttributes.due_date ?? null,
+        paymentStatus: checkAttributes.payment_status ?? null,
+        cashed: checkAttributes.cashed ?? null,
+        transferred: checkAttributes.transferred ?? null,
+        remainingAmount: checkAttributes.remaining ?? null,
+      } : null,
+      allocations: (allocationsByTransaction.get(transactionId) ?? []).map((allocation) => ({
+        id: allocation.parasut_id,
+        payableId: allocation.payable_parasut_id ?? null,
+        amount: (allocation.attributes as Record<string, unknown> | undefined)?.amount ?? allocation.amount ?? null,
+        currency: (allocation.attributes as Record<string, unknown> | undefined)?.currency ?? allocation.currency ?? null,
+        balanceImpacting: false,
+      })),
+      provenance: { source: "parasut", endpoint: "transaction_history_items", balanceImpacting: true },
+    };
+  });
+  const finalHistoryBalance = rows.at(-1)?.trlBalance ?? null;
+  const numericContactBalance = Number(contactBalance);
+  if (Number.isFinite(numericContactBalance) && finalHistoryBalance !== null && Math.abs(finalHistoryBalance - numericContactBalance) > 0.005) {
+    diagnostics.push("contact_balance_mismatch");
+  }
+  return {
+    version: 1,
+    status: diagnostics.length ? "incomplete" : "reconciled",
+    rows,
+    reconciliation: { finalHistoryBalance, contactBalance: Number.isFinite(numericContactBalance) ? numericContactBalance : null },
+    diagnostics,
+  };
+}
+
 export async function handleDetail(admin: SupabaseAdminLike, resource: ListResource | "sync_runs", parasutId: string, activeCompanyId: string) {
   if (resource === "sales_invoices" || resource === "purchase_bills") {
     const { data: header, error } = await scopedParasutTable<MirrorRecord>(admin, resource, activeCompanyId, "*").eq("parasut_id", parasutId).maybeSingle();
@@ -588,7 +688,10 @@ export async function handleDetail(admin: SupabaseAdminLike, resource: ListResou
       supplierPayments = supplierSide.payments ?? [];
     }
 
-    return { contact, recentDocuments: documentRows, payments: payments ?? [], checks, supplierDocuments, supplierPayments };
+    const statement = resource === "customers"
+      ? await fetchAuthoritativeStatement(admin, parasutId, activeCompanyId, contact.attributes?.trl_balance)
+      : null;
+    return { contact, recentDocuments: documentRows, payments: payments ?? [], checks, supplierDocuments, supplierPayments, statement };
   }
 
   if (resource === "products" || resource === "accounts" || resource === "payments" || resource === "checks") {
