@@ -2,6 +2,7 @@ export interface LedgerDocumentRow { parasut_id?: unknown; attributes?: Record<s
 export interface LedgerPaymentRow { parasut_id?: unknown; attributes?: Record<string, unknown> | null }
 export interface AuthoritativeStatementRow {
   historyItemId: string; order: number; transactionId: string; transactionType: string; date: string; description: string;
+  sourceDescription?: string; documentNumber?: string | null; displayDescription?: string;
   amountInTrl: number; debitAmount: number; creditAmount: number; unmatchedDebitAmount: number; unmatchedCreditAmount: number; trlBalance: number;
   linked: { checkId?: string | null; salesInvoiceId?: string | null; purchaseBillId?: string | null; openingBalanceId?: string | null };
   check?: { serialNumber?: unknown; bank?: unknown; dueDate?: unknown; paymentStatus?: unknown; remainingAmount?: unknown; cashed?: unknown; transferred?: unknown } | null;
@@ -30,8 +31,16 @@ export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement |
     if (!row.transactionId) throw new Error("Paraşüt statement row is missing transaction id");
     if (seen.has(row.transactionId)) throw new Error(`Duplicate Paraşüt transaction id: ${row.transactionId}`); seen.add(row.transactionId);
     const amount = Math.abs(Number(row.amountInTrl) || Number(row.debitAmount) || Number(row.creditAmount) || 0);
-    const description = row.transactionType.startsWith("contact_opening_balance") ? row.description : row.check ? [row.description, row.check.serialNumber, row.check.bank, row.check.dueDate, row.check.paymentStatus].map(sourceText).filter(Boolean).join(" · ") : row.description;
-    return { sourceResource: "transactions", sourceId: row.transactionId, transactionId: row.transactionId, historyItemId: row.historyItemId, contactParasutId, transactionType: normalizeType(row.transactionType), rawTransactionType: row.transactionType, date: row.date, dueDate: sourceText(row.check?.dueDate) || null, currency: "TRY", originalAmount: amount, amountTry: amount, ...direction(row.transactionType, amount), balance: Number(row.trlBalance), description: description || row.transactionType, relatedDocumentIds: Object.values(row.linked ?? {}).filter((id): id is string => typeof id === "string" && Boolean(id)), allocations: row.allocations ?? [], check: row.check ?? null, cancelled: false, balanceImpacting: true, provenance: "native" };
+    const normalizedType = normalizeType(row.transactionType);
+    // The backend already resolves the correct human-readable description
+    // (invoice/bill number, opening-balance text, or a safe fallback label —
+    // never the raw Paraşüt enum) via displayDescription; the only thing
+    // still assembled client-side is the check's multi-field detail line,
+    // which must keep its existing exact format.
+    const description = row.check
+      ? [row.description, row.check.serialNumber, row.check.bank, row.check.dueDate, row.check.paymentStatus].map(sourceText).filter(Boolean).join(" · ")
+      : sourceText(row.displayDescription) || sourceText(row.description) || LEDGER_TYPE_LABELS[normalizedType];
+    return { sourceResource: "transactions", sourceId: row.transactionId, transactionId: row.transactionId, historyItemId: row.historyItemId, contactParasutId, transactionType: normalizedType, rawTransactionType: row.transactionType, date: row.date, dueDate: sourceText(row.check?.dueDate) || null, currency: "TRY", originalAmount: amount, amountTry: amount, ...direction(row.transactionType, amount), balance: Number(row.trlBalance), description, relatedDocumentIds: Object.values(row.linked ?? {}).filter((id): id is string => typeof id === "string" && Boolean(id)), allocations: row.allocations ?? [], check: row.check ?? null, cancelled: false, balanceImpacting: true, provenance: "native" };
   });
 }
 export function statementWarning(statement: AuthoritativeStatement | null | undefined, rows: readonly LedgerRow[]): string | null {

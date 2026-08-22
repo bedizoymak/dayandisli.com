@@ -611,6 +611,97 @@ describe("handleDetail — exact company_id + exact parasut_id, never maybeSingl
     expect(((detail?.supplierPayments as FakeRow[])[0].attributes as FakeRow).amount).toBe("539760");
   });
 
+  it("customer detail: authoritative statement returns rows in Paraşüt's oldest-first order with human-readable descriptions, never the raw enum or the transaction id as order", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Dual Role Co", account_type: "customer", trl_balance: "800" }, relationships: {} },
+      ],
+      // Deliberately seeded in ARRIVAL order (newest-first, as Paraşüt
+      // actually returns them) with statement_order already reversed by the
+      // sync layer — proves the handler trusts statement_order, not
+      // insertion order or the transaction id (which here equals parasut_id).
+      "parasut.transaction_history_items": [
+        { parasut_id: "1020079633", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "1020079633", statement_order: -1, transaction_date: "2026-01-10", trl_balance: 800, source_archived: false },
+        { parasut_id: "1001079721", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "1001079721", statement_order: -400000, transaction_date: "2024-01-01", trl_balance: 500, source_archived: false },
+      ],
+      "parasut.transactions": [
+        { parasut_id: "1020079633", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "sales_invoice", date: "2026-01-10", description: "", debit_amount: 300, credit_amount: 0, sales_invoice_parasut_id: "si-1" },
+        { parasut_id: "1001079721", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "contact_opening_balance_debit", date: "2024-01-01", description: "", debit_amount: 500, credit_amount: 0, opening_balance_parasut_id: "ob-1" },
+      ],
+      "parasut.sales_invoices": [
+        { parasut_id: "si-1", company_id: COMPANY_A, attributes: { invoice_no: "HD02024000000037" }, relationships: {} },
+      ],
+      "parasut.opening_balances": [
+        { parasut_id: "ob-1", company_id: COMPANY_A, description: "Firmanın borcu var" },
+      ],
+      "parasut.purchase_bills": [],
+      "parasut.checks": [],
+      "parasut.payments": [],
+    });
+
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { status: string; rows: Array<Record<string, unknown>> };
+
+    expect(statement.status).toBe("reconciled");
+    // Oldest (2024-01-01 opening balance) first, despite arriving second and
+    // despite its transaction id (1001079721) being numerically larger than
+    // the newer row's (1020079633) — proves order is never id-derived.
+    expect(statement.rows.map((row) => row.transactionId)).toEqual(["1001079721", "1020079633"]);
+    expect(statement.rows.map((row) => row.date)).toEqual(["2024-01-01", "2026-01-10"]);
+    expect(statement.rows[0].displayDescription).toBe("Firmanın borcu var");
+    expect(statement.rows[1].displayDescription).toBe("HD02024000000037");
+    expect(statement.rows[1].documentNumber).toBe("HD02024000000037");
+    for (const row of statement.rows) {
+      expect(row.displayDescription).not.toBe(row.transactionType);
+    }
+  });
+
+  it("customer detail: authoritative statement flags a backward date jump in the oldest-first response as a diagnostic", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Co", account_type: "customer", trl_balance: "0" }, relationships: {} },
+      ],
+      "parasut.transaction_history_items": [
+        { parasut_id: "a", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "a", statement_order: -2, transaction_date: "2026-06-01", trl_balance: 100, source_archived: false },
+        { parasut_id: "b", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "b", statement_order: -1, transaction_date: "2025-01-01", trl_balance: 0, source_archived: false },
+      ],
+      "parasut.transactions": [
+        { parasut_id: "a", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "contact_credit", date: "2026-06-01", description: "", debit_amount: 0, credit_amount: 100 },
+        { parasut_id: "b", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "contact_debit", date: "2025-01-01", description: "", debit_amount: 100, credit_amount: 0 },
+      ],
+      "parasut.sales_invoices": [],
+      "parasut.purchase_bills": [],
+      "parasut.opening_balances": [],
+      "parasut.checks": [],
+      "parasut.payments": [],
+    });
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { status: string; diagnostics: string[] };
+    expect(statement.diagnostics.some((d) => d.startsWith("date_regression:"))).toBe(true);
+  });
+
+  it("customer detail: authoritative statement flags a row with no resolvable transaction_date as a diagnostic instead of silently rendering an empty date", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Co", account_type: "customer", trl_balance: "0" }, relationships: {} },
+      ],
+      "parasut.transaction_history_items": [
+        { parasut_id: "a", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "a", statement_order: -1, transaction_date: null, trl_balance: 100, source_archived: false },
+      ],
+      "parasut.transactions": [
+        { parasut_id: "a", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "contact_credit", description: "", debit_amount: 0, credit_amount: 100 },
+      ],
+      "parasut.sales_invoices": [],
+      "parasut.purchase_bills": [],
+      "parasut.opening_balances": [],
+      "parasut.checks": [],
+      "parasut.payments": [],
+    });
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { status: string; diagnostics: string[] };
+    expect(statement.diagnostics.some((d) => d.startsWith("missing_transaction_date:"))).toBe(true);
+  });
+
   it("supplier detail never fetches supplierDocuments/supplierPayments — that dual-role fetch is customer-detail-only (no supplier-facing statement screen exists to consume it)", async () => {
     const admin = createFakeSupabaseAdmin(seedTwoCompanies());
     const detail = await handleDetail(admin, "suppliers", "600", COMPANY_A);

@@ -125,13 +125,27 @@ function authoritativeStatementColumns(resource: JsonApiResource): Record<string
     };
   }
   if (resource.type === "transaction_history_items") {
-    const order = numericAttributeValue(attributes, "order") ?? numericAttributeValue(attributes, "position") ?? Number(resource.id);
+    // `synthetic_statement_order`/`synthetic_transaction_date` are computed by
+    // sync-transaction-history.ts's page/index-aware wrapper from Paraşüt's
+    // actual (newest-first) delivery order and the linked transaction's real
+    // date — never from this history item's own id, which happens to equal
+    // the linked transaction's id and so is never a valid chronological
+    // proxy (a backdated transaction entered into Paraşüt later still gets a
+    // large/recent id). The plain `order`/`position`/id fallbacks remain only
+    // for callers that bypass that wrapper (e.g. direct unit tests).
+    const order = numericAttributeValue(attributes, "synthetic_statement_order")
+      ?? numericAttributeValue(attributes, "order")
+      ?? numericAttributeValue(attributes, "position")
+      ?? Number(resource.id);
+    const date = typeof attributes.synthetic_transaction_date === "string"
+      ? attributes.synthetic_transaction_date
+      : (typeof attributes.date === "string" ? attributes.date : (typeof attributes.transaction_date === "string" ? attributes.transaction_date : null));
     return {
       source_archived: false,
       contact_parasut_id: relationshipId(relationships, "contact"),
       transaction_parasut_id: relationshipId(relationships, "transaction"),
       statement_order: Number.isFinite(order) ? order : 0,
-      transaction_date: attributes.date ?? attributes.transaction_date ?? null,
+      transaction_date: date,
     };
   }
   if (resource.type === "opening_balances") {

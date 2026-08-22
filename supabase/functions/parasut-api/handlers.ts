@@ -510,6 +510,49 @@ async function fetchPartyDocumentsAndPayments(
   return { documentRows, payments: payments ?? [] };
 }
 
+// Human-readable, never-the-raw-enum fallback labels — used only when the
+// linked document/description is genuinely absent (see resolveDisplayDescription).
+const TRANSACTION_TYPE_FALLBACK_LABELS: Record<string, string> = {
+  sales_invoice: "Satış Faturası",
+  purchase_bill: "Alış Faturası",
+  contact_opening_balance_debit: "Açılış Bakiyesi",
+  contact_opening_balance_credit: "Açılış Bakiyesi",
+  contact_credit: "Tahsilat",
+  contact_debit: "Tedarikçi Ödemesi",
+};
+
+/**
+ * Single, backend-owned resolver for the customer-facing statement
+ * description (Phase 4 of the reconciliation master prompt) — screen and
+ * print both consume this same value via customerLedger.ts, so the mapping
+ * is never duplicated client-side. Priority: linked document number (sales
+ * invoice / purchase bill) or the linked opening-balance's own description,
+ * then Paraşüt's own transaction description, then a human-readable
+ * fallback label. Never returns the raw `transactionType` enum.
+ */
+function resolveDisplayDescription(
+  transactionType: string,
+  sourceDescription: string,
+  documentNumber: string | null,
+  openingDescription: string | null,
+): string {
+  if (transactionType === "sales_invoice" || transactionType === "purchase_bill") {
+    return documentNumber || sourceDescription || TRANSACTION_TYPE_FALLBACK_LABELS[transactionType];
+  }
+  if (transactionType === "contact_opening_balance_debit" || transactionType === "contact_opening_balance_credit") {
+    return openingDescription || sourceDescription || TRANSACTION_TYPE_FALLBACK_LABELS[transactionType];
+  }
+  if (transactionType === "contact_credit" || transactionType === "contact_debit") {
+    return sourceDescription || TRANSACTION_TYPE_FALLBACK_LABELS[transactionType];
+  }
+  if (transactionType === "check_in" || transactionType === "check_out") {
+    // The frontend composes the full check description (serial/bank/due
+    // date/status) — this is only the raw source text it starts from.
+    return sourceDescription;
+  }
+  return sourceDescription || "Diğer İşlem";
+}
+
 async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: string, activeCompanyId: string, contactBalance: unknown) {
   const { data: history, error } = await scopedParasutTable<Record<string, unknown>>(
     admin,
@@ -539,8 +582,31 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
     allocationsByTransaction.set(id, [...(allocationsByTransaction.get(id) ?? []), allocation]);
   }
 
+  // Human-readable descriptions (Phase 4): the linked invoice/bill number and
+  // the authentic opening-balance description already live in these
+  // normalized mirror tables — fetchAuthoritativeStatement previously never
+  // queried them, which is why the UI fell back to the raw transaction type.
+  const salesInvoiceIds = Array.from(new Set((transactions ?? []).map((row) => String(row.sales_invoice_parasut_id ?? "")).filter(Boolean)));
+  const purchaseBillIds = Array.from(new Set((transactions ?? []).map((row) => String(row.purchase_bill_parasut_id ?? "")).filter(Boolean)));
+  const openingBalanceIds = Array.from(new Set((transactions ?? []).map((row) => String(row.opening_balance_parasut_id ?? "")).filter(Boolean)));
+  const [{ data: salesInvoices }, { data: purchaseBills }, { data: openingBalances }] = await Promise.all([
+    salesInvoiceIds.length
+      ? scopedParasutTable<Record<string, unknown>>(admin, "sales_invoices", activeCompanyId, "parasut_id, attributes").in("parasut_id", salesInvoiceIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    purchaseBillIds.length
+      ? scopedParasutTable<Record<string, unknown>>(admin, "purchase_bills", activeCompanyId, "parasut_id, attributes").in("parasut_id", purchaseBillIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    openingBalanceIds.length
+      ? scopedParasutTable<Record<string, unknown>>(admin, "opening_balances", activeCompanyId, "parasut_id, description").in("parasut_id", openingBalanceIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+  ]);
+  const salesInvoiceNoById = new Map((salesInvoices ?? []).map((row) => [String(row.parasut_id), String((row.attributes as Record<string, unknown> | undefined)?.invoice_no ?? "").trim()]));
+  const purchaseBillNoById = new Map((purchaseBills ?? []).map((row) => [String(row.parasut_id), String((row.attributes as Record<string, unknown> | undefined)?.invoice_no ?? "").trim()]));
+  const openingDescriptionById = new Map((openingBalances ?? []).map((row) => [String(row.parasut_id), String(row.description ?? "").trim()]));
+
   const diagnostics: string[] = [];
   const seen = new Set<string>();
+  let previousDate = "";
   const rows = historyRows.map((historyRow) => {
     const transactionId = String(historyRow.transaction_parasut_id ?? "");
     if (!transactionId) diagnostics.push("missing_transaction_id");
@@ -552,13 +618,31 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
     const checkId = String(transaction?.check_parasut_id ?? "") || null;
     const check = checkId ? checkById.get(checkId) : undefined;
     const checkAttributes = (check?.attributes ?? {}) as Record<string, unknown>;
+    const transactionType = String(transaction?.transaction_type ?? attributes.transaction_type ?? "unknown");
+    const date = String(transaction?.date ?? attributes.date ?? historyRow.transaction_date ?? "");
+    if (!date) diagnostics.push(`missing_transaction_date:${historyRow.parasut_id ?? transactionId}`);
+    else if (previousDate && date < previousDate) diagnostics.push(`date_regression:${transactionId}`);
+    if (date) previousDate = date;
+    const sourceDescription = String(transaction?.description ?? attributes.description ?? "").trim();
+    const salesInvoiceId = transaction?.sales_invoice_parasut_id ? String(transaction.sales_invoice_parasut_id) : null;
+    const purchaseBillId = transaction?.purchase_bill_parasut_id ? String(transaction.purchase_bill_parasut_id) : null;
+    const openingBalanceId = transaction?.opening_balance_parasut_id ? String(transaction.opening_balance_parasut_id) : null;
+    const documentNumber = salesInvoiceId
+      ? (salesInvoiceNoById.get(salesInvoiceId) || null)
+      : purchaseBillId
+        ? (purchaseBillNoById.get(purchaseBillId) || null)
+        : null;
+    const openingDescription = openingBalanceId ? (openingDescriptionById.get(openingBalanceId) || null) : null;
     return {
       historyItemId: String(historyRow.parasut_id ?? ""),
       order: Number(historyRow.statement_order ?? 0),
       transactionId,
-      transactionType: String(transaction?.transaction_type ?? attributes.transaction_type ?? "unknown"),
-      date: String(transaction?.date ?? attributes.date ?? historyRow.transaction_date ?? ""),
-      description: String(transaction?.description ?? attributes.description ?? ""),
+      transactionType,
+      date,
+      description: sourceDescription,
+      sourceDescription,
+      documentNumber,
+      displayDescription: resolveDisplayDescription(transactionType, sourceDescription, documentNumber, openingDescription),
       amountInTrl: Number(transaction?.amount_in_trl ?? attributes.amount_in_trl ?? 0),
       debitAmount: Number(transaction?.debit_amount ?? attributes.debit_amount ?? 0),
       debitCurrency: transaction?.debit_currency ?? attributes.debit_currency ?? null,
