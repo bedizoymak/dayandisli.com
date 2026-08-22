@@ -636,7 +636,7 @@ const escapeHtml = (value: unknown) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] ?? character,
   );
 
-export function buildLedgerPrintHtml(
+function buildLedgerPrintHtml(
   title: string,
   subtitle: string,
   rows: (LedgerRow & { balance: number })[],
