@@ -27,4 +27,27 @@ describe("authoritative transaction history sync", () => {
     expect(RECONCILIATION_TARGET_CONTACT_IDS).toEqual(["1011029161", "1010743830", "1011029140", "1068984956"]);
     expect(() => syncContactTransactionHistory({ parasutCompanyId: "666034" } as never, "../contacts")).toThrow("Invalid Paraşüt contact id");
   });
+
+  it("hydrates included payment-to-transaction relationships from the authoritative transaction envelope", async () => {
+    const client = {
+      async *getPaginated() {
+        yield {
+          pageNumber: 1,
+          document: {
+            data: [{ id: "history-1", type: "transaction_history_items", relationships: {} }],
+            included: [
+              { id: "transaction-1", type: "transactions", relationships: { payments: { data: [{ id: "payment-1", type: "payments" }] } } },
+              { id: "payment-1", type: "payments", attributes: { amount: "10.00" }, relationships: { transaction: { meta: {} } } },
+            ],
+          },
+        };
+      },
+    };
+    await syncContactTransactionHistory({ parasutCompanyId: "666034", companyId: "erp", client, database: {} } as never, "1011029161");
+    const [scopedContext] = syncCollection.mock.calls[0];
+    const pages = [];
+    for await (const page of scopedContext.client.getPaginated("/history", TRANSACTION_HISTORY_INCLUDE, 1)) pages.push(page);
+    const payment = pages[0].document.included.find((item: { type: string }) => item.type === "payments");
+    expect(payment.relationships.transaction).toEqual({ data: { type: "transactions", id: "transaction-1" } });
+  });
 });

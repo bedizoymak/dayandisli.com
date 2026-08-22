@@ -17,6 +17,7 @@ import { syncProducts } from "../../../server/parasut/sync-products.ts";
 import { syncSalesInvoices } from "../../../server/parasut/sync-sales-invoices.ts";
 import { syncPurchaseBills } from "../../../server/parasut/sync-purchase-bills.ts";
 import { syncChecks } from "../../../server/parasut/sync-checks.ts";
+import { RECONCILIATION_TARGET_CONTACT_IDS, syncContactTransactionHistory } from "../../../server/parasut/sync-transaction-history.ts";
 import type { MirrorDatabase, SyncContext, SyncResult } from "../../../server/parasut/types.ts";
 
 const APPROVED_ERP_COMPANY_ID = "54b50745-89e0-4b97-adb6-4f2426fa2a2f";
@@ -82,6 +83,23 @@ serve(async (req: Request) => {
     // the local CLI runner) is unaffected and still records "local_manual".
     const triggerType = req.headers.get("X-Sync-Trigger") === "scheduled" ? "scheduled" : undefined;
     const context: SyncContext = { companyId, parasutCompanyId, database, client, triggerType };
+
+    const body = await req.json().catch(() => ({})) as { action?: unknown };
+    if (body.action === "authoritative-history-backfill") {
+      const results: Array<SyncResult & { contactId: string }> = [];
+      for (const contactId of RECONCILIATION_TARGET_CONTACT_IDS) {
+        let result = await syncContactTransactionHistory(context, contactId, { concurrencyLock: true });
+        results.push({ contactId, ...result });
+        while (result.hasMore) {
+          result = await syncContactTransactionHistory(context, contactId, { concurrencyLock: true });
+          results.push({ contactId, ...result });
+        }
+      }
+      return new Response(JSON.stringify({ scope: [...RECONCILIATION_TARGET_CONTACT_IDS], results }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     logSafe(`[sync] companyId=${companyId} parasutCompanyId=${parasutCompanyId} triggerType=${triggerType ?? "local_manual"}`);
 

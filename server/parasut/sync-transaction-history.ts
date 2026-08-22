@@ -8,6 +8,7 @@ export const TRANSACTION_HISTORY_INCLUDE = [
   "transaction.opening_balance",
   "transaction.check",
   "transaction.contact_transfer",
+  "transaction.payments",
 ];
 
 export function syncContactTransactionHistory(
@@ -22,17 +23,29 @@ export function syncContactTransactionHistory(
     client: {
       async *getPaginated(path, include, startPage) {
         for await (const page of context.client.getPaginated(path, include, startPage)) {
+          const paymentTransactions = new Map<string, string>();
+          for (const item of page.document.included ?? []) {
+            if (item.type !== "transactions") continue;
+            const payments = (item.relationships?.payments as { data?: { id?: unknown }[] } | undefined)?.data;
+            for (const payment of Array.isArray(payments) ? payments : []) {
+              if (typeof payment.id === "string") paymentTransactions.set(payment.id, item.id);
+            }
+          }
           const data = Array.isArray(page.document.data)
             ? page.document.data.map((item) => ({
               ...item,
               relationships: { ...(item.relationships ?? {}), contact: contactRef },
             }))
             : page.document.data;
-          const included = (page.document.included ?? []).map((item) =>
-            item.type === "transactions" || item.type === "opening_balances"
-              ? { ...item, relationships: { ...(item.relationships ?? {}), contact: contactRef } }
-              : item
-          );
+          const included = (page.document.included ?? []).map((item) => {
+            if (item.type === "transactions" || item.type === "opening_balances") {
+              return { ...item, relationships: { ...(item.relationships ?? {}), contact: contactRef } };
+            }
+            const transactionId = item.type === "payments" ? paymentTransactions.get(item.id) : undefined;
+            return transactionId
+              ? { ...item, relationships: { ...(item.relationships ?? {}), transaction: { data: { type: "transactions", id: transactionId } } } }
+              : item;
+          });
           yield { ...page, document: { ...page.document, data, included } };
         }
       },

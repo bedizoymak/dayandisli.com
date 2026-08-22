@@ -81,16 +81,30 @@ const requestedTarget = normalize(process.env.SUPABASE_TARGET);
 const envRef = process.env.SUPABASE_TARGET_PROJECT_REF ?? "";
 const envName = process.env.SUPABASE_TARGET_PROJECT_NAME ?? "";
 
-if (isProduction(envRef, envName)) {
-  fail("the configured target matches the known production project.");
+if (requestedTarget && requestedTarget !== "local" && requestedTarget !== "staging" && requestedTarget !== "production") {
+  fail('SUPABASE_TARGET must be "local", "staging", or "production".');
 }
 
 if (requestedTarget === "production") {
-  fail("production targets are never authorized by this preflight.");
+  if (process.env.ALLOW_PRODUCTION_DB_PUSH !== "1") {
+    fail("production requires ALLOW_PRODUCTION_DB_PUSH=1.");
+  }
+  const linkedProject = getLinkedProject();
+  if (!linkedProject) fail("the linked production project identity could not be verified.");
+  if (!isProduction(linkedProject.ref, linkedProject.name)) {
+    fail("the linked project is not the authorized production project.");
+  }
+  if (normalize(linkedProject.ref) !== PRODUCTION_PROJECT_REF || normalize(linkedProject.name) !== PRODUCTION_PROJECT_NAME) {
+    fail("the linked production ref and name must both match the authorized target.");
+  }
+  if (envRef && normalize(envRef) !== normalize(linkedProject.ref)) fail("SUPABASE_TARGET_PROJECT_REF does not match the linked project.");
+  if (envName && normalize(envName) !== normalize(linkedProject.name)) fail("SUPABASE_TARGET_PROJECT_NAME does not match the linked project.");
+  console.log(`Supabase target check passed: authorized production project ${PRODUCTION_PROJECT_REF} (${PRODUCTION_PROJECT_NAME}) verified.`);
+  process.exit(0);
 }
 
-if (requestedTarget && requestedTarget !== "local" && requestedTarget !== "staging") {
-  fail('SUPABASE_TARGET must be either "local" or "staging".');
+if (isProduction(envRef, envName)) {
+  fail("production identity requires SUPABASE_TARGET=production and ALLOW_PRODUCTION_DB_PUSH=1.");
 }
 
 if (requestedTarget === "staging") {
