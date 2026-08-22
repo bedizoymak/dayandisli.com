@@ -97,6 +97,60 @@ function typedRegistryColumns(
   return { ...deriveOfflineRow(resource).values };
 }
 
+function relationshipId(relationships: JsonObject, key: string): string | null {
+  const relation = relationships[key] as { data?: { id?: unknown } | null } | undefined;
+  const id = relation?.data?.id;
+  return typeof id === "string" && id ? id : null;
+}
+
+function authoritativeStatementColumns(resource: JsonApiResource): Record<string, unknown> {
+  const attributes = resource.attributes ?? {};
+  const relationships = resource.relationships ?? {};
+  if (resource.type === "transactions") {
+    return {
+      description: attributes.description ?? null,
+      transaction_type: attributes.transaction_type ?? null,
+      date: attributes.date ?? null,
+      debit_currency: attributes.debit_currency ?? null,
+      credit_currency: attributes.credit_currency ?? null,
+      contact_parasut_id: relationshipId(relationships, "contact"),
+      check_parasut_id: relationshipId(relationships, "check"),
+      sales_invoice_parasut_id: relationshipId(relationships, "sales_invoice"),
+      purchase_bill_parasut_id: relationshipId(relationships, "purchase_bill"),
+      reimbursement_purchase_bill_parasut_id: relationshipId(relationships, "reimbursement_purchase_bill"),
+      opening_balance_parasut_id: relationshipId(relationships, "opening_balance"),
+      contact_transfer_parasut_id: relationshipId(relationships, "contact_transfer"),
+      unmatched_debit_amount: numericAttributeValue(attributes, "unmatched_debit_amount"),
+      unmatched_credit_amount: numericAttributeValue(attributes, "unmatched_credit_amount"),
+    };
+  }
+  if (resource.type === "transaction_history_items") {
+    const order = numericAttributeValue(attributes, "order") ?? numericAttributeValue(attributes, "position") ?? Number(resource.id);
+    return {
+      contact_parasut_id: relationshipId(relationships, "contact"),
+      transaction_parasut_id: relationshipId(relationships, "transaction"),
+      statement_order: Number.isFinite(order) ? order : 0,
+      transaction_date: attributes.date ?? attributes.transaction_date ?? null,
+    };
+  }
+  if (resource.type === "opening_balances") {
+    return {
+      contact_parasut_id: relationshipId(relationships, "contact"),
+      currency: attributes.currency ?? null,
+      description: attributes.description ?? null,
+      issue_date: attributes.issue_date ?? null,
+      debit_credit_type: attributes.debit_credit_type ?? attributes.balance_type ?? null,
+    };
+  }
+  if (resource.type === "payments") {
+    return {
+      payable_parasut_id: relationshipId(relationships, "payable"),
+      transaction_parasut_id: relationshipId(relationships, "transaction"),
+    };
+  }
+  return {};
+}
+
 export async function upsertResource(
   database: MirrorDatabase,
   definition: MirrorResourceDefinition,
@@ -167,6 +221,7 @@ export async function upsertResource(
     synced_at: now,
     payload_hash: payloadHash,
     ...mappedColumns,
+    ...authoritativeStatementColumns(resource),
   };
 
   if (existing.data) {

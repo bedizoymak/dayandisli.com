@@ -74,6 +74,8 @@ export type MirrorTable =
   | "taxes"
   | "trackable_jobs"
   | "transactions"
+  | "transaction_history_items"
+  | "opening_balances"
   | "warehouses"
   // Added 2026-08-11 alongside supabase/migrations/20260811000000_parasut_checks_mirror.sql
   // — foundation-style table (attributes/relationships/included), not the

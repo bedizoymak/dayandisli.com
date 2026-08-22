@@ -92,6 +92,8 @@ const INCLUDED_DEFINITIONS = new Map<string, MirrorResourceDefinition>([
     },
   ],
   ["payments", { resourceType: "payments", table: "payments" }],
+  ["transactions", { resourceType: "transactions", table: "transactions", numericAttributeFields: ["amount_in_trl", "debit_amount", "credit_amount"] }],
+  ["opening_balances", { resourceType: "opening_balances", table: "opening_balances", numericAttributeFields: ["net_total", "remaining"] }],
 ]);
 
 function integrationDb(context: SyncContext) {

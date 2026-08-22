@@ -31,10 +31,11 @@ describe("Paraşüt resource registry", () => {
     }
   });
 
-  it("classifies the five endpoints that returned HTTP 404 live as unsupported, not direct-list", () => {
-    for (const resourceType of ["bank_fees", "e_archives", "e_smms", "stock_updates", "transactions"]) {
+  it("classifies unusable company-level endpoints as unsupported", () => {
+    for (const resourceType of ["bank_fees", "e_archives", "e_smms", "stock_updates"]) {
       expect(getResourceConfig(resourceType)?.support).toBe("unsupported");
     }
+    expect(getResourceConfig("transactions")?.support).toBe("nested");
   });
 
   it("classifies the endpoint that returned HTTP 500 live as unsupported, not direct-list", () => {
@@ -50,6 +51,9 @@ describe("Paraşüt resource registry", () => {
       "stock_update_details",
       "inventory_levels",
       "trackable_jobs",
+      "transactions",
+      "transaction_history_items",
+      "opening_balances",
     ]) {
       expect(getResourceConfig(resourceType)?.support).toBe("nested");
     }

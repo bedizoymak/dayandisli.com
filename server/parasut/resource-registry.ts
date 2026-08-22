@@ -213,8 +213,20 @@ export const PARASUT_RESOURCE_REGISTRY: ResourceConfig[] = [
   {
     resourceType: "transactions",
     table: "transactions",
-    support: "unsupported",
-    notes: "Same evidence as bank_fees: documented endpoint returned HTTP 404 live on 2026-07-23.",
+    support: "nested",
+    notes: "Authoritative transactions are included by each contact transaction_history_items statement request; the company-level list returned 404 and is not used.",
+  },
+  {
+    resourceType: "transaction_history_items",
+    table: "transaction_history_items",
+    support: "nested",
+    notes: "Authoritative per-contact statement endpoint, synchronized by sync-transaction-history.ts with bounded resumable pagination and included transactions.",
+  },
+  {
+    resourceType: "opening_balances",
+    table: "opening_balances",
+    support: "nested",
+    notes: "Authentic opening-balance resources side-loaded from transaction_history_items; never derived from contact balance.",
   },
   {
     resourceType: "stock_movements",
