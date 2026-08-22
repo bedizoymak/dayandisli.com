@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { formatMoney } from "@/lib/finance/financeLabels";
 import { CrmPageHeader } from "./CrmShared";
+import { ParasutManualSyncControl } from "./ParasutManualSyncControl";
 
 type CustomerRow = {
   id: string;
@@ -176,6 +177,7 @@ export function CustomerListPage() {
   const [sortState, setSortState] = useState<CustomerSortState>(null);
   const [outstandingTotal, setOutstandingTotal] = useState<number | null>(null);
   const [overdueTotal, setOverdueTotal] = useState<number | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const pageSize = 100;
 
   useEffect(() => {
@@ -198,7 +200,10 @@ export function CustomerListPage() {
     return () => {
       cancelledRef.cancelled = true;
     };
-  }, [search]);
+    // reloadKey has no meaning of its own — bumping it after a manual
+    // Paraşüt sync (see ParasutManualSyncControl's onSyncComplete) just
+    // re-runs this exact fetch to reflect whatever the sync changed.
+  }, [search, reloadKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -260,6 +265,7 @@ export function CustomerListPage() {
           rows={rows}
           columns={columns}
         />
+        <ParasutManualSyncControl onSyncComplete={() => setReloadKey((value) => value + 1)} />
         <Link className="crm-primary" to="/apps/crm/customers/new">
           Yeni Müşteri
         </Link>

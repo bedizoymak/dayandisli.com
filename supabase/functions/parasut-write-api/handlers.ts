@@ -185,6 +185,151 @@ export async function handleResync(
   };
 }
 
+export interface FullResyncResourceOutcome {
+  resource: string;
+  status: "completed" | "partial" | "failed";
+  /** How many bounded resync chunks this resource took in this invocation — each chunk is one syncCollection() call, same page-budget-per-call behavior as the single-resource manual button. */
+  chunks: number;
+  inserted: number;
+  updated: number;
+  unchanged: number;
+  errors: number;
+  /** True when the resource's own page budget across ALL chunks in this invocation still wasn't enough — the next full-resync click continues it (its own checkpoint is unaffected; nothing is lost). */
+  hasMore: boolean;
+}
+
+export interface FullResyncResponse {
+  status: "completed" | "partial" | "failed" | "conflict";
+  startedAt: string;
+  completedAt: string;
+  resources: FullResyncResourceOutcome[];
+  /** Set only when status === "conflict" — a sync (scheduled or another manual run) was already in progress for this resource, so the whole run stopped immediately rather than racing it. */
+  conflictResource: string | null;
+}
+
+export interface FullResyncResourceRunner {
+  resource: string;
+  runSync: () => Promise<SyncResult>;
+}
+
+export interface FullResyncOptions {
+  /** Safety limit #1: stop resuming a resource after this many chunks in one invocation — bounds worst-case work per HTTP request regardless of how large the resource is. */
+  maxChunksPerResource?: number;
+  /** Safety limit #2: stop starting new chunks once this much wall-clock time has elapsed since the run started — bounds total invocation time independent of chunk count, so this can never itself become the thing that times out the edge function. */
+  maxElapsedMs?: number;
+  now?: () => Date;
+}
+
+const DEFAULT_MAX_CHUNKS_PER_RESOURCE = 20;
+const DEFAULT_MAX_ELAPSED_MS = 90_000;
+
+/**
+ * Full one-way Paraşüt -> Supabase synchronization across every
+ * account-statement-relevant resource, each resumed to completion (not just
+ * one bounded chunk) within this single invocation's safety limits. Reuses
+ * the exact same server/parasut/sync-*.ts engine as handleResync — no
+ * competing sync engine, no Paraşüt write call anywhere in this path.
+ *
+ * Per resource: calls `runSync()` repeatedly (same concurrencyLock: true
+ * single-runner election as the manual per-resource button) until
+ * `result.hasMore === false`, `result.status === "failed"`, a
+ * SyncAlreadyRunningError, or a safety limit is hit — accumulating
+ * inserted/updated/unchanged/errors across every chunk so the caller sees
+ * the TOTAL work done, not just the last chunk's. A resource that still has
+ * `hasMore: true` when a safety limit is hit is reported "partial", never
+ * "completed" — its own checkpoint is untouched, so the next full-resync
+ * (or the scheduled cron) simply continues it.
+ *
+ * A SyncAlreadyRunningError (another run — scheduled or manual — already
+ * holds this resource's single-runner election) stops the ENTIRE sequence
+ * immediately, not just that resource: racing a concurrent run resource by
+ * resource would be a false economy, since the whole point is one
+ * coherent, non-overlapping pass.
+ */
+export async function handleFullResync(
+  hasPermission: boolean,
+  resources: readonly FullResyncResourceRunner[],
+  options: FullResyncOptions = {},
+): Promise<FullResyncResponse> {
+  if (!hasPermission) throw new CreateCustomerRejectedError("Bu işlem için ERP yöneticisi yetkisi gereklidir.", 403);
+
+  const now = options.now ?? (() => new Date());
+  const maxChunks = options.maxChunksPerResource ?? DEFAULT_MAX_CHUNKS_PER_RESOURCE;
+  const maxElapsedMs = options.maxElapsedMs ?? DEFAULT_MAX_ELAPSED_MS;
+  const startedAt = now();
+
+  const outcomes: FullResyncResourceOutcome[] = [];
+  let conflictResource: string | null = null;
+
+  for (const { resource, runSync } of resources) {
+    const totals = { inserted: 0, updated: 0, unchanged: 0, errors: 0 };
+    let chunks = 0;
+    let status: FullResyncResourceOutcome["status"] = "completed";
+    let hasMore = false;
+
+    try {
+      for (;;) {
+        if (now().getTime() - startedAt.getTime() >= maxElapsedMs) {
+          status = "partial";
+          hasMore = true;
+          break;
+        }
+        chunks += 1;
+        const result = await runSync();
+        totals.inserted += result.inserted;
+        totals.updated += result.updated;
+        totals.unchanged += result.unchanged;
+        totals.errors += result.errors;
+
+        if (result.status === "failed") {
+          status = "failed";
+          hasMore = result.hasMore;
+          break;
+        }
+        if (!result.hasMore) {
+          status = result.errors > 0 ? "partial" : "completed";
+          hasMore = false;
+          break;
+        }
+        if (chunks >= maxChunks) {
+          status = "partial";
+          hasMore = true;
+          break;
+        }
+      }
+    } catch (error) {
+      if (error instanceof SyncAlreadyRunningError) {
+        conflictResource = resource;
+        break;
+      }
+      status = "failed";
+      hasMore = true;
+    }
+
+    outcomes.push({ resource, status, chunks, ...totals, hasMore });
+    if (conflictResource) break;
+  }
+
+  const completedAt = now();
+  const overallStatus: FullResyncResponse["status"] = conflictResource
+    ? "conflict"
+    : outcomes.length === 0
+      ? "failed"
+      : outcomes.every((outcome) => outcome.status === "completed")
+        ? "completed"
+        : outcomes.every((outcome) => outcome.status === "failed")
+          ? "failed"
+          : "partial";
+
+  return {
+    status: overallStatus,
+    startedAt: startedAt.toISOString(),
+    completedAt: completedAt.toISOString(),
+    resources: outcomes,
+    conflictResource,
+  };
+}
+
 export async function handleCreateCustomer(
   handler: CreateCustomerCommandHandler,
   companyId: string,

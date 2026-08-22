@@ -8,12 +8,19 @@ import { PartyLedgerEntryDialog } from "../finance/PartyLedgerEntryDialog";
 import { fetchQuotesForCustomer } from "../sales/quotesApi";
 import { effectiveQuoteStatus, QUOTE_STATUS_LABELS, type QuoteRow } from "../sales/quoteTypes";
 import { QuoteHistoryPanel } from "../sales/QuoteHistoryPanel";
-import {
-  projectPartyCheckLedger,
-} from "../finance/checks/checkProjections";
 import { listAllChecks } from "../finance/checks/checksApi";
 import { istanbulTodayIso } from "../finance/checks/checkDomain";
 import type { CheckListRow } from "../finance/checks/types";
+import {
+  buildCustomerLedgerRows,
+  buildPaymentToDocumentMap,
+  LEDGER_TYPE_LABELS,
+  type LedgerCheckInput,
+  type LedgerCheckSettlementStatus,
+  type LedgerDocumentRow,
+  type LedgerPaymentRow,
+  type LedgerRow,
+} from "./customerLedger";
 
 const parent = "/apps/crm/customers";
 
@@ -37,6 +44,11 @@ type DetailResponse = {
   contact?: ContactRecord | null;
   recentDocuments?: DocumentRow[] | null;
   payments?: PaymentRow[] | null;
+  // Dual-role contacts: this same Paraşüt contact can be the `supplier` on
+  // purchase_bills even when account_type is "customer" — see
+  // customerLedger.ts's doc comment and ACCOUNT_STATEMENT_AND_PARASUT_SYNC_AUDIT.md.
+  supplierDocuments?: DocumentRow[] | null;
+  supplierPayments?: PaymentRow[] | null;
 } | null;
 
 type OfferApiRow = {
@@ -114,28 +126,15 @@ function formatHeaderBalance(value: number) {
   return `${value > 0 ? "+" : "-"}${formatMoney(Math.abs(value))}`;
 }
 
-function documentPaymentIds(document: DocumentRow): string[] {
-  const ref = document.relationships?.payments?.data;
-  if (!ref) return [];
-  const list = Array.isArray(ref) ? ref : [ref];
-  return list.map((item) => sourceText(item?.id)).filter(Boolean);
-}
-
-type LedgerRow = {
-  key: string;
-  date: string;
-  type: string;
-  debit: number;
-  credit: number;
-  description: string;
-};
-
 export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const [loading, setLoading] = useState(true);
   const [contact, setContact] = useState<ContactRecord | null>(null);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
-  const [linkedChecks, setLinkedChecks] = useState<CheckListRow[]>([]);
+  const [supplierDocuments, setSupplierDocuments] = useState<DocumentRow[]>([]);
+  const [supplierPayments, setSupplierPayments] = useState<PaymentRow[]>([]);
+  const [receivedChecks, setReceivedChecks] = useState<CheckListRow[]>([]);
+  const [issuedChecks, setIssuedChecks] = useState<CheckListRow[]>([]);
   const [linkedChecksStatus, setLinkedChecksStatus] = useState<"loading" | "ready" | "error">("loading");
   const [offers, setOffers] = useState<OfferApiRow[]>([]);
   const [erpQuotes, setErpQuotes] = useState<QuoteRow[]>([]);
@@ -150,6 +149,8 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
       setContact(null);
       setDocuments([]);
       setPayments([]);
+      setSupplierDocuments([]);
+      setSupplierPayments([]);
       setOffers([]);
       return;
     }
@@ -169,10 +170,14 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
           setContact(null);
           setDocuments([]);
           setPayments([]);
+          setSupplierDocuments([]);
+          setSupplierPayments([]);
         } else {
           setContact(response.contact);
           setDocuments(Array.isArray(response.recentDocuments) ? response.recentDocuments : []);
           setPayments(Array.isArray(response.payments) ? response.payments : []);
+          setSupplierDocuments(Array.isArray(response.supplierDocuments) ? response.supplierDocuments : []);
+          setSupplierPayments(Array.isArray(response.supplierPayments) ? response.supplierPayments : []);
         }
         const offersResponse = offersResult.data as { rows?: unknown } | null;
         if (!offersResult.error && offersResponse && Array.isArray(offersResponse.rows)) {
@@ -191,6 +196,8 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
         setContact(null);
         setDocuments([]);
         setPayments([]);
+        setSupplierDocuments([]);
+        setSupplierPayments([]);
         setOffers([]);
         setLoading(false);
       });
@@ -201,29 +208,37 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
 
   useEffect(() => {
     if (!customerId) {
-      setLinkedChecks([]);
+      setReceivedChecks([]);
+      setIssuedChecks([]);
       setLinkedChecksStatus("ready");
       return;
     }
 
     let cancelled = false;
     setLinkedChecksStatus("loading");
-    listAllChecks({
-      filters: { contactParasutId: customerId, direction: "received" },
-    })
-      .then((result) => {
+    // Dual-role contacts can also be the given_to party on an issued check
+    // (see customerLedger.ts) — fetched unconditionally alongside received
+    // checks; for a pure customer this simply resolves to an empty array.
+    Promise.all([
+      listAllChecks({ filters: { contactParasutId: customerId, direction: "received" } }),
+      listAllChecks({ filters: { contactParasutId: customerId, direction: "issued" } }),
+    ])
+      .then(([receivedResult, issuedResult]) => {
         if (cancelled) return;
-        if (result.ok === false) {
-          setLinkedChecks([]);
+        if (receivedResult.ok === false || issuedResult.ok === false) {
+          setReceivedChecks([]);
+          setIssuedChecks([]);
           setLinkedChecksStatus("error");
           return;
         }
-        setLinkedChecks(result.data);
+        setReceivedChecks(receivedResult.data);
+        setIssuedChecks(issuedResult.data);
         setLinkedChecksStatus("ready");
       })
       .catch(() => {
         if (!cancelled) {
-          setLinkedChecks([]);
+          setReceivedChecks([]);
+          setIssuedChecks([]);
           setLinkedChecksStatus("error");
         }
       });
@@ -248,15 +263,10 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
     };
   }, [customerId]);
 
-  const documentByPaymentId = useMemo(() => {
-    const map = new Map<string, DocumentRow>();
-    for (const document of documents) {
-      for (const paymentId of documentPaymentIds(document)) {
-        map.set(paymentId, document);
-      }
-    }
-    return map;
-  }, [documents]);
+  // Reference lookup only (Tahsilatlar table's "Referans" column) — built
+  // from every fetched document, not just balance-impacting ones, since a
+  // cancelled invoice's number is still useful context there.
+  const documentByPaymentId = useMemo(() => buildPaymentToDocumentMap(documents), [documents]);
 
   // Every real, non-cancelled invoice matched to this customer via the real
   // relationships.contact relation is a Borç row — it must appear whether or
@@ -264,92 +274,58 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   // used to exclude rows here, but real production data showed customers
   // whose genuine invoices have that flag false while still being real,
   // owed receivables — excluding on it silently dropped every invoice for
-  // some customers. Only a genuinely cancelled document is excluded now.
+  // some customers. Only a genuinely cancelled document is excluded now
+  // (see customerLedger.ts's filterBalanceDocuments, applied internally).
   const balanceDocuments = useMemo(
     () => documents.filter((document) => sourceText(document.attributes?.item_type) !== "cancelled"),
     [documents],
   );
 
-  const ledgerRows = useMemo<LedgerRow[]>(() => {
-    const debitRows: LedgerRow[] = balanceDocuments.map((document) => {
-      const attributes = document.attributes ?? {};
-      // Paraşüt's own customer statement and customer balance use the
-      // VAT-INCLUSIVE invoice general total — confirmed via live read-only
-      // reconciliation against production (Paraşüt statement amounts matched
-      // gross_total exactly; net_total was consistently 20% below the real
-      // statement amount for every checked invoice).
-      const rawAmount = numericValue(attributes.gross_total) ?? 0;
-      const currency = sourceText(attributes.currency).toUpperCase();
-      const rate = numericValue(attributes.exchange_rate);
-      // gross_total is in the invoice's own currency; convert to TRY using
-      // Paraşüt's own recorded exchange_rate so foreign-currency invoices
-      // don't silently understate/overstate the TRY-denominated balance.
-      const amount = currency && currency !== "TRY" && currency !== "TRL" && rate && rate > 0 ? rawAmount * rate : rawAmount;
-      return {
-        key: `invoice-${sourceText(document.parasut_id)}`,
-        date: sourceText(attributes.issue_date),
-        type: "Satış Faturası",
-        debit: amount,
-        credit: 0,
-        description: displayText(attributes.invoice_no),
-      };
-    });
-    const creditRows: LedgerRow[] = payments.map((payment) => {
-      const attributes = payment.attributes ?? {};
-      const amount = numericValue(attributes.amount) ?? 0;
-      const parentDocument = documentByPaymentId.get(sourceText(payment.parasut_id));
-      const reference = displayText(parentDocument?.attributes?.invoice_no);
-      const notes = sourceText(attributes.notes);
-      return {
-        key: `payment-${sourceText(payment.parasut_id)}`,
-        date: sourceText(attributes.date),
-        type: "Tahsilat",
-        debit: 0,
-        credit: amount,
-        description: notes || reference,
-      };
-    });
-    // The unified checks API only returns an exact, persisted party link.
-    // Open cheques are visible but have no credit effect; a paid ERP-local
-    // cheque is credited separately. Paraşüt mirror cheques remain
-    // informational so an existing mirrored payment can never be doubled.
-    const checkRows: LedgerRow[] = projectPartyCheckLedger(
-      linkedChecks,
-      customerId ?? "",
-      "received",
-    ).map((check) => {
-      const amount = invoiceAmount(check.originalAmount, check.currency);
-      const remaining = invoiceAmount(check.remainingAmount, check.currency);
-      const status = {
-        open: "Açık",
-        upcoming: "Vadesi Gelmedi",
-        due_today: "Bugün Vadeli",
-        overdue: "Gecikmiş",
-        paid: "Ödendi",
-        cancelled: "İptal",
-        returned: "İade",
-      }[check.effectiveStatus];
-      return {
-        key: `check-${check.id}`,
-        date: check.date,
-        type: check.documentType,
-        debit: 0,
-        credit: check.credit,
-        description: [
-          check.checkNumber ? `Çek ${check.checkNumber}` : "Çek no —",
-          check.bankName || "Banka —",
-          check.dueDate ? `Vade ${check.dueDate}` : "Vade —",
-          `Alınan · ${amount}`,
-          `Kalan ${remaining}`,
-          status,
-          check.sourceLabel,
-        ].join(" · "),
-      };
-    });
-    return [...debitRows, ...creditRows, ...checkRows]
-      .filter((row) => row.date)
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [balanceDocuments, payments, linkedChecks, customerId, documentByPaymentId]);
+  // A real received/issued check is its own financial event on the
+  // authoritative Paraşüt statement (credit/debit respectively) — see
+  // customerLedger.ts's doc comment. This module only resolves the party
+  // (via checks-api's existing issued_by/given_to-backed partyFromMirror,
+  // already filtered into receivedChecks/issuedChecks by listAllChecks'
+  // contactParasutId filter) and shapes each check into the ledger's input
+  // contract; the actual face-value/direction/fragment-attribution logic
+  // lives in customerLedger.ts.
+  const toLedgerCheck = (check: CheckListRow, direction: "received" | "issued"): LedgerCheckInput => ({
+    id: check.id,
+    direction,
+    date: check.issueDate || check.dueDate || "",
+    dueDate: check.dueDate,
+    currency: check.currency ?? "TRY",
+    originalAmount: check.originalAmount,
+    // Only a TRY/TRL check's own face value is a TRY amount by definition;
+    // a foreign-currency check has no reliable TRY conversion available at
+    // this layer (checks-api does not expose remaining_in_trl — see the
+    // audit report) — customerLedger.ts's resolveCheckTryAmount() shows the
+    // check without counting a guessed figure rather than fabricate one.
+    amountTry: check.currency === "TRY" ? check.originalAmount : null,
+    settlementStatus: (check.settlementStatus as LedgerCheckSettlementStatus) ?? "open",
+    description: [
+      check.checkNumber ? `Çek ${check.checkNumber}` : "Çek no —",
+      check.bankName || "Banka —",
+      check.dueDate ? `Vade ${check.dueDate}` : "Vade —",
+      check.sourceLabel,
+    ].join(" · "),
+  });
+
+  const ledgerRows = useMemo<LedgerRow[]>(
+    () =>
+      buildCustomerLedgerRows({
+        contactParasutId: customerId ?? "",
+        documents: documents as LedgerDocumentRow[],
+        payments: payments as LedgerPaymentRow[],
+        supplierDocuments: supplierDocuments as LedgerDocumentRow[],
+        supplierPayments: supplierPayments as LedgerPaymentRow[],
+        receivedChecks: receivedChecks.map((check) => toLedgerCheck(check, "received")),
+        issuedChecks: issuedChecks.map((check) => toLedgerCheck(check, "issued")),
+        trlBalance: numericValue(contact?.attributes?.trl_balance),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- toLedgerCheck is a stable pure mapper recreated each render; including it would invalidate the memo every render for no benefit
+    [documents, payments, supplierDocuments, supplierPayments, receivedChecks, issuedChecks, customerId, contact],
+  );
 
   const ledgerWithBalance = useMemo(() => {
     let running = 0;
@@ -387,7 +363,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   // per-invoice figure — using it (rather than re-deriving from gross_total
   // minus matched payments) avoids re-guessing what Paraşüt already computed.
   const todayIso = istanbulTodayIso();
-  const openTryChecks = linkedChecks.filter(
+  const openTryChecks = receivedChecks.filter(
     (check) =>
       check.direction === "received" &&
       check.party.parasutId === customerId &&
@@ -579,7 +555,11 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
           </div>
         </div>
         <div className="crm-empty" style={{ marginBottom: "0.5rem" }}>
-          Bu tablo mutabakatı henüz doğrulanmadı; bazı tahsilatlar Paraşüt'te ayrı parçalar halinde kayıtlı olabilir. Güncel bakiye için üstteki Müşteri Bakiyesi kartını esas alın.
+          Bu tablodaki her satır Paraşüt'teki gerçek bir kayıttır (fatura, tahsilat, ödeme veya çek); tutarlar bölünmez,
+          birleştirilmez veya tekrarlanmaz — bir çek her zaman tam nominal tutarıyla tek satır olarak görünür. "(türetilmiş)"
+          işaretli Devir Bakiyesi satırı Paraşüt'te ayrı bir kayıt değildir; bilinen tüm hareketler ile Paraşüt'ün trl_balance
+          değeri arasındaki farktan hesaplanır ve yalnızca bu fark anlamlıysa eklenir. Güncel, kesin bakiye için üstteki
+          Müşteri Bakiyesi kartını (Paraşüt trl_balance) esas alın.
         </div>
         {linkedChecksStatus === "loading" && (
           <div className="crm-empty" style={{ marginBottom: "0.5rem" }}>
@@ -612,9 +592,12 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
                 </tr>
               )}
               {rangeFilteredLedger.rows.map((row) => (
-                <tr key={row.key}>
+                <tr key={`${row.sourceResource}:${row.sourceId}`} title={row.provenance === "derived" ? row.derivationNote : row.attributionNote}>
                   <td>{row.date || "—"}</td>
-                  <td>{row.type}</td>
+                  <td>
+                    {LEDGER_TYPE_LABELS[row.transactionType]}
+                    {row.provenance === "derived" && <sup title={row.derivationNote}> (türetilmiş)</sup>}
+                  </td>
                   <td>{row.description || "—"}</td>
                   <td>{row.debit ? formatMoney(row.debit) : "—"}</td>
                   <td>{row.credit ? formatMoney(row.credit) : "—"}</td>
@@ -701,7 +684,7 @@ const escapeHtml = (value: unknown) =>
 function buildLedgerPrintHtml(
   title: string,
   subtitle: string,
-  rows: { date: string; type: string; debit: number; credit: number; balance: number; description: string }[],
+  rows: (LedgerRow & { balance: number })[],
   totals: { totalDebit: number; totalCredit: number; totalBalance: number },
   carryForward: number | null,
   logoUrl: string,
@@ -712,10 +695,10 @@ function buildLedgerPrintHtml(
       ? `<tr class="carry"><td>—</td><td>Devir Bakiyesi</td><td>Seçilen dönem öncesi gerçek bakiye</td><td>—</td><td>—</td><td>${escapeHtml(formatSignedBalance(carryForward))}</td></tr>`
       : "";
   const bodyRows = rows
-    .map(
-      (row) =>
-        `<tr><td>${escapeHtml(row.date || "—")}</td><td>${escapeHtml(row.type)}</td><td>${escapeHtml(row.description || "—")}</td><td>${escapeHtml(row.debit ? formatMoney(row.debit) : "—")}</td><td>${escapeHtml(row.credit ? formatMoney(row.credit) : "—")}</td><td>${escapeHtml(formatSignedBalance(row.balance))}</td></tr>`,
-    )
+    .map((row) => {
+      const typeLabel = LEDGER_TYPE_LABELS[row.transactionType] + (row.provenance === "derived" ? " (türetilmiş)" : "");
+      return `<tr><td>${escapeHtml(row.date || "—")}</td><td>${escapeHtml(typeLabel)}</td><td>${escapeHtml(row.description || "—")}</td><td>${escapeHtml(row.debit ? formatMoney(row.debit) : "—")}</td><td>${escapeHtml(row.credit ? formatMoney(row.credit) : "—")}</td><td>${escapeHtml(formatSignedBalance(row.balance))}</td></tr>`;
+    })
     .join("");
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
 body{font:11px Arial;color:#18212b;margin:0}
@@ -792,7 +775,9 @@ function InvoiceHistory({
                   <td>{no}</td>
                   <td>{displayText(attributes.issue_date)}</td>
                   <td>{displayText(attributes.due_date)}</td>
-                  <td>{invoiceAmount(attributes.gross_total, attributes.currency)}</td>
+                  {/* net_total, not gross_total — see customerLedger.ts's doc comment: this
+                      Paraşüt account's gross_total is the pre-tax amount. */}
+                  <td>{invoiceAmount(attributes.net_total, attributes.currency)}</td>
                   <td>
                     <StatusBadge>{collectionLabel(attributes.payment_status)}</StatusBadge>
                   </td>

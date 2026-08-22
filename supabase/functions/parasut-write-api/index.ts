@@ -16,7 +16,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { resolveCompanyScope, type ErpUserAuthzRow } from "../_shared/company-scope.ts";
 import { SupabaseAttemptRepository, SupabaseAuditRepository, SupabaseCommandRepository, SupabaseProviderLinkRepository, type OutboundAdminLike } from "../_shared/accounting-outbound-repository.ts";
-import { computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResync } from "./handlers.ts";
+import { computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleFullResync, handleResync } from "./handlers.ts";
 import { syncContacts } from "../../../server/parasut/sync-contacts.ts";
 import { syncProducts } from "../../../server/parasut/sync-products.ts";
 import { syncAccounts } from "../../../server/parasut/sync-accounts.ts";
@@ -126,6 +126,14 @@ const SYNCABLE_RESOURCES: Record<string, { resourceType: string; run: (context: 
   checks: { resourceType: "checks", run: syncChecks },
 };
 
+// Backs the "full-resync" action (the account-statement manual sync
+// button): only the resources an account statement actually reads —
+// contacts first, since sales_invoices/purchase_bills resolve their party
+// against the contacts mirror; see ACCOUNT_STATEMENT_AND_PARASUT_SYNC_AUDIT.md
+// §"Manual sync". Reuses SYNCABLE_RESOURCES's exact same runners — never a
+// second sync engine.
+const FULL_RESYNC_RESOURCE_ORDER = ["customers", "sales_invoices", "purchase_bills", "checks"] as const;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -210,6 +218,37 @@ serve(async (req) => {
       return json(response);
     } catch (error) {
       if (error instanceof CreateCustomerRejectedError) return json({ error: error.message }, error.httpStatus);
+      const message = error instanceof Error ? error.message : "Beklenmeyen hata";
+      return json({ error: message }, 500);
+    }
+  }
+
+  // Full, one-way Paraşüt -> Supabase resync of every account-statement
+  // resource, each resumed to completion within this invocation's safety
+  // limits (not just the first bounded chunk) — backs the account
+  // statement's manual sync button. Same admin-only, read+mirror-reconcile,
+  // never-a-Paraşüt-write rules as "resync" above; see handlers.ts's
+  // handleFullResync doc comment for the resume/safety-limit/conflict
+  // behavior.
+  if (action === "full-resync") {
+    if (!access.isAdmin) return json({ error: "Bu işlem için ERP yöneticisi yetkisi gereklidir." }, 403);
+
+    try {
+      const tokens = new TokenManager({
+        clientId: env("PARASUT_CLIENT_ID"),
+        clientSecret: env("PARASUT_CLIENT_SECRET"),
+        username: env("PARASUT_USERNAME"),
+        password: env("PARASUT_PASSWORD"),
+      });
+      const database = admin as unknown as MirrorDatabase;
+      const context: SyncContext = { companyId: activeCompanyId, parasutCompanyId, database, client: new ParaşütClient(tokens) };
+      const resources = FULL_RESYNC_RESOURCE_ORDER.map((resource) => ({
+        resource,
+        runSync: () => SYNCABLE_RESOURCES[resource].run(context, { concurrencyLock: true }),
+      }));
+      const response = await handleFullResync(access.isAdmin, resources);
+      return json(response);
+    } catch (error) {
       const message = error instanceof Error ? error.message : "Beklenmeyen hata";
       return json({ error: message }, 500);
     }

@@ -309,4 +309,19 @@ describe("syncChecks", () => {
 
     expect(result.reconciliation).toBeUndefined();
   });
+
+  it("requests issued_by and given_to on every page — without it, Paraşüt's live checks response carries only an empty relationships stub (confirmed 2026-08-22: no `data` on either key), so no cheque could ever be auto-linked to a customer/supplier", async () => {
+    const { database } = createFakeDatabase();
+    const capturedIncludes: (string[] | undefined)[] = [];
+    const client = {
+      async *getPaginated(_path: string, include?: string[]) {
+        capturedIncludes.push(include);
+        yield page(1, [checkResource({ id: "7" })]);
+      },
+    };
+    await syncChecks(buildContext(database, client as unknown as ReturnType<typeof fakeClient>));
+
+    expect(capturedIncludes).toHaveLength(1);
+    expect(capturedIncludes[0]).toEqual(expect.arrayContaining(["issued_by", "given_to"]));
+  });
 });

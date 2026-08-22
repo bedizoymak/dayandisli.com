@@ -201,6 +201,55 @@ describe("checks-api normalization", () => {
     });
     expect(row.partyLinkEditable).toBe(false);
   });
+
+  it("30. an issued check resolves to the correct supplier contact via the given_to relationship — the sync-checks.ts include=issued_by,given_to fix's exact consumer", () => {
+    const source = mirror("issued-1", { is_in: false, is_out: true });
+    source.relationships = { given_to: { data: { type: "contacts", id: "supplier-7" } } };
+    const row = normalizeMirrorCheck(source, null, TODAY, contact("supplier-7", "supplier"));
+    expect(row.direction).toBe("issued");
+    expect(row.party).toEqual({
+      parasutId: "supplier-7",
+      localQuoteCustomerId: null,
+      name: "supplier-supplier-7",
+      assigned: true,
+    });
+  });
+
+  it("30b. a received check resolves via issued_by only, never given_to, and vice versa for an issued check", () => {
+    const received = mirror("r-1");
+    received.relationships = { issued_by: { data: { type: "contacts", id: "cust-1" } }, given_to: { data: { type: "contacts", id: "supp-1" } } };
+    const receivedRow = normalizeMirrorCheck(received, null, TODAY, contact("cust-1", "customer"));
+    expect(receivedRow.party.parasutId).toBe("cust-1");
+
+    const issued = mirror("i-1", { is_in: false, is_out: true });
+    issued.relationships = { issued_by: { data: { type: "contacts", id: "cust-1" } }, given_to: { data: { type: "contacts", id: "supp-1" } } };
+    const issuedRow = normalizeMirrorCheck(issued, null, TODAY, contact("supp-1", "supplier"));
+    expect(issuedRow.party.parasutId).toBe("supp-1");
+  });
+
+  it("an unmatched contact never falls back to a guessed name — the check still carries its real, ID-verified party id but no name until that contact resolves", () => {
+    const source = mirror("2");
+    source.relationships = { issued_by: { data: { type: "contacts", id: "customer-99" } } };
+    const row = normalizeMirrorCheck(source, null, TODAY, null);
+    expect(row.party).toEqual({ parasutId: "customer-99", localQuoteCustomerId: null, name: null, assigned: true });
+  });
+});
+
+describe("handleChecksList — checks do not appear for unrelated contacts", () => {
+  it("a contactParasutId filter never returns a check whose real party id differs", async () => {
+    const repo = new FakeRepository();
+    const checkForContactA = mirror("1");
+    checkForContactA.relationships = { issued_by: { data: { type: "contacts", id: "customer-A" } } };
+    const checkForContactB = mirror("2");
+    checkForContactB.relationships = { issued_by: { data: { type: "contacts", id: "customer-B" } } };
+    repo.mirrors = [checkForContactA, checkForContactB];
+    repo.contacts = [contact("customer-A", "customer"), contact("customer-B", "customer")];
+
+    const result = await handleChecksList(repo, COMPANY_A, { filters: { contactParasutId: "customer-A" } }, TODAY);
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].party.parasutId).toBe("customer-A");
+  });
 });
 
 describe("handleChecksList", () => {

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { assertCreateCustomerAllowed, computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleResync, parseCreateCustomerRequestBody, toSafeResponse } from "./handlers.ts";
-import { SyncAlreadyRunningError } from "../../../server/parasut/types.ts";
+import { assertCreateCustomerAllowed, computeCustomerCreateAvailability, CreateCustomerRejectedError, handleCreateCustomer, handleFullResync, handleResync, parseCreateCustomerRequestBody, toSafeResponse } from "./handlers.ts";
+import { SyncAlreadyRunningError, type SyncResult } from "../../../server/parasut/types.ts";
 import { CreateCustomerCommandHandler } from "../../../server/erp/commands/create-customer-command.ts";
 import type { CreateCustomerCommandRecord } from "../../../server/erp/commands/create-customer-command.ts";
 import type { ProviderCapabilities } from "../../../server/erp/providers/accounting-provider.ts";
@@ -250,6 +250,119 @@ describe("handleResync", () => {
   });
 });
 
+function fakeSyncResult(overrides: Partial<SyncResult> = {}): SyncResult {
+  return {
+    pages: 2,
+    observed: 50,
+    inserted: 0,
+    updated: 0,
+    unchanged: 50,
+    errors: 0,
+    runId: "run",
+    resourceType: "sales_invoices",
+    status: "completed",
+    hasMore: false,
+    resumed: false,
+    pagesThisInvocation: 2,
+    totalPagesProcessed: 2,
+    ...overrides,
+  };
+}
+
+describe("handleFullResync", () => {
+  it("rejects when the caller lacks permission, without invoking any resource", async () => {
+    let called = false;
+    await expect(
+      handleFullResync(false, [{ resource: "contacts", runSync: async () => { called = true; return fakeSyncResult(); } }]),
+    ).rejects.toThrow(CreateCustomerRejectedError);
+    expect(called).toBe(false);
+  });
+
+  it("21. resumes a bounded resource across multiple chunks within one invocation until hasMore is false", async () => {
+    let calls = 0;
+    const runSync = async () => {
+      calls += 1;
+      return calls < 3 ? fakeSyncResult({ hasMore: true, status: "partial" }) : fakeSyncResult({ hasMore: false, status: "completed" });
+    };
+    const response = await handleFullResync(true, [{ resource: "sales_invoices", runSync }]);
+    expect(calls).toBe(3);
+    expect(response.resources[0]).toMatchObject({ status: "completed", chunks: 3, hasMore: false });
+    expect(response.status).toBe("completed");
+  });
+
+  it("22. accumulates inserted/updated/unchanged/errors counters across every chunk, not just the last one", async () => {
+    let calls = 0;
+    const results = [
+      fakeSyncResult({ hasMore: true, status: "partial", inserted: 5, updated: 1, unchanged: 10 }),
+      fakeSyncResult({ hasMore: false, status: "completed", inserted: 2, updated: 0, unchanged: 20 }),
+    ];
+    const response = await handleFullResync(true, [{ resource: "contacts", runSync: async () => results[calls++] }]);
+    expect(response.resources[0]).toMatchObject({ inserted: 7, updated: 1, unchanged: 30 });
+  });
+
+  it("23. stops a resource's chunk loop on a failed chunk and marks it failed, but continues to the next resource", async () => {
+    const failing = async () => fakeSyncResult({ status: "failed", hasMore: true, errors: 1 });
+    const ok = async () => fakeSyncResult({ status: "completed", hasMore: false });
+    const response = await handleFullResync(true, [
+      { resource: "contacts", runSync: failing },
+      { resource: "sales_invoices", runSync: ok },
+    ]);
+    expect(response.resources[0]).toMatchObject({ resource: "contacts", status: "failed" });
+    expect(response.resources[1]).toMatchObject({ resource: "sales_invoices", status: "completed" });
+    expect(response.status).toBe("partial");
+  });
+
+  it("24. stops the ENTIRE sequence immediately on a concurrency conflict, never starting a later resource", async () => {
+    let salesInvoicesCalled = false;
+    const response = await handleFullResync(true, [
+      { resource: "contacts", runSync: async () => { throw new SyncAlreadyRunningError(); } },
+      { resource: "sales_invoices", runSync: async () => { salesInvoicesCalled = true; return fakeSyncResult(); } },
+    ]);
+    expect(salesInvoicesCalled).toBe(false);
+    expect(response.status).toBe("conflict");
+    expect(response.conflictResource).toBe("contacts");
+  });
+
+  it("25. stops resuming a resource once the chunk safety limit is reached, reporting it partial with hasMore true", async () => {
+    let calls = 0;
+    const runSync = async () => { calls += 1; return fakeSyncResult({ hasMore: true, status: "partial" }); };
+    const response = await handleFullResync(true, [{ resource: "purchase_bills", runSync }], { maxChunksPerResource: 3 });
+    expect(calls).toBe(3);
+    expect(response.resources[0]).toMatchObject({ status: "partial", chunks: 3, hasMore: true });
+  });
+
+  it("25b. stops starting new chunks once the elapsed-time safety limit is reached", async () => {
+    let calls = 0;
+    let now = new Date("2026-08-22T00:00:00.000Z");
+    const runSync = async () => {
+      calls += 1;
+      now = new Date(now.getTime() + 40_000); // each chunk advances the clock 40s
+      return fakeSyncResult({ hasMore: true, status: "partial" });
+    };
+    const response = await handleFullResync(true, [{ resource: "purchase_bills", runSync }], {
+      maxElapsedMs: 90_000,
+      now: () => now,
+    });
+    expect(calls).toBeLessThanOrEqual(3); // 90s budget / 40s per chunk
+    expect(response.resources[0].status).toBe("partial");
+    expect(response.resources[0].hasMore).toBe(true);
+  });
+
+  it("26. never reports a resource (or the overall run) as completed while any chunk still has more pages", async () => {
+    const runSync = async () => fakeSyncResult({ hasMore: true, status: "partial" });
+    const response = await handleFullResync(true, [{ resource: "checks", runSync }], { maxChunksPerResource: 1 });
+    expect(response.resources[0].status).not.toBe("completed");
+    expect(response.status).not.toBe("completed");
+  });
+
+  it("records start/completion timestamps for the whole run", async () => {
+    const now = new Date("2026-08-22T10:00:00.000Z");
+    const response = await handleFullResync(true, [{ resource: "contacts", runSync: async () => fakeSyncResult() }], { now: () => now });
+    expect(response.startedAt).toBe("2026-08-22T10:00:00.000Z");
+    expect(response.completedAt).toBe("2026-08-22T10:00:00.000Z");
+  });
+});
+
 describe("parasut-write-api checks resync wiring", () => {
   it("routes checks through the existing GET-only syncChecks wrapper", () => {
     const source = readFileSync("supabase/functions/parasut-write-api/index.ts", "utf8");
@@ -257,5 +370,17 @@ describe("parasut-write-api checks resync wiring", () => {
     expect(source).toContain('import { syncChecks } from "../../../server/parasut/sync-checks.ts"');
     expect(source).toMatch(/checks:\s*\{\s*resourceType:\s*"checks",\s*run:\s*syncChecks\s*\}/);
     expect(source).toContain("mapping.run(context, { concurrencyLock: true })");
+  });
+
+  it("full-resync reuses SYNCABLE_RESOURCES' existing runners (checks included) — no second sync engine", () => {
+    const source = readFileSync("supabase/functions/parasut-write-api/index.ts", "utf8");
+
+    const fullResyncIndex = source.indexOf('if (action === "full-resync")');
+    expect(fullResyncIndex).toBeGreaterThan(-1);
+    const fullResyncBlock = source.slice(fullResyncIndex, fullResyncIndex + 900);
+    expect(fullResyncBlock).toContain('if (!access.isAdmin) return json({ error: "Bu işlem için ERP yöneticisi yetkisi gereklidir." }, 403);');
+    expect(source).toContain('FULL_RESYNC_RESOURCE_ORDER = ["customers", "sales_invoices", "purchase_bills", "checks"]');
+    expect(source).toContain("SYNCABLE_RESOURCES[resource].run(context, { concurrencyLock: true })");
+    expect(source).toContain("handleFullResync(access.isAdmin, resources)");
   });
 });

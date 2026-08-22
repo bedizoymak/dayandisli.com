@@ -570,6 +570,54 @@ describe("handleDetail — exact company_id + exact parasut_id, never maybeSingl
     expect((detail?.contact as FakeRow | null)?.attributes).toMatchObject({ name: "A Supplier" });
   });
 
+  it("customer detail: a dual-role contact (customer with account_type=\"customer\" who is also the supplier on a purchase_bill) returns both sides — reproduces the PİNO MAKİNE finding in ACCOUNT_STATEMENT_AND_PARASUT_SYNC_AUDIT.md", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Dual Role Co", account_type: "customer", trl_balance: "927109.11" }, relationships: {} },
+      ],
+      "parasut.sales_invoices": [
+        {
+          parasut_id: "900",
+          company_id: COMPANY_A,
+          attributes: { invoice_no: "HD001", currency: "TRY", net_total: "86400", gross_total: "72000", total_vat: "14400", issue_date: "2026-01-10" },
+          relationships: { contact: { data: { id: "500", type: "contacts" } }, payments: { data: [] } },
+          source_archived: false,
+          last_seen_at: "2026-01-10T00:00:00Z",
+        },
+      ],
+      "parasut.purchase_bills": [
+        {
+          parasut_id: "950",
+          company_id: COMPANY_A,
+          attributes: { invoice_no: "PIN2024", currency: "TRY", net_total: "539760", gross_total: "449800", total_vat: "89960", issue_date: "2024-03-14" },
+          relationships: { supplier: { data: { id: "500", type: "contacts" } }, payments: { data: [{ id: "sp1", type: "payments" }] } },
+          source_archived: false,
+          last_seen_at: "2024-03-14T00:00:00Z",
+        },
+      ],
+      "parasut.payments": [
+        { parasut_id: "sp1", company_id: COMPANY_A, attributes: { amount: "539760", date: "2024-03-15" }, relationships: {} },
+      ],
+      "parasut.checks": [],
+    });
+
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+
+    expect((detail?.recentDocuments as FakeRow[])).toHaveLength(1);
+    expect(((detail?.recentDocuments as FakeRow[])[0].attributes as FakeRow).invoice_no).toBe("HD001");
+    expect((detail?.supplierDocuments as FakeRow[])).toHaveLength(1);
+    expect(((detail?.supplierDocuments as FakeRow[])[0].attributes as FakeRow).invoice_no).toBe("PIN2024");
+    expect((detail?.supplierPayments as FakeRow[])).toHaveLength(1);
+    expect(((detail?.supplierPayments as FakeRow[])[0].attributes as FakeRow).amount).toBe("539760");
+  });
+
+  it("supplier detail never fetches supplierDocuments/supplierPayments — that dual-role fetch is customer-detail-only (no supplier-facing statement screen exists to consume it)", async () => {
+    const admin = createFakeSupabaseAdmin(seedTwoCompanies());
+    const detail = await handleDetail(admin, "suppliers", "600", COMPANY_A);
+    expect(detail?.supplierDocuments).toEqual([]);
+    expect(detail?.supplierPayments).toEqual([]);
+  });
+
   it("customer detail: returns null (not another company's row) when the id only exists for a different company", async () => {
     const admin = createFakeSupabaseAdmin(seedTwoCompanies());
     // "600" only exists for company A as a supplier; company B has no row with that id at all.

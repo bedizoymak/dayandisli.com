@@ -468,6 +468,48 @@ export async function resolveContactNames(admin: SupabaseAdminLike, ids: string[
   return new Map((data ?? []).map((row) => [row.parasut_id, (row.attributes?.name as string) ?? row.parasut_id]));
 }
 
+/**
+ * Every document (sales_invoices or purchase_bills) where `relKey` relates
+ * to `parasutId`, plus every payment linked from those documents. Shared by
+ * handleDetail's customer-side (contact/sales_invoices) and supplier-side
+ * (supplier/purchase_bills) lookups — same pagination/payment-resolution
+ * logic either way, just a different table/relationship key.
+ *
+ * Reads the party's ENTIRE real history, not a truncated recent window — a
+ * single-page query would silently drop older rows and desync the running
+ * balance from the real trl_balance. Page through every matching row
+ * instead, in batches bounded only as a defensive ceiling against a runaway
+ * loop (50 * 500 = 25,000 documents for one contact is far beyond any real
+ * customer/supplier).
+ */
+async function fetchPartyDocumentsAndPayments(
+  admin: SupabaseAdminLike,
+  table: "sales_invoices" | "purchase_bills",
+  relKey: "contact" | "supplier",
+  parasutId: string,
+  activeCompanyId: string,
+): Promise<{ documentRows: MirrorRecord[]; payments: MirrorRecord[] }> {
+  const PAGE_SIZE = 500;
+  const MAX_PAGES = 50;
+  const documentRows: MirrorRecord[] = [];
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const from = page * PAGE_SIZE;
+    const { data: pageRows } = await scopedParasutTable<MirrorRecord>(admin, table, activeCompanyId, "parasut_id, attributes, relationships")
+      .filter("relationships", "cs", JSON.stringify({ [relKey]: { data: { id: parasutId } } }))
+      .eq("source_archived", false)
+      .order("last_seen_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    const rows = pageRows ?? [];
+    documentRows.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+  }
+  const paymentIds = Array.from(new Set(documentRows.flatMap((document) => relationshipIds(document.relationships, "payments"))));
+  const { data: payments } = paymentIds.length
+    ? await scopedParasutTable<MirrorRecord>(admin, "payments", activeCompanyId, "parasut_id, attributes, relationships").in("parasut_id", paymentIds)
+    : { data: [] as MirrorRecord[] };
+  return { documentRows, payments: payments ?? [] };
+}
+
 export async function handleDetail(admin: SupabaseAdminLike, resource: ListResource | "sync_runs", parasutId: string, activeCompanyId: string) {
   if (resource === "sales_invoices" || resource === "purchase_bills") {
     const { data: header, error } = await scopedParasutTable<MirrorRecord>(admin, resource, activeCompanyId, "*").eq("parasut_id", parasutId).maybeSingle();
@@ -508,30 +550,7 @@ export async function handleDetail(admin: SupabaseAdminLike, resource: ListResou
     if (!contact) return null;
     const relKey = resource === "customers" ? "contact" : "supplier";
     const table = resource === "customers" ? "sales_invoices" : "purchase_bills";
-    // The account-statement ledger reads the customer's ENTIRE real history,
-    // not a truncated recent window — a single-page query would silently
-    // drop older rows and desync the running balance from the real
-    // trl_balance. Page through every matching row instead, in batches
-    // bounded only as a defensive ceiling against a runaway loop (50 * 500 =
-    // 25,000 documents for one contact is far beyond any real customer).
-    const PAGE_SIZE = 500;
-    const MAX_PAGES = 50;
-    const documentRows: MirrorRecord[] = [];
-    for (let page = 0; page < MAX_PAGES; page += 1) {
-      const from = page * PAGE_SIZE;
-      const { data: pageRows } = await scopedParasutTable<MirrorRecord>(admin, table, activeCompanyId, "parasut_id, attributes, relationships")
-        .filter("relationships", "cs", JSON.stringify({ [relKey]: { data: { id: parasutId } } }))
-        .eq("source_archived", false)
-        .order("last_seen_at", { ascending: false })
-        .range(from, from + PAGE_SIZE - 1);
-      const rows = pageRows ?? [];
-      documentRows.push(...rows);
-      if (rows.length < PAGE_SIZE) break;
-    }
-    const paymentIds = Array.from(new Set(documentRows.flatMap((document) => relationshipIds(document.relationships, "payments"))));
-    const { data: payments } = paymentIds.length
-      ? await scopedParasutTable<MirrorRecord>(admin, "payments", activeCompanyId, "parasut_id, attributes, relationships").in("parasut_id", paymentIds)
-      : { data: [] as MirrorRecord[] };
+    const { documentRows, payments } = await fetchPartyDocumentsAndPayments(admin, table, relKey, parasutId, activeCompanyId);
 
     // Received checks (Alacak): only surfaced for customers, and only via
     // the real relationship columns verified in the checks mirror migration
@@ -549,7 +568,27 @@ export async function handleDetail(admin: SupabaseAdminLike, resource: ListResou
       });
     }
 
-    return { contact, recentDocuments: documentRows, payments: payments ?? [], checks };
+    // Dual-role contacts: the exact same Paraşüt contact can appear as the
+    // `supplier` relation on purchase_bills even when its own account_type
+    // attribute is "customer" (account_type is a UI classification, not a
+    // constraint on which resources may reference the contact — confirmed
+    // against production: PİNO MAKİNE, account_type="customer", is the
+    // supplier on a real, fully-paid purchase_bill). Omitting these from the
+    // customer account statement understated both total debit and total
+    // credit by the exact same amount for every affected contact — see
+    // ACCOUNT_STATEMENT_AND_PARASUT_SYNC_AUDIT.md. Only fetched for
+    // resource === "customers": there is no supplier-facing statement screen
+    // in this codebase today, so the symmetric fetch (sales_invoices on a
+    // "suppliers" detail) would be unused dead data.
+    let supplierDocuments: MirrorRecord[] = [];
+    let supplierPayments: MirrorRecord[] = [];
+    if (resource === "customers") {
+      const supplierSide = await fetchPartyDocumentsAndPayments(admin, "purchase_bills", "supplier", parasutId, activeCompanyId);
+      supplierDocuments = supplierSide.documentRows;
+      supplierPayments = supplierSide.payments ?? [];
+    }
+
+    return { contact, recentDocuments: documentRows, payments: payments ?? [], checks, supplierDocuments, supplierPayments };
   }
 
   if (resource === "products" || resource === "accounts" || resource === "payments" || resource === "checks") {
