@@ -9,7 +9,7 @@
 // (descriptions, check status, dates) even while balances stay numerically
 // correct.
 import { describe, expect, it } from "vitest";
-import { computeContactStaleness, staleOnly, STALE_SWEEP_HOURS } from "./sync-statement-staleness.ts";
+import { computeContactStaleness, staleOnly, refreshStaleStatements, STALE_SWEEP_HOURS } from "./sync-statement-staleness.ts";
 import type { MirrorDatabase, SyncContext } from "./types.ts";
 
 function createFakeDatabase(seed: {
@@ -24,13 +24,26 @@ function createFakeDatabase(seed: {
   };
 
   function makeQuery(table: string) {
-    const predicates: Array<[string, unknown]> = [];
+    const eqPredicates: Array<[string, unknown]> = [];
+    const gtPredicates: Array<[string, unknown]> = [];
     const api = {
       select() { return api; },
-      eq(column: string, value: unknown) { predicates.push([column, value]); return api; },
-      gt() { return api; },
+      eq(column: string, value: unknown) { eqPredicates.push([column, value]); return api; },
+      gt(column: string, value: unknown) { gtPredicates.push([column, value]); return api; },
       then(resolve: (value: unknown) => unknown) {
-        const rows = tables[table].filter((row) => predicates.every(([col, val]) => row[col] === val));
+        // Mirrors the real supabase-js/PostgREST "json_col->>key" filter
+        // syntax used in production (see handlers.ts) — "col->>key" reads
+        // row[col]?.[key] instead of a literal row["col->>key"] property.
+        const readValue = (row: Record<string, unknown>, col: string): unknown => {
+          const arrowIndex = col.indexOf("->>");
+          if (arrowIndex === -1) return row[col];
+          const [jsonColumn, key] = [col.slice(0, arrowIndex), col.slice(arrowIndex + 3)];
+          const jsonValue = row[jsonColumn] as Record<string, unknown> | null | undefined;
+          return jsonValue?.[key];
+        };
+        const rows = tables[table].filter((row) =>
+          eqPredicates.every(([col, val]) => readValue(row, col) === val) &&
+          gtPredicates.every(([col, val]) => String(readValue(row, col)) > String(val)));
         return Promise.resolve(resolve({ data: rows, error: null }));
       },
     };
@@ -147,5 +160,57 @@ describe("computeContactStaleness", () => {
     const order = staleOnly(all).map((c) => c.contactParasutId);
     // Both never-synced contacts (Infinity mismatch) sort ahead of every finite mismatch, in most-recent-activity order between themselves; then large-mismatch, then small-mismatch.
     expect(order).toEqual(["never-synced-recent-activity", "never-synced-old-activity", "large-mismatch", "small-mismatch"]);
+  });
+});
+
+describe("refreshStaleStatements — invocation-level overlap guard", () => {
+  it("skips the entire invocation (touches zero contacts, makes zero Paraşüt requests) when a prior statement-refresh run is still in flight", async () => {
+    let getPaginatedCalls = 0;
+    const database = createFakeDatabase({
+      contacts: [{ parasut_id: "500", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "0" } }],
+      transaction_history_items: [], // never synced -> would normally be the top-priority candidate
+      sync_runs: [
+        {
+          company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "running",
+          created_at: "2026-08-23T11:59:30.000Z", // 30s before NOW — well inside the overlap-guard window
+          completed_at: null, request_metadata: {},
+        },
+      ],
+    });
+    const context: SyncContext = {
+      companyId: "company-1", parasutCompanyId: "666034", database,
+      client: { async *getPaginated() { getPaginatedCalls++; } },
+    };
+    const summary = await refreshStaleStatements(context, { now: NOW });
+    expect(summary.skippedOverlap).toBe(true);
+    expect(summary.contactsTouched).toHaveLength(0);
+    expect(getPaginatedCalls).toBe(0);
+  });
+
+  it("proceeds normally once a previously-running row falls outside the overlap-guard window", async () => {
+    const database = createFakeDatabase({
+      contacts: [{ parasut_id: "500", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "0" } }],
+      transaction_history_items: [
+        { contact_parasut_id: "500", company_id: "company-1", parasut_company_id: "666034", statement_order: 0, trl_balance: 0 },
+      ], // balance already agrees and recently synced -> nothing stale, but proves the guard itself did not block
+      sync_runs: [
+        {
+          company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "running",
+          created_at: "2026-08-23T11:00:00.000Z", // 1 hour before NOW — well outside the 90s guard window
+          completed_at: null, request_metadata: {},
+        },
+        {
+          company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "completed",
+          created_at: "2026-08-23T11:55:00.000Z", completed_at: "2026-08-23T11:55:00.000Z",
+          request_metadata: { endpoint: "/v4/666034/contacts/500/transaction_history_items" },
+        },
+      ],
+    });
+    const context: SyncContext = {
+      companyId: "company-1", parasutCompanyId: "666034", database,
+      client: { async *getPaginated() {} },
+    };
+    const summary = await refreshStaleStatements(context, { now: NOW });
+    expect(summary.skippedOverlap).toBe(false);
   });
 });

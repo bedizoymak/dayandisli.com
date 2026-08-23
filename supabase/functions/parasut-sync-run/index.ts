@@ -110,11 +110,20 @@ serve(async (req: Request) => {
         maxPagesPerInvocation: STATEMENT_REFRESH_MAX_PAGES,
         maxContactsPerInvocation: STATEMENT_REFRESH_MAX_CONTACTS,
       });
-      logSafe(
-        `[statement-refresh] stale=${statementRefresh.staleCount} oldest_stale_hours=${statementRefresh.oldestStaleHours.toFixed(1)} ` +
-          `touched=${statementRefresh.contactsTouched.length} completed=${statementRefresh.completed.length} ` +
-          `partial=${statementRefresh.partial.length} failed=${statementRefresh.failed.length} pages=${statementRefresh.pagesUsed}`,
-      );
+      if (statementRefresh.skippedOverlap) {
+        // Whole-invocation overlap guard fired — a prior statement-refresh
+        // run was still in flight, so this tick did nothing at all rather
+        // than risk contending for the shared Paraşüt rate-limit budget.
+        // Logged explicitly so a run stuck long enough to cause repeated
+        // skips is visible, not silent.
+        logSafe(`[statement-refresh] skipped: a prior invocation is still in flight (overlap guard)`);
+      } else {
+        logSafe(
+          `[statement-refresh] stale=${statementRefresh.staleCount} oldest_stale_hours=${statementRefresh.oldestStaleHours.toFixed(1)} ` +
+            `touched=${statementRefresh.contactsTouched.length} completed=${statementRefresh.completed.length} ` +
+            `partial=${statementRefresh.partial.length} failed=${statementRefresh.failed.length} pages=${statementRefresh.pagesUsed}`,
+        );
+      }
       if (statementRefresh.alert) {
         // Item 5: no external alerting pipeline exists in this repo — a
         // greppable [ALERT]-prefixed structured log line is the same
