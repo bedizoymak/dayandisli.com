@@ -510,6 +510,38 @@ async function fetchPartyDocumentsAndPayments(
   return { documentRows, payments: payments ?? [] };
 }
 
+// P3: Paraşüt's own `bank_name` attribute on a check is genuinely empty in
+// production (verified against raw payloads) — the real, always-populated
+// field is `bank_identifier`, a machine code (e.g. "ZIRAATBANKASI"), not a
+// display name. This is the finite, generic set of identifiers observed
+// across every check this company has ever recorded; unmapped future codes
+// fall back to the raw identifier itself rather than being hidden (never
+// invent, never drop).
+const CHECK_BANK_IDENTIFIER_LABELS: Record<string, string> = {
+  ADABANK: "Adabank",
+  AKBANK: "Akbank",
+  DENIZBANK: "DenizBank",
+  FIBABANKA: "Fibabanka",
+  FINANSBANK: "QNB Finansbank",
+  GARANTI: "Garanti BBVA",
+  HALKBANK: "Halkbank",
+  ISBANK: "Türkiye İş Bankası",
+  KUVEYTTURK: "Kuveyt Türk",
+  TEB: "TEB",
+  VAKIFBANK: "VakıfBank",
+  VAKIFKATILIM: "Vakıf Katılım",
+  YAPIKREDI: "Yapı Kredi",
+  ZIRAATBANKASI: "Ziraat Bankası",
+};
+function checkBankLabel(checkAttributes: Record<string, unknown>): string | null {
+  const identifier = String(checkAttributes.bank_identifier ?? "").trim();
+  if (identifier) return CHECK_BANK_IDENTIFIER_LABELS[identifier] ?? identifier;
+  const name = String(checkAttributes.bank_name ?? "").trim();
+  if (name) return name;
+  const bank = String(checkAttributes.bank ?? "").trim();
+  return bank || null;
+}
+
 // Human-readable, never-the-raw-enum fallback labels — used only when the
 // linked document/description is genuinely absent (see resolveDisplayDescription).
 const TRANSACTION_TYPE_FALLBACK_LABELS: Record<string, string> = {
@@ -535,9 +567,15 @@ function resolveDisplayDescription(
   sourceDescription: string,
   documentNumber: string | null,
   openingDescription: string | null,
+  documentDescription: string | null = null,
 ): string {
   if (transactionType === "sales_invoice" || transactionType === "purchase_bill") {
-    return documentNumber || sourceDescription || TRANSACTION_TYPE_FALLBACK_LABELS[transactionType];
+    // P4: the invoice's own free-text description lives on the linked
+    // sales_invoice/purchase_bill record itself (attributes.description),
+    // never on the transaction — documentNumber alone was dropping it.
+    // Render both when both are available; never invent one that's absent.
+    if (documentNumber && documentDescription) return `${documentNumber} — ${documentDescription}`;
+    return documentNumber || documentDescription || sourceDescription || TRANSACTION_TYPE_FALLBACK_LABELS[transactionType];
   }
   if (transactionType === "contact_opening_balance_debit" || transactionType === "contact_opening_balance_credit") {
     return openingDescription || sourceDescription || TRANSACTION_TYPE_FALLBACK_LABELS[transactionType];
@@ -614,6 +652,8 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
   ]);
   const salesInvoiceNoById = new Map((salesInvoices ?? []).map((row) => [String(row.parasut_id), String((row.attributes as Record<string, unknown> | undefined)?.invoice_no ?? "").trim()]));
   const purchaseBillNoById = new Map((purchaseBills ?? []).map((row) => [String(row.parasut_id), String((row.attributes as Record<string, unknown> | undefined)?.invoice_no ?? "").trim()]));
+  const salesInvoiceDescriptionById = new Map((salesInvoices ?? []).map((row) => [String(row.parasut_id), String((row.attributes as Record<string, unknown> | undefined)?.description ?? "").trim()]));
+  const purchaseBillDescriptionById = new Map((purchaseBills ?? []).map((row) => [String(row.parasut_id), String((row.attributes as Record<string, unknown> | undefined)?.description ?? "").trim()]));
   const openingDescriptionById = new Map((openingBalances ?? []).map((row) => [String(row.parasut_id), String(row.description ?? "").trim()]));
 
   const diagnostics: string[] = [];
@@ -645,6 +685,11 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
         ? (purchaseBillNoById.get(purchaseBillId) || null)
         : null;
     const openingDescription = openingBalanceId ? (openingDescriptionById.get(openingBalanceId) || null) : null;
+    const documentDescription = salesInvoiceId
+      ? (salesInvoiceDescriptionById.get(salesInvoiceId) || null)
+      : purchaseBillId
+        ? (purchaseBillDescriptionById.get(purchaseBillId) || null)
+        : null;
     return {
       historyItemId: String(historyRow.parasut_id ?? ""),
       // Position in the already date-then-arrival-ordered SQL result, not
@@ -658,7 +703,7 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
       description: sourceDescription,
       sourceDescription,
       documentNumber,
-      displayDescription: resolveDisplayDescription(transactionType, sourceDescription, documentNumber, openingDescription),
+      displayDescription: resolveDisplayDescription(transactionType, sourceDescription, documentNumber, openingDescription, documentDescription),
       amountInTrl: Number(transaction?.amount_in_trl ?? attributes.amount_in_trl ?? 0),
       debitAmount: Number(transaction?.debit_amount ?? attributes.debit_amount ?? 0),
       debitCurrency: transaction?.debit_currency ?? attributes.debit_currency ?? null,
@@ -678,7 +723,7 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
       check: check ? {
         id: checkId,
         serialNumber: checkAttributes.serial_number ?? null,
-        bank: checkAttributes.bank_name ?? checkAttributes.bank ?? null,
+        bank: checkBankLabel(checkAttributes),
         issueDate: checkAttributes.issue_date ?? null,
         dueDate: checkAttributes.due_date ?? null,
         paymentStatus: checkAttributes.payment_status ?? null,
@@ -701,12 +746,21 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
   if (Number.isFinite(numericContactBalance) && finalHistoryBalance !== null && Math.abs(finalHistoryBalance - numericContactBalance) > 0.005) {
     diagnostics.push("contact_balance_mismatch");
   }
+  // Item 5 (P0 observability): admin-visible "when was this statement last
+  // refreshed from Paraşüt" — the exact staleness signal that was missing
+  // entirely before this fix. Reuses the already-fetched history rows, no
+  // extra query.
+  const lastSyncedAt = historyRows.reduce<string | null>((latest, row) => {
+    const value = typeof row.synced_at === "string" ? row.synced_at : null;
+    return value && (!latest || value > latest) ? value : latest;
+  }, null);
   return {
     version: 1,
     status: diagnostics.length ? "incomplete" : "reconciled",
     rows,
     reconciliation: { finalHistoryBalance, contactBalance: Number.isFinite(numericContactBalance) ? numericContactBalance : null },
     diagnostics,
+    lastSyncedAt,
   };
 }
 

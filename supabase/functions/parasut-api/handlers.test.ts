@@ -656,6 +656,65 @@ describe("handleDetail — exact company_id + exact parasut_id, never maybeSingl
     }
   });
 
+  it("customer detail: renders the check's drawee bank name from bank_identifier (P3) and combines invoice number with its own free-text description (P4)", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Co", account_type: "customer", trl_balance: "1000" }, relationships: {} },
+      ],
+      "parasut.transaction_history_items": [
+        { parasut_id: "h1", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "txn-invoice", statement_order: -2, transaction_date: "2023-12-12", trl_balance: 57960, source_archived: false },
+        { parasut_id: "h2", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "txn-check", statement_order: -1, transaction_date: "2024-04-04", trl_balance: 1000, source_archived: false },
+      ],
+      "parasut.transactions": [
+        { parasut_id: "txn-invoice", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "sales_invoice", date: "2023-12-12", description: "", debit_amount: 57960, credit_amount: 0, sales_invoice_parasut_id: "si-1" },
+        { parasut_id: "txn-check", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "check_in", date: "2024-04-04", description: "", debit_amount: 0, credit_amount: 96270, check_parasut_id: "check-1" },
+      ],
+      "parasut.sales_invoices": [
+        { parasut_id: "si-1", company_id: COMPANY_A, attributes: { invoice_no: "CH02023000000001", description: "Hira Parts Parça Üretimi" }, relationships: {} },
+      ],
+      "parasut.purchase_bills": [],
+      "parasut.opening_balances": [],
+      "parasut.checks": [
+        // Paraşüt's own bank_name is genuinely empty; bank_identifier is the real, always-populated field.
+        { parasut_id: "check-1", company_id: COMPANY_A, attributes: { bank_name: "", bank_identifier: "ZIRAATBANKASI", serial_number: "006995", due_date: "2024-04-04", payment_status: "paid" }, relationships: {} },
+      ],
+      "parasut.payments": [],
+    });
+
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { rows: Array<Record<string, unknown>> };
+
+    expect(statement.rows[0].displayDescription).toBe("CH02023000000001 — Hira Parts Parça Üretimi");
+    const checkRow = statement.rows[1].check as { bank: string | null };
+    expect(checkRow.bank).toBe("Ziraat Bankası");
+  });
+
+  it("customer detail: falls back to the raw bank_identifier for an unmapped bank code instead of hiding it", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Co", account_type: "customer", trl_balance: "0" }, relationships: {} },
+      ],
+      "parasut.transaction_history_items": [
+        { parasut_id: "h1", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "txn-check", statement_order: -1, transaction_date: "2024-04-04", trl_balance: 0, source_archived: false },
+      ],
+      "parasut.transactions": [
+        { parasut_id: "txn-check", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "check_in", date: "2024-04-04", description: "", debit_amount: 0, credit_amount: 100, check_parasut_id: "check-1" },
+      ],
+      "parasut.sales_invoices": [],
+      "parasut.purchase_bills": [],
+      "parasut.opening_balances": [],
+      "parasut.checks": [
+        { parasut_id: "check-1", company_id: COMPANY_A, attributes: { bank_name: "", bank_identifier: "SOME_FUTURE_BANK", serial_number: "1", due_date: "2024-04-04", payment_status: "unpaid" }, relationships: {} },
+      ],
+      "parasut.payments": [],
+    });
+
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { rows: Array<Record<string, unknown>> };
+    const checkRow = statement.rows[0].check as { bank: string | null };
+    expect(checkRow.bank).toBe("SOME_FUTURE_BANK");
+  });
+
   it("customer detail: authoritative statement flags a backward date jump in the oldest-first response as a diagnostic", async () => {
     const admin = createFakeSupabaseAdmin({
       "parasut.contacts": [
