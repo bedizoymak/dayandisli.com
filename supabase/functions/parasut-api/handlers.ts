@@ -86,6 +86,29 @@ export interface SupabaseAdminLike {
 // in the one order the real API actually supports, while still guaranteeing
 // company scoping happens immediately and cannot be forgotten by a handler.
 // ---------------------------------------------------------------------
+// UNBOUNDED-QUERY AUDIT (2026-08-23, see server/parasut/no-unbounded-select.test.ts
+// for the mechanically-checked findings and the P0 incident this class of
+// bug caused): `table` is a variable here, not a string literal, so the
+// static scanner in that test file cannot see calls routed through this
+// helper — documented here instead. Every scopedParasutTable(...) call with
+// no further .limit()/.range()/.single()/.maybeSingle() shares the same
+// risk (PostgREST's ~1000-row response cap truncates silently, not with an
+// error). Known instances, measured live 2026-08-23:
+//   - handleDashboard: "accounts" (bounded — a company's bank/cash accounts
+//     is inherently small) and "contacts" (441 rows, TRACKED, monitor as
+//     the business grows past ~1000).
+//   - handleVatSummary / handleReports: "sales_invoices" (448 rows) and
+//     "purchase_bills" (811 rows — closest of any audited table to the
+//     cap). TRACKED, not yet fixed: needs a date-scoped filter (both
+//     functions only need "this month"/a bounded window) or pagination,
+//     deferred to avoid touching financial-calculation code blind.
+//   - fetchAuthoritativeStatement's .in() lookups against "transactions",
+//     "checks", "payments", "sales_invoices", "purchase_bills",
+//     "opening_balances" (scoped to one contact's own transaction IDs, max
+//     ~113 rows for any contact today): TRACKED, HIGH PRIORITY — this is
+//     the customer-facing ledger; the same failure class here would drop
+//     rows from a real statement, not just delay a background sync, if any
+//     single contact's transaction count ever exceeds ~1000.
 export function scopedParasutTable<T = Record<string, unknown>>(
   admin: SupabaseAdminLike,
   table: string,
