@@ -237,7 +237,16 @@ export interface ReconciliationOutcome {
 export interface SyncResult extends SyncCounters {
   runId: string;
   resourceType: string;
-  status: "completed" | "partial" | "failed";
+  /**
+   * "superseded" is distinct from "failed": it means enforceSingleRunner's
+   * FIFO election killed this invocation before it made any Paraşüt
+   * requests or wrote any rows — expected, benign contention between
+   * overlapping cron ticks, not a real failure. "failed" means the run
+   * actually attempted work and could not complete. Keeping them separate
+   * is what makes alerting on "failed" meaningful instead of firing
+   * constantly on routine election losses.
+   */
+  status: "completed" | "partial" | "failed" | "superseded";
   /** Only present when `options.reconcile` was true for this run. */
   reconciliation?: ReconciliationOutcome;
   /** True when maxPagesPerInvocation stopped the run before the resource was fully traversed — the caller must invoke again to continue. Never true for "failed". */

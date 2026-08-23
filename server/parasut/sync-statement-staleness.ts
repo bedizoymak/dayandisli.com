@@ -173,6 +173,9 @@ export interface StatementRefreshSummary {
   contactsTouched: string[];
   completed: string[];
   partial: string[];
+  /** Item 3: a per-contact enforceSingleRunner election loss — expected,
+   * benign contention, not a real failure. Kept separate from `failed`. */
+  superseded: string[];
   failed: string[];
   pagesUsed: number;
   /** True when the observability threshold (item 5) was breached — log this
@@ -182,43 +185,112 @@ export interface StatementRefreshSummary {
    * SyncObservabilitySink), not an invented new mechanism. */
   alert: boolean;
   /** True when this invocation exited immediately because a prior
-   * statement-refresh invocation was still in flight — see
-   * INVOCATION_OVERLAP_GUARD_SECONDS. Distinct from a per-contact
+   * statement-refresh invocation was still in flight (lease held or held-
+   * and-since-reaped this same call). Distinct from a per-contact
    * concurrency-lock failure (which shows up in `failed` instead): this is
    * a whole-invocation skip, logged so a stuck run is visible rather than
    * silently retried every tick. */
   skippedOverlap: boolean;
 }
 
-interface RunningMarkerRow { created_at: string }
+// A fixed time window ("skip if a running row is younger than N seconds")
+// only bounds how LONG it prevents overlap, not WHETHER it does — any run
+// that legitimately takes longer than the window (slow Paraşüt response, a
+// large multi-page contact) becomes unprotected exactly when overlap is
+// most likely and most costly. Replaced with a heartbeat lease instead:
+// the holding invocation renews it after every contact it processes, so
+// protection lasts as long as real progress is happening, not a fixed
+// clock. A lease with no heartbeat for LEASE_ORPHAN_SECONDS is explicitly
+// reaped (marked "failed" — it never got type "superseded" because it
+// never lost a fair election, it just went silent — and logged) rather
+// than silently expiring with no signal.
+//
+// A pg_advisory_lock (session-scoped, released automatically if the
+// holding connection dies) was considered and rejected: this codebase's
+// only Postgres access is the Supabase JS client over PostgREST/RPC, where
+// each call independently checks out a pooled connection for the duration
+// of that single request. There is no connection held open for the whole
+// Edge Function invocation for a session-scoped lock to be tied to — an
+// advisory lock acquired via one RPC call would release the instant that
+// call returned, long before the invocation's real work (many further,
+// separate requests) even started. That would make it a no-op, not a
+// guard. The lease approach needs no persistent connection: acquisition,
+// every heartbeat, and release are each their own ordinary, independently
+// poolable request.
+const LOCK_RESOURCE_TYPE = "statement_refresh_lock";
+const LEASE_ORPHAN_SECONDS = 45;
+
+interface LeaseRow { id: string; request_metadata: { last_heartbeat_at?: string } | null }
 
 /**
- * Slightly longer than the 60s cron interval so a run that's merely running
- * a few seconds past its own tick isn't treated as stuck, but short enough
- * that a genuinely wedged run stops blocking every subsequent tick once its
- * row is reclaimed by sync-base.ts's existing recoverStaleRuns (10 minutes).
- * This is a whole-INVOCATION guard, layered on top of (not a replacement
- * for) syncContactTransactionHistory's existing per-CONTACT
- * enforceSingleRunner lock — that one stops two invocations from both
- * writing the same contact; this one stops a second invocation from
- * starting its own Paraşüt request burst at all while one is still using
- * up the shared 10-req/~10s budget.
+ * Atomic acquire: the partial unique index
+ * sync_runs_statement_refresh_lock_singleton (company_id,
+ * parasut_company_id) WHERE resource_type = 'statement_refresh_lock' AND
+ * status = 'running' makes a second concurrent insert fail with a
+ * uniqueness violation — a database-enforced guarantee, not a
+ * check-then-act race in application code. Orphaned leases (no heartbeat
+ * within LEASE_ORPHAN_SECONDS) are reaped first so a genuinely dead
+ * invocation doesn't block forever.
  */
-const INVOCATION_OVERLAP_GUARD_SECONDS = 90;
-
-async function isAnotherInvocationInFlight(context: SyncContext, now: Date): Promise<boolean> {
-  const cutoff = new Date(now.getTime() - INVOCATION_OVERLAP_GUARD_SECONDS * 1000).toISOString();
-  const result = await context.database
+async function acquireInvocationLease(context: SyncContext, now: Date): Promise<string | null> {
+  // .maybeSingle(), not an unbounded .select() — the partial unique index
+  // guarantees at most one 'running' row can exist for this
+  // (company, parasut_company, resource_type) at a time, so this is
+  // genuinely bounded to 0-1 rows, not merely assumed to be.
+  const existing = await context.database
     .schema(PARASUT_INTEGRATION_SCHEMA)
-    .from<RunningMarkerRow[]>("sync_runs")
-    .select("created_at")
+    .from<LeaseRow>("sync_runs")
+    .select("id, request_metadata")
     .eq("company_id", context.companyId)
     .eq("parasut_company_id", context.parasutCompanyId)
-    .eq("resource_type", RESOURCE_TYPE)
+    .eq("resource_type", LOCK_RESOURCE_TYPE)
     .eq("status", "running")
-    .gt("created_at", cutoff);
-  if (result.error) throw new Error(result.error.message ?? "Overlap-guard lookup failed");
-  return (result.data ?? []).length > 0;
+    .maybeSingle();
+  if (existing.error) throw new Error(existing.error.message ?? "Lease lookup failed");
+
+  if (existing.data) {
+    const row = existing.data;
+    const heartbeat = row.request_metadata?.last_heartbeat_at;
+    const ageSeconds = heartbeat ? (now.getTime() - new Date(heartbeat).getTime()) / 1000 : Infinity;
+    if (ageSeconds <= LEASE_ORPHAN_SECONDS) return null; // a live lease is held elsewhere — skip this invocation entirely.
+    // Orphaned: the holder went silent (crashed / killed mid-run) without releasing it. Explicit reap, not a silent timeout.
+    console.warn(`[statement-refresh] reaping orphaned lease ${row.id} — no heartbeat for ${ageSeconds.toFixed(0)}s`);
+    await context.database.schema(PARASUT_INTEGRATION_SCHEMA).from("sync_runs")
+      .update({ status: "failed", completed_at: now.toISOString() }).eq("id", row.id);
+  }
+
+  const insertResult = await context.database
+    .schema(PARASUT_INTEGRATION_SCHEMA)
+    .from<{ id: string }>("sync_runs")
+    .insert({
+      company_id: context.companyId,
+      parasut_company_id: context.parasutCompanyId,
+      resource_type: LOCK_RESOURCE_TYPE,
+      trigger_type: context.triggerType ?? "local_manual",
+      status: "running",
+      request_metadata: { last_heartbeat_at: now.toISOString() },
+    })
+    .select("id")
+    .single();
+  if (insertResult.error) {
+    // Another invocation's insert won the race after our read above (the
+    // unique index rejects the loser) — that is exactly the guard working,
+    // not a genuine error.
+    return null;
+  }
+  return insertResult.data?.id ?? null;
+}
+
+async function renewLease(context: SyncContext, leaseId: string, now: Date): Promise<void> {
+  await context.database.schema(PARASUT_INTEGRATION_SCHEMA).from("sync_runs")
+    .update({ request_metadata: { last_heartbeat_at: now.toISOString() } })
+    .eq("id", leaseId).eq("status", "running");
+}
+
+async function releaseLease(context: SyncContext, leaseId: string, status: "completed" | "failed", now: Date): Promise<void> {
+  await context.database.schema(PARASUT_INTEGRATION_SCHEMA).from("sync_runs")
+    .update({ status, completed_at: now.toISOString() })
+    .eq("id", leaseId);
 }
 
 /**
@@ -240,9 +312,10 @@ export async function refreshStaleStatements(
   const alertAfterHours = options.alertAfterHours ?? DEFAULT_ALERT_AFTER_HOURS;
   const now = options.now ?? new Date();
 
-  if (await isAnotherInvocationInFlight(context, now)) {
+  const leaseId = await acquireInvocationLease(context, now);
+  if (!leaseId) {
     return {
-      staleCount: 0, oldestStaleHours: 0, contactsTouched: [], completed: [], partial: [], failed: [],
+      staleCount: 0, oldestStaleHours: 0, contactsTouched: [], completed: [], partial: [], superseded: [], failed: [],
       pagesUsed: 0, alert: false, skippedOverlap: true,
     };
   }
@@ -260,6 +333,7 @@ export async function refreshStaleStatements(
     contactsTouched: [],
     completed: [],
     partial: [],
+    superseded: [],
     failed: [],
     pagesUsed: 0,
     alert: stale.length > 0 && oldestStaleHours > alertAfterHours,
@@ -267,34 +341,47 @@ export async function refreshStaleStatements(
   };
 
   let pagesUsed = 0;
-  for (const candidate of stale) {
-    if (summary.contactsTouched.length >= maxContactsPerInvocation) break;
-    const budgetLeft = maxPagesPerInvocation - pagesUsed;
-    if (budgetLeft <= 0) break;
+  try {
+    for (const candidate of stale) {
+      if (summary.contactsTouched.length >= maxContactsPerInvocation) break;
+      const budgetLeft = maxPagesPerInvocation - pagesUsed;
+      if (budgetLeft <= 0) break;
 
-    summary.contactsTouched.push(candidate.contactParasutId);
-    try {
-      const result = await syncContactTransactionHistory(context, candidate.contactParasutId, {
-        concurrencyLock: true,
-        maxPagesPerInvocation: budgetLeft,
-      });
-      pagesUsed += result.pagesThisInvocation;
-      if (result.status === "completed") summary.completed.push(candidate.contactParasutId);
-      else if (result.status === "partial") {
-        summary.partial.push(candidate.contactParasutId);
-        break; // budget exhausted mid-contact — stop cleanly, resume next tick.
-      } else summary.failed.push(candidate.contactParasutId);
-    } catch {
-      // syncCollection already recorded the sanitized error and marked the
-      // run "failed" before rethrowing — this contact's checkpoint (if any
-      // pages committed) is preserved and it reappears in next invocation's
-      // staleness computation regardless of this catch.
-      summary.failed.push(candidate.contactParasutId);
+      summary.contactsTouched.push(candidate.contactParasutId);
+      try {
+        const result = await syncContactTransactionHistory(context, candidate.contactParasutId, {
+          concurrencyLock: true,
+          maxPagesPerInvocation: budgetLeft,
+        });
+        pagesUsed += result.pagesThisInvocation;
+        if (result.status === "completed") summary.completed.push(candidate.contactParasutId);
+        else if (result.status === "partial") {
+          summary.partial.push(candidate.contactParasutId);
+          break; // budget exhausted mid-contact — stop cleanly, resume next tick.
+        } else if (result.status === "superseded") summary.superseded.push(candidate.contactParasutId);
+        else summary.failed.push(candidate.contactParasutId);
+      } catch {
+        // syncCollection already recorded the sanitized error and marked the
+        // run "failed" before rethrowing — this contact's checkpoint (if any
+        // pages committed) is preserved and it reappears in next invocation's
+        // staleness computation regardless of this catch.
+        summary.failed.push(candidate.contactParasutId);
+      }
+
+      // The heartbeat IS forward progress through the stale list — renewing
+      // it here (not on a separate timer) means the lease only stays valid
+      // as long as this invocation is actually doing something, and a run
+      // stuck retrying a single contact for too long naturally lets the
+      // next invocation reap it rather than staying falsely "protected".
+      await renewLease(context, leaseId, options.now ?? new Date());
+
+      if (pagesUsed >= maxPagesPerInvocation) break;
     }
-
-    if (pagesUsed >= maxPagesPerInvocation) break;
+    summary.pagesUsed = pagesUsed;
+    await releaseLease(context, leaseId, "completed", options.now ?? new Date());
+    return summary;
+  } catch (error) {
+    await releaseLease(context, leaseId, "failed", options.now ?? new Date());
+    throw error;
   }
-  summary.pagesUsed = pagesUsed;
-
-  return summary;
 }

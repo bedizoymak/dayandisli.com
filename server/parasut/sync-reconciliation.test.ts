@@ -284,7 +284,7 @@ describe("syncCollection — deletion reconciliation", () => {
 describe("syncCollection — concurrency election (concurrencyLock: true)", () => {
   const lockedOptions = { ...options, concurrencyLock: true };
 
-  it("loses the election to a competing non-stale running row for the same resource, and marks its own row failed", async () => {
+  it("loses the election to a competing non-stale running row for the same resource, and marks its own row superseded (not failed — it made zero API calls/writes, so it isn't a real failure)", async () => {
     const { database, tables } = createFakeDatabase([contactRow({ id: "row-1", parasut_id: "1" })]);
     tables.sync_runs.push({
       id: "competitor-1",
@@ -298,7 +298,7 @@ describe("syncCollection — concurrency election (concurrencyLock: true)", () =
     await expect(syncCollection(buildContext(database, client), lockedOptions)).rejects.toBeInstanceOf(SyncAlreadyRunningError);
 
     const ownRun = tables.sync_runs.find((r) => r.id !== "competitor-1");
-    expect(ownRun?.status).toBe("failed");
+    expect(ownRun?.status).toBe("superseded");
     expect(tables.sync_runs.find((r) => r.id === "competitor-1")?.status).toBe("running"); // never touches the winner's row
   });
 

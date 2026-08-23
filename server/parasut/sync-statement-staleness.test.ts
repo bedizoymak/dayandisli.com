@@ -22,28 +22,70 @@ function createFakeDatabase(seed: {
     transaction_history_items: seed.transaction_history_items ?? [],
     sync_runs: seed.sync_runs ?? [],
   };
+  let nextId = 1;
+
+  // Mirrors the real supabase-js/PostgREST "json_col->>key" filter syntax
+  // used in production (see handlers.ts) — "col->>key" reads
+  // row[col]?.[key] instead of a literal row["col->>key"] property.
+  const readValue = (row: Record<string, unknown>, col: string): unknown => {
+    const arrowIndex = col.indexOf("->>");
+    if (arrowIndex === -1) return row[col];
+    const [jsonColumn, key] = [col.slice(0, arrowIndex), col.slice(arrowIndex + 3)];
+    const jsonValue = row[jsonColumn] as Record<string, unknown> | null | undefined;
+    return jsonValue?.[key];
+  };
 
   function makeQuery(table: string) {
     const eqPredicates: Array<[string, unknown]> = [];
     const gtPredicates: Array<[string, unknown]> = [];
+    let mode: "select" | "insert" | "update" = "select";
+    let payload: Record<string, unknown> | null = null;
+    const matches = (row: Record<string, unknown>) =>
+      eqPredicates.every(([col, val]) => readValue(row, col) === val) &&
+      gtPredicates.every(([col, val]) => String(readValue(row, col)) > String(val));
     const api = {
       select() { return api; },
       eq(column: string, value: unknown) { eqPredicates.push([column, value]); return api; },
       gt(column: string, value: unknown) { gtPredicates.push([column, value]); return api; },
+      insert(value: Record<string, unknown>) {
+        mode = "insert";
+        // Simulates the partial unique index sync_runs_statement_refresh_lock_singleton:
+        // reject a second concurrent "running" statement_refresh_lock row for the same company.
+        if (
+          table === "sync_runs" &&
+          value.resource_type === "statement_refresh_lock" &&
+          value.status === "running" &&
+          tables[table].some((row) => row.resource_type === "statement_refresh_lock" && row.status === "running" && row.company_id === value.company_id)
+        ) {
+          payload = null;
+          (api as unknown as { __insertConflict: boolean }).__insertConflict = true;
+        } else {
+          payload = { id: `row-${nextId++}`, ...value };
+          tables[table].push(payload);
+        }
+        return api;
+      },
+      update(value: Record<string, unknown>) { mode = "update"; payload = value; return api; },
+      maybeSingle: async () => {
+        const row = tables[table].find(matches);
+        return { data: row ?? null, error: null };
+      },
+      single: async () => {
+        if ((api as unknown as { __insertConflict?: boolean }).__insertConflict) {
+          return { data: null, error: { message: "duplicate key value violates unique constraint" } };
+        }
+        return { data: payload, error: null };
+      },
       then(resolve: (value: unknown) => unknown) {
-        // Mirrors the real supabase-js/PostgREST "json_col->>key" filter
-        // syntax used in production (see handlers.ts) — "col->>key" reads
-        // row[col]?.[key] instead of a literal row["col->>key"] property.
-        const readValue = (row: Record<string, unknown>, col: string): unknown => {
-          const arrowIndex = col.indexOf("->>");
-          if (arrowIndex === -1) return row[col];
-          const [jsonColumn, key] = [col.slice(0, arrowIndex), col.slice(arrowIndex + 3)];
-          const jsonValue = row[jsonColumn] as Record<string, unknown> | null | undefined;
-          return jsonValue?.[key];
-        };
-        const rows = tables[table].filter((row) =>
-          eqPredicates.every(([col, val]) => readValue(row, col) === val) &&
-          gtPredicates.every(([col, val]) => String(readValue(row, col)) > String(val)));
+        if (mode === "update") {
+          const rows = tables[table].filter(matches);
+          rows.forEach((row) => Object.assign(row, payload));
+          return Promise.resolve(resolve({ data: null, error: null }));
+        }
+        if (mode === "insert") {
+          return Promise.resolve(resolve({ data: null, error: null }));
+        }
+        const rows = tables[table].filter(matches);
         return Promise.resolve(resolve({ data: rows, error: null }));
       },
     };
@@ -163,17 +205,16 @@ describe("computeContactStaleness", () => {
   });
 });
 
-describe("refreshStaleStatements — invocation-level overlap guard", () => {
-  it("skips the entire invocation (touches zero contacts, makes zero Paraşüt requests) when a prior statement-refresh run is still in flight", async () => {
+describe("refreshStaleStatements — invocation-level lease guard", () => {
+  it("skips the entire invocation (touches zero contacts, makes zero Paraşüt requests) when a live lease (recent heartbeat) is already held", async () => {
     let getPaginatedCalls = 0;
     const database = createFakeDatabase({
       contacts: [{ parasut_id: "500", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "0" } }],
       transaction_history_items: [], // never synced -> would normally be the top-priority candidate
       sync_runs: [
         {
-          company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "running",
-          created_at: "2026-08-23T11:59:30.000Z", // 30s before NOW — well inside the overlap-guard window
-          completed_at: null, request_metadata: {},
+          company_id: "company-1", parasut_company_id: "666034", resource_type: "statement_refresh_lock", status: "running",
+          request_metadata: { last_heartbeat_at: "2026-08-23T11:59:30.000Z" }, // 30s before NOW — well within the orphan threshold
         },
       ],
     });
@@ -187,7 +228,29 @@ describe("refreshStaleStatements — invocation-level overlap guard", () => {
     expect(getPaginatedCalls).toBe(0);
   });
 
-  it("proceeds normally once a previously-running row falls outside the overlap-guard window", async () => {
+  it("this is exactly the long-run case: a lease whose holder is still genuinely working (heartbeat inside the orphan window) at a time a fixed 90s window would have expired — must still skip (proves the guard bounds by activity, not by a clock)", async () => {
+    let getPaginatedCalls = 0;
+    const database = createFakeDatabase({
+      contacts: [{ parasut_id: "500", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "0" } }],
+      transaction_history_items: [],
+      sync_runs: [
+        {
+          company_id: "company-1", parasut_company_id: "666034", resource_type: "statement_refresh_lock", status: "running",
+          // Lease started 5 minutes ago (far past a fixed 90s window) but its heartbeat is fresh (10s old) — a still-alive, still-progressing run.
+          request_metadata: { last_heartbeat_at: "2026-08-23T11:59:50.000Z" },
+        },
+      ],
+    });
+    const context: SyncContext = {
+      companyId: "company-1", parasutCompanyId: "666034", database,
+      client: { async *getPaginated() { getPaginatedCalls++; } },
+    };
+    const summary = await refreshStaleStatements(context, { now: NOW });
+    expect(summary.skippedOverlap).toBe(true);
+    expect(getPaginatedCalls).toBe(0);
+  });
+
+  it("reaps an orphaned lease (no heartbeat within the orphan window) explicitly — marks it failed and proceeds", async () => {
     const database = createFakeDatabase({
       contacts: [{ parasut_id: "500", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "0" } }],
       transaction_history_items: [
@@ -195,9 +258,8 @@ describe("refreshStaleStatements — invocation-level overlap guard", () => {
       ], // balance already agrees and recently synced -> nothing stale, but proves the guard itself did not block
       sync_runs: [
         {
-          company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "running",
-          created_at: "2026-08-23T11:00:00.000Z", // 1 hour before NOW — well outside the 90s guard window
-          completed_at: null, request_metadata: {},
+          id: "orphaned-lease", company_id: "company-1", parasut_company_id: "666034", resource_type: "statement_refresh_lock", status: "running",
+          request_metadata: { last_heartbeat_at: "2026-08-23T11:00:00.000Z" }, // 1 hour before NOW — well past the orphan threshold
         },
         {
           company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "completed",

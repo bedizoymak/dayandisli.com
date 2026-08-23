@@ -44,6 +44,12 @@ async function enforceSingleRunner(
   options: SyncResourceOptions,
   ownRunId: string,
 ): Promise<void> {
+  // UNBOUNDED-QUERY AUDIT (2026-08-23, see no-unbounded-select.test.ts):
+  // the scanner there can't see this one — its statement-boundary heuristic
+  // stops at the first ";", which lands inside this call's own generic type
+  // argument. Documented here instead: bounded by construction — status =
+  // 'running' + gt(started_at, 10-min-ago) means only concurrently-live
+  // invocations for one resource_type, inherently single-digit.
   const staleCutoff = new Date((context.now?.() ?? new Date()).getTime() - RUNNING_STALE_AFTER_MS).toISOString();
   const competing = await integrationDb(context)
     .from<{ id: string; started_at: string }[]>("sync_runs")
@@ -68,9 +74,14 @@ async function enforceSingleRunner(
   }
 
   if (winner && winner.id !== ownRunId) {
+    // "superseded", not "failed" — this invocation made zero Paraşüt
+    // requests and wrote zero rows for this resource; it lost the FIFO
+    // election to an older still-running invocation before doing any work.
+    // Keeping this distinct from a genuine failure is what makes alerting
+    // on "failed" meaningful instead of firing on routine cron overlap.
     await integrationDb(context)
       .from("sync_runs")
-      .update({ status: "failed", completed_at: (context.now?.() ?? new Date()).toISOString() })
+      .update({ status: "superseded", completed_at: (context.now?.() ?? new Date()).toISOString() })
       .eq("id", ownRunId);
     throw new SyncAlreadyRunningError();
   }
@@ -199,6 +210,7 @@ interface LatestRunRow {
 interface LatestRunQuery {
   select(columns: string): LatestRunQuery;
   eq(column: string, value: unknown): LatestRunQuery;
+  gt(column: string, value: unknown): LatestRunQuery;
   then<T>(resolve: (value: { data: LatestRunRow[] | null; error: { message?: string } | null }) => T): Promise<T>;
 }
 interface LatestRunDatabase {
@@ -212,19 +224,31 @@ interface LatestRunDatabase {
  * re-validates status, identity, and request fingerprint before trusting
  * it, so a false positive here is always caught downstream and safely
  * falls back to "restart". No .order()/.limit() in this project's minimal
- * DB contract, so both statuses are fetched (each resource has very few
- * historical runs) and compared client-side.
+ * DB contract, so both statuses are fetched and compared client-side — this
+ * was documented as safe on the assumption that "each resource has very
+ * few historical runs", which the P0 incident proved wrong for a
+ * frequently-cron'd resource (sync_runs crosses PostgREST's ~1000-row
+ * response cap in a matter of days at a 1-5 minute cadence, and an
+ * over-cap unbounded query silently truncates rather than erroring). A run
+ * older than RESUMABLE_LOOKBACK_HOURS is never a useful resume candidate
+ * anyway — decideSyncResume re-validates its identity/fingerprint and
+ * would very likely restart from scratch for anything that old — so
+ * bounding by recency both fixes the truncation risk and matches the
+ * function's own intent.
  */
+const RESUMABLE_LOOKBACK_HOURS = 48;
 async function findLatestResumableRun(
   context: SyncContext,
   resourceType: string,
+  now: Date = new Date(),
 ): Promise<FailedSourceRun | null> {
   const db = integrationDb(context) as unknown as LatestRunDatabase;
   const columns = "id,status,request_metadata,created_at";
+  const lookbackCutoff = new Date(now.getTime() - RESUMABLE_LOOKBACK_HOURS * 3_600_000).toISOString();
   const [failed, partial, completed] = await Promise.all([
-    db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "failed"),
-    db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "partial"),
-    db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "completed"),
+    db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "failed").gt("created_at", lookbackCutoff),
+    db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "partial").gt("created_at", lookbackCutoff),
+    db.from("sync_runs").select(columns).eq("company_id", context.companyId).eq("parasut_company_id", context.parasutCompanyId).eq("resource_type", resourceType).eq("status", "completed").gt("created_at", lookbackCutoff),
   ]);
   if (failed.error) throw new Error(failed.error.message ?? "Latest sync-run lookup failed");
   if (partial.error) throw new Error(partial.error.message ?? "Latest sync-run lookup failed");
@@ -357,6 +381,17 @@ async function reconcileMissingResources(
   chainStartedAt: Date,
   counters: SyncCounters,
 ): Promise<ReconciliationOutcome> {
+  // TRACKED, not yet fixed (audited 2026-08-23, part of the unbounded-query
+  // audit in no-unbounded-select.test.ts — the static scanner there can't
+  // detect this one since options.table is a variable, not a string
+  // literal, so it's documented here instead): this needs the full existing
+  // (company_id, resource_type) row set to diff against observed IDs — it
+  // can't be scoped narrower without breaking archival-reconciliation
+  // correctness. No .limit()/.range(). Called with options.table =
+  // "transactions" for the transactions resource, one of the
+  // monotonically-growing tables flagged in that audit. Needs
+  // .range()-based pagination added to the minimal DB client contract as
+  // follow-up infrastructure work.
   const existing = await mirrorDb(context)
     .from<{ parasut_id: string; source_archived: boolean | null; last_seen_at: string }[]>(options.table)
     .select("parasut_id, source_archived, last_seen_at")
@@ -479,7 +514,7 @@ export async function syncCollection(
   };
   let sourceRun: FailedSourceRun | null = null;
   try {
-    sourceRun = await findLatestResumableRun(context, options.resourceType);
+    sourceRun = await findLatestResumableRun(context, options.resourceType, startedAt);
   } catch {
     // Same best-effort reasoning as recoverStaleRuns above — falls through
     // to decideSyncResume(null), which always restarts from page 1.
@@ -661,6 +696,16 @@ export async function syncCollection(
 
     return buildResult(status, reconciliation);
   } catch (error) {
+    if (error instanceof SyncAlreadyRunningError) {
+      // enforceSingleRunner already marked this run "superseded" (not
+      // "failed") and did zero work before losing the election — nothing
+      // to record as an error, and completeRun must not overwrite that
+      // status back to "failed" here. Rethrown unchanged so every existing
+      // caller's control flow (abort-this-invocation-on-collision) is
+      // unaffected — only the recorded status and the absence of a spurious
+      // sync_errors row are new.
+      throw error;
+    }
     counters.errors++;
     await recordError(context, runId, options.resourceType, error);
     await completeRun(context, runId, counters, "failed");
