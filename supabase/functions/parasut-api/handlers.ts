@@ -559,7 +559,19 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
     "transaction_history_items",
     activeCompanyId,
     "*",
-  ).eq("contact_parasut_id", contactId).eq("source_archived", false).order("statement_order", { ascending: true }).range(0, 24999);
+  // D-A: Paraşüt's transaction_history_items response carries no explicit
+  // sequence field (verified against raw payloads — only balance columns),
+  // so the sync layer's `statement_order` is a synthesized page/arrival-index
+  // rank. That rank matches true chronological order for normally-entered
+  // transactions, but a backdated entry (created recently, dated earlier)
+  // arrives near the top of Paraşüt's feed while its real date is old,
+  // producing an out-of-order row. Every history item's own linked
+  // transaction date IS already mirrored (`transaction_date`), so it is used
+  // as the primary sort key here — the one authoritative signal of true
+  // chronological placement — with the original arrival-derived
+  // `statement_order` only as the tiebreak for equal dates, preserving
+  // Paraşüt's own relative sequence rather than inventing a new rule.
+  ).eq("contact_parasut_id", contactId).eq("source_archived", false).order("transaction_date", { ascending: true }).order("statement_order", { ascending: true }).range(0, 24999);
   if (error) return { version: 1, status: "unavailable", rows: [], diagnostics: [error.message] };
   const historyRows = history ?? [];
   if (historyRows.length === 0) return { version: 1, status: "unavailable", rows: [], diagnostics: ["authoritative_history_not_synced"] };
@@ -607,7 +619,7 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
   const diagnostics: string[] = [];
   const seen = new Set<string>();
   let previousDate = "";
-  const rows = historyRows.map((historyRow) => {
+  const rows = historyRows.map((historyRow, historyRowIndex) => {
     const transactionId = String(historyRow.transaction_parasut_id ?? "");
     if (!transactionId) diagnostics.push("missing_transaction_id");
     if (seen.has(transactionId)) diagnostics.push(`duplicate_transaction_id:${transactionId}`);
@@ -635,7 +647,11 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
     const openingDescription = openingBalanceId ? (openingDescriptionById.get(openingBalanceId) || null) : null;
     return {
       historyItemId: String(historyRow.parasut_id ?? ""),
-      order: Number(historyRow.statement_order ?? 0),
+      // Position in the already date-then-arrival-ordered SQL result, not
+      // the raw stored statement_order — the frontend's own stable re-sort
+      // by `order` must reproduce this exact sequence, not the old
+      // arrival-only rank.
+      order: historyRowIndex,
       transactionId,
       transactionType,
       date,
