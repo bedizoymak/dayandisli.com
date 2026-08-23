@@ -394,6 +394,21 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const whatsapp = sourceText(attributes.whatsapp) || phone;
 
   const printLedger = () => {
+    // P1: printing a statement while Paraşüt reconciliation is unresolved
+    // (e.g. contact_balance_mismatch) is the real hazard — a customer must
+    // never receive a document built from data already known to be wrong.
+    // The check itself stays exactly as-is (it correctly caught the P0
+    // staleness); this only gates the print action on it. Blocked here, the
+    // internal diagnostic string never reaches buildLedgerPrintHtml at all —
+    // that function has no parameter to render it even if this guard were
+    // bypassed, so this isn't just a suppressed banner, printing genuinely
+    // cannot proceed with stale data.
+    if (reconciliationWarning) {
+      window.alert(
+        `Ekstre yazdırılamıyor: Paraşüt mutabakatı tamamlanmadı.\n\n${reconciliationWarning}\n\nBu genellikle birkaç dakika içinde otomatik olarak düzelir; lütfen daha sonra tekrar deneyin.`,
+      );
+      return;
+    }
     const periodLabel =
       printFrom || printTo
         ? `Dönem: ${printFrom || "başlangıç"} – ${printTo || "güncel"}`
@@ -412,7 +427,6 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
       { totalDebit: rangeFilteredLedger.totalDebit, totalCredit: rangeFilteredLedger.totalCredit, totalBalance: rangeFilteredLedger.totalBalance },
       rangeFilteredLedger.carryForward,
       `${window.location.origin}${import.meta.env.BASE_URL}logo-header.png`,
-      reconciliationWarning,
     );
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
     const printWindow = window.open(url, "_blank", "noopener,noreferrer");
@@ -506,7 +520,13 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
               Bitiş
               <input type="date" value={printTo} onChange={(e) => setPrintTo(e.target.value)} />
             </label>
-            <button type="button" className="crm-primary" onClick={printLedger}>
+            <button
+              type="button"
+              className="crm-primary"
+              onClick={printLedger}
+              disabled={Boolean(reconciliationWarning)}
+              title={reconciliationWarning ? "Paraşüt mutabakatı tamamlanana kadar ekstre yazdırılamaz." : undefined}
+            >
               <Printer />
               Cari Hesabı Yazdır
             </button>
@@ -517,6 +537,11 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
           ve bakiyeyi ikinci kez etkilemez; açılış bakiyesi yalnızca Paraşüt'ün gerçek açılış-bakiyesi işlemi varsa görünür.
         </div>
         {reconciliationWarning && <div className="crm-empty" role="alert" style={{ marginBottom: "0.5rem", color: "#b42318" }}>{reconciliationWarning}</div>}
+        {statement?.lastSyncedAt && (
+          <div className="crm-empty" style={{ marginBottom: "0.5rem", fontSize: "0.8rem" }}>
+            Son resmi ekstre senkronizasyonu: {new Date(statement.lastSyncedAt).toLocaleString("tr-TR")}
+          </div>
+        )}
         {linkedChecksStatus === "loading" && (
           <div className="crm-empty" style={{ marginBottom: "0.5rem" }}>
             Bağlı çek hareketleri yükleniyor…
@@ -643,7 +668,6 @@ function buildLedgerPrintHtml(
   totals: { totalDebit: number; totalCredit: number; totalBalance: number },
   carryForward: number | null,
   logoUrl: string,
-  warning: string | null = null,
 ) {
   const headers = ["Tarih", "İşlem", "Açıklama", "Borç", "Alacak", "Bakiye"];
   const carryRow =
@@ -656,6 +680,16 @@ function buildLedgerPrintHtml(
       return `<tr><td>${escapeHtml(row.date || "—")}</td><td>${escapeHtml(typeLabel)}</td><td>${escapeHtml(row.description || "—")}</td><td>${escapeHtml(row.debit ? formatMoney(row.debit) : "—")}</td><td>${escapeHtml(row.credit ? formatMoney(row.credit) : "—")}</td><td>${escapeHtml(formatSignedBalance(row.balance))}</td></tr>`;
     })
     .join("");
+  // P2: the prior "Sayfa 0/0" bug was CSS counter(page)/counter(pages)
+  // applied to a normal in-flow element, where those counters are
+  // undefined — that's not how CSS Paged Media works. The correct
+  // mechanism is an @page margin box, where counter(page)/counter(pages)
+  // ARE defined by the print engine per physical page. Fixed here instead
+  // of removed. The preparation-date line is static text (computed once, at
+  // generation time — matches Paraşüt's own "<date> tarihinde
+  // hazırlanmıştır." semantics) in the opposite margin box, matching
+  // Paraşüt's own footer layout.
+  const preparedAt = new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
 body{font:11px Arial;color:#18212b;margin:0}
 .sheet{padding:14mm}
@@ -672,8 +706,13 @@ tr.carry td{font-style:italic;background:#f4f7fa}
 .pdf-kpis article{flex:1 1 150px;border:1px solid #ccd5df;border-radius:8px;padding:8px 10px}
 .pdf-kpis span{display:block;color:#687684;font-size:9px;text-transform:uppercase}
 .pdf-kpis strong{font-size:14px}
-@page{size:A4;margin:12mm 12mm 18mm 12mm}
-</style></head><body><div class="sheet"><header><div><strong>Dayan Dişli</strong><h1>${escapeHtml(title)}</h1><div class="meta">${escapeHtml(subtitle)}</div></div><img src="${escapeHtml(logoUrl)}" alt="Dayan Dişli" /></header>${warning ? `<div role="alert" style="border:2px solid #b42318;color:#b42318;padding:8px;margin:10px 0">${escapeHtml(warning)}</div>` : ""}<section class="pdf-kpis"><article><span>Toplam Borç</span><strong>${escapeHtml(formatMoney(totals.totalDebit))}</strong></article><article><span>Toplam Alacak</span><strong>${escapeHtml(formatMoney(totals.totalCredit))}</strong></article><article><span>Toplam Bakiye</span><strong>${escapeHtml(formatSignedBalance(totals.totalBalance))}</strong></article></section><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${carryRow}${bodyRows}</tbody></table></div><script>window.onload=()=>window.print();</script></body></html>`;
+@page{
+  size:A4;
+  margin:12mm 12mm 20mm 12mm;
+  @bottom-left{content:"${preparedAt} tarihinde hazırlanmıştır.";font-size:9px;color:#687684}
+  @bottom-right{content:"Sayfa " counter(page) " / " counter(pages);font-size:9px;color:#687684}
+}
+</style></head><body><div class="sheet"><header><div><strong>Dayan Dişli</strong><h1>${escapeHtml(title)}</h1><div class="meta">${escapeHtml(subtitle)}</div></div><img src="${escapeHtml(logoUrl)}" alt="Dayan Dişli" /></header><section class="pdf-kpis"><article><span>Toplam Borç</span><strong>${escapeHtml(formatMoney(totals.totalDebit))}</strong></article><article><span>Toplam Alacak</span><strong>${escapeHtml(formatMoney(totals.totalCredit))}</strong></article><article><span>Toplam Bakiye</span><strong>${escapeHtml(formatSignedBalance(totals.totalBalance))}</strong></article></section><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${carryRow}${bodyRows}</tbody></table></div><script>window.onload=()=>window.print();</script></body></html>`;
 }
 
 function InvoiceHistory({

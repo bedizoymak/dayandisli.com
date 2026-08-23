@@ -8,7 +8,7 @@ export interface AuthoritativeStatementRow {
   check?: { serialNumber?: unknown; bank?: unknown; dueDate?: unknown; paymentStatus?: unknown; remainingAmount?: unknown; cashed?: unknown; transferred?: unknown } | null;
   allocations?: { id?: unknown; payableId?: unknown; amount?: unknown; currency?: unknown; balanceImpacting: false }[];
 }
-export interface AuthoritativeStatement { version: 1; status: "reconciled" | "incomplete" | "unavailable"; rows: AuthoritativeStatementRow[]; diagnostics?: string[]; reconciliation?: { finalHistoryBalance: number | null; contactBalance: number | null } }
+export interface AuthoritativeStatement { version: 1; status: "reconciled" | "incomplete" | "unavailable"; rows: AuthoritativeStatementRow[]; diagnostics?: string[]; reconciliation?: { finalHistoryBalance: number | null; contactBalance: number | null }; lastSyncedAt?: string | null }
 export type LedgerTransactionType = "sales_invoice" | "customer_collection" | "purchase_bill" | "supplier_payment" | "received_check" | "issued_check" | "opening_balance" | "contact_transfer" | "unknown";
 export const LEDGER_TYPE_LABELS: Record<LedgerTransactionType, string> = { sales_invoice: "Satış Faturası", customer_collection: "Tahsilat", purchase_bill: "Alış Faturası", supplier_payment: "Tedarikçi Ödemesi", received_check: "Alınan Çek", issued_check: "Verilen Çek", opening_balance: "Devir Bakiyesi", contact_transfer: "Cari Virman", unknown: "Bilinmeyen Paraşüt İşlemi" };
 export interface LedgerRow {
