@@ -1,4 +1,4 @@
--- Additive only: widens integration.sync_runs.status to add "superseded",
+-- Additive only: widens parasut.sync_runs.status to add "superseded",
 -- a distinct terminal state for a run killed by enforceSingleRunner's FIFO
 -- concurrency election before it made any request or wrote any row. It was
 -- previously recorded as "failed", identical to a genuine error — that made
@@ -14,12 +14,12 @@
 -- no effect on the existing six-resource sync loop's own FIFO election,
 -- which intentionally still allows transient overlapping "running" rows.
 
-alter table integration.sync_runs
+alter table parasut.sync_runs
   drop constraint if exists sync_runs_status_check;
-alter table integration.sync_runs
+alter table parasut.sync_runs
   add constraint sync_runs_status_check
   check (status in ('running', 'completed', 'partial', 'failed', 'superseded'));
 
 create unique index if not exists sync_runs_statement_refresh_lock_singleton
-  on integration.sync_runs (company_id, parasut_company_id)
+  on parasut.sync_runs (company_id, parasut_company_id)
   where resource_type = 'statement_refresh_lock' and status = 'running';
