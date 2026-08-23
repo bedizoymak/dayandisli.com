@@ -101,3 +101,51 @@ Continuously updated per `CLAUDE_CODE_AUTHORITATIVE_CUSTOMER_LEDGER_REBUILD.md`.
 - Decision and reason: every gate the contract requires (step 8) is green. Proceeding to commit/push (step 9), then deploying only the two files this change actually touches (`supabase/functions/parasut-api/handlers.ts` as an Edge Function; the frontend for `src/features/crm/customerLedger.ts` + `src/features/crm/CustomerDetailPage.tsx`).
 - What was intentionally not changed: nothing beyond the files already listed in this report — no unrelated fixes, no other pages, no schema/migration changes (none were required — `parasut.transaction_history_items`, `parasut.transactions`, and every other table this contract's mapping needs already existed and already had the required fields, per the field-by-field verification in the earlier entries).
 - Next concrete action: commit, push, deploy the `parasut-api` Edge Function and the frontend, then verify both production URLs.
+
+## [2026-08-23 20:38 UTC] Committed, pushed, deployed, verified live in production
+- Status: deployed
+- Exact files/tables/endpoints touched: committed `src/features/crm/CustomerDetailPage.tsx`, `src/features/crm/customerLedger.ts`, `src/features/crm/customerLedger.test.ts`, `supabase/functions/parasut-api/handlers.ts`, `supabase/functions/parasut-api/handlers.test.ts`, `CLAUDE_CODE_CUSTOMER_LEDGER_REBUILD_REPORT.md` (commit `9ca950f`, pushed to `main`). Deployed the `parasut-api` Edge Function and the full frontend build.
+- Evidence:
+  - `supabase functions deploy parasut-api` succeeded; downloaded the live deployed source afterward and diffed it byte-for-byte against local — identical.
+  - `scripts/deploy_ftp.py --full` — 418 files uploaded, 0 errors.
+  - `https://dayandisli.com/` → HTTP 200. `https://erp.dayandisli.com/` → HTTP 200. Live bundle hash (`assets/index-Ch_jRIy3.js`) matches the local build exactly.
+  - **Live production API call** (authenticated, `POST /functions/v1/parasut-api {"action":"detail","resource":"customers","parasutId":"1011029161"}`) — not a local test, the actual deployed endpoint: `status: "reconciled"`, `row_count: 23`, first row `order 0 / contact_opening_balance_debit / 2024-01-01`, last row `order 22 / contact_credit / 2026-08-10 / trlBalance 927109.11`. Matches the mandatory gate exactly, confirmed against the real deployed code, not just the test suite.
+- Decision and reason: all contract-required steps (investigation, implementation, testing, PİNO gate, other-3-contacts reconciliation, gates, commit/push, deploy) are complete and evidence-backed.
+- What was intentionally not changed: no other page, no migration, no sync/schema change, no unrelated fix.
+- Next concrete action: none — see the summary sections below for the final required report contents.
+
+---
+
+# Final Summary (contract-required)
+
+## 1. Root cause of the original empty customer ledger
+Already identified and fixed earlier in this same work session, before this rebuild pass began: `parasut.transaction_history_items` — the sole authoritative source for the customer ledger — was never part of the automatic Paraşüt sync cron. It only ever updated when someone manually ran a backfill script or action, so it silently froze for every contact the instant new Paraşüt activity happened, while the general mirror (contacts, invoices, checks) stayed current on its own cron cadence. Fixed by adding a dedicated statement-refresh cron job (its own schedule, its own budget, decoupled from the six-resource sync loop) that continuously re-syncs stale contacts. As of this rebuild's verification pass, 366 of 441 active contacts are fully synced and the remaining 75 are draining automatically (~5/minute, zero errors) — not a remaining bug, the expected tail of that backfill.
+
+## 2. Exact production data path now used by the ERP
+`GET/POST parasut-api Edge Function (action: "detail", resource: "customers")` → `handleDetail` → `fetchAuthoritativeStatement` (`supabase/functions/parasut-api/handlers.ts`) reads `parasut.transaction_history_items` (ordered by `statement_order` ascending, no date sort) `LEFT JOIN parasut.transactions` `LEFT JOIN parasut.checks` `LEFT JOIN parasut.sales_invoices` `LEFT JOIN parasut.purchase_bills` `LEFT JOIN parasut.opening_balances`, scoped by `activeCompanyId` via `scopedParasutTable` (no direct browser access to `parasut.*` tables — the browser only ever calls the Edge Function). The response is consumed by `src/features/crm/customerLedger.ts`'s `buildAuthoritativeLedgerRows`, which both the on-screen table and the print/export HTML in `src/features/crm/CustomerDetailPage.tsx` consume identically (screen reverses the array for newest-first display only; print/totals/carry-forward math use the same array oldest-first).
+
+## 3. Paraşüt-to-Supabase field map actually implemented
+Exactly as specified in the contract's "Authoritative Supabase mapping" section — `transaction_history_items.{parasut_id, transaction_parasut_id, statement_order, transaction_date, trl_balance}`, `transactions.{transaction_type, date, amount_in_trl, description, debit_amount/credit_amount (informational only), sales_invoice_parasut_id, purchase_bill_parasut_id, check_parasut_id, opening_balance_parasut_id}`, `sales_invoices.{invoice_no, description}`, `purchase_bills.{invoice_no, description}`, `checks.{bank_identifier, bank_name, serial_number, due_date, payment_status}`, `opening_balances.{description}`, `contacts.{trl_balance}` for the closing-balance assertion. No fields were added or removed from the contract's list — the schema already had everything required.
+
+## 4. Reconciliation table for PİNO and the other three supplied statements
+| Contact | Rows | Debit | Credit | Closing | Row-type census matches | Unmapped rows |
+|---|---|---|---|---|---|---|
+| PİNO MAKİNE (1011029161) | 23 | 2,919,100.00 | 1,991,990.89 | 927,109.11 | 8/6/4/3/1/1 = 23, exact | 0 |
+| HİRA PARTS (1010743830) | 113 | 6,222,758.40 | 5,823,638.40 | 399,120.00 | not separately mandated | 0 |
+| BEKEM ÖZTEKNİK (1011029140) | 21 | 953,459.98 | 795,550.00 | 157,909.98 | not separately mandated | 0 |
+| bediz test (1068984956) | 2 | 1,000,000.00 | 1,000,000.00 | 0.00 | not separately mandated | 0 |
+
+All four verified against live Supabase data using the identical type-based side map — no per-customer special-casing.
+
+## 5. Test/build/CI/deploy results
+`npm ci` clean · `npx tsc --noEmit` clean · `npm run typecheck` clean · `npx vitest run` (full suite) **104 files / 1229 tests, all passed** · `npm run build` succeeded (`dist/index.html`, `dist/erp/index.html` both produced) · commit `9ca950f` pushed to `main` · `parasut-api` Edge Function deployed and verified byte-identical to source · frontend deployed via full FTP sync (418 files, 0 errors) and verified via live bundle-hash match · both `https://dayandisli.com/` and `https://erp.dayandisli.com/` return HTTP 200 · a live authenticated call to the deployed `parasut-api` endpoint for PİNO confirms the gate against the actual running production system, not only the test suite.
+
+## 6. Remaining limitations
+- **NOT VERIFIED**: date-filtered ERP statement opening-balance semantics (contract section "Date ranges, accounts, print and export" — "determine it from the authoritative prior ledger row only after proving the exact filter semantics against Paraşüt; otherwise mark this capability as not yet supported"). The existing carry-forward logic (computed from real prior rows, never fabricated) was already present from earlier work and was not re-verified against Paraşüt's own date-filter behavior in this pass — out of this pass's scope since no regression was found or introduced here.
+- **NOT VERIFIED**: whether any currently-unsynced contact (75 of 441, draining automatically) contains a transaction_type outside the now-8-entry side map — the map was built from currently-synced production data only; if a genuinely new type appears as the backfill completes, it will render as the visible unmapped-integrity-error state (rule 8 compliant) rather than silently succeeding, so this is a safe, self-revealing gap, not a blocking one.
+- **BLOCKED**: none. No step in this contract was blocked.
+
+## 7. Commit SHA, deploy status and production URLs checked
+- Commit: `9ca950f` (pushed to `origin/main`).
+- Deploy status: `parasut-api` Edge Function — deployed, verified identical to source. Frontend — deployed via FTP, verified via live bundle hash.
+- Production URLs checked: `https://dayandisli.com/` (HTTP 200), `https://erp.dayandisli.com/` (HTTP 200), and a live authenticated call to `https://meauutjsnnggzcigyvfp.supabase.co/functions/v1/parasut-api` for PİNO (HTTP 200, statement reconciled, 23 rows, correct closing balance).
