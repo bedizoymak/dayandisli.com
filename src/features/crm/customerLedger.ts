@@ -23,6 +23,22 @@ function paymentIds(document: LedgerDocumentRow): string[] { const data = docume
 export function buildPaymentToDocumentMap(documents: readonly LedgerDocumentRow[]): Map<string, LedgerDocumentRow> { const result = new Map<string, LedgerDocumentRow>(); for (const document of documents) for (const id of paymentIds(document)) result.set(id, document); return result }
 export function filterBalanceDocuments(documents: readonly LedgerDocumentRow[]): LedgerDocumentRow[] { return documents.filter((document) => sourceText(document.attributes?.item_type) !== "cancelled") }
 function normalizeType(type: string): LedgerTransactionType { if (type.startsWith("contact_transfer")) return "contact_transfer"; return ({ sales_invoice: "sales_invoice", purchase_bill: "purchase_bill", contact_credit: "customer_collection", contact_debit: "supplier_payment", check_in: "received_check", check_out: "issued_check", contact_opening_balance_debit: "opening_balance", contact_opening_balance_credit: "opening_balance" } as Record<string, LedgerTransactionType>)[type] ?? "unknown" }
+// D-B hard guarantee: the backend already never returns a raw Paraşüt
+// transaction_type enum as the customer-facing description, but this is a
+// second, independent guard on the shared row model itself (consumed by
+// both screen and print) so a raw enum can never render as visible text
+// even if a future backend regression reintroduces one — the transaction
+// type itself stays available via `transactionType`/`rawTransactionType`,
+// only the display text is guarded.
+const RAW_PARASUT_TRANSACTION_TYPE_ENUMS = new Set([
+  "sales_invoice", "purchase_bill", "reimbursement_purchase_bill",
+  "contact_credit", "contact_debit",
+  "contact_opening_balance_debit", "contact_opening_balance_credit",
+  "check_in", "check_out", "unknown",
+]);
+function guardAgainstRawEnum(description: string, normalizedType: LedgerTransactionType): string {
+  return RAW_PARASUT_TRANSACTION_TYPE_ENUMS.has(description) ? LEDGER_TYPE_LABELS[normalizedType] : description;
+}
 // The displayed debit/credit for each row is derived exclusively from the
 // delta between consecutive authoritative trlBalance values in statement
 // order (previous = 0 for the first row), never from the transaction's own
@@ -50,7 +66,7 @@ export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement |
     // which must keep its existing exact format.
     const description = row.check
       ? [row.description, row.check.bank, row.check.serialNumber, row.check.dueDate, row.check.paymentStatus].map(sourceText).filter(Boolean).join(" · ")
-      : sourceText(row.displayDescription) || sourceText(row.description) || LEDGER_TYPE_LABELS[normalizedType];
+      : guardAgainstRawEnum(sourceText(row.displayDescription) || sourceText(row.description) || LEDGER_TYPE_LABELS[normalizedType], normalizedType);
     const previousBalance = index === 0 ? 0 : Number(sorted[index - 1].trlBalance);
     const currentBalance = Number(row.trlBalance);
     return { sourceResource: "transactions", sourceId: row.transactionId, transactionId: row.transactionId, historyItemId: row.historyItemId, contactParasutId, transactionType: normalizedType, rawTransactionType: row.transactionType, date: row.date, dueDate: sourceText(row.check?.dueDate) || null, currency: "TRY", originalAmount: amount, amountTry: amount, ...movementFromBalanceDelta(previousBalance, currentBalance), balance: currentBalance, description, relatedDocumentIds: Object.values(row.linked ?? {}).filter((id): id is string => typeof id === "string" && Boolean(id)), allocations: row.allocations ?? [], check: row.check ?? null, cancelled: false, balanceImpacting: true, provenance: "native" };
