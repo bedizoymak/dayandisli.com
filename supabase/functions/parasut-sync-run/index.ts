@@ -18,11 +18,20 @@ import { syncSalesInvoices } from "../../../server/parasut/sync-sales-invoices.t
 import { syncPurchaseBills } from "../../../server/parasut/sync-purchase-bills.ts";
 import { syncChecks } from "../../../server/parasut/sync-checks.ts";
 import { RECONCILIATION_TARGET_CONTACT_IDS, syncContactTransactionHistory } from "../../../server/parasut/sync-transaction-history.ts";
+import { refreshStaleStatements, DEFAULT_ALERT_AFTER_HOURS } from "../../../server/parasut/sync-statement-staleness.ts";
 import type { MirrorDatabase, SyncContext, SyncResult } from "../../../server/parasut/types.ts";
 
 const APPROVED_ERP_COMPANY_ID = "54b50745-89e0-4b97-adb6-4f2426fa2a2f";
 const APPROVED_PARASUT_COMPANY_ID = "666034";
 const MAX_CONSECUTIVE_RESOURCE_ERRORS = 5;
+// P0 de-risk (no staging environment exists — see the incident writeup):
+// first production deploy runs with a budget of exactly 1 contact per
+// 5-minute tick. Raise STATEMENT_REFRESH_MAX_CONTACTS to the full value
+// (10, matching the measured 10-req/10s Paraşüt rate limit and the 24h
+// rolling-sweep sizing) once a few ticks are confirmed clean in
+// sync_runs/sync_errors.
+const STATEMENT_REFRESH_MAX_PAGES = 20;
+const STATEMENT_REFRESH_MAX_CONTACTS = 1;
 
 interface ResourceRunner {
   name: string;
@@ -126,7 +135,38 @@ serve(async (req: Request) => {
 
     logSafe(`[sync] all resources completed: ${results.map((r) => `${r.resourceType}=${r.status}`).join(", ")}`);
 
-    return new Response(JSON.stringify({ results }), {
+    // P0 fix: transaction_history_items (the customer ledger's sole data
+    // source) was never part of this scheduled loop, so it silently froze
+    // for every contact the moment new Paraşüt activity happened. This step
+    // recomputes staleness fresh every invocation (balance-mismatch —
+    // including a missing baseline, which counts as stale, not "no
+    // mismatch" — OR the 24h rolling-sweep backstop for balance-neutral
+    // metadata drift) and processes the highest-priority stale contacts
+    // within a small budget, degrading cleanly if the budget runs out
+    // mid-contact (its checkpoint is preserved; it's simply re-evaluated
+    // next tick — never a permanent "completed = skip forever" exclusion).
+    const statementRefresh = await refreshStaleStatements(context, {
+      maxPagesPerInvocation: STATEMENT_REFRESH_MAX_PAGES,
+      maxContactsPerInvocation: STATEMENT_REFRESH_MAX_CONTACTS,
+    });
+    logSafe(
+      `[statement-refresh] stale=${statementRefresh.staleCount} oldest_stale_hours=${statementRefresh.oldestStaleHours.toFixed(1)} ` +
+        `touched=${statementRefresh.contactsTouched.length} completed=${statementRefresh.completed.length} ` +
+        `partial=${statementRefresh.partial.length} failed=${statementRefresh.failed.length} pages=${statementRefresh.pagesUsed}`,
+    );
+    if (statementRefresh.alert) {
+      // Item 5: no external alerting pipeline exists in this repo — a
+      // greppable [ALERT]-prefixed structured log line is the same
+      // observability convention already used throughout this codebase
+      // (logSafe), not an invented new mechanism. Ops tooling watching
+      // function logs for "[ALERT]" is the intended hook point.
+      logSafe(
+        `[ALERT] statement staleness exceeded the sweep-interval threshold: ${statementRefresh.staleCount} contacts stale, ` +
+          `oldest ${statementRefresh.oldestStaleHours.toFixed(1)}h (threshold ${DEFAULT_ALERT_AFTER_HOURS}h) — the statement-refresh step may be stuck or under-budgeted.`,
+      );
+    }
+
+    return new Response(JSON.stringify({ results, statementRefresh }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
