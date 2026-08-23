@@ -38,7 +38,7 @@ export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement |
     // still assembled client-side is the check's multi-field detail line,
     // which must keep its existing exact format.
     const description = row.check
-      ? [row.description, row.check.serialNumber, row.check.bank, row.check.dueDate, row.check.paymentStatus].map(sourceText).filter(Boolean).join(" · ")
+      ? [row.description, row.check.bank, row.check.serialNumber, row.check.dueDate, row.check.paymentStatus].map(sourceText).filter(Boolean).join(" · ")
       : sourceText(row.displayDescription) || sourceText(row.description) || LEDGER_TYPE_LABELS[normalizedType];
     return { sourceResource: "transactions", sourceId: row.transactionId, transactionId: row.transactionId, historyItemId: row.historyItemId, contactParasutId, transactionType: normalizedType, rawTransactionType: row.transactionType, date: row.date, dueDate: sourceText(row.check?.dueDate) || null, currency: "TRY", originalAmount: amount, amountTry: amount, ...direction(row.transactionType, amount), balance: Number(row.trlBalance), description, relatedDocumentIds: Object.values(row.linked ?? {}).filter((id): id is string => typeof id === "string" && Boolean(id)), allocations: row.allocations ?? [], check: row.check ?? null, cancelled: false, balanceImpacting: true, provenance: "native" };
   });
