@@ -25,17 +25,19 @@ const APPROVED_ERP_COMPANY_ID = "54b50745-89e0-4b97-adb6-4f2426fa2a2f";
 const APPROVED_PARASUT_COMPANY_ID = "666034";
 const MAX_CONSECUTIVE_RESOURCE_ERRORS = 5;
 // P0 de-risk (no staging environment exists — see the incident writeup):
-// first production deploy ran with a budget of exactly 1 contact per
-// 5-minute tick. Confirmed clean (0 errors, correct contact selected by
-// priority) against live production on 2026-08-23 12:41 UTC — raised here
-// to the full value (10, matching the measured 10-req/10s Paraşüt rate
-// limit and the 24h rolling-sweep sizing). Priority ordering means the
-// ~437 never-synced contacts (infinite mismatch) are visited before any
-// finite-mismatch contact, so this budget also controls how fast that
-// initial backlog clears — at 10/tick every 5 minutes it clears in a few
-// hours, matching the sizing in the P0 commit.
+// REVERTED back to 1 contact/tick. Raising to 10 (2026-08-23 ~12:44 UTC)
+// added enough wall-clock time to this already-tight invocation that
+// consecutive 5-minute cron ticks started overlapping — enforceSingleRunner
+// then correctly, but visibly, started marking the *losing* concurrent
+// invocation's "checks" run as "failed" (observed live: two checks
+// failures at 12:56:02 and 12:57:11 UTC, immediately after the raise).
+// This is a real regression from added latency, not a logic bug in the
+// staleness computation itself. Kept at 1 until the statement-refresh step
+// is moved off this shared 5-minute invocation (its own schedule/budget)
+// so it can never extend the other five resources' cycle time — see the
+// P0 follow-up note.
 const STATEMENT_REFRESH_MAX_PAGES = 20;
-const STATEMENT_REFRESH_MAX_CONTACTS = 10;
+const STATEMENT_REFRESH_MAX_CONTACTS = 1;
 
 interface ResourceRunner {
   name: string;
