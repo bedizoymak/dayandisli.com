@@ -24,20 +24,21 @@ import type { MirrorDatabase, SyncContext, SyncResult } from "../../../server/pa
 const APPROVED_ERP_COMPANY_ID = "54b50745-89e0-4b97-adb6-4f2426fa2a2f";
 const APPROVED_PARASUT_COMPANY_ID = "666034";
 const MAX_CONSECUTIVE_RESOURCE_ERRORS = 5;
-// P0 de-risk (no staging environment exists — see the incident writeup):
-// REVERTED back to 1 contact/tick. Raising to 10 (2026-08-23 ~12:44 UTC)
-// added enough wall-clock time to this already-tight invocation that
-// consecutive 5-minute cron ticks started overlapping — enforceSingleRunner
-// then correctly, but visibly, started marking the *losing* concurrent
-// invocation's "checks" run as "failed" (observed live: two checks
-// failures at 12:56:02 and 12:57:11 UTC, immediately after the raise).
-// This is a real regression from added latency, not a logic bug in the
-// staleness computation itself. Kept at 1 until the statement-refresh step
-// is moved off this shared 5-minute invocation (its own schedule/budget)
-// so it can never extend the other five resources' cycle time — see the
-// P0 follow-up note.
+// P0 follow-up (implemented): raising the contact budget on the SHARED
+// 5-minute invocation (accounts/contacts/products/invoices/bills/checks)
+// added enough wall-clock time that consecutive ticks started overlapping —
+// enforceSingleRunner then correctly, but visibly, killed the losing
+// invocation's "checks" run (observed live: failures at 12:56:02 and
+// 12:57:11 UTC on 2026-08-23, immediately after raising to 10). Rather than
+// keep the budget at a safe-but-slow 1/tick (~36h to clear the ~430-contact
+// never-synced backlog, during which ~98% of statements are correctly but
+// unacceptably blocked from printing by the P1 fix), the statement-refresh
+// step now runs on its OWN separate cron schedule/action
+// ("statement-refresh", see the migration adding its own pg_cron job) with
+// its own budget, entirely decoupled from the six-resource loop — it can
+// never extend that loop's cycle time regardless of its own budget size.
 const STATEMENT_REFRESH_MAX_PAGES = 20;
-const STATEMENT_REFRESH_MAX_CONTACTS = 1;
+const STATEMENT_REFRESH_MAX_CONTACTS = 5;
 
 interface ResourceRunner {
   name: string;
@@ -100,6 +101,36 @@ serve(async (req: Request) => {
     const context: SyncContext = { companyId, parasutCompanyId, database, client, triggerType };
 
     const body = await req.json().catch(() => ({})) as { action?: unknown };
+    if (body.action === "statement-refresh") {
+      // Runs on its own cron schedule (see the migration adding
+      // parasut-sync-run-statement-refresh-every-minute), never inside the
+      // shared six-resource loop — its budget can be sized independently
+      // without risking the overlap regression above.
+      const statementRefresh = await refreshStaleStatements(context, {
+        maxPagesPerInvocation: STATEMENT_REFRESH_MAX_PAGES,
+        maxContactsPerInvocation: STATEMENT_REFRESH_MAX_CONTACTS,
+      });
+      logSafe(
+        `[statement-refresh] stale=${statementRefresh.staleCount} oldest_stale_hours=${statementRefresh.oldestStaleHours.toFixed(1)} ` +
+          `touched=${statementRefresh.contactsTouched.length} completed=${statementRefresh.completed.length} ` +
+          `partial=${statementRefresh.partial.length} failed=${statementRefresh.failed.length} pages=${statementRefresh.pagesUsed}`,
+      );
+      if (statementRefresh.alert) {
+        // Item 5: no external alerting pipeline exists in this repo — a
+        // greppable [ALERT]-prefixed structured log line is the same
+        // observability convention already used throughout this codebase
+        // (logSafe), not an invented new mechanism.
+        logSafe(
+          `[ALERT] statement staleness exceeded the sweep-interval threshold: ${statementRefresh.staleCount} contacts stale, ` +
+            `oldest ${statementRefresh.oldestStaleHours.toFixed(1)}h (threshold ${DEFAULT_ALERT_AFTER_HOURS}h) — the statement-refresh step may be stuck or under-budgeted.`,
+        );
+      }
+      return new Response(JSON.stringify({ statementRefresh }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (body.action === "authoritative-history-backfill") {
       const results: Array<SyncResult & { contactId: string }> = [];
       for (const contactId of RECONCILIATION_TARGET_CONTACT_IDS) {
@@ -141,38 +172,7 @@ serve(async (req: Request) => {
 
     logSafe(`[sync] all resources completed: ${results.map((r) => `${r.resourceType}=${r.status}`).join(", ")}`);
 
-    // P0 fix: transaction_history_items (the customer ledger's sole data
-    // source) was never part of this scheduled loop, so it silently froze
-    // for every contact the moment new Paraşüt activity happened. This step
-    // recomputes staleness fresh every invocation (balance-mismatch —
-    // including a missing baseline, which counts as stale, not "no
-    // mismatch" — OR the 24h rolling-sweep backstop for balance-neutral
-    // metadata drift) and processes the highest-priority stale contacts
-    // within a small budget, degrading cleanly if the budget runs out
-    // mid-contact (its checkpoint is preserved; it's simply re-evaluated
-    // next tick — never a permanent "completed = skip forever" exclusion).
-    const statementRefresh = await refreshStaleStatements(context, {
-      maxPagesPerInvocation: STATEMENT_REFRESH_MAX_PAGES,
-      maxContactsPerInvocation: STATEMENT_REFRESH_MAX_CONTACTS,
-    });
-    logSafe(
-      `[statement-refresh] stale=${statementRefresh.staleCount} oldest_stale_hours=${statementRefresh.oldestStaleHours.toFixed(1)} ` +
-        `touched=${statementRefresh.contactsTouched.length} completed=${statementRefresh.completed.length} ` +
-        `partial=${statementRefresh.partial.length} failed=${statementRefresh.failed.length} pages=${statementRefresh.pagesUsed}`,
-    );
-    if (statementRefresh.alert) {
-      // Item 5: no external alerting pipeline exists in this repo — a
-      // greppable [ALERT]-prefixed structured log line is the same
-      // observability convention already used throughout this codebase
-      // (logSafe), not an invented new mechanism. Ops tooling watching
-      // function logs for "[ALERT]" is the intended hook point.
-      logSafe(
-        `[ALERT] statement staleness exceeded the sweep-interval threshold: ${statementRefresh.staleCount} contacts stale, ` +
-          `oldest ${statementRefresh.oldestStaleHours.toFixed(1)}h (threshold ${DEFAULT_ALERT_AFTER_HOURS}h) — the statement-refresh step may be stuck or under-budgeted.`,
-      );
-    }
-
-    return new Response(JSON.stringify({ results, statementRefresh }), {
+    return new Response(JSON.stringify({ results }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

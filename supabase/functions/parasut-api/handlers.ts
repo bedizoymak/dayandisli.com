@@ -535,7 +535,14 @@ const CHECK_BANK_IDENTIFIER_LABELS: Record<string, string> = {
 };
 function checkBankLabel(checkAttributes: Record<string, unknown>): string | null {
   const identifier = String(checkAttributes.bank_identifier ?? "").trim();
-  if (identifier) return CHECK_BANK_IDENTIFIER_LABELS[identifier] ?? identifier;
+  if (identifier) {
+    const label = CHECK_BANK_IDENTIFIER_LABELS[identifier];
+    // The raw identifier is still shown (never hidden) when unmapped, but
+    // log it so a genuinely new bank code doesn't sit undetected until a
+    // customer notices a code instead of a name.
+    if (!label) console.warn(`[checkBankLabel] unmapped bank_identifier: ${identifier}`);
+    return label ?? identifier;
+  }
   const name = String(checkAttributes.bank_name ?? "").trim();
   if (name) return name;
   const bank = String(checkAttributes.bank ?? "").trim();
