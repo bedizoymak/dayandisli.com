@@ -39,6 +39,14 @@ const RAW_PARASUT_TRANSACTION_TYPE_ENUMS = new Set([
 function guardAgainstRawEnum(description: string, normalizedType: LedgerTransactionType): string {
   return RAW_PARASUT_TRANSACTION_TYPE_ENUMS.has(description) ? LEDGER_TYPE_LABELS[normalizedType] : description;
 }
+// Generic Paraşüt check payment-status label mapping for customer-facing
+// text only — row.check.paymentStatus itself stays the untranslated raw
+// value from Paraşüt.
+const CHECK_PAYMENT_STATUS_LABELS: Record<string, string> = { paid: "Ödendi", unpaid: "Ödenmedi" };
+function checkPaymentStatusLabel(status: unknown): string {
+  const raw = sourceText(status);
+  return CHECK_PAYMENT_STATUS_LABELS[raw] ?? raw;
+}
 // The displayed debit/credit for each row is derived exclusively from the
 // delta between consecutive authoritative trlBalance values in statement
 // order (previous = 0 for the first row), never from the transaction's own
@@ -65,7 +73,7 @@ export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement |
     // still assembled client-side is the check's multi-field detail line,
     // which must keep its existing exact format.
     const description = row.check
-      ? [row.description, row.check.bank, row.check.serialNumber, row.check.dueDate, row.check.paymentStatus].map(sourceText).filter(Boolean).join(" · ")
+      ? [sourceText(row.description), sourceText(row.check.bank), sourceText(row.check.serialNumber), sourceText(row.check.dueDate), checkPaymentStatusLabel(row.check.paymentStatus)].filter(Boolean).join(" · ")
       : guardAgainstRawEnum(sourceText(row.displayDescription) || sourceText(row.description) || LEDGER_TYPE_LABELS[normalizedType], normalizedType);
     const previousBalance = index === 0 ? 0 : Number(sorted[index - 1].trlBalance);
     const currentBalance = Number(row.trlBalance);
