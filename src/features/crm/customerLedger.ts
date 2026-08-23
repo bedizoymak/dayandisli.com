@@ -23,25 +23,22 @@ function paymentIds(document: LedgerDocumentRow): string[] { const data = docume
 export function buildPaymentToDocumentMap(documents: readonly LedgerDocumentRow[]): Map<string, LedgerDocumentRow> { const result = new Map<string, LedgerDocumentRow>(); for (const document of documents) for (const id of paymentIds(document)) result.set(id, document); return result }
 export function filterBalanceDocuments(documents: readonly LedgerDocumentRow[]): LedgerDocumentRow[] { return documents.filter((document) => sourceText(document.attributes?.item_type) !== "cancelled") }
 function normalizeType(type: string): LedgerTransactionType { if (type.startsWith("contact_transfer")) return "contact_transfer"; return ({ sales_invoice: "sales_invoice", purchase_bill: "purchase_bill", contact_credit: "customer_collection", contact_debit: "supplier_payment", check_in: "received_check", check_out: "issued_check", contact_opening_balance_debit: "opening_balance", contact_opening_balance_credit: "opening_balance" } as Record<string, LedgerTransactionType>)[type] ?? "unknown" }
-// A contact_transfer is a first-class type in the verified source contract
-// (transaction.contact_transfer) but its exact side isn't one of the fixed
-// enum cases below; Parasut's own debit_amount/credit_amount on the
-// transaction already say which side it's on, so that authoritative value is
-// used directly instead of guessing — never applied to a truly unknown type.
-function direction(row: AuthoritativeStatementRow, amount: number): { debit: number; credit: number } {
-  const type = row.transactionType;
-  if (["sales_invoice", "contact_debit", "check_out", "contact_opening_balance_debit"].includes(type)) return { debit: amount, credit: 0 };
-  if (["purchase_bill", "contact_credit", "check_in", "contact_opening_balance_credit"].includes(type)) return { debit: 0, credit: amount };
-  if (type.startsWith("contact_transfer")) {
-    if ((Number(row.debitAmount) || 0) > 0) return { debit: amount, credit: 0 };
-    if ((Number(row.creditAmount) || 0) > 0) return { debit: 0, credit: amount };
-  }
+// The displayed debit/credit for each row is derived exclusively from the
+// delta between consecutive authoritative trlBalance values in statement
+// order (previous = 0 for the first row), never from the transaction's own
+// type or raw debit/credit sides — this is the single source of truth for
+// the balance movement shown on screen and in print.
+function movementFromBalanceDelta(previousBalance: number, currentBalance: number): { debit: number; credit: number } {
+  const delta = currentBalance - previousBalance;
+  if (delta > 0) return { debit: delta, credit: 0 };
+  if (delta < 0) return { debit: 0, credit: Math.abs(delta) };
   return { debit: 0, credit: 0 };
 }
 export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement | null | undefined, contactParasutId: string): LedgerRow[] {
   if (!statement || statement.status === "unavailable") return [];
   const seen = new Set<string>();
-  return [...statement.rows].sort((a, b) => a.order - b.order).map((row) => {
+  const sorted = [...statement.rows].sort((a, b) => a.order - b.order);
+  return sorted.map((row, index) => {
     if (!row.transactionId) throw new Error("Paraşüt statement row is missing transaction id");
     if (seen.has(row.transactionId)) throw new Error(`Duplicate Paraşüt transaction id: ${row.transactionId}`); seen.add(row.transactionId);
     const amount = Math.abs(Number(row.amountInTrl) || Number(row.debitAmount) || Number(row.creditAmount) || 0);
@@ -54,7 +51,9 @@ export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement |
     const description = row.check
       ? [row.description, row.check.bank, row.check.serialNumber, row.check.dueDate, row.check.paymentStatus].map(sourceText).filter(Boolean).join(" · ")
       : sourceText(row.displayDescription) || sourceText(row.description) || LEDGER_TYPE_LABELS[normalizedType];
-    return { sourceResource: "transactions", sourceId: row.transactionId, transactionId: row.transactionId, historyItemId: row.historyItemId, contactParasutId, transactionType: normalizedType, rawTransactionType: row.transactionType, date: row.date, dueDate: sourceText(row.check?.dueDate) || null, currency: "TRY", originalAmount: amount, amountTry: amount, ...direction(row, amount), balance: Number(row.trlBalance), description, relatedDocumentIds: Object.values(row.linked ?? {}).filter((id): id is string => typeof id === "string" && Boolean(id)), allocations: row.allocations ?? [], check: row.check ?? null, cancelled: false, balanceImpacting: true, provenance: "native" };
+    const previousBalance = index === 0 ? 0 : Number(sorted[index - 1].trlBalance);
+    const currentBalance = Number(row.trlBalance);
+    return { sourceResource: "transactions", sourceId: row.transactionId, transactionId: row.transactionId, historyItemId: row.historyItemId, contactParasutId, transactionType: normalizedType, rawTransactionType: row.transactionType, date: row.date, dueDate: sourceText(row.check?.dueDate) || null, currency: "TRY", originalAmount: amount, amountTry: amount, ...movementFromBalanceDelta(previousBalance, currentBalance), balance: currentBalance, description, relatedDocumentIds: Object.values(row.linked ?? {}).filter((id): id is string => typeof id === "string" && Boolean(id)), allocations: row.allocations ?? [], check: row.check ?? null, cancelled: false, balanceImpacting: true, provenance: "native" };
   });
 }
 export function statementWarning(statement: AuthoritativeStatement | null | undefined, rows: readonly LedgerRow[]): string | null {
