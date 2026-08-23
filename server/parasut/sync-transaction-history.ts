@@ -28,7 +28,7 @@ const ARRIVAL_PAGE_STRIDE = 100_000;
 export function syncContactTransactionHistory(
   context: SyncContext,
   contactParasutId: string,
-  options: { concurrencyLock?: boolean } = {},
+  options: { concurrencyLock?: boolean; maxPagesPerInvocation?: number } = {},
 ): Promise<SyncResult> {
   if (!/^\d+$/.test(contactParasutId)) throw new Error("Invalid Paraşüt contact id");
   const contactRef = { data: { type: "contacts", id: contactParasutId } };
@@ -83,7 +83,10 @@ export function syncContactTransactionHistory(
     endpoint: `/v4/${encodeURIComponent(context.parasutCompanyId)}/contacts/${encodeURIComponent(contactParasutId)}/transaction_history_items`,
     include: TRANSACTION_HISTORY_INCLUDE,
     numericAttributeFields: ["trl_balance", "usd_balance", "eur_balance", "gbp_balance"],
-    maxPagesPerInvocation: 20,
+    // Default unchanged (20) for every existing caller — company-wide
+    // backfill runner is the only caller that overrides this, to share a
+    // page budget across multiple contacts within one invocation.
+    maxPagesPerInvocation: options.maxPagesPerInvocation ?? 20,
     concurrencyLock: options.concurrencyLock,
   });
 }
