@@ -715,7 +715,7 @@ describe("handleDetail — exact company_id + exact parasut_id, never maybeSingl
     expect(checkRow.bank).toBe("SOME_FUTURE_BANK");
   });
 
-  it("customer detail: authoritative statement flags a backward date jump in the oldest-first response as a diagnostic", async () => {
+  it("customer detail: preserves statement_order exactly even when transaction_date goes backward — ledger rebuild contract rule 4 forbids date-based reordering or validation", async () => {
     const admin = createFakeSupabaseAdmin({
       "parasut.contacts": [
         { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Co", account_type: "customer", trl_balance: "0" }, relationships: {} },
@@ -735,8 +735,13 @@ describe("handleDetail — exact company_id + exact parasut_id, never maybeSingl
       "parasut.payments": [],
     });
     const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
-    const statement = detail?.statement as { status: string; diagnostics: string[] };
-    expect(statement.diagnostics.some((d) => d.startsWith("date_regression:"))).toBe(true);
+    const statement = detail?.statement as { status: string; diagnostics: string[]; rows: Array<{ transactionId: string }> };
+    // statement_order is authoritative regardless of the (display-only)
+    // transaction_date going backward — no date_regression diagnostic, no
+    // reordering, "a" (statement_order -2) stays before "b" (-1).
+    expect(statement.diagnostics.some((d) => d.startsWith("date_regression:"))).toBe(false);
+    expect(statement.status).toBe("reconciled");
+    expect(statement.rows.map((r) => r.transactionId)).toEqual(["a", "b"]);
   });
 
   it("customer detail: authoritative statement flags a row with no resolvable transaction_date as a diagnostic instead of silently rendering an empty date", async () => {
@@ -759,6 +764,32 @@ describe("handleDetail — exact company_id + exact parasut_id, never maybeSingl
     const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
     const statement = detail?.statement as { status: string; diagnostics: string[] };
     expect(statement.diagnostics.some((d) => d.startsWith("missing_transaction_date:"))).toBe(true);
+  });
+
+  it("customer detail: a null statement_order or trl_balance fails the whole statement closed — never renders a partial ledger (ledger rebuild contract rule 11)", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Co", account_type: "customer", trl_balance: "0" }, relationships: {} },
+      ],
+      "parasut.transaction_history_items": [
+        { parasut_id: "a", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "a", statement_order: 0, transaction_date: "2026-01-01", trl_balance: 100, source_archived: false },
+        { parasut_id: "b", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "b", statement_order: null, transaction_date: "2026-01-02", trl_balance: 200, source_archived: false },
+      ],
+      "parasut.transactions": [
+        { parasut_id: "a", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "contact_credit", date: "2026-01-01", description: "", debit_amount: 0, credit_amount: 100 },
+        { parasut_id: "b", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "contact_credit", date: "2026-01-02", description: "", debit_amount: 0, credit_amount: 100 },
+      ],
+      "parasut.sales_invoices": [],
+      "parasut.purchase_bills": [],
+      "parasut.opening_balances": [],
+      "parasut.checks": [],
+      "parasut.payments": [],
+    });
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { status: string; rows: unknown[]; diagnostics: string[] };
+    expect(statement.status).toBe("unavailable");
+    expect(statement.rows).toHaveLength(0);
+    expect(statement.diagnostics).toContain("sync_integrity_failure");
   });
 
   it("supplier detail never fetches supplierDocuments/supplierPayments — that dual-role fetch is customer-detail-only (no supplier-facing statement screen exists to consume it)", async () => {

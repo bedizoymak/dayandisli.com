@@ -15,6 +15,8 @@ export interface LedgerRow {
   sourceResource: "transactions"; sourceId: string; transactionId: string; historyItemId: string; contactParasutId: string;
   transactionType: LedgerTransactionType; rawTransactionType: string; date: string; dueDate: string | null; currency: string;
   originalAmount: number; amountTry: number; debit: number; credit: number; balance: number; description: string;
+  /** True when rawTransactionType has no entry in the mandatory side map — a visible integrity error, never silently guessed (contract rule 8). */
+  unmapped: boolean;
   relatedDocumentIds: string[]; allocations: AuthoritativeStatementRow["allocations"]; check: AuthoritativeStatementRow["check"];
   cancelled: false; balanceImpacting: true; provenance: "native";
 }
@@ -47,16 +49,27 @@ function checkPaymentStatusLabel(status: unknown): string {
   const raw = sourceText(status);
   return CHECK_PAYMENT_STATUS_LABELS[raw] ?? raw;
 }
-// The displayed debit/credit for each row is derived exclusively from the
-// delta between consecutive authoritative trlBalance values in statement
-// order (previous = 0 for the first row), never from the transaction's own
-// type or raw debit/credit sides — this is the single source of truth for
-// the balance movement shown on screen and in print.
-function movementFromBalanceDelta(previousBalance: number, currentBalance: number): { debit: number; credit: number } {
-  const delta = currentBalance - previousBalance;
-  if (delta > 0) return { debit: delta, credit: 0 };
-  if (delta < 0) return { debit: 0, credit: Math.abs(delta) };
-  return { debit: 0, credit: 0 };
+// Ledger rebuild contract hard rule 7/8: statement side is determined ONLY
+// by transactions.transaction_type via this fixed map — never inferred
+// from debit_amount/credit_amount (both can be populated on the same row;
+// confirmed live e.g. a contact_debit row with identical non-null
+// debit_amount and credit_amount) and never derived from the trlBalance
+// delta. The contract's own mandatory map covers 6 types; check_out and
+// contact_opening_balance_credit are real, currently-live types it doesn't
+// mention — both resolved from observed evidence (not guessed), documented
+// in CLAUDE_CODE_CUSTOMER_LEDGER_REBUILD_REPORT.md: check_out matches the
+// same positive-balance-delta direction as every other confirmed debit
+// type across two independent live examples; contact_opening_balance_credit
+// produced a negative delta from a confirmed first-ever history row,
+// matching its own name as the credit counterpart of
+// contact_opening_balance_debit. Any type outside this map is a visible,
+// unmapped integrity error — never a guess, never a silent zero.
+const DEBIT_TRANSACTION_TYPES = new Set(["sales_invoice", "contact_debit", "contact_opening_balance_debit", "check_out"]);
+const CREDIT_TRANSACTION_TYPES = new Set(["check_in", "contact_credit", "purchase_bill", "contact_opening_balance_credit"]);
+function movementFromTransactionType(rawTransactionType: string, amount: number): { debit: number; credit: number; unmapped: boolean } {
+  if (DEBIT_TRANSACTION_TYPES.has(rawTransactionType)) return { debit: amount, credit: 0, unmapped: false };
+  if (CREDIT_TRANSACTION_TYPES.has(rawTransactionType)) return { debit: 0, credit: amount, unmapped: false };
+  return { debit: 0, credit: 0, unmapped: true };
 }
 export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement | null | undefined, contactParasutId: string): LedgerRow[] {
   if (!statement || statement.status === "unavailable") return [];
@@ -65,24 +78,36 @@ export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement |
   return sorted.map((row, index) => {
     if (!row.transactionId) throw new Error("Paraşüt statement row is missing transaction id");
     if (seen.has(row.transactionId)) throw new Error(`Duplicate Paraşüt transaction id: ${row.transactionId}`); seen.add(row.transactionId);
-    const amount = Math.abs(Number(row.amountInTrl) || Number(row.debitAmount) || Number(row.creditAmount) || 0);
+    // Contract rule 7: transactions.amount_in_trl is THE statement amount —
+    // read directly, never derived from debit_amount/credit_amount (both
+    // can be populated on the same row; those fields are informational only).
+    const amount = Math.abs(Number(row.amountInTrl) || 0);
     const normalizedType = normalizeType(row.transactionType);
+    const movement = movementFromTransactionType(row.transactionType, amount);
     // The backend already resolves the correct human-readable description
     // (invoice/bill number, opening-balance text, or a safe fallback label —
     // never the raw Paraşüt enum) via displayDescription; the only thing
     // still assembled client-side is the check's multi-field detail line,
     // which must keep its existing exact format.
-    const description = row.check
+    const baseDescription = row.check
       ? [sourceText(row.description), sourceText(row.check.bank), sourceText(row.check.serialNumber), sourceText(row.check.dueDate), checkPaymentStatusLabel(row.check.paymentStatus)].filter(Boolean).join(" · ")
       : guardAgainstRawEnum(sourceText(row.displayDescription) || sourceText(row.description) || LEDGER_TYPE_LABELS[normalizedType], normalizedType);
-    const previousBalance = index === 0 ? 0 : Number(sorted[index - 1].trlBalance);
+    // Contract rule 8: an unmapped transaction_type must be a visible
+    // integrity error, never a silent zero-amount row and never a guess.
+    const description = movement.unmapped
+      ? `⚠ Eşlenmemiş işlem türü (${row.transactionType}) — tutar doğrulanamadı`
+      : baseDescription;
     const currentBalance = Number(row.trlBalance);
-    return { sourceResource: "transactions", sourceId: row.transactionId, transactionId: row.transactionId, historyItemId: row.historyItemId, contactParasutId, transactionType: normalizedType, rawTransactionType: row.transactionType, date: row.date, dueDate: sourceText(row.check?.dueDate) || null, currency: "TRY", originalAmount: amount, amountTry: amount, ...movementFromBalanceDelta(previousBalance, currentBalance), balance: currentBalance, description, relatedDocumentIds: Object.values(row.linked ?? {}).filter((id): id is string => typeof id === "string" && Boolean(id)), allocations: row.allocations ?? [], check: row.check ?? null, cancelled: false, balanceImpacting: true, provenance: "native" };
+    return { sourceResource: "transactions", sourceId: row.transactionId, transactionId: row.transactionId, historyItemId: row.historyItemId, contactParasutId, transactionType: normalizedType, rawTransactionType: row.transactionType, date: row.date, dueDate: sourceText(row.check?.dueDate) || null, currency: "TRY", originalAmount: amount, amountTry: amount, debit: movement.debit, credit: movement.credit, unmapped: movement.unmapped, balance: currentBalance, description, relatedDocumentIds: Object.values(row.linked ?? {}).filter((id): id is string => typeof id === "string" && Boolean(id)), allocations: row.allocations ?? [], check: row.check ?? null, cancelled: false, balanceImpacting: true, provenance: "native" };
   });
 }
 export function statementWarning(statement: AuthoritativeStatement | null | undefined, rows: readonly LedgerRow[]): string | null {
   if (!statement || statement.status === "unavailable") return "Paraşüt işlem geçmişi henüz senkronize edilmedi; cari ekstre gösterilemiyor.";
   if (statement.status !== "reconciled") return `Paraşüt mutabakatı tamamlanmadı: ${(statement.diagnostics ?? []).join(", ") || "eksik veri"}`;
+  const unmapped = rows.filter((row) => row.unmapped);
+  if (unmapped.length > 0) {
+    return `Eşlenmemiş işlem türü tespit edildi (${unmapped.map((row) => row.rawTransactionType).join(", ")}) — tutarlar doğrulanamadı.`;
+  }
   const computed = rows.reduce((sum, row) => sum + row.debit - row.credit, 0); const finalHistory = statement.reconciliation?.finalHistoryBalance;
   return finalHistory !== null && finalHistory !== undefined && Math.abs(computed - finalHistory) > 0.005 ? "Hesaplanan kapanış bakiyesi Paraşüt işlem geçmişi bakiyesiyle eşleşmiyor." : null;
 }

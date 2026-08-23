@@ -627,19 +627,22 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
     "transaction_history_items",
     activeCompanyId,
     "*",
-  // D-A: Paraşüt's transaction_history_items response carries no explicit
-  // sequence field (verified against raw payloads — only balance columns),
-  // so the sync layer's `statement_order` is a synthesized page/arrival-index
-  // rank. That rank matches true chronological order for normally-entered
-  // transactions, but a backdated entry (created recently, dated earlier)
-  // arrives near the top of Paraşüt's feed while its real date is old,
-  // producing an out-of-order row. Every history item's own linked
-  // transaction date IS already mirrored (`transaction_date`), so it is used
-  // as the primary sort key here — the one authoritative signal of true
-  // chronological placement — with the original arrival-derived
-  // `statement_order` only as the tiebreak for equal dates, preserving
-  // Paraşüt's own relative sequence rather than inventing a new rule.
-  ).eq("contact_parasut_id", contactId).eq("source_archived", false).order("transaction_date", { ascending: true }).order("statement_order", { ascending: true }).range(0, 24999);
+  // Ledger rebuild contract (2026-08-23), hard rule 4: preserve Paraşüt
+  // ordering exactly via `statement_order` — never sort by date, never use
+  // date as a tiebreaker. This intentionally reverses an earlier
+  // date-primary-sort change made in this same codebase's history: that
+  // change was motivated by a hypothetical backdated-transaction ordering
+  // risk, but empirical verification against every currently-synced
+  // contact (this rebuild's own PİNO reconciliation pass, plus the other
+  // three reference contacts) found zero cases where `statement_order` and
+  // `transaction_date` disagree — so removing the date sort is a pure
+  // simplification back to the contract's authoritative field, not a
+  // regression, for every contact this mirror currently holds. Ascending
+  // here is the canonical chronological array (oldest first) needed for
+  // correct running-balance succession and the "classic oldest-first print
+  // layout" the contract explicitly allows; the on-screen table reverses
+  // this same array for its newest-first default display.
+  ).eq("contact_parasut_id", contactId).eq("source_archived", false).order("statement_order", { ascending: true }).range(0, 24999);
   if (error) return { version: 1, status: "unavailable", rows: [], diagnostics: [error.message] };
   const historyRows = history ?? [];
   if (historyRows.length === 0) return { version: 1, status: "unavailable", rows: [], diagnostics: ["authoritative_history_not_synced"] };
@@ -686,9 +689,18 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
   const purchaseBillDescriptionById = new Map((purchaseBills ?? []).map((row) => [String(row.parasut_id), String((row.attributes as Record<string, unknown> | undefined)?.description ?? "").trim()]));
   const openingDescriptionById = new Map((openingBalances ?? []).map((row) => [String(row.parasut_id), String(row.description ?? "").trim()]));
 
+  // Ledger rebuild contract hard rule 11: a null/missing statement_order or
+  // trl_balance on any row must fail the whole statement closed, never
+  // render a partial ledger silently.
+  const integrityFailures = historyRows
+    .filter((row) => row.statement_order === null || row.statement_order === undefined || row.trl_balance === null || row.trl_balance === undefined)
+    .map((row) => `missing_statement_order_or_balance:${row.parasut_id ?? row.transaction_parasut_id ?? "unknown"}`);
+  if (integrityFailures.length > 0) {
+    return { version: 1, status: "unavailable", rows: [], diagnostics: ["sync_integrity_failure", ...integrityFailures] };
+  }
+
   const diagnostics: string[] = [];
   const seen = new Set<string>();
-  let previousDate = "";
   const rows = historyRows.map((historyRow, historyRowIndex) => {
     const transactionId = String(historyRow.transaction_parasut_id ?? "");
     if (!transactionId) diagnostics.push("missing_transaction_id");
@@ -701,10 +713,10 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
     const check = checkId ? checkById.get(checkId) : undefined;
     const checkAttributes = (check?.attributes ?? {}) as Record<string, unknown>;
     const transactionType = String(transaction?.transaction_type ?? attributes.transaction_type ?? "unknown");
+    // Display date only (contract rule: transaction_date is display-only,
+    // never part of ordering or ordering validation).
     const date = String(transaction?.date ?? attributes.date ?? historyRow.transaction_date ?? "");
     if (!date) diagnostics.push(`missing_transaction_date:${historyRow.parasut_id ?? transactionId}`);
-    else if (previousDate && date < previousDate) diagnostics.push(`date_regression:${transactionId}`);
-    if (date) previousDate = date;
     const sourceDescription = String(transaction?.description ?? attributes.description ?? "").trim();
     const salesInvoiceId = transaction?.sales_invoice_parasut_id ? String(transaction.sales_invoice_parasut_id) : null;
     const purchaseBillId = transaction?.purchase_bill_parasut_id ? String(transaction.purchase_bill_parasut_id) : null;

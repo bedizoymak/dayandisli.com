@@ -562,17 +562,14 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
               </tr>
             </thead>
             <tbody>
-              {rangeFilteredLedger.carryForward !== null && (
-                <tr className="crm-carry-row">
-                  <td>—</td>
-                  <td>Devir Bakiyesi</td>
-                  <td>Seçilen dönem öncesi gerçek bakiye</td>
-                  <td>—</td>
-                  <td>—</td>
-                  <td>{formatSignedBalance(rangeFilteredLedger.carryForward)}</td>
-                </tr>
-              )}
-              {rangeFilteredLedger.rows.map((row) => (
+              {/* Ledger rebuild contract hard rule 4: on-screen default is
+                  newest-first (statement_order DESC), matching Paraşüt's own
+                  UI — display-only reversal of the same array print/totals
+                  use unchanged (which stays oldest-first, the contract's
+                  explicit "classic" print layout). The carry-forward anchor
+                  represents the oldest point in the range, so in a
+                  newest-first list it belongs at the bottom, not the top. */}
+              {[...rangeFilteredLedger.rows].reverse().map((row) => (
                 <tr key={row.transactionId} title={`Paraşüt transaction ${row.transactionId}`}>
                   <td>{row.date || "—"}</td>
                   <td>
@@ -584,6 +581,16 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
                   <td>{formatSignedBalance(row.balance)}</td>
                 </tr>
               ))}
+              {rangeFilteredLedger.carryForward !== null && (
+                <tr className="crm-carry-row">
+                  <td>—</td>
+                  <td>Devir Bakiyesi</td>
+                  <td>Seçilen dönem öncesi gerçek bakiye</td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td>{formatSignedBalance(rangeFilteredLedger.carryForward)}</td>
+                </tr>
+              )}
             </tbody>
             {rangeFilteredLedger.rows.length > 0 && (
               <tfoot>
