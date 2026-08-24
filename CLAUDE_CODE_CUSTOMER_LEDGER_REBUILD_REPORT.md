@@ -234,3 +234,43 @@ New authoritative findings supplied by production QA (P0/P1/P2 below). Scope: fi
 - Decision and reason: every mandatory gate is green; proceeding to commit, push, and deploy per the contract's explicit sequencing (deploy only after every gate passes).
 - What was intentionally not changed: no unrelated dependency upgrades, no `npm audit fix`.
 - Next concrete action: commit, push, deploy the `parasut-api` and `parasut-sync-run` Edge Functions plus the frontend, then run live read-only reconciliation for 1068984956, PİNO, HİRA, and BEKEM.
+
+## [2026-08-24 — Committed, pushed, deployed]
+- Status: deployed
+- Commit: `d9bc371` (pushed to `origin/main`). Files: `server/parasut/sync-statement-staleness.ts` + `.test.ts`, `src/features/crm/customerLedger.ts` + `.test.ts`, `src/features/crm/CustomerDetailPage.tsx` + new `CustomerDetailPage.test.tsx`, `supabase/functions/parasut-api/handlers.ts` + `.test.ts`, this report.
+- Deployed: `parasut-api` Edge Function (script size 156 kB) and `parasut-sync-run` Edge Function (script size 188 kB, contains the staleness-classifier fix) both via `supabase functions deploy ... --project-ref meauutjsnnggzcigyvfp`. Frontend deployed via full FTP sync (418 files, 0 errors).
+- What was intentionally not changed: no other Edge Function was redeployed (none of the others were touched by this hotfix).
+- Next concrete action: run live read-only reconciliation for 1068984956, PİNO, HİRA, BEKEM against the deployed system, and verify the P1 invoice mapping and production URLs.
+
+## [2026-08-24 — Live production reconciliation, P0/P1 verified end-to-end] MANDATORY GATE PASSED
+- Status: verified in production
+- P0 fix verified live: manually invoked the deployed `parasut-sync-run` (`{"action":"statement-refresh"}`) 10 times in sequence. `staleCount` drained from 55 → 0 across the ticks (each tick first-time-completing a batch of genuinely-never-synced contacts, which correctly still get priority on their FIRST evaluation — the fix only prevents them from keeping Infinity priority on every SUBSEQUENT tick after completing). On tick 10, `contactsTouched` included `1068984956` (bediz test) for the first time since this session began investigating — proof the starvation is broken and a real mismatch contact can now win the queue once the one-time backlog of first-time-never-synced contacts clears. Tick 11 onward: `staleCount: 0`, confirming full drain, no remaining stale contacts.
+- Live reconciliation table (all 4 required contacts, fetched via the deployed `parasut-api` `action: detail` after the refresh):
+
+| Contact | Rows | ERP ledger closing (`finalHistoryBalance`) | Contact card KPI (`contact.trl_balance`) | Match | Diagnostics |
+|---|---|---|---|---|---|
+| bediz test (1068984956) | 5 | -5,000,000.00 | -5,000,000.00 | ✅ exact | none (`status: reconciled`) |
+| PİNO MAKİNE (1011029161) | 23 | 927,109.11 | 927,109.11 | ✅ exact | none |
+| HİRA PARTS (1010743830) | 113 | 399,120.00 | 399,120.00 | ✅ exact | none |
+| BEKEM ÖZTEKNİK (1011029140) | 21 | 157,909.98 | 157,909.98 | ✅ exact | none |
+
+  - bediz test's 5 rows, in order: `contact_debit` +1,000,000 (2026-08-22) → `check_in` -1,000,000 (2026-08-22, existing rows) → **`contact_credit` -10,000,000 (2026-08-23)** → **`check_out` -10,000,000, i.e. +10,000,000 debit-direction delta (2026-08-23)** → **`check_in` -5,000,000 (2026-08-23)** — the exact 3 real movements QA reported were missing are now present, in Paraşüt's own order, with the correct closing balance.
+  - `check_out` direction verified live, not assumed: prior balance -10,000,000 → after `check_out` (amount 10,000,000) → balance 0. Delta = +10,000,000 = same direction as every other confirmed DEBIT type. Confirms the existing `check_out = DEBIT` mapping (Phase 1) is still correct against this fresh evidence.
+- P1 fix verified live: fetched PİNO's real documents via the deployed `action: detail`. Confirmed `invoice_no: "HD02026000000071"` resolves to `parasut_id: "1091559184"` — exactly the mapping QA specified. The rendered link now builds `/apps/finance/income/invoices/1091559184`.
+- P2: verified via the new handler tests only (no currently-synced production contact has a genuinely-empty, sync-confirmed history at the moment of this check — every contact reaches this branch through the same code path already covered by the automated tests).
+- Production URLs: `https://dayandisli.com/` → HTTP 200. `https://erp.dayandisli.com/` → HTTP 200.
+- Decision and reason: P0 and P1 are now verified in production with live data, not just tests, satisfying the contract's explicit "do not mark the customer-ledger phase complete until P0 and P1 are verified in production" requirement.
+- What was intentionally not changed: no manual/destructive backfill was run — the 10 statement-refresh invocations used only the existing, already-scheduled (every-minute cron) mechanism, invoked manually to observe the fix's effect without waiting; no Paraşüt writes; no other contact's data was touched beyond what the existing GET-only, tenant-scoped sync already does routinely.
+- Remaining limitations: **NOT VERIFIED** — a customer whose Paraşüt history is genuinely, permanently empty (P2's "confirmed empty" case) was not observed live in production at the time of this check, since the one-time drain of the never-synced backlog completed and none of those contacts' real trl_balance happened to be exactly 0 with zero rows remaining stale to inspect interactively; this path is covered by 3 dedicated automated tests instead (`handlers.test.ts`), which is considered sufficient given the exact backend logic is identical regardless of which specific contact exercises it.
+- Next concrete action: none — P0, P1, and P2 are implemented, tested, and (P0/P1) verified live in production; the customer-ledger phase (Phase 1 + this Phase 2 hotfix) is complete.
+
+## Phase 2 — Final summary
+1. **Commit**: `d9bc371` (pushed to `origin/main`, on top of Phase 1's `bee3617`).
+2. **Deploy status**: `parasut-api` and `parasut-sync-run` Edge Functions both deployed; frontend deployed via full FTP sync (418 files, 0 errors).
+3. **Production URLs checked**: `https://dayandisli.com/` (200), `https://erp.dayandisli.com/` (200).
+4. **P0 verified live**: bediz test (1068984956) — starvation root cause fixed, all 5 real rows now present, closing balance -5,000,000.00 matches both the card KPI and Paraşüt exactly, `status: reconciled`, zero diagnostics.
+5. **P1 verified live**: PİNO's HD02026000000071 → 1091559184 mapping confirmed exact; invoice links now use the numeric Paraşüt id.
+6. **P2**: implemented and covered by automated tests (empty-vs-unsynced distinction); not separately observed live since no currently-stale contact happened to be a confirmed-empty account at verification time.
+7. **Gates**: `npm ci` clean, `tsc --noEmit` clean, `typecheck` clean, full suite 105 files/1239 tests passed, `build` clean.
+8. **NOT VERIFIED**: the P2 confirmed-empty path in a live production customer (covered by unit tests only, not a live example at this moment).
+9. **BLOCKED**: none.
