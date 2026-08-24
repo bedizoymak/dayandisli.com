@@ -101,6 +101,31 @@ describe("authoritative customer ledger", () => {
     expect(statementWarning(statement, rows)).toBeNull();
   });
 
+  it("shows the exact contract-mandated stale-ledger integrity state when the card balance and the latest mirrored trl_balance disagree (P0, 2026-08-24 production QA — bediz test 1068984956)", () => {
+    // Reproduces the live production shape: contact.trl_balance is fresh
+    // (-5,000,000) but transaction_history_items is 2 days stale (closing 0)
+    // — the backend flags this as contact_balance_mismatch.
+    const stale: AuthoritativeStatement = {
+      ...statement,
+      status: "incomplete",
+      diagnostics: ["contact_balance_mismatch"],
+      reconciliation: { finalHistoryBalance: 0, contactBalance: -5_000_000 },
+    };
+    const rows = buildAuthoritativeLedgerRows(stale, "1068984956");
+    expect(statementWarning(stale, rows)).toBe("Cari hareketler güncel değil; Paraşüt senkronizasyonu bekleniyor.");
+  });
+
+  it("shows a normal (null) warning once the mirrored history is confirmed fresh and matching (fresh-matching-ledger regression, P0)", () => {
+    const fresh: AuthoritativeStatement = {
+      ...statement,
+      status: "reconciled",
+      diagnostics: [],
+      reconciliation: { finalHistoryBalance: 0, contactBalance: 0 },
+    };
+    const rows = buildAuthoritativeLedgerRows(fresh, "1068984956");
+    expect(statementWarning(fresh, rows)).toBeNull();
+  });
+
   it("uses identical transaction ids, order, amounts, balances and totals for print", () => {
     const screen = buildAuthoritativeLedgerRows(statement, "x");
     const print = buildLedgerPrintRows(screen);

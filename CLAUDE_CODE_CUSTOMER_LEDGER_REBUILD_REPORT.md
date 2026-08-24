@@ -149,3 +149,88 @@ All four verified against live Supabase data using the identical type-based side
 - Commit: `9ca950f` (pushed to `origin/main`).
 - Deploy status: `parasut-api` Edge Function — deployed, verified identical to source. Frontend — deployed via FTP, verified via live bundle hash.
 - Production URLs checked: `https://dayandisli.com/` (HTTP 200), `https://erp.dayandisli.com/` (HTTP 200), and a live authenticated call to `https://meauutjsnnggzcigyvfp.supabase.co/functions/v1/parasut-api` for PİNO (HTTP 200, statement reconciled, 23 rows, correct closing balance).
+
+---
+
+# Phase 2 — Production QA Hotfix (2026-08-24)
+
+New authoritative findings supplied by production QA (P0/P1/P2 below). Scope: financial-integrity hotfix only, per explicit instruction — quotes, checks-module UI, dashboard, suppliers, unrelated invoice lists, styling, permissions, and unrelated sync infrastructure are out of scope and untouched.
+
+## [2026-08-24 — Investigation] P0 live-state reconstruction for bediz test (1068984956)
+- Status: investigating
+- Evidence (live authenticated call to the deployed `parasut-api` Edge Function, `action: detail, resource: customers, parasutId: 1068984956`):
+  - `contact.attributes.trl_balance`: -5,000,000.00 (fresh, from `parasut.contacts`)
+  - `statement.status`: `"incomplete"`, `statement.diagnostics`: `["contact_balance_mismatch"]`
+  - `statement.reconciliation`: `{finalHistoryBalance: 0, contactBalance: -5000000}`
+  - `statement.lastSyncedAt`: `2026-08-22T15:52:32.229Z` (2 days stale as of 2026-08-24)
+  - Only 2 `transaction_history_items` rows exist for this contact (`contact_debit` +1,000,000, `check_in` -1,000,000 → closing 0), missing the 3 real movements QA reported (`check_in` 5,000,000, `check_out` 10,000,000, `contact_credit` 10,000,000, all dated 2026-08-23).
+- Decision and reason: the existing `contact_balance_mismatch` diagnostic mechanism (built in Phase 1) is ALREADY correctly detecting this exact staleness and driving `status: "incomplete"`, which already blocks printing via the existing `statementWarning`/print-disabled wiring — so the P0 risk is not "the ledger silently renders wrong totals with no warning" (it doesn't; a generic Paraşüt-mutabakat-warning banner is already shown and printing is already blocked). The real, unresolved defect is the freshness MECHANISM: this contact has been stuck in this exact stale state for over 24 hours despite a per-minute statement-refresh cron whose own doc comment claims "largest mismatch first" priority — a 5,000,000 TRY mismatch should have been resynced within a few minutes, not 2+ days.
+- What was intentionally not changed: no change yet at this point — investigation only.
+- Next concrete action: find why the per-minute statement-refresh cron isn't reaching this contact despite its claimed priority ordering.
+
+## [2026-08-24 — Root cause found] P0: never-synced contacts with genuinely empty Paraşüt history starve the priority queue forever
+- Status: root cause identified and reproduced live
+- Evidence:
+  - Manually invoked the deployed `parasut-sync-run` function with `{"action":"statement-refresh"}`. Result: `staleCount: 80`, but the 5 contacts actually touched were `1046001367, 1011029218, 1011029209, 1011029181, 1011029231` — NOT `1068984956` despite its real, finite 5,000,000 TRY mismatch being the largest known real mismatch.
+  - Direct SQL (`supabase db query --linked`) against `parasut.transaction_history_items` confirmed all 5 touched contacts have **zero** rows each.
+  - Direct SQL against `parasut.sync_runs` for one of them (`1046001367`, `resource_type = 'transaction_history_items'`) found **641 `completed` sync runs**, all producing zero rows — i.e., Paraşüt has genuinely reported zero transaction history for this contact 641 times, not a sync failure.
+  - Direct SQL confirmed **75 of 441** active contacts currently have zero `transaction_history_items` rows.
+- Root cause: `server/parasut/sync-statement-staleness.ts`'s `computeContactStaleness` assigns `mismatchMagnitude = Infinity` to ANY contact with `mirroredClosingBalance === null` (no rows), with no distinction between "never even attempted a sync" and "sync completed, Paraşüt genuinely has zero history for this contact." Since `Infinity` always outranks any real, finite mismatch (including bediz test's real 5,000,000 TRY), the 75 permanently-zero-history contacts occupy the top of the priority queue on every single tick, forever — a real balance-mismatch contact can never win a fair comparison against `Infinity`, regardless of how large its own mismatch is. This is the exact starvation mechanism that left bediz test stale for 2+ days.
+- Decision and reason: this is the true freshness-mechanism defect requested by the contract (distinct from, but related to, "`contacts.trl_balance` refreshed before `transaction_history_items`" — the deeper issue is that the catch-up mechanism itself never catches up for real mismatches once permanently-empty contacts exist). It is also the exact mechanism behind P2 (empty vs. unsynced conflation): a contact that has been CONFIRMED empty by a completed sync was, until this fix, indistinguishable from one that has genuinely never been synced.
+- What was intentionally not changed: no schema change, no destructive backfill, no change to the six-resource sync loop, no change to unrelated cron jobs.
+- Next concrete action: fix the staleness classifier to treat a confirmed-empty history (closing balance implicitly 0, backed by at least one completed sync run) as a real, finite (usually zero) mismatch instead of `Infinity`.
+
+## [2026-08-24 — Fix implemented] P0 fix: staleness classifier no longer treats confirmed-empty history as infinite-priority
+- Status: implemented
+- Files changed: [server/parasut/sync-statement-staleness.ts](server/parasut/sync-statement-staleness.ts) — `computeContactStaleness`.
+- Change: introduced `effectiveClosingBalance = mirroredClosingBalance !== null ? mirroredClosingBalance : (hasCompletedSync ? 0 : null)`. Only a contact with `effectiveClosingBalance === null` (i.e., genuinely never had a completed sync attempt) now gets `mismatchMagnitude = Infinity` / `reason = "never_synced"`. A contact with a completed sync but zero rows is now compared at its real mismatch (`|paraşütBalance - 0|`) — zero if its own real balance is also zero (falls to `"fresh"`, exits the queue entirely), or a real finite number if not (competes fairly against every other real mismatch, e.g. bediz test's 5,000,000).
+- Reasoning: matches the contract's own instruction — "make customer transaction-history refresh safe... a customer whose Paraşüt balance changed must not remain with an older ledger after the next approved refresh cycle" — by removing the specific mechanism that was silently preventing exactly that for any contact behind a permanently-empty-history contact in the queue.
+- What was intentionally not changed: the never-synced-is-always-stale guarantee (item 2 in the original design) is preserved exactly — only contacts with at least one completed sync and a genuinely confirmed empty result are reclassified; a contact that has NEVER completed a sync still gets `Infinity` priority, unchanged.
+- Next concrete action: run the existing `sync-statement-staleness.test.ts` suite plus any new regression tests, then verify live against bediz test.
+
+## [2026-08-24 — Fix implemented] P2 fix: backend distinguishes confirmed-empty accounts from never-synced accounts
+- Status: implemented
+- Files changed: [supabase/functions/parasut-api/handlers.ts](supabase/functions/parasut-api/handlers.ts) — `fetchAuthoritativeStatement`.
+- Change: when `transaction_history_items` returns zero rows for a contact, the handler now queries `parasut.sync_runs` for at least one `completed` run whose `request_metadata->>endpoint` matches this contact's own transaction-history endpoint. If none exists → unchanged behavior, `status: "unavailable"`, diagnostic `authoritative_history_not_synced` (genuinely never synced). If at least one completed run exists → the contact's Paraşüt history is confirmed empty; returns `status: "reconciled"` (or `"incomplete"` with `contact_balance_mismatch` if the contact's own `trl_balance` is nonzero despite confirmed-empty history — a real data-integrity signal, not silently ignored) with `rows: []`, never the generic "not synchronized" diagnostic.
+- Reasoning: this is the backend half of P2 — the frontend's existing empty-rows message ("Bu müşteriye ait cari hareket bulunamadı.", shown whenever `rangeFilteredLedger.rows.length === 0`) was already correct wording for a genuinely empty account, but was previously unreachable for an empty account because the backend always returned `status: "unavailable"` for zero rows, which the frontend maps to the "not synchronized" warning banner instead. Now a genuinely empty, reconciled account shows no warning banner at all and only the correct empty-table message — never a false "not synchronized" claim.
+- What was intentionally not changed: the exact wording of the pre-existing empty-table message; no new UI copy was added since the existing message already matches the contract's intent once it can actually be reached for a genuinely empty account.
+- Next concrete action: fix the P0 print-blocking Turkish wording and P1 invoice links, then run tests.
+
+## [2026-08-24 — Fix implemented] P0 fix: exact contract-mandated Turkish integrity message + print-block wiring confirmed
+- Status: implemented
+- Files changed: [src/features/crm/customerLedger.ts](src/features/crm/customerLedger.ts) — `statementWarning`.
+- Change: `statementWarning` now returns the exact contract-mandated string `"Cari hareketler güncel değil; Paraşüt senkronizasyonu bekleniyor."` specifically when `statement.diagnostics` includes `contact_balance_mismatch` (checked before the generic `status !== "reconciled"` fallback, so this exact wording is used instead of the previous generic "Paraşüt mutabakatı tamamlanmadı: contact_balance_mismatch" string). The true never-synced case (`status === "unavailable"`) now returns `"Cari hareketler henüz senkronize edilmedi."` instead of the previous longer, differently-worded string — matching the contract's second required wording option.
+- Reasoning: `CustomerDetailPage.tsx`'s existing `printLedger`/`disabled={Boolean(reconciliationWarning)}` wiring (built in Phase 1, unchanged here) already correctly blocks `Cari Hesabı Yazdır` whenever `statementWarning` returns non-null — so this fix only needed to correct the message text, not add new gating logic, which was verified already present and correct by reading the current source before making any change.
+- What was intentionally not changed: the print-blocking mechanism itself (already correct); the unmapped-transaction-type warning message; the reconciliation-sum-mismatch warning message.
+- Next concrete action: fix P1 (invoice links).
+
+## [2026-08-24 — Fix implemented] P1 fix: customer-card invoice links now use the numeric Paraşüt ID
+- Status: implemented
+- Files changed: [src/features/crm/CustomerDetailPage.tsx](src/features/crm/CustomerDetailPage.tsx) — `InvoiceHistory`.
+- Change: the Fatura Geçmişi row's "Görüntüle" link now targets `/apps/finance/income/invoices/${encodeURIComponent(parasutId)}` (the document's own `parasut_id`, already available in scope as `parasutId`) instead of `/apps/finance/income/invoices/${encodeURIComponent(no)}` (the human-facing invoice number). The invoice number itself is unchanged, still shown as plain text in the adjacent "Belge No" column. Falls back to a plain "—" (no link) if `parasut_id` is somehow absent, rather than linking to a broken route.
+- Evidence the fix is correct: confirmed via source that `InvoiceDetailPage` → `FinanceIncomePages.tsx`'s `InvoiceDetailPage` reads its `:invoiceId` route param and passes it directly as `parasutId` to `supabase.functions.invoke("parasut-api", { body: { action: "detail", resource: "sales_invoices", parasutId: invoiceId } })` — i.e., the route has always required the numeric Paraşüt id, never `invoice_no`.
+- What was intentionally not changed: the general invoice-list route/behavior elsewhere in the app; the "Belge No" display column, which still shows `invoice_no` as plain text exactly as before.
+- Next concrete action: run relevant + full test suites, then verify PİNO's HD02026000000071 → 1091559184 mapping live.
+
+## [2026-08-24 — Regression tests added] Full P0/P1/P2 regression coverage
+- Status: implemented
+- Files changed:
+  - [src/features/crm/customerLedger.test.ts](src/features/crm/customerLedger.test.ts) — added "shows the exact contract-mandated stale-ledger integrity state when the card balance and the latest mirrored trl_balance disagree" and "shows a normal (null) warning once the mirrored history is confirmed fresh and matching".
+  - [supabase/functions/parasut-api/handlers.test.ts](supabase/functions/parasut-api/handlers.test.ts) — added 4 tests: (1) zero rows + no completed sync = genuinely unavailable; (2) zero rows + a completed sync = confirmed-empty, reconciled; (3) confirmed-empty with a nonzero real trl_balance = flagged mismatch, not silently zeroed; (4) a statement row with an absent linked sales_invoice is never dropped (LEFT JOIN, contract rules 9/10). Also fixed handler duplicate `numericContactBalance` declaration introduced by the P2 backend fix.
+  - [server/parasut/sync-statement-staleness.test.ts](server/parasut/sync-statement-staleness.test.ts) — added 3 tests proving the P0 starvation fix: confirmed-empty + own-zero-balance → fresh; confirmed-empty + nonzero own balance → real finite mismatch, never Infinity; and the exact starvation scenario (a real mismatch contact now correctly outranks/does not get starved behind a confirmed-empty one).
+  - [src/features/crm/CustomerDetailPage.test.tsx](src/features/crm/CustomerDetailPage.test.tsx) — new file (this component had no prior test coverage). One test, following this codebase's existing `render`/`MemoryRouter`/mocked-`supabase.functions.invoke` pattern (matching `DashboardPage.test.tsx`'s convention): renders the customer page with PİNO's real HD02026000000071 → 1091559184 mapping and asserts the rendered `<Link>` href is `/apps/finance/income/invoices/1091559184`, never containing the invoice number.
+- Test run (targeted files only): initially 1 failure — my own new LEFT-JOIN test fixture omitted `amount_in_trl` on the transaction row (the row model reads that field directly per contract rule 7, not `debit_amount`/`credit_amount`) — fixed the fixture, not the source; re-run: 89/89 passed across the 4 files.
+- What was intentionally not changed: no existing test's assertions were altered — every previously-passing test in these files still passes unmodified, confirming this hotfix did not regress any Phase 1 behavior.
+- Next concrete action: run the mandatory full gate sequence (`npm ci`, `tsc --noEmit`, `typecheck`, full suite, `build`).
+
+## [2026-08-24 — All mandatory gates passed]
+- Status: passed
+- Evidence:
+  - `npm ci`: 550 packages installed cleanly, 0 errors (33 pre-existing vulnerabilities reported by `npm audit`, none newly introduced by this hotfix, not remediated — out of scope for a financial-integrity hotfix).
+  - `npx tsc --noEmit`: clean, 0 errors.
+  - `npm run typecheck` (`tsc -p tsconfig.app.json --noEmit`): clean, 0 errors.
+  - `npx vitest run --pool=threads` (full suite): **105 test files / 1239 tests, all passed** (1229 from Phase 1 + 10 new from this hotfix).
+  - `npm run build`: succeeded, `dist/index.html` and `dist/erp/index.html` both produced (ERP nested build mirrors `dist/`, 10 entries copied), production bundle safeguard passed (334 files scanned).
+- Decision and reason: every mandatory gate is green; proceeding to commit, push, and deploy per the contract's explicit sequencing (deploy only after every gate passes).
+- What was intentionally not changed: no unrelated dependency upgrades, no `npm audit fix`.
+- Next concrete action: commit, push, deploy the `parasut-api` and `parasut-sync-run` Edge Functions plus the frontend, then run live read-only reconciliation for 1068984956, PİNO, HİRA, and BEKEM.

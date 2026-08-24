@@ -119,11 +119,38 @@ export async function computeContactStaleness(context: SyncContext, now: Date = 
     const mirroredClosingBalance = closingBalanceByContact.has(contact.parasut_id)
       ? (closingBalanceByContact.get(contact.parasut_id) as number)
       : null;
-    const mismatchMagnitude = mirroredClosingBalance === null
-      ? Infinity
-      : Math.abs(paraşütBalance - mirroredClosingBalance);
-
     const lastCompletedAt = lastCompletedAtByContact.get(contact.parasut_id);
+    const hasCompletedSync = Boolean(lastCompletedAt);
+
+    // P0 (2026-08-24 production incident): a contact whose transaction
+    // history has genuinely never had a completed sync attempt (Paraşüt has
+    // never even been asked) must count as an infinite-priority mismatch —
+    // a missing baseline is not evidence of agreement. But a contact whose
+    // history HAS completed a real sync and Paraşüt genuinely returned zero
+    // rows (confirmed empty, e.g. a customer with no transaction history
+    // at all) is NOT the same thing — treating it identically to
+    // never-synced gives it Infinity priority forever, since a row count of
+    // zero can never produce a mirroredClosingBalance. Live production
+    // evidence: 5 contacts with 0 real transaction_history_items rows each
+    // had 600+ "completed" sync runs and were re-picked at top priority on
+    // every single statement-refresh tick, while contact 1068984956 (bediz
+    // test) sat with a real, unresolved 5,000,000 TRY mismatch for over 24
+    // hours because it could never out-rank an Infinity. Fix: once a sync
+    // has genuinely completed, a still-null mirroredClosingBalance is
+    // treated as a confirmed closing balance of 0 (Paraşüt's own implicit
+    // "no transactions" balance) for mismatch purposes — a contact whose
+    // real trl_balance is also 0 correctly falls out of the stale queue
+    // entirely (never_synced -> fresh), while one whose real trl_balance is
+    // nonzero despite confirmed-empty history still gets flagged, but at
+    // its real (finite) mismatch magnitude, competing fairly against every
+    // other real mismatch instead of monopolizing the queue forever.
+    const effectiveClosingBalance = mirroredClosingBalance !== null
+      ? mirroredClosingBalance
+      : hasCompletedSync ? 0 : null;
+    const mismatchMagnitude = effectiveClosingBalance === null
+      ? Infinity
+      : Math.abs(paraşütBalance - effectiveClosingBalance);
+
     const hoursSinceLastCompletedSync = lastCompletedAt
       ? (now.getTime() - new Date(lastCompletedAt).getTime()) / 3_600_000
       : Infinity;
@@ -131,7 +158,7 @@ export async function computeContactStaleness(context: SyncContext, now: Date = 
     const mostRecentActivityAt = typeof contact.attributes?.updated_at === "string" ? contact.attributes.updated_at : null;
 
     let reason: ContactStaleness["reason"] = "fresh";
-    if (mirroredClosingBalance === null) reason = "never_synced";
+    if (effectiveClosingBalance === null) reason = "never_synced";
     else if (mismatchMagnitude > 0.005) reason = "balance_mismatch";
     else if (hoursSinceLastCompletedSync > STALE_SWEEP_HOURS) reason = "sweep_due";
 

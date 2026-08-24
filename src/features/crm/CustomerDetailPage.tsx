@@ -782,12 +782,19 @@ function InvoiceHistory({
                     <StatusBadge>{collectionLabel(attributes.payment_status)}</StatusBadge>
                   </td>
                   <td>
-                    <Link
-                      title="Görüntüle"
-                      to={`/apps/finance/income/invoices/${encodeURIComponent(no)}`}
-                    >
-                      <Eye />
-                    </Link>
+                    {/* P1 (2026-08-24): the detail route requires the numeric
+                        Paraşüt invoice id, never invoice_no — invoice_no is
+                        a human-facing document number (e.g. HD02026000000071)
+                        and is not a lookup key for /apps/finance/income/invoices.
+                        The number itself stays visible text-only in the
+                        adjacent "Belge No" column. */}
+                    {parasutId ? (
+                      <Link title="Görüntüle" to={`/apps/finance/income/invoices/${encodeURIComponent(parasutId)}`}>
+                        <Eye />
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                 </tr>
               );

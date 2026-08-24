@@ -125,6 +125,73 @@ describe("computeContactStaleness", () => {
     expect(staleOnly([result])).toHaveLength(1);
   });
 
+  it("P0 (2026-08-24 production incident): a contact with zero transaction_history_items rows but a COMPLETED sync run is a confirmed-empty account, never treated as Infinity-priority never_synced — and its own real trl_balance of 0 correctly makes it fresh", async () => {
+    const database = createFakeDatabase({
+      contacts: [{ parasut_id: "500", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "0", updated_at: "2026-08-23T11:00:00Z" } }],
+      transaction_history_items: [], // Paraşüt genuinely has zero history for this contact
+      sync_runs: [
+        {
+          company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "completed",
+          created_at: "2026-08-24T00:00:00Z", completed_at: "2026-08-24T00:00:00Z", // recent — within the sweep window
+          request_metadata: { endpoint: "/v4/666034/contacts/500/transaction_history_items" },
+        },
+      ],
+    });
+    const [result] = await computeContactStaleness(buildContext(database), NOW);
+    expect(result.mismatchMagnitude).toBe(0);
+    expect(result.reason).toBe("fresh");
+    expect(staleOnly([result])).toHaveLength(0);
+  });
+
+  it("P0 (2026-08-24 production incident): a confirmed-empty account whose own real trl_balance is nonzero is still flagged stale, at its real finite magnitude — never Infinity, so it can't starve other real mismatches, but never silently ignored either", async () => {
+    const database = createFakeDatabase({
+      contacts: [{ parasut_id: "500", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "-5000000.0", updated_at: "2026-08-24T00:00:00Z" } }],
+      transaction_history_items: [], // confirmed-empty, not never-synced
+      sync_runs: [
+        {
+          company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "completed",
+          created_at: "2026-08-24T00:00:00Z", completed_at: "2026-08-24T00:00:00Z",
+          request_metadata: { endpoint: "/v4/666034/contacts/500/transaction_history_items" },
+        },
+      ],
+    });
+    const [result] = await computeContactStaleness(buildContext(database), NOW);
+    expect(result.mismatchMagnitude).toBeCloseTo(5000000);
+    expect(result.mismatchMagnitude).not.toBe(Infinity);
+    expect(result.reason).toBe("balance_mismatch");
+  });
+
+  it("P0 (2026-08-24 production incident): a real, finite balance-mismatch contact now correctly outranks a confirmed-empty contact when both are stale (the exact starvation bug — bediz test vs 5 permanently-empty contacts)", async () => {
+    const database = createFakeDatabase({
+      contacts: [
+        { parasut_id: "bediz-test", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "-5000000.0", updated_at: "2026-08-23T00:00:00Z" } },
+        { parasut_id: "confirmed-empty", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "0", updated_at: "2026-08-24T00:00:00Z" } },
+      ],
+      transaction_history_items: [
+        { contact_parasut_id: "bediz-test", company_id: "company-1", parasut_company_id: "666034", statement_order: 0, trl_balance: 0 },
+      ],
+      sync_runs: [
+        {
+          company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "completed",
+          created_at: "2026-08-22T15:52:00Z", completed_at: "2026-08-22T15:52:00Z",
+          request_metadata: { endpoint: "/v4/666034/contacts/bediz-test/transaction_history_items" },
+        },
+        {
+          company_id: "company-1", parasut_company_id: "666034", resource_type: "transaction_history_items", status: "completed",
+          created_at: "2026-08-24T00:00:00Z", completed_at: "2026-08-24T00:00:00Z",
+          request_metadata: { endpoint: "/v4/666034/contacts/confirmed-empty/transaction_history_items" },
+        },
+      ],
+    });
+    const results = await computeContactStaleness(buildContext(database), NOW);
+    const stale = staleOnly(results);
+    // Before the fix, confirmed-empty would have Infinity priority (it had
+    // no completed-sync distinction) and would always rank first regardless
+    // of the real contact's mismatch. Now only the genuine mismatch is
+    // stale at all, and it is not starved behind a phantom Infinity entry.
+    expect(stale.map((r) => r.contactParasutId)).toEqual(["bediz-test"]);
+  });
+
   it("flags a genuine balance mismatch even with a completed sync_runs row (item 3: no permanent completed=skip)", async () => {
     const database = createFakeDatabase({
       contacts: [{ parasut_id: "500", company_id: "company-1", parasut_company_id: "666034", source_archived: false, attributes: { trl_balance: "-5000000.0", updated_at: "2026-08-23T11:00:00Z" } }],

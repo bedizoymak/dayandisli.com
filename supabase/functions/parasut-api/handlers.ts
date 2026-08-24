@@ -645,7 +645,38 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
   ).eq("contact_parasut_id", contactId).eq("source_archived", false).order("statement_order", { ascending: true }).range(0, 24999);
   if (error) return { version: 1, status: "unavailable", rows: [], diagnostics: [error.message] };
   const historyRows = history ?? [];
-  if (historyRows.length === 0) return { version: 1, status: "unavailable", rows: [], diagnostics: ["authoritative_history_not_synced"] };
+
+  // P2 (2026-08-24 production QA): zero rows means one of two very
+  // different things, and conflating them was mislabeling real,
+  // genuinely-empty accounts as a failed sync. "Never synced" — no
+  // completed transaction_history_items sync run has ever reached Paraşüt
+  // for this contact — is the true unavailable/not-yet-synced state.
+  // "Confirmed empty" — a sync run for this exact contact HAS completed and
+  // Paraşüt genuinely returned zero history items (a customer who really
+  // has no transactions yet) — is not an error at all. Distinguishing the
+  // two also fixes the P0 starvation bug (see server/parasut/
+  // sync-statement-staleness.ts): a contact that is only ever a "confirmed
+  // empty" no longer looks indistinguishable from "never synced" to a human
+  // reading this statement, matching the corrected staleness classifier.
+  const numericContactBalance = Number(contactBalance);
+  if (historyRows.length === 0) {
+    const { data: completedHistorySyncs } = await scopedSyncTable<Record<string, unknown>>(admin, "sync_runs", activeCompanyId, "id")
+      .eq("resource_type", "transaction_history_items")
+      .eq("status", "completed")
+      .ilike("request_metadata->>endpoint", `%/contacts/${contactId}/transaction_history_items`)
+      .limit(1);
+    const confirmedEmpty = (completedHistorySyncs ?? []).length > 0;
+    if (!confirmedEmpty) return { version: 1, status: "unavailable", rows: [], diagnostics: ["authoritative_history_not_synced"] };
+    const emptyDiagnostics = Number.isFinite(numericContactBalance) && Math.abs(numericContactBalance) > 0.005 ? ["contact_balance_mismatch"] : [];
+    return {
+      version: 1,
+      status: emptyDiagnostics.length ? "incomplete" : "reconciled",
+      rows: [],
+      reconciliation: { finalHistoryBalance: 0, contactBalance: Number.isFinite(numericContactBalance) ? numericContactBalance : null },
+      diagnostics: emptyDiagnostics,
+      lastSyncedAt: null,
+    };
+  }
 
   const transactionIds = historyRows.map((row) => String(row.transaction_parasut_id ?? "")).filter(Boolean);
   const { data: transactions, error: transactionError } = await scopedParasutTable<Record<string, unknown>>(admin, "transactions", activeCompanyId, "*").in("parasut_id", transactionIds);
@@ -784,7 +815,6 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
     };
   });
   const finalHistoryBalance = rows.at(-1)?.trlBalance ?? null;
-  const numericContactBalance = Number(contactBalance);
   if (Number.isFinite(numericContactBalance) && finalHistoryBalance !== null && Math.abs(finalHistoryBalance - numericContactBalance) > 0.005) {
     diagnostics.push("contact_balance_mismatch");
   }

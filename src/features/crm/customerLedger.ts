@@ -101,8 +101,17 @@ export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement |
     return { sourceResource: "transactions", sourceId: row.transactionId, transactionId: row.transactionId, historyItemId: row.historyItemId, contactParasutId, transactionType: normalizedType, rawTransactionType: row.transactionType, date: row.date, dueDate: sourceText(row.check?.dueDate) || null, currency: "TRY", originalAmount: amount, amountTry: amount, debit: movement.debit, credit: movement.credit, unmapped: movement.unmapped, balance: currentBalance, description, relatedDocumentIds: Object.values(row.linked ?? {}).filter((id): id is string => typeof id === "string" && Boolean(id)), allocations: row.allocations ?? [], check: row.check ?? null, cancelled: false, balanceImpacting: true, provenance: "native" };
   });
 }
+// P0 (2026-08-24 production QA): a customer statement is authoritative only
+// when the latest mirrored trl_balance equals the contact's current
+// trl_balance within tolerance. When it doesn't (contact_balance_mismatch),
+// the ledger is known-stale relative to Paraşüt — never render a
+// complete-looking statement with incorrect totals; show this exact
+// integrity state and block printing (see CustomerDetailPage.tsx's
+// printLedger, gated on this same warning).
+const STALE_LEDGER_WARNING = "Cari hareketler güncel değil; Paraşüt senkronizasyonu bekleniyor.";
 export function statementWarning(statement: AuthoritativeStatement | null | undefined, rows: readonly LedgerRow[]): string | null {
-  if (!statement || statement.status === "unavailable") return "Paraşüt işlem geçmişi henüz senkronize edilmedi; cari ekstre gösterilemiyor.";
+  if (!statement || statement.status === "unavailable") return "Cari hareketler henüz senkronize edilmedi.";
+  if ((statement.diagnostics ?? []).includes("contact_balance_mismatch")) return STALE_LEDGER_WARNING;
   if (statement.status !== "reconciled") return `Paraşüt mutabakatı tamamlanmadı: ${(statement.diagnostics ?? []).join(", ") || "eksik veri"}`;
   const unmapped = rows.filter((row) => row.unmapped);
   if (unmapped.length > 0) {

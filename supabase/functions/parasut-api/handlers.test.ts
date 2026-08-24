@@ -792,6 +792,117 @@ describe("handleDetail — exact company_id + exact parasut_id, never maybeSingl
     expect(statement.diagnostics).toContain("sync_integrity_failure");
   });
 
+  it("customer detail (P2, 2026-08-24 production QA): a contact with zero transaction_history_items rows and NO completed sync is genuinely 'not yet synced' — status stays unavailable", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Co", account_type: "customer", trl_balance: "0" }, relationships: {} },
+      ],
+      "parasut.transaction_history_items": [],
+      "parasut.transactions": [],
+      "parasut.sales_invoices": [],
+      "parasut.purchase_bills": [],
+      "parasut.opening_balances": [],
+      "parasut.checks": [],
+      "parasut.payments": [],
+      "parasut.sync_runs": [],
+    });
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { status: string; rows: unknown[]; diagnostics: string[] };
+    expect(statement.status).toBe("unavailable");
+    expect(statement.rows).toHaveLength(0);
+    expect(statement.diagnostics).toContain("authoritative_history_not_synced");
+  });
+
+  it("customer detail (P2, 2026-08-24 production QA): a contact with zero rows but a COMPLETED transaction-history sync run is a genuinely empty real account, never 'not synchronized'", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Co", account_type: "customer", trl_balance: "0" }, relationships: {} },
+      ],
+      "parasut.transaction_history_items": [],
+      "parasut.transactions": [],
+      "parasut.sales_invoices": [],
+      "parasut.purchase_bills": [],
+      "parasut.opening_balances": [],
+      "parasut.checks": [],
+      "parasut.payments": [],
+      "parasut.sync_runs": [
+        {
+          id: "run-history-500",
+          company_id: COMPANY_A,
+          resource_type: "transaction_history_items",
+          status: "completed",
+          request_metadata: { endpoint: "/v4/999/contacts/500/transaction_history_items" },
+          started_at: "2026-08-24T00:00:00Z",
+          completed_at: "2026-08-24T00:00:05Z",
+        },
+      ],
+    });
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { status: string; rows: unknown[]; diagnostics: string[] };
+    expect(statement.status).toBe("reconciled");
+    expect(statement.rows).toHaveLength(0);
+    expect(statement.diagnostics ?? []).not.toContain("authoritative_history_not_synced");
+  });
+
+  it("customer detail (P0/P2, 2026-08-24 production QA): a confirmed-empty history whose contact still has a nonzero real trl_balance is flagged as a real mismatch, never silently treated as reconciled zero", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "bediz test", account_type: "customer", trl_balance: "-5000000" }, relationships: {} },
+      ],
+      "parasut.transaction_history_items": [],
+      "parasut.transactions": [],
+      "parasut.sales_invoices": [],
+      "parasut.purchase_bills": [],
+      "parasut.opening_balances": [],
+      "parasut.checks": [],
+      "parasut.payments": [],
+      "parasut.sync_runs": [
+        {
+          id: "run-history-500",
+          company_id: COMPANY_A,
+          resource_type: "transaction_history_items",
+          status: "completed",
+          request_metadata: { endpoint: "/v4/999/contacts/500/transaction_history_items" },
+          started_at: "2026-08-24T00:00:00Z",
+          completed_at: "2026-08-24T00:00:05Z",
+        },
+      ],
+    });
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { status: string; rows: unknown[]; diagnostics: string[] };
+    expect(statement.status).toBe("incomplete");
+    expect(statement.diagnostics).toContain("contact_balance_mismatch");
+  });
+
+  it("customer detail: a statement row is never dropped because its linked sales_invoice is absent from the mirror (LEFT JOIN semantics, contract rules 9/10)", async () => {
+    const admin = createFakeSupabaseAdmin({
+      "parasut.contacts": [
+        { parasut_id: "500", company_id: COMPANY_A, attributes: { name: "Co", account_type: "customer", trl_balance: "300" }, relationships: {} },
+      ],
+      "parasut.transaction_history_items": [
+        { parasut_id: "h1", company_id: COMPANY_A, contact_parasut_id: "500", transaction_parasut_id: "txn-orphan", statement_order: 0, transaction_date: "2026-01-01", trl_balance: 300, source_archived: false },
+      ],
+      "parasut.transactions": [
+        // References a sales_invoice_parasut_id that has no matching row in
+        // parasut.sales_invoices at all — the linked document is genuinely
+        // absent from the mirror, not merely archived.
+        { parasut_id: "txn-orphan", company_id: COMPANY_A, attributes: {}, relationships: {}, transaction_type: "sales_invoice", date: "2026-01-01", description: "Fallback text", amount_in_trl: 300, debit_amount: 300, credit_amount: 0, sales_invoice_parasut_id: "si-missing" },
+      ],
+      "parasut.sales_invoices": [],
+      "parasut.purchase_bills": [],
+      "parasut.opening_balances": [],
+      "parasut.checks": [],
+      "parasut.payments": [],
+    });
+    const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+    const statement = detail?.statement as { status: string; rows: Array<Record<string, unknown>> };
+    // The row must still be present and correctly amounted — never removed
+    // just because its linked document row can't be resolved.
+    expect(statement.rows).toHaveLength(1);
+    expect(statement.rows[0]).toMatchObject({ transactionId: "txn-orphan", amountInTrl: 300 });
+    expect(statement.rows[0].displayDescription).toBe("Fallback text");
+  });
+
   it("supplier detail never fetches supplierDocuments/supplierPayments — that dual-role fetch is customer-detail-only (no supplier-facing statement screen exists to consume it)", async () => {
     const admin = createFakeSupabaseAdmin(seedTwoCompanies());
     const detail = await handleDetail(admin, "suppliers", "600", COMPANY_A);
