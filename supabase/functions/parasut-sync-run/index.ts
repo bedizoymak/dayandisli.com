@@ -64,8 +64,29 @@ function logSafe(message: string): void {
   console.log(message.replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]"));
 }
 
+// EMERGENCY PAUSE (2026-08-24 production incident — see
+// CLAUDE_CODE_PRODUCTION_SYNC_INCIDENT_REPORT.md): fail-safe default is
+// PAUSED — any value other than the literal string "false" for
+// PARASUT_SYNC_EMERGENCY_PAUSE keeps every sync/statement-refresh/backfill
+// action (scheduled cron, the manual "Sync" button, and the CLI backfill
+// runner all funnel through this one entrypoint) from doing any Paraşüt or
+// database work at all. This is deliberately checked before any other
+// work — before env/secret loading, before the Supabase client is created,
+// before a single Paraşüt or Postgres request is made — so it stays
+// effective even if the underlying database is itself under load. Re-enable
+// by setting the PARASUT_SYNC_EMERGENCY_PAUSE secret to "false" (no redeploy
+// required); the unset/default state is always safe (paused).
 serve(async (req: Request) => {
   try {
+    const emergencyPause = (Deno.env.get("PARASUT_SYNC_EMERGENCY_PAUSE") ?? "true") !== "false";
+    if (emergencyPause) {
+      console.log("[sync] EMERGENCY PAUSE active — refusing to run. Set PARASUT_SYNC_EMERGENCY_PAUSE=false to resume.");
+      return new Response(
+        JSON.stringify({ status: "paused", reason: "emergency_pause_active" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
     if (req.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
     }
