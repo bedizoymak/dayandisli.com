@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   FilePlus2,
   ReceiptText,
@@ -45,38 +46,28 @@ export default function DashboardPage() {
   const { erpUser, hasPermission, isLoading } = useErpIdentity();
   const canViewChecks = hasPermission("finance.view");
   const [now] = useState(() => new Date());
-  const [checks, setChecks] = useState<CheckListRow[]>([]);
-  const [checksStatus, setChecksStatus] = useState<"loading" | "ready" | "error">("loading");
   const { data: marketData } = useMarketData();
 
-  useEffect(() => {
-    if (!canViewChecks) {
-      setChecks([]);
-      setChecksStatus("ready");
-      return;
-    }
-    let cancelled = false;
-    listAllChecks({ filters: { openOnly: true } })
-      .then((result) => {
-        if (cancelled) return;
-        if (result.ok === false) {
-          setChecks([]);
-          setChecksStatus("error");
-          return;
-        }
-        setChecks(result.data);
-        setChecksStatus("ready");
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setChecks([]);
-          setChecksStatus("error");
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [canViewChecks]);
+  // PHASE 5B: open-check reminders migrated from ad-hoc useEffect state to
+  // TanStack Query — same fetch, same derived UI states (loading / error /
+  // ready), plus request deduplication and cross-mount caching. Read-only;
+  // no mutation or financial-write semantics involved.
+  const checksQuery = useQuery({
+    queryKey: ["dashboard", "open-checks", canViewChecks],
+    enabled: canViewChecks,
+    queryFn: () => listAllChecks({ filters: { openOnly: true } }),
+  });
+  const checks: CheckListRow[] =
+    !canViewChecks || checksQuery.isError || !checksQuery.data?.ok
+      ? []
+      : checksQuery.data.data;
+  const checksStatus: "loading" | "ready" | "error" = !canViewChecks
+    ? "ready"
+    : checksQuery.isPending
+      ? "loading"
+      : checksQuery.isError || !checksQuery.data?.ok
+        ? "error"
+        : "ready";
   const istanbulParts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Istanbul",
     hour: "2-digit",
