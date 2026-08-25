@@ -20,6 +20,7 @@ import { syncChecks } from "../../../server/parasut/sync-checks.ts";
 import { RECONCILIATION_TARGET_CONTACT_IDS, syncContactTransactionHistory } from "../../../server/parasut/sync-transaction-history.ts";
 import { refreshStaleStatements, DEFAULT_ALERT_AFTER_HOURS } from "../../../server/parasut/sync-statement-staleness.ts";
 import type { MirrorDatabase, SyncContext, SyncResult } from "../../../server/parasut/types.ts";
+import { SyncAlreadyRunningError } from "../../../server/parasut/types.ts";
 
 const APPROVED_ERP_COMPANY_ID = "54b50745-89e0-4b97-adb6-4f2426fa2a2f";
 const APPROVED_PARASUT_COMPANY_ID = "666034";
@@ -180,32 +181,73 @@ serve(async (req: Request) => {
     logSafe(`[sync] companyId=${companyId} parasutCompanyId=${parasutCompanyId} triggerType=${triggerType ?? "local_manual"}`);
 
     const results: SyncResult[] = [];
+    // PHASE 1A remediation: per-resource failure isolation. Previously ANY
+    // thrown error here (including a benign SyncAlreadyRunningError election
+    // loss) aborted the whole invocation with a 500, starving every later
+    // resource in RESOURCE_ORDER for that tick — and a chronically failing
+    // resource (errors > MAX_CONSECUTIVE_RESOURCE_ERRORS) starved the rest
+    // of the loop on EVERY tick. Now: one resource's failure is contained,
+    // logged with [ALERT], and the remaining resources still run. Total
+    // Paraşüt load stays bounded by each resource's own page budget plus
+    // sync-base.ts retry governance; liveness of unrelated resources no
+    // longer depends on the health of the worst one.
+    const degraded: string[] = [];
     for (const resource of RESOURCE_ORDER) {
       logSafe(`[sync] starting ${resource.name}`);
-      // concurrencyLock: true reuses sync-base.ts's existing enforceSingleRunner
-      // election (already implemented/tested for the manual "Sync" button path) —
-      // the smallest guard against two overlapping scheduled invocations
-      // (or a scheduled + manual invocation) racing on the same resource's
-      // resume chain. No new locking mechanism introduced.
-      const result = await resource.run(context, { concurrencyLock: true });
-      results.push(result);
-      logSafe(
-        `[sync] ${resource.name} ${result.status} — pages=${result.pages} observed=${result.observed} ` +
-          `inserted=${result.inserted} updated=${result.updated} unchanged=${result.unchanged} errors=${result.errors}`,
-      );
-      if (result.errors > MAX_CONSECUTIVE_RESOURCE_ERRORS) {
-        throw new Error(
-          `Stopping: ${resource.name} recorded ${result.errors} errors, exceeding the ${MAX_CONSECUTIVE_RESOURCE_ERRORS} failure threshold.`,
+      try {
+        // concurrencyLock: true reuses sync-base.ts's existing enforceSingleRunner
+        // election (already implemented/tested for the manual "Sync" button path) —
+        // the smallest guard against two overlapping scheduled invocations
+        // (or a scheduled + manual invocation) racing on the same resource's
+        // resume chain. No new locking mechanism introduced.
+        const result = await resource.run(context, { concurrencyLock: true });
+        results.push(result);
+        if (result.status === "circuit_open") {
+          // Retry governance refused this attempt (zero side effects):
+          // a poisoned resume chain is waiting out its backoff window.
+          logSafe(
+            `[sync] ${resource.name} skipped — retry-governance circuit open until ${result.circuitOpenUntil ?? "?"} ` +
+              `(zero-progress backoff after repeated identical failures)`,
+          );
+          continue;
+        }
+        logSafe(
+          `[sync] ${resource.name} ${result.status} — pages=${result.pages} observed=${result.observed} ` +
+            `inserted=${result.inserted} updated=${result.updated} unchanged=${result.unchanged} errors=${result.errors}`,
         );
+        if (result.errors > MAX_CONSECUTIVE_RESOURCE_ERRORS) {
+          degraded.push(`${resource.name}: ${result.errors} errors`);
+          logSafe(
+            `[ALERT] [sync] ${resource.name} recorded ${result.errors} errors, exceeding the ` +
+              `${MAX_CONSECUTIVE_RESOURCE_ERRORS} threshold — remaining resources continue; ` +
+              `retry governance will throttle this one if it keeps making no progress.`,
+          );
+        }
+      } catch (error) {
+        if (error instanceof SyncAlreadyRunningError) {
+          // Benign FIFO-election loss to an older still-running invocation:
+          // zero work was done. Skip quietly and let the winner proceed —
+          // this must NOT fail the invocation or block later resources.
+          logSafe(`[sync] ${resource.name} superseded — another invocation for this resource is active`);
+          continue;
+        }
+        degraded.push(resource.name);
+        console.error(`🔥 [sync] ${resource.name} failed:`, (error as Error).message);
       }
     }
 
+    if (degraded.length > 0) {
+      logSafe(`[ALERT] [sync] degraded resources this invocation: ${degraded.join("; ")}`);
+    }
     logSafe(`[sync] all resources completed: ${results.map((r) => `${r.resourceType}=${r.status}`).join(", ")}`);
 
-    return new Response(JSON.stringify({ results }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ results, degraded }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   } catch (err) {
     console.error("🔥 SYNC ERROR:", (err as Error).message);
     return new Response(JSON.stringify({ error: (err as Error).message }), {

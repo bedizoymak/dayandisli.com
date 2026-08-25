@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hashResource, upsertResource } from "./upsert-resource.ts";
-import type { JsonApiResource, MirrorDatabase } from "./types.ts";
+import type { JsonApiResource, MirrorDatabase, MirrorTable } from "./types.ts";
 
 /**
  * Guards the exact mapping the customer-balance bug traced back to:
@@ -220,7 +220,7 @@ describe("upsertResource — trl_balance sync mapping", () => {
     expect((captured.inserted?.attributes as Record<string, unknown>).gross_total).toBe("1127109.11");
   });
 
-  it.each(["transaction_history_items", "opening_balances"])(
+  it.each(["transaction_history_items", "opening_balances"] as const satisfies readonly MirrorTable[])(
     "normalizes an omitted archived flag to false for required authoritative %s rows",
     async (resourceType) => {
       const resource: JsonApiResource = {

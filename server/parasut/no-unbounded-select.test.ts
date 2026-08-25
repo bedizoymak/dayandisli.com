@@ -31,9 +31,9 @@ const SCAN_DIRS = ["server/parasut", "supabase/functions", "scripts"];
  * not a silent pass-through.
  */
 const KNOWN_UNBOUNDED_QUERIES: Record<string, string> = {
-  "server/parasut/sync-base.ts:249:sync_runs": "Bounded (fixed 2026-08-23): findLatestResumableRun now scopes by gt(created_at, 48h-ago) in addition to company/resource/status — a resume candidate older than that is never useful anyway.",
-  "server/parasut/sync-base.ts:250:sync_runs": "Same fix/reasoning as line 249 (partial-status branch of the same three-way query).",
-  "server/parasut/sync-base.ts:251:sync_runs": "Same fix/reasoning as line 249 (completed-status branch of the same three-way query).",
+  "server/parasut/sync-base.ts:256:sync_runs": "Bounded (fixed 2026-08-23): findLatestResumableRun now scopes by gt(created_at, 48h-ago) in addition to company/resource/status — a resume candidate older than that is never useful anyway. (Lines re-anchored 2026-08-25 by Phase 1A retry-governance additions above.)",
+  "server/parasut/sync-base.ts:257:sync_runs": "Same fix/reasoning as line 256 (partial-status branch of the same three-way query).",
+  "server/parasut/sync-base.ts:258:sync_runs": "Same fix/reasoning as line 256 (completed-status branch of the same three-way query).",
   "server/parasut/sync-run-recovery.ts:119:sync_runs": "Bounded: status='running' AND completed_at is null AND updated_at older than the 10-minute stale cutoff (recoverStaleRuns) — by definition only anomalous stuck runs; healthy state is 0 rows.",
   "server/parasut/sync-statement-staleness.ts:58:contacts": "TRACKED, not yet fixed: 441 active contacts today (confirmed live 2026-08-23), no natural per-key scoping possible since this IS the outer loop variable in computeContactStaleness. Monitor as the business grows past ~1000 contacts.",
   "server/parasut/sync-statement-staleness.ts:84:transaction_history_items": "Bounded (fixed 2026-08-23): scoped per-contact via .eq('contact_parasut_id', contact.parasut_id) inside the Promise.all(contacts.map(...)) loop — every query returns at most one contact's own row set, never company-wide.",

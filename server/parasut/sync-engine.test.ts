@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { TokenManager } from "./auth.ts";
 import { ParaşütClient } from "./client.ts";
 import { syncCollection } from "./sync-base.ts";
+import { RETRY_GOVERNANCE_METADATA_KEY } from "./sync-retry-governance.ts";
 import { canonicalResource, hashResource, upsertResource } from "./upsert-resource.ts";
 import type {
   JsonApiResource,
@@ -356,9 +357,21 @@ describe("Paraşüt sync engine", () => {
       table: "contacts",
     });
 
-    expect(
-      runUpdates.some((update) => "request_metadata" in update),
-    ).toBe(false);
+    // PHASE 1A: retry governance legitimately stamps the chain's ladder into
+    // request_metadata on a partial outcome — but no write may EVER advance
+    // the checkpoint past a page whose records failed, and every such stamp
+    // must carry the governance ladder so the next invocation backs off.
+    const metadataWrites = runUpdates.filter((update) => "request_metadata" in update);
+    expect(metadataWrites.length).toBeGreaterThanOrEqual(1);
+    for (const update of metadataWrites) {
+      const metadata = update.request_metadata as Record<string, unknown>;
+      const resume = (metadata.resume ?? {}) as Record<string, unknown>;
+      expect(resume.last_completed_page ?? 0).toBe(0);
+      expect(RETRY_GOVERNANCE_METADATA_KEY in metadata).toBe(true);
+      expect(
+        (metadata[RETRY_GOVERNANCE_METADATA_KEY] as Record<string, unknown>).consecutive_no_progress,
+      ).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("does not advance later pages after page one persistence fails", async () => {
@@ -434,7 +447,10 @@ describe("Paraşüt sync engine", () => {
     );
 
     expect(result.status).toBe("partial");
-    expect(checkpoints).toEqual([]);
+    // PHASE 1A: governance may stamp metadata, but no write may advance the
+    // checkpoint past the page whose persistence failed (page one → 0).
+    expect(checkpoints.every((page) => page === 0)).toBe(true);
+    expect(checkpoints.length).toBeGreaterThanOrEqual(1);
   });
 
   it("keeps page one as the final checkpoint when page two fails", async () => {
@@ -509,7 +525,10 @@ describe("Paraşüt sync engine", () => {
       },
     );
 
-    expect(checkpoints).toEqual([1]);
+    // PHASE 1A: page one's checkpoint (1) stays the final page number —
+    // the governance stamp re-persists 1 but nothing may reach 2.
+    expect(checkpoints).toContain(1);
+    expect(checkpoints.every((page) => page === 1)).toBe(true);
   });
 
   it("prevents checkpoint advancement after included-resource failure", async () => {
@@ -581,7 +600,10 @@ describe("Paraşüt sync engine", () => {
       },
     );
 
-    expect(checkpoints).toEqual([]);
+    // PHASE 1A: the failed included-resource write blocks the checkpoint at
+    // page 0; governance stamping may re-persist 0 but never advance it.
+    expect(checkpoints.every((page) => page === 0)).toBe(true);
+    expect(checkpoints.length).toBeGreaterThanOrEqual(1);
   });
 
   it("finalizes the run as failed when checkpoint persistence fails", async () => {
@@ -654,9 +676,24 @@ describe("Paraşüt sync engine", () => {
     expect(runUpdates).toContainEqual(
       expect.objectContaining({ status: "failed" }),
     );
-    expect(
-      runUpdates.filter((update) => update.request_metadata),
-    ).toHaveLength(1);
+    // PHASE 1A: two metadata writes are attempted against this rejecting
+    // database — the clean page's checkpoint advance (page 1, no ladder) and
+    // the best-effort governance stamp on the failed outcome (page 0, ladder
+    // present, rejection swallowed by design). Neither may ever be an
+    // ADVANCED checkpoint on a failed page.
+    const rejectedMetadataWrites = runUpdates.filter((update) => update.request_metadata);
+    expect(rejectedMetadataWrites).toHaveLength(2);
+    for (const update of rejectedMetadataWrites) {
+      const metadata = update.request_metadata as Record<string, unknown>;
+      const resume = (metadata.resume ?? {}) as Record<string, unknown>;
+      const page = (resume.last_completed_page as number) ?? 0;
+      const governed = RETRY_GOVERNANCE_METADATA_KEY in metadata;
+      if (governed) {
+        expect(page).toBe(0);
+      } else {
+        expect(page).toBe(1);
+      }
+    }
   });
 
   it("safely reprocesses persisted resources without duplicate inserts", async () => {

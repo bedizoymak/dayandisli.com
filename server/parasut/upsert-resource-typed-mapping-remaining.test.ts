@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { upsertResource } from "./upsert-resource.ts";
 import { FIELD_MAPPING_REGISTRY } from "./field-mapping-registry.ts";
 import { D8_FIELD_KEYS } from "./verification/d8-resolution.ts";
-import type { JsonApiResource, MirrorDatabase } from "./types.ts";
+import type { JsonApiResource, MirrorDatabase, MirrorTable } from "./types.ts";
 
 // Exhaustive, field-by-field proof for every D8 key newly wired by
 // d84b4b5 "feat(parasut): add remaining Phase 2B sync entry points"
@@ -282,7 +282,20 @@ describe("upsert-resource — exhaustive per-field proof for all 63 newly-wired 
 
   const assertedColumns: string[] = [];
 
-  for (const [resource, cases] of byResource) {
+  // The Phase-2B resource set this file proves — compile-time-checked
+  // against the engine's MirrorTable union so the upsertResource call below
+  // stays honestly typed instead of casting an arbitrary string.
+  const PHASE_2B_RESOURCES = [
+    "e_invoices",
+    "employees",
+    "sales_offers",
+    "shipment_documents",
+    "warehouses",
+  ] as const satisfies readonly MirrorTable[];
+
+  for (const [resourceName, cases] of byResource) {
+    const resource = PHASE_2B_RESOURCES.find((candidate) => candidate === resourceName);
+    if (!resource) throw new Error(`Unexpected Phase-2B resource in CASES: ${resourceName}`);
     it(`${resource}: every one of its ${cases.length} D8-newly-wired fields is written to the correct column with the correctly converted value`, async () => {
       const attributes: Record<string, unknown> = {};
       for (const c of cases) attributes[c.attribute] = c.raw;
