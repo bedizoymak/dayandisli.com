@@ -109,6 +109,12 @@ export function buildAuthoritativeLedgerRows(statement: AuthoritativeStatement |
 // integrity state and block printing (see CustomerDetailPage.tsx's
 // printLedger, gated on this same warning).
 const STALE_LEDGER_WARNING = "Cari hareketler güncel değil; Paraşüt senkronizasyonu bekleniyor.";
+/**
+ * PHASE 9: mirrors server/parasut/sync-statement-staleness.ts's
+ * BALANCE_TOLERANCE (half a kurus). The decimal contract test asserts the two
+ * stay identical — do not change one without the other.
+ */
+export const BALANCE_TOLERANCE = 0.005;
 export function statementWarning(statement: AuthoritativeStatement | null | undefined, rows: readonly LedgerRow[]): string | null {
   if (!statement || statement.status === "unavailable") return "Cari hareketler henüz senkronize edilmedi.";
   if ((statement.diagnostics ?? []).includes("contact_balance_mismatch")) return STALE_LEDGER_WARNING;
@@ -118,6 +124,6 @@ export function statementWarning(statement: AuthoritativeStatement | null | unde
     return `Eşlenmemiş işlem türü tespit edildi (${unmapped.map((row) => row.rawTransactionType).join(", ")}) — tutarlar doğrulanamadı.`;
   }
   const computed = rows.reduce((sum, row) => sum + row.debit - row.credit, 0); const finalHistory = statement.reconciliation?.finalHistoryBalance;
-  return finalHistory !== null && finalHistory !== undefined && Math.abs(computed - finalHistory) > 0.005 ? "Hesaplanan kapanış bakiyesi Paraşüt işlem geçmişi bakiyesiyle eşleşmiyor." : null;
+  return finalHistory !== null && finalHistory !== undefined && Math.abs(computed - finalHistory) > BALANCE_TOLERANCE ? "Hesaplanan kapanış bakiyesi Paraşüt işlem geçmişi bakiyesiyle eşleşmiyor." : null;
 }
 export function buildLedgerPrintRows(rows: readonly LedgerRow[]): LedgerRow[] { return rows.map((row) => ({ ...row })) }

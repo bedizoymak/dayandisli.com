@@ -5,6 +5,16 @@ import { syncContactTransactionHistory } from "./sync-transaction-history.ts";
 const RESOURCE_TYPE = "transaction_history_items";
 export const STALE_SWEEP_HOURS = 24;
 
+/**
+ * PHASE 9: single named source for the balance-equality tolerance shared by
+ * the engine (this file) and the frontend ledger
+ * (src/features/crm/customerLedger.ts). The decimal contract test asserts the
+ * two stay identical. Value unchanged: half a kurus — small enough that float
+ * accumulation across a full statement can never trip it, large enough to
+ * absorb rounding of the final mirrored balance.
+ */
+export const BALANCE_TOLERANCE = 0.005;
+
 function historyEndpoint(context: SyncContext, contactParasutId: string): string {
   return `/v4/${encodeURIComponent(context.parasutCompanyId)}/contacts/${encodeURIComponent(contactParasutId)}/transaction_history_items`;
 }
@@ -159,7 +169,7 @@ export async function computeContactStaleness(context: SyncContext, now: Date = 
 
     let reason: ContactStaleness["reason"] = "fresh";
     if (effectiveClosingBalance === null) reason = "never_synced";
-    else if (mismatchMagnitude > 0.005) reason = "balance_mismatch";
+    else if (mismatchMagnitude > BALANCE_TOLERANCE) reason = "balance_mismatch";
     else if (hoursSinceLastCompletedSync > STALE_SWEEP_HOURS) reason = "sweep_due";
 
     return { contactParasutId: contact.parasut_id, mirroredClosingBalance, paraşütBalance, mismatchMagnitude, hoursSinceLastCompletedSync, mostRecentActivityAt, reason };
@@ -412,3 +422,4 @@ export async function refreshStaleStatements(
     throw error;
   }
 }
+
