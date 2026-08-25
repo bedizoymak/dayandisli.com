@@ -72,7 +72,27 @@ never rebuild between manifest creation and upload.
    `health.status` is not `critical`; no `[ALERT]` lines in function logs.
 5. Watch edge-function logs for 15 minutes for SMTP/auth errors.
 
-## 6. Rollback
+## 6. Re-enabling automatic Paraşüt sync (operator-gated, after a deploy)
+
+Automatic execution stays PAUSED by default (`PARASUT_SYNC_EMERGENCY_PAUSE` unset/true).
+Since the 2026-08-25 execution-source separation, `parasut-sync-run` additionally
+REJECTS (403) any invocation that cannot prove it is the scheduled cron
+(`X-Sync-Trigger: scheduled` + `X-Sync-Secret` equal to the
+`PARASUT_SYNC_CRON_SECRET` edge secret). Manual ERP admin synchronization is a
+separate path (`parasut-write-api` resync/full-resync, Supabase JWT + active
+erp_users admin verified server-side) and may run while automatic sync is paused.
+
+Un-pause order:
+1. Apply `supabase/migrations-proposed/20260825100000_parasut_sync_cron_secret.sql`
+   (creates the vault secret and recreates BOTH cron jobs with the secret header).
+2. Mirror the vault value into the edge secret:
+   `supabase secrets set PARASUT_SYNC_CRON_SECRET=<vault value>` (no redeploy needed).
+3. Ensure the updated `parasut-sync-run` function is deployed.
+4. Verify with pause still active: unproven caller → 403; proven caller →
+   200 `{"status":"paused","reason":"emergency_pause_active"}`.
+5. Only then set `PARASUT_SYNC_EMERGENCY_PAUSE=false` and watch the first ticks.
+
+## 7. Rollback
 
 Trigger conditions (any): statement print blocked for golden contacts,
 login broken, finance screens erroring, bundle safeguard-class leak
@@ -93,7 +113,7 @@ Procedure:
    docs/database-generation-retirement.md rules.
 6. Post-mortem note appended to docs/architecture-remediation.md.
 
-## 7. Known limitations (documented, accepted for now)
+## 8. Known limitations (documented, accepted for now)
 
 - FTP is not atomic: brief windows can serve mixed old/new hashed assets.
   Mitigated by content-hashed filenames + index.html uploaded last by the
