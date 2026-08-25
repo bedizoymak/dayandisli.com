@@ -42,10 +42,11 @@ jobs:
       - name: Build
         run: npm run build
 
-      # PHASE 2 ratchet: lint is BLOCKING. Zero errors are tolerated; warnings
-      # are capped at the documented baseline (20 as of 2026-08-25 — shadcn
-      # react-refresh notices + hook-deps warnings confined to unrouted legacy
-      # components). Any NEW warning or error fails CI. Reduce this number as
-      # debt is paid down; never raise it.
+      # PHASE 2 ratchet (tightened after Phases 7/11/13 removed the legacy
+      # components that carried the hook-deps warnings): lint is BLOCKING.
+      # Zero errors are tolerated; warnings are capped at the documented
+      # baseline (15 as of 2026-08-25 — all react-refresh notices on shadcn
+      # ui primitives and context providers). Any NEW warning or error fails
+      # CI. Reduce this number as debt is paid down; never raise it.
       - name: Lint (ratcheted)
-        run: npx eslint . --max-warnings 20
+        run: npx eslint . --max-warnings 15
