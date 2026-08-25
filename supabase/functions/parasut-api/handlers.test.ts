@@ -222,9 +222,11 @@ describe("handleList — cross-company isolation", () => {
 
       const resultD = await handlePayablesSummary(admin, COMPANY_D);
       // outstanding_total = 1000 (TRL) + 500 (TRY) + 200 (overdue TRL) + 500 (partially paid TRY) = 2200;
-      // USD, the closed row, and the archived row are excluded from the money total. document_count counts every row for the company regardless of open/overdue state, including the archived one.
+      // USD, the closed row, and the archived row are excluded from the money total. document_count counts every
+      // NON-ARCHIVED row for the company regardless of open/overdue state — the parent-deleted (archived) bill is
+      // excluded from the count too, since Paraşüt no longer knows it (source-isolation rule, 2026-08-25).
       // unscheduled (no due_date, open): id10 (TRL 1000), id11 (TRY 500), id13 (USD 9999, money excluded but still counted), id14 (TRY 500, partially paid, no due_date) — unscheduled_total = 2000, unscheduled_count = 4.
-      expect(resultD).toEqual({ outstanding_total: 2200, overdue_total: 200, unscheduled_total: 2000, overdue_count: 1, unscheduled_count: 4, document_count: 7, check_count: 0 });
+      expect(resultD).toEqual({ outstanding_total: 2200, overdue_total: 200, unscheduled_total: 2000, overdue_count: 1, unscheduled_count: 4, document_count: 6, check_count: 0 });
 
       // Company isolation: company A's own payables-summary result (proven above) is unaffected by company D's data existing in the same fake admin.
       const resultA = await handlePayablesSummary(admin, COMPANY_A);
@@ -316,6 +318,67 @@ describe("handleList — cross-company isolation", () => {
 
       const resultA = await handleReceivablesSummary(admin, COMPANY_A);
       expect(resultA.check_count).toBe(1); // only company A's own cheque, not company F's
+    });
+  });
+
+  describe("source isolation: archived rows never enter customer financial aggregates", () => {
+    const COMPANY_G = "66666666-6666-4666-8666-666666666666";
+
+    it("a parent-archived purchase bill is excluded from payables totals AND from document_count, while NULL-archived (live) cheques still count", async () => {
+      const seed = seedTwoCompanies();
+      seed["parasut.purchase_bills"] = [
+        {
+          parasut_id: "970",
+          company_id: COMPANY_G,
+          attributes: { invoice_no: "PB-G-LIVE", currency: "TRY", remaining: "500", due_date: "2026-09-01", issue_date: "2026-07-01" },
+          relationships: {},
+          source_archived: false,
+          last_seen_at: "2026-07-01T00:00:00Z",
+          synced_at: "2026-07-01T00:00:00Z",
+        },
+        {
+          parasut_id: "971",
+          company_id: COMPANY_G,
+          attributes: { invoice_no: "PB-G-DELETED-IN-PARENT", currency: "TRY", remaining: "7000", due_date: "2026-09-01", issue_date: "2026-07-01" },
+          relationships: {},
+          source_archived: true,
+          last_seen_at: "2026-07-01T00:00:00Z",
+          synced_at: "2026-07-01T00:00:00Z",
+        },
+      ];
+      const admin = createFakeSupabaseAdmin(seed);
+
+      const result = await handlePayablesSummary(admin, COMPANY_G);
+
+      // The archived bill's 7.000 must appear in neither the totals nor the
+      // raw document count — Paraşüt no longer knows this document.
+      expect(result.outstanding_total).toBe(500);
+      expect(result.document_count).toBe(1);
+    });
+
+    it("customer detail returns received cheques whose source_archived is NULL (the checks mirror never stores false) — regression for the eq(false) empty-panel defect", async () => {
+      const seed = seedTwoCompanies();
+      seed["parasut.checks"] = [
+        {
+          parasut_id: "980",
+          company_id: COMPANY_A,
+          attributes: { serial_number: "3127841", is_in: true, issued_by_parasut_id: "500", remaining: "451107.89", currency: "TRY", due_date: "2026-09-04" },
+          relationships: {},
+          // Live checks are stored with NULL — Paraşüt's checks resource has
+          // no archived attribute for the sync to mirror (see
+          // server/parasut/upsert-resource.ts). An eq(source_archived, false)
+          // read here returned zero cheques for every customer.
+          source_archived: null,
+          last_seen_at: "2026-08-14T00:00:00Z",
+          synced_at: "2026-08-14T00:00:00Z",
+        },
+      ];
+      const admin = createFakeSupabaseAdmin(seed);
+
+      const detail = await handleDetail(admin, "customers", "500", COMPANY_A);
+      if (!detail || !("checks" in detail)) throw new Error("unexpected detail shape");
+      expect(detail.checks).toHaveLength(1);
+      expect(detail.checks[0].parasut_id).toBe("980");
     });
   });
 

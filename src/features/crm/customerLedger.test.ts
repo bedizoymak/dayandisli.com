@@ -263,3 +263,112 @@ describe("PİNO reconciliation gate (mandatory, contract-required)", () => {
       .toEqual(rows.map((r) => ({ transactionId: r.transactionId, debit: r.debit, credit: r.credit, balance: r.balance })));
   });
 });
+
+// ---------------------------------------------------------------------------
+// GENERIC MIRROR CONTRACT — synthetic fixtures only.
+// Every value below is invented for contacts that played no part in designing
+// the implementation. If the engine only worked on the audited reference
+// contacts, it would be a fixture-matcher, not a mirror.
+// ---------------------------------------------------------------------------
+
+function syntheticRow(overrides: Partial<AuthoritativeStatementRow> & { transactionId: string; order: number; trlBalance: number }): AuthoritativeStatementRow {
+  return {
+    historyItemId: `syn-${overrides.transactionId}`,
+    transactionType: "sales_invoice",
+    date: "2026-01-01",
+    description: "",
+    amountInTrl: 100,
+    debitAmount: 100,
+    creditAmount: 0,
+    unmatchedDebitAmount: 0,
+    unmatchedCreditAmount: 0,
+    linked: {},
+    allocations: [],
+    ...overrides,
+  } as AuthoritativeStatementRow;
+}
+
+describe("generic mirror contract (synthetic arbitrary contact, never used to design the engine)", () => {
+  // An arbitrary Paraşüt contact id — deliberately NOT one of the audited
+  // reference contacts (1011029161 / 1011029145 / 1011029140 / 1011029141).
+  const ARBITRARY_CONTACT = "9900000001";
+
+  function arbitraryContactStatement(): AuthoritativeStatement {
+    return {
+      version: 1,
+      status: "reconciled",
+      diagnostics: [],
+      reconciliation: { finalHistoryBalance: 800, contactBalance: 800 },
+      lastSyncedAt: "2026-08-25T00:00:00Z",
+      rows: [
+        // statement_order ascending == array order (the server's authoritative sequence).
+        syntheticRow({ transactionId: "t-open", order: 1, trlBalance: 1000, transactionType: "contact_opening_balance_debit", amountInTrl: 1000 }),
+        syntheticRow({ transactionId: "t-inv", order: 2, trlBalance: 1600, transactionType: "sales_invoice", amountInTrl: 600 }),
+        syntheticRow({ transactionId: "t-bill", order: 3, trlBalance: 1300, transactionType: "purchase_bill", amountInTrl: 300 }),
+        syntheticRow({ transactionId: "t-coll", order: 4, trlBalance: 1100, transactionType: "contact_credit", amountInTrl: 200 }),
+        syntheticRow({ transactionId: "t-chk", order: 5, trlBalance: 600, transactionType: "check_in", amountInTrl: 500 }),
+        syntheticRow({ transactionId: "t-deb", order: 6, trlBalance: 700, transactionType: "contact_debit", amountInTrl: 100 }),
+        syntheticRow({ transactionId: "t-out", order: 7, trlBalance: 900, transactionType: "check_out", amountInTrl: 200 }),
+        syntheticRow({ transactionId: "t-opencr", order: 8, trlBalance: 800, transactionType: "contact_opening_balance_credit", amountInTrl: 100 }),
+      ],
+    };
+  }
+
+  it("KPI identity holds generically: full-history debits minus credits equal the parent's closing trl_balance", () => {
+    const stmt = arbitraryContactStatement();
+    const rows = buildAuthoritativeLedgerRows(stmt, ARBITRARY_CONTACT);
+    const totalDebit = rows.reduce((sum, row) => sum + row.debit, 0);
+    const totalCredit = rows.reduce((sum, row) => sum + row.credit, 0);
+    expect(totalDebit - totalCredit).toBeCloseTo(stmt.reconciliation!.finalHistoryBalance!, 2);
+    expect(rows[rows.length - 1].balance).toBeCloseTo(stmt.reconciliation!.finalHistoryBalance!, 2);
+  });
+
+  it("allocation detail attached to any movement never changes KPI totals or balances", () => {
+    const withAllocations = arbitraryContactStatement();
+    withAllocations.rows[3].allocations = [
+      { id: "a1", payableId: "inv-9", amount: 111.11, currency: "TRY", balanceImpacting: false },
+      { id: "a2", payableId: "inv-4", amount: 88.89, currency: "TRY", balanceImpacting: false },
+    ];
+    const plain = buildAuthoritativeLedgerRows(arbitraryContactStatement(), ARBITRARY_CONTACT);
+    const decorated = buildAuthoritativeLedgerRows(withAllocations, ARBITRARY_CONTACT);
+    const totalsOf = (rows: ReturnType<typeof buildAuthoritativeLedgerRows>) => ({
+      debit: rows.reduce((sum, row) => sum + row.debit, 0),
+      credit: rows.reduce((sum, row) => sum + row.credit, 0),
+      balances: rows.map((row) => row.balance),
+    });
+    expect(totalsOf(decorated)).toEqual(totalsOf(plain));
+  });
+
+  it("duplicate legal identities stay separate: two contacts sharing name/tax number produce fully independent statements", () => {
+    const otherContactStatement = arbitraryContactStatement();
+    otherContactStatement.rows = [syntheticRow({ transactionId: "z-shared-name-different-id", order: 1, trlBalance: 55, transactionType: "sales_invoice", amountInTrl: 55 })];
+    otherContactStatement.reconciliation = { finalHistoryBalance: 55, contactBalance: 55 };
+
+    const rowsA = buildAuthoritativeLedgerRows(arbitraryContactStatement(), ARBITRARY_CONTACT);
+    const rowsB = buildAuthoritativeLedgerRows(otherContactStatement, "9900000002");
+
+    // The read model is strictly per-contact: every row carries the contact
+    // it was requested for and nothing crosses between the two populations,
+    // even though the underlying legal-entity attributes would be identical.
+    expect(rowsA.every((row) => row.contactParasutId === ARBITRARY_CONTACT)).toBe(true);
+    expect(rowsB.every((row) => row.contactParasutId === "9900000002")).toBe(true);
+    expect(rowsA.some((row) => rowsB.some((other) => other.transactionId === row.transactionId))).toBe(false);
+    expect(rowsA[rowsA.length - 1].balance).toBe(800);
+    expect(rowsB[rowsB.length - 1].balance).toBe(55);
+  });
+
+  it("an unknown transaction type on the arbitrary contact breaks the identity VISIBLY instead of rendering a plausible wrong total", () => {
+    const degraded = arbitraryContactStatement();
+    degraded.status = "incomplete";
+    degraded.diagnostics = ["unmapped_transaction_type:t-deb:new_parent_type"];
+    degraded.rows[5] = syntheticRow({ transactionId: "t-deb", order: 6, trlBalance: 700, transactionType: "new_parent_type", amountInTrl: 100 });
+    const rows = buildAuthoritativeLedgerRows(degraded, ARBITRARY_CONTACT);
+    const totalDebit = rows.reduce((sum, row) => sum + row.debit, 0);
+    const totalCredit = rows.reduce((sum, row) => sum + row.credit, 0);
+    // With the unmapped movement contributing no side, the naive identity no
+    // longer closes — which is exactly why the warning must fire (and print
+    // block) rather than presenting the numbers as authoritative.
+    expect(totalDebit - totalCredit).not.toBeCloseTo(degraded.reconciliation!.finalHistoryBalance!, 2);
+    expect(statementWarning(degraded, rows)).toContain("new_parent_type");
+  });
+});

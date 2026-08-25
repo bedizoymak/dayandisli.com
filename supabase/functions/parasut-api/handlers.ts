@@ -766,10 +766,10 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
         : null;
     return {
       historyItemId: String(historyRow.parasut_id ?? ""),
-      // Position in the already date-then-arrival-ordered SQL result, not
-      // the raw stored statement_order — the frontend's own stable re-sort
-      // by `order` must reproduce this exact sequence, not the old
-      // arrival-only rank.
+      // Position within the authoritative statement_order-ordered SQL result
+      // (contract hard rule 4) — the frontend's own stable re-sort by `order`
+      // must reproduce this exact sequence. transaction_date is display-only
+      // and never participates in ordering.
       order: historyRowIndex,
       transactionId,
       transactionType,
@@ -887,7 +887,12 @@ export async function handleDetail(admin: SupabaseAdminLike, resource: ListResou
     // here infers or guesses which contact a check belongs to.
     let checks: MirrorRecord[] = [];
     if (resource === "customers") {
-      const { data: checkRows } = await scopedParasutTable<MirrorRecord>(admin, "checks", activeCompanyId, "*").eq("source_archived", false);
+      // Same NULL-aware idiom as the checks list above (see handleList):
+      // Paraşüt's checks resource carries no reliable archived attribute, so
+      // the mirror stores source_archived as NULL for live rows — an
+      // eq(..., false) filter here would silently return zero cheques for
+      // every customer.
+      const { data: checkRows } = await scopedParasutTable<MirrorRecord>(admin, "checks", activeCompanyId, "*").or("source_archived.eq.false,source_archived.is.null");
       checks = (checkRows ?? []).filter((row) => {
         const attributes = row.attributes ?? {};
         const issuedBy = attributes.issued_by_parasut_id ?? relationshipId(row.relationships, "issued_by");
@@ -1045,9 +1050,20 @@ async function fetchDocumentsAndChecks(
   activeCompanyId: string,
   documentsTable: "sales_invoices" | "purchase_bills",
 ) {
+  // Archived-exclusion rule (single convention, applied consistently):
+  // - sales_invoices/purchase_bills carry a real boolean archived signal from
+  //   Paraşüt, so eq(false) correctly excludes parent-deleted rows from every
+  //   aggregate (same rule as the VAT/dashboard reads).
+  // - checks carry NO reliable archived attribute, so live rows are stored
+  //   with source_archived = NULL; the "false OR null" idiom keeps every real
+  //   cheque visible. Excluding PARENT-DELETED-BUT-STILL-MIRRORED cheques
+  //   from aggregates requires deletion reconciliation in the sync engine
+  //   (documented sync gap — see docs/2.0 backend truth audit §A) and must
+  //   NOT be approximated here by inventing a filter that would hide real
+  //   cheques.
   const [documentsResult, checksResult] = await Promise.all([
-    scopedParasutTable<MirrorRow>(admin, documentsTable, activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }),
-    scopedParasutTable<MirrorRow>(admin, "checks", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }),
+    scopedParasutTable<MirrorRow>(admin, documentsTable, activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }).eq("source_archived", false),
+    scopedParasutTable<MirrorRow>(admin, "checks", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }).or("source_archived.eq.false,source_archived.is.null"),
   ]);
   if (documentsResult.error) throw new Error(documentsResult.error.message);
   if (checksResult.error) throw new Error(checksResult.error.message);
