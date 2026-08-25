@@ -179,7 +179,12 @@ serve(async (req) => {
 
     if (action === "sync-status") {
       if (!access.canViewSync) return json({ error: "Bu işlem için senkronizasyon yetkisi gerekli." }, 403);
-      return json(await handleSyncStatus(admin, { page: body.page as number | undefined, pageSize: body.pageSize as number | undefined }, activeCompanyId));
+      // PHASE 1B: all functions in this project share the same secrets, so
+      // the exact flag parasut-sync-run gates on is visible here — the
+      // health snapshot can report "paused" truthfully without any writes
+      // from the (deliberately side-effect-free) paused sync runner.
+      const emergencyPauseActive = (Deno.env.get("PARASUT_SYNC_EMERGENCY_PAUSE") ?? "true") !== "false";
+      return json(await handleSyncStatus(admin, { page: body.page as number | undefined, pageSize: body.pageSize as number | undefined, emergencyPauseActive }, activeCompanyId));
     }
 
     return json({ error: "Bilinmeyen işlem." }, 400);

@@ -1010,6 +1010,77 @@ describe("handleSyncStatus — sync runs and errors are exact-company scoped", (
   });
 });
 
+describe("handleSyncStatus — PHASE 1B health snapshot", () => {
+  // The shared fixture's runs are dated 2026-07-01, deliberately OUTSIDE the
+  // 24h health window — so these tests inject their own fresh-dated runs.
+  function seedWithFreshRuns(statusA: string): Record<string, FakeRow[]> {
+    const seed = seedTwoCompanies();
+    const freshAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const completedAt = new Date(Date.now() - 4 * 60 * 1000).toISOString();
+    const resourceTypes = ["accounts", "contacts", "products", "sales_invoices", "purchase_bills", "checks", "transaction_history_items"];
+    const existing = seed["parasut.sync_runs"] ?? [];
+    seed["parasut.sync_runs"] = existing.concat(
+      ([] as unknown as FakeRow[]).concat(
+        ...resourceTypes.map((resource_type, index) => {
+          const startedAt = new Date(Date.parse(freshAt) - index * 1000).toISOString();
+          return [
+            {
+              id: `fresh-a-${resource_type}`,
+              company_id: COMPANY_A,
+              parasut_company_id: "666034",
+              resource_type,
+              trigger_type: "scheduled",
+              status: statusA,
+              started_at: startedAt,
+              completed_at: statusA === "running" ? null : completedAt,
+              request_metadata: {},
+            },
+            {
+              id: `fresh-b-${resource_type}`,
+              company_id: COMPANY_B,
+              parasut_company_id: "666035",
+              resource_type,
+              trigger_type: "scheduled",
+              status: "completed",
+              started_at: startedAt,
+              completed_at: completedAt,
+              request_metadata: {},
+            },
+          ] as unknown as FakeRow[];
+        }),
+      ),
+    );
+    return seed;
+  }
+
+  it("attaches a machine-readable health snapshot computed from the bounded window, honoring the pause flag", async () => {
+    const admin = createFakeSupabaseAdmin(seedWithFreshRuns("completed"));
+    const healthy = await handleSyncStatus(admin, { emergencyPauseActive: false }, COMPANY_A);
+    expect(healthy.health).toBeDefined();
+    expect(healthy.health.status).toBe("ok");
+    expect(healthy.health.resources.length).toBeGreaterThan(0);
+    const contacts = healthy.health.resources.find((r) => r.resourceType === "contacts");
+    expect(contacts?.freshness).toBe("fresh");
+    expect(contacts?.lastSuccessfulSyncAt).not.toBeNull();
+
+    const paused = await handleSyncStatus(admin, { emergencyPauseActive: true }, COMPANY_A);
+    expect(paused.health.status).toBe("paused");
+    expect(paused.health.emergencyPauseActive).toBe(true);
+    expect(paused.health.alerts.some((alert) => alert.code === "SYNC_PAUSED")).toBe(true);
+  });
+
+  it("health window is company-scoped and reflects per-company run outcomes", async () => {
+    const admin = createFakeSupabaseAdmin(seedWithFreshRuns("failed"));
+    const statusB = await handleSyncStatus(admin, { emergencyPauseActive: false }, COMPANY_B);
+    const contactsB = statusB.health.resources.find((r) => r.resourceType === "contacts");
+    expect(contactsB?.latestStatus).toBe("completed"); // B's even-indexed resources completed
+    const statusA = await handleSyncStatus(admin, { emergencyPauseActive: false }, COMPANY_A);
+    const contactsA = statusA.health.resources.find((r) => r.resourceType === "contacts");
+    expect(contactsA?.latestStatus).toBe("failed"); // A's resources failed
+    expect(statusA.health.alerts.some((alert) => alert.code === "LAST_RUN_FAILED")).toBe(true);
+  });
+});
+
 describe("handleList (customers/suppliers) — deletion-reconciliation default visibility", () => {
   function seedWithArchivedCustomer(): Record<string, FakeRow[]> {
     const seed = seedTwoCompanies();
