@@ -68,6 +68,71 @@ describe("architecture: Paraşüt write path is singular", () => {
   });
 });
 
+describe("architecture: execution-source separation on parasut-sync-run", () => {
+  const syncRunSource = readFileSync(
+    join(ROOT, "supabase", "functions", "parasut-sync-run", "index.ts"),
+    "utf-8",
+  );
+
+  it("the fail-closed invocation gate is imported and consulted", () => {
+    expect(syncRunSource).toContain("sync-invocation-gate");
+    expect(syncRunSource).toContain("gateScheduledInvocation");
+  });
+
+  it("source classification precedes ANY credential or engine work", () => {
+    // The gate must run before TokenManager is even constructed — an
+    // unproven caller must never push the function past the front door.
+    const gateIndex = syncRunSource.indexOf("gateScheduledInvocation({");
+    const tokenIndex = syncRunSource.indexOf("new TokenManager");
+    expect(gateIndex).toBeGreaterThan(-1);
+    expect(tokenIndex).toBeGreaterThan(-1);
+    expect(gateIndex).toBeLessThan(tokenIndex);
+  });
+
+  it("the paused response shape is preserved for proven-scheduled callers", () => {
+    expect(syncRunSource).toContain('status: "paused"');
+    expect(syncRunSource).toContain('reason: "emergency_pause_active"');
+  });
+});
+
+describe("architecture: manual Paraşüt sync stays on the single authorized path", () => {
+  const manualSyncSource = readFileSync(
+    join(ROOT, "src", "features", "crm", "parasutManualSync.ts"),
+    "utf-8",
+  );
+
+  it("the ERP manual-sync button calls ONLY parasut-write-api's explicit full-resync action", () => {
+    expect(manualSyncSource).toContain('functions.invoke("parasut-write-api"');
+    expect(manualSyncSource).toContain('action: "full-resync"');
+    // No second sync surface may appear client-side — parasut-sync-run is
+    // scheduled-only and rejects every other execution source server-side.
+    expect(manualSyncSource).not.toContain('"parasut-sync-run"');
+  });
+});
+
+describe("architecture: cheque deletion reconciliation stays enabled", () => {
+  it("syncChecks opts into absence-based reconciliation (PARENT-DELETED-BUT-STILL-MIRRORED fix)", () => {
+    // The three ghost cheques (1001339640/1001340292/1001340293) existed
+    // only because this resource ran WITHOUT reconciliation. Reverting
+    // `reconcile: true` would reopen that contamination and must fail CI.
+    const source = readFileSync(join(ROOT, "server", "parasut", "sync-checks.ts"), "utf-8");
+    expect(source).toMatch(/reconcile:\s*true/);
+  });
+});
+
+describe("architecture: no customer-allowlist in sync correctness logic", () => {
+  it("no production source references the removed RECONCILIATION_TARGET_CONTACT_IDS", () => {
+    for (const dir of SCAN_DIRS.map((d) => join(ROOT, d))) {
+      for (const file of listFiles(dir)) {
+        const rel = file.replace(/\\/g, "/").split("/dayandisli.com/")[1];
+        if (!rel || rel.endsWith(".test.ts")) continue;
+        const text = readFileSync(file, "utf-8");
+        expect(text.includes("RECONCILIATION_TARGET_CONTACT_IDS"), `${rel} reintroduces the customer allowlist`).toBe(false);
+      }
+    }
+  });
+});
+
 describe("architecture: quotation email relay stays closed (Phase 1C)", () => {
   const fnSource = readFileSync(
     join(ROOT, "supabase", "functions", "send-quotation-email", "index.ts"),

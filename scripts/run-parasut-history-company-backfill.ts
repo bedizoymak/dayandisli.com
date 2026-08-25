@@ -1,9 +1,8 @@
 // Production-safe COMPANY-WIDE Paraşüt transaction-history backfill runner.
 //
-// This is a separate script from run-parasut-history-backfill.ts, which
-// stays untouched and remains the four-contact reconciliation runner
-// (RECONCILIATION_TARGET_CONTACT_IDS) used for targeted acceptance work.
-// That allowlist is neither removed nor weakened here.
+// Separate from run-parasut-history-backfill.ts (targeted, env-specified
+// contact ids). This runner sweeps the WHOLE company generically — no
+// contact allowlist exists anywhere since 2026-08-25.
 //
 // No new sync engine: this sequences the existing, already-proven
 // server/parasut/sync-transaction-history.ts (itself built on sync-base.ts's
@@ -27,7 +26,7 @@
 // contacts to visit, in what order, and when to stop — by reading the
 // existing sync_runs table's most recent status per contact endpoint.
 import { buildProductionSyncContext } from "./run-parasut-sync-production.ts";
-import { RECONCILIATION_TARGET_CONTACT_IDS, syncContactTransactionHistory } from "../server/parasut/sync-transaction-history.ts";
+import { syncContactTransactionHistory } from "../server/parasut/sync-transaction-history.ts";
 import { PARASUT_INTEGRATION_SCHEMA } from "../server/parasut/types.ts";
 import type { SyncContext } from "../server/parasut/types.ts";
 import { pathToFileURL } from "node:url";
@@ -185,9 +184,10 @@ export async function runCompanyBackfill(
   const plan = await buildPlan(context);
 
   if (dryRun) {
-    // Existing 4-contact average as the only measured basis available
-    // in-repo; every contact beyond that is a genuine unknown until visited.
-    const measuredBasis = `${RECONCILIATION_TARGET_CONTACT_IDS.length} already-complete contacts consumed a measured 8 page requests total (~2/contact average)`;
+    // Measured basis from the original acceptance backfill: ~2 page requests
+    // per contact; every contact beyond the sample is a genuine unknown
+    // until visited (discovery is generic, never allowlist-driven).
+    const measuredBasis = "~2 page requests per contact measured during the original acceptance backfill";
     const low = plan.remaining.length * 1; // floor: at least 1 discovery request per contact
     const high = plan.remaining.length * 3; // rough ceiling using observed average + margin
     return {

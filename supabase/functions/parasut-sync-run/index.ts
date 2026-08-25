@@ -17,10 +17,10 @@ import { syncProducts } from "../../../server/parasut/sync-products.ts";
 import { syncSalesInvoices } from "../../../server/parasut/sync-sales-invoices.ts";
 import { syncPurchaseBills } from "../../../server/parasut/sync-purchase-bills.ts";
 import { syncChecks } from "../../../server/parasut/sync-checks.ts";
-import { RECONCILIATION_TARGET_CONTACT_IDS, syncContactTransactionHistory } from "../../../server/parasut/sync-transaction-history.ts";
 import { refreshStaleStatements, DEFAULT_ALERT_AFTER_HOURS } from "../../../server/parasut/sync-statement-staleness.ts";
 import type { MirrorDatabase, SyncContext, SyncResult } from "../../../server/parasut/types.ts";
 import { SyncAlreadyRunningError } from "../../../server/parasut/types.ts";
+import { gateScheduledInvocation } from "../../../server/parasut/sync-invocation-gate.ts";
 
 const APPROVED_ERP_COMPANY_ID = "54b50745-89e0-4b97-adb6-4f2426fa2a2f";
 const APPROVED_PARASUT_COMPANY_ID = "666034";
@@ -65,22 +65,44 @@ function logSafe(message: string): void {
   console.log(message.replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]"));
 }
 
-// EMERGENCY PAUSE (2026-08-24 production incident — see
-// CLAUDE_CODE_PRODUCTION_SYNC_INCIDENT_REPORT.md): fail-safe default is
-// PAUSED — any value other than the literal string "false" for
-// PARASUT_SYNC_EMERGENCY_PAUSE keeps every sync/statement-refresh/backfill
-// action (scheduled cron, the manual "Sync" button, and the CLI backfill
-// runner all funnel through this one entrypoint) from doing any Paraşüt or
-// database work at all. This is deliberately checked before any other
-// work — before env/secret loading, before the Supabase client is created,
-// before a single Paraşüt or Postgres request is made — so it stays
-// effective even if the underlying database is itself under load. Re-enable
-// by setting the PARASUT_SYNC_EMERGENCY_PAUSE secret to "false" (no redeploy
-// required); the unset/default state is always safe (paused).
+// EMERGENCY PAUSE + EXECUTION-SOURCE SEPARATION (2026-08-24 production
+// incident — see CLAUDE_CODE_PRODUCTION_SYNC_INCIDENT_REPORT.md; source
+// separation added 2026-08-25 after an unauthenticated probe proved this
+// entrypoint answered anonymous callers with 200-paused and had NO caller
+// authentication beyond a forgeable header plus the PUBLIC publishable key):
+// fail-safe default is PAUSED — any value other than the literal string
+// "false" for PARASUT_SYNC_EMERGENCY_PAUSE keeps every scheduled action
+// (the six-resource cron and the statement-refresh cron) from doing any
+// Paraşüt or database work at all. This is deliberately checked before any
+// other work — before env/secret loading, before the Supabase client is
+// created, before a single Paraşüt or Postgres request is made — so it
+// stays effective even if the underlying database is itself under load.
+//
+// Sources are classified FAIL-CLOSED by server/parasut/sync-invocation-gate.ts:
+// only callers presenting X-Sync-Trigger: scheduled AND the shared
+// X-Sync-Secret (equal to the PARASUT_SYNC_CRON_SECRET edge secret) are
+// recognized as scheduled at all; everyone else gets 403 whether or not the
+// pause is active. Manual ERP admin synchronization does NOT enter here —
+// it lives exclusively on parasut-write-api ("resync"/"full-resync"),
+// which verifies the Supabase JWT + an active erp_users admin server-side
+// and may execute despite the automatic pause by design.
 serve(async (req: Request) => {
   try {
-    const emergencyPause = (Deno.env.get("PARASUT_SYNC_EMERGENCY_PAUSE") ?? "true") !== "false";
-    if (emergencyPause) {
+    const emergencyPauseActive = (Deno.env.get("PARASUT_SYNC_EMERGENCY_PAUSE") ?? "true") !== "false";
+    const decision = gateScheduledInvocation({
+      triggerHeader: req.headers.get("X-Sync-Trigger"),
+      secretHeader: req.headers.get("X-Sync-Secret"),
+      configuredSecret: Deno.env.get("PARASUT_SYNC_CRON_SECRET"),
+      emergencyPauseActive,
+    });
+    if (decision.verdict === "reject") {
+      logSafe(`[sync] rejected invocation: ${decision.reason}`);
+      return new Response(
+        JSON.stringify({ error: decision.reason }),
+        { status: decision.httpStatus, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    if (decision.verdict === "paused") {
       console.log("[sync] EMERGENCY PAUSE active — refusing to run. Set PARASUT_SYNC_EMERGENCY_PAUSE=false to resume.");
       return new Response(
         JSON.stringify({ status: "paused", reason: "emergency_pause_active" }),
@@ -162,21 +184,12 @@ serve(async (req: Request) => {
       });
     }
 
-    if (body.action === "authoritative-history-backfill") {
-      const results: Array<SyncResult & { contactId: string }> = [];
-      for (const contactId of RECONCILIATION_TARGET_CONTACT_IDS) {
-        let result = await syncContactTransactionHistory(context, contactId, { concurrencyLock: true });
-        results.push({ contactId, ...result });
-        while (result.hasMore) {
-          result = await syncContactTransactionHistory(context, contactId, { concurrencyLock: true });
-          results.push({ contactId, ...result });
-        }
-      }
-      return new Response(JSON.stringify({ scope: [...RECONCILIATION_TARGET_CONTACT_IDS], results }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    // The former "authoritative-history-backfill" action (a hardcoded
+    // four-contact allowlist) was removed on 2026-08-25: per-contact
+    // transaction-history refresh now lives exclusively behind the
+    // authenticated, erp_users-admin-gated parasut-write-api "resync"
+    // action (resource: "transaction_history", explicit contactId), and
+    // scheduled staleness sweeping already covers every contact generically.
 
     logSafe(`[sync] companyId=${companyId} parasutCompanyId=${parasutCompanyId} triggerType=${triggerType ?? "local_manual"}`);
 
