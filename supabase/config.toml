@@ -4,7 +4,10 @@ project_id = "meauutjsnnggzcigyvfp"
 verify_jwt = false
 
 [functions.send-quotation-email]
-verify_jwt = false
+# PHASE 1C: quotation sending is an authenticated ERP action. The gateway
+# now rejects anonymous calls before this function runs; the function
+# additionally requires an active erp_users row and validates the payload.
+verify_jwt = true
 
 [functions.parasut-sync]
 enabled = true
