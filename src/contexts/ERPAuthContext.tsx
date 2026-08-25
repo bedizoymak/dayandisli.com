@@ -1,7 +1,8 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
-import { createAuditLog, getCurrentERPUser } from "@/features/erp/shared/erpApi";
+import { createAuditLog } from "@/features/erp/shared/api/internal";
+import { getCurrentERPUser } from "@/features/erp/shared/auth";
 import { getUserPermissions, getUserRoles } from "@/features/erp/shared/permissions";
 import type { ERPUser } from "@/features/erp/shared/types";
 

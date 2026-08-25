@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { getPublicLoginRedirectUrl } from "@/lib/domains";
-import { createAuditLog } from "@/features/erp/shared/erpApi";
+import { createAuditLog } from "@/features/erp/shared/api/internal";
 import { resolveERPUserForAuthUser } from "@/features/erp/shared/auth";
 
 const SUPABASE_SETUP_MESSAGE =
@@ -153,3 +153,4 @@ export default function Login() {
     </div>
   );
 }
+
