@@ -1,8 +1,13 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase as typedSupabase } from "@/integrations/supabase/client";
 
-// Legacy ERP/quotation modules still use tables and RPCs that are ahead of the generated Database type.
-// Typed as the generic (unparameterized) SupabaseClient — deliberately NOT `any` (lint), while still
-// widening away the generated table map.
-export const supabase = typedSupabase as unknown as SupabaseClient;
+/**
+ * @deprecated PHASE 4: import the canonical client directly from
+ * `@/integrations/supabase/client` instead. This alias exists only for the
+ * orphaned legacy quotation feature (`src/features/quotation/**`), which is
+ * slated for removal in Phase 7 — when it goes, this file goes with it.
+ *
+ * Same underlying instance as the canonical client (a re-export widened to
+ * the generic SupabaseClient shape), so no second browser client is created.
+ */
+export const supabase = typedSupabase as unknown as import("@supabase/supabase-js").SupabaseClient;
 export { isSupabaseConfigured };
