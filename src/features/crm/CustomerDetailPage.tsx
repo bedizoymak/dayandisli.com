@@ -292,6 +292,18 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
   const ledgerWithBalance = ledgerRows;
   const reconciliationWarning = useMemo(() => statementWarning(statement, ledgerRows), [statement, ledgerRows]);
 
+  // Authoritative KPI derivations (docs/2.0 backend truth audit §C / blocker
+  // #3): Toplam Borç and Tahsil Edilen are BOTH sums over the authoritative
+  // statement rows — the debit and credit sides of the same ledger the table
+  // below renders. Summing parasut.payments (allocations) here instead was
+  // the confirmed formula defect: allocations are a 1-to-many linkage detail
+  // (one received cheque spreads across several invoices), so an allocation
+  // sum silently drifted from the credit-side movement total and made
+  // "Toplam Borç − Tahsil Edilen" disagree with Müşteri Bakiyesi by exactly
+  // that mismatch. With both tiles derived from buildAuthoritativeLedgerRows,
+  // the identity Toplam Borç − Tahsil Edilen = closing trl_balance holds
+  // generically for every Paraşüt contact, and breaks visibly (via
+  // reconciliationWarning) whenever any row is unmapped or stale.
   const totalDebit = ledgerRows.reduce((sum, row) => sum + row.debit, 0);
   const totalCredit = ledgerRows.reduce((sum, row) => sum + row.credit, 0);
   const totalBalance = totalDebit - totalCredit;
@@ -313,8 +325,6 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
     const balance = rows.length ? rows[rows.length - 1].balance : carryForward ?? 0;
     return { rows, carryForward, totalDebit: debit, totalCredit: credit, totalBalance: balance };
   }, [ledgerWithBalance, printFrom, printTo]);
-
-  const collectedTotal = payments.reduce((sum, payment) => sum + (numericValue(payment.attributes?.amount) ?? 0), 0);
 
   // remaining_in_trl is Paraşüt's own already-net (unpaid), TRY-denominated
   // per-invoice figure — using it (rather than re-deriving from gross_total
@@ -488,7 +498,7 @@ export function CustomerDetailPage({ customerId }: { customerId?: string }) {
       <section className="crm-kpis detail">
         {[
           ["Toplam Borç", formatMoney(totalDebit)],
-          ["Tahsil Edilen", formatMoney(collectedTotal)],
+          ["Tahsil Edilen", formatMoney(totalCredit)],
           ["Müşteri Bakiyesi", balance],
           ["Vadesi Geçen Tutar", formatMoney(overdueTotal)],
           ["Yaklaşan Ödeme", formatMoney(upcomingTotal)],

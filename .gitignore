@@ -41,3 +41,10 @@ docs/POST_FORMAT_WORKSTATION_RECOVERY.md
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase CLI machine state (Phase 12)
+supabase/.temp/
+supabase/.branches/
+
+# Test coverage output
+coverage/

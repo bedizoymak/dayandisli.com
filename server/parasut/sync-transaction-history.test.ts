@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { syncCollection } = vi.hoisted(() => ({ syncCollection: vi.fn() }));
 vi.mock("./sync-base.ts", () => ({ syncCollection }));
 
-import { RECONCILIATION_TARGET_CONTACT_IDS, syncContactTransactionHistory, TRANSACTION_HISTORY_INCLUDE } from "./sync-transaction-history.ts";
+import { syncContactTransactionHistory, TRANSACTION_HISTORY_INCLUDE } from "./sync-transaction-history.ts";
 
 describe("authoritative transaction history sync", () => {
   beforeEach(() => syncCollection.mockReset().mockResolvedValue({ status: "completed" }));
@@ -23,8 +23,15 @@ describe("authoritative transaction history sync", () => {
     expect(options.include).toEqual(TRANSACTION_HISTORY_INCLUDE);
   });
 
-  it("is scope-confined to safe numeric contact ids", async () => {
-    expect(RECONCILIATION_TARGET_CONTACT_IDS).toEqual(["1011029161", "1010743830", "1011029140", "1068984956"]);
+  it("is scope-confined to safe numeric contact ids — any Paraşüt contact, no allowlist", async () => {
+    // The former hardcoded four-contact RECONCILIATION_TARGET_CONTACT_IDS
+    // allowlist was removed (2026-08-25): the engine must accept ANY numeric
+    // parent contact id and reject everything else by shape alone.
+    for (const id of ["9900000001", "1011029161", "7"]) {
+      const client = { getPaginated: vi.fn() };
+      await syncContactTransactionHistory({ parasutCompanyId: "666034", companyId: "erp", client, database: {} } as never, id);
+      expect(syncCollection.mock.calls.at(-1)?.[1].endpoint).toContain(`/contacts/${id}/transaction_history_items`);
+    }
     expect(() => syncContactTransactionHistory({ parasutCompanyId: "666034" } as never, "../contacts")).toThrow("Invalid Paraşüt contact id");
   });
 

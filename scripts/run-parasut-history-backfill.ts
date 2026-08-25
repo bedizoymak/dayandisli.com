@@ -1,25 +1,20 @@
 import { buildProductionSyncContext } from "./run-parasut-sync-production.ts";
-import { RECONCILIATION_TARGET_CONTACT_IDS, syncContactTransactionHistory } from "../server/parasut/sync-transaction-history.ts";
+import { syncContactTransactionHistory } from "../server/parasut/sync-transaction-history.ts";
 import { pathToFileURL } from "node:url";
 
+// Targeted transaction-history backfill for OPERATOR use. The contact list
+// is ALWAYS explicit (PARASUT_HISTORY_CONTACT_IDS) — there is deliberately
+// no default allowlist and no remote edge-function mode: the former
+// hardcoded four-contact list and its parasut-sync-run backfill action were
+// removed on 2026-08-25 so that no sync correctness logic depends on known
+// customer ids. Per-contact refresh through the authenticated ERP is
+// available via parasut-write-api's admin-gated "resync" action instead.
 export async function runTargetHistoryBackfill(env: Record<string, string | undefined> = process.env) {
   if (env.RUN_PARASUT_HISTORY_BACKFILL !== "1") throw new Error("Refusing to run: RUN_PARASUT_HISTORY_BACKFILL=1 is required.");
-  const requested = (env.PARASUT_HISTORY_CONTACT_IDS ?? RECONCILIATION_TARGET_CONTACT_IDS.join(",")).split(",").map((id) => id.trim()).filter(Boolean);
-  const disallowed = requested.filter((id) => !RECONCILIATION_TARGET_CONTACT_IDS.includes(id as typeof RECONCILIATION_TARGET_CONTACT_IDS[number]));
-  if (disallowed.length) throw new Error(`Contact scope is not approved: ${disallowed.join(",")}`);
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
-    const url = env.VITE_SUPABASE_URL;
-    const key = env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    if (!url || !key) throw new Error("VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are required for the remote guarded backfill.");
-    if (!url.includes("meauutjsnnggzcigyvfp")) throw new Error("Supabase production target mismatch.");
-    const response = await fetch(`${url}/functions/v1/parasut-sync-run`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, apikey: key, "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "authoritative-history-backfill" }),
-    });
-    if (!response.ok) throw new Error(`Remote history backfill failed with HTTP ${response.status}`);
-    return (await response.json()).results;
-  }
+  const requested = (env.PARASUT_HISTORY_CONTACT_IDS ?? "").split(",").map((id) => id.trim()).filter(Boolean);
+  if (!requested.length) throw new Error("PARASUT_HISTORY_CONTACT_IDS is required (comma-separated Paraşüt contact ids).");
+  const invalid = requested.filter((id) => !/^\d{1,20}$/.test(id));
+  if (invalid.length) throw new Error(`Contact ids must be numeric Paraşüt ids: ${invalid.join(",")}`);
   const { context } = buildProductionSyncContext(env);
   const results = [];
   for (const id of requested) {

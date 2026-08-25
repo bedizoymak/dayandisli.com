@@ -23,9 +23,10 @@ import {
   computeUnsentSummary,
   decimalToNumber,
   sumDecimalStrings,
-  type CurrencyTotal,
-  type MirrorRow,
+   type CurrencyTotal,
+   type MirrorRow,
 } from "../_shared/parasut-metrics.ts";
+import { computeSyncHealth, type SyncRunHealthInput } from "../../../server/parasut/sync-health.ts";
 
 // ---------------------------------------------------------------------
 // Minimal structural Supabase/PostgREST client shape. The real Deno
@@ -765,10 +766,10 @@ async function fetchAuthoritativeStatement(admin: SupabaseAdminLike, contactId: 
         : null;
     return {
       historyItemId: String(historyRow.parasut_id ?? ""),
-      // Position in the already date-then-arrival-ordered SQL result, not
-      // the raw stored statement_order — the frontend's own stable re-sort
-      // by `order` must reproduce this exact sequence, not the old
-      // arrival-only rank.
+      // Position within the authoritative statement_order-ordered SQL result
+      // (contract hard rule 4) — the frontend's own stable re-sort by `order`
+      // must reproduce this exact sequence. transaction_date is display-only
+      // and never participates in ordering.
       order: historyRowIndex,
       transactionId,
       transactionType,
@@ -886,7 +887,12 @@ export async function handleDetail(admin: SupabaseAdminLike, resource: ListResou
     // here infers or guesses which contact a check belongs to.
     let checks: MirrorRecord[] = [];
     if (resource === "customers") {
-      const { data: checkRows } = await scopedParasutTable<MirrorRecord>(admin, "checks", activeCompanyId, "*").eq("source_archived", false);
+      // Same NULL-aware idiom as the checks list above (see handleList):
+      // Paraşüt's checks resource carries no reliable archived attribute, so
+      // the mirror stores source_archived as NULL for live rows — an
+      // eq(..., false) filter here would silently return zero cheques for
+      // every customer.
+      const { data: checkRows } = await scopedParasutTable<MirrorRecord>(admin, "checks", activeCompanyId, "*").or("source_archived.eq.false,source_archived.is.null");
       checks = (checkRows ?? []).filter((row) => {
         const attributes = row.attributes ?? {};
         const issuedBy = attributes.issued_by_parasut_id ?? relationshipId(row.relationships, "issued_by");
@@ -1044,9 +1050,20 @@ async function fetchDocumentsAndChecks(
   activeCompanyId: string,
   documentsTable: "sales_invoices" | "purchase_bills",
 ) {
+  // Archived-exclusion rule (single convention, applied consistently):
+  // - sales_invoices/purchase_bills carry a real boolean archived signal from
+  //   Paraşüt, so eq(false) correctly excludes parent-deleted rows from every
+  //   aggregate (same rule as the VAT/dashboard reads).
+  // - checks carry NO reliable archived attribute, so live rows are stored
+  //   with source_archived = NULL; the "false OR null" idiom keeps every real
+  //   cheque visible. Excluding PARENT-DELETED-BUT-STILL-MIRRORED cheques
+  //   from aggregates requires deletion reconciliation in the sync engine
+  //   (documented sync gap — see docs/2.0 backend truth audit §A) and must
+  //   NOT be approximated here by inventing a filter that would hide real
+  //   cheques.
   const [documentsResult, checksResult] = await Promise.all([
-    scopedParasutTable<MirrorRow>(admin, documentsTable, activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }),
-    scopedParasutTable<MirrorRow>(admin, "checks", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }),
+    scopedParasutTable<MirrorRow>(admin, documentsTable, activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }).eq("source_archived", false),
+    scopedParasutTable<MirrorRow>(admin, "checks", activeCompanyId, MIRROR_ROW_COLUMNS, { count: "exact" }).or("source_archived.eq.false,source_archived.is.null"),
   ]);
   if (documentsResult.error) throw new Error(documentsResult.error.message);
   if (checksResult.error) throw new Error(checksResult.error.message);
@@ -1219,13 +1236,30 @@ export async function handleReports(admin: SupabaseAdminLike, activeCompanyId: s
   };
 }
 
-export async function handleSyncStatus(admin: SupabaseAdminLike, params: { page?: number; pageSize?: number }, activeCompanyId: string) {
+const SYNC_HEALTH_WINDOW_HOURS = 24;
+/** Hard cap on the health window query — bounded by construction (see no-unbounded-select audit notes). */
+const SYNC_HEALTH_WINDOW_ROWS = 200;
+
+export async function handleSyncStatus(
+  admin: SupabaseAdminLike,
+  params: { page?: number; pageSize?: number; emergencyPauseActive?: boolean },
+  activeCompanyId: string,
+) {
   const page = clampPage(params.page);
   const pageSize = clampPageSize(params.pageSize);
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const [{ data: runs, count: runCount, error: runError }, { data: errors, count: errorCount, error: errorError }, latestRuns] = await Promise.all([
+  // PHASE 1B: one extra BOUNDED query (24h window, ≤200 rows) feeding the
+  // pure health model in server/parasut/sync-health.ts — replaces per-resource
+  // guesswork with a single machine-readable snapshot.
+  const windowCutoff = new Date(Date.now() - SYNC_HEALTH_WINDOW_HOURS * 3_600_000).toISOString();
+  const [
+    { data: runs, count: runCount, error: runError },
+    { data: errors, count: errorCount, error: errorError },
+    latestRuns,
+    { data: healthWindowRuns, error: healthError },
+  ] = await Promise.all([
     scopedSyncTable<Record<string, unknown>>(admin, "sync_runs", activeCompanyId, "*", { count: "exact" }).order("started_at", { ascending: false }).range(from, to),
     scopedSyncTable<Record<string, unknown>>(admin, "sync_errors", activeCompanyId, "*", { count: "exact" }).order("occurred_at", { ascending: false }).range(0, 24),
     Promise.all(
@@ -1238,9 +1272,21 @@ export async function handleSyncStatus(admin: SupabaseAdminLike, params: { page?
         return { resourceType, latestRun: data ?? null };
       }),
     ),
+    scopedSyncTable<Record<string, unknown>>(admin, "sync_runs", activeCompanyId, "resource_type,status,started_at,completed_at,request_metadata")
+      .gte("started_at", windowCutoff)
+      .order("started_at", { ascending: false })
+      .range(0, SYNC_HEALTH_WINDOW_ROWS - 1),
   ]);
   if (runError) throw new Error(runError.message);
   if (errorError) throw new Error(errorError.message);
+  if (healthError) throw new Error(healthError.message);
+
+  const health = computeSyncHealth({
+    now: new Date(),
+    emergencyPauseActive: params.emergencyPauseActive ?? false,
+    windowHours: SYNC_HEALTH_WINDOW_HOURS,
+    recentRuns: (healthWindowRuns ?? []) as SyncRunHealthInput[],
+  });
 
   return {
     runs: runs ?? [],
@@ -1250,5 +1296,6 @@ export async function handleSyncStatus(admin: SupabaseAdminLike, params: { page?
     errors: errors ?? [],
     errorTotal: errorCount ?? 0,
     latestRunPerResource: latestRuns,
+    health,
   };
 }

@@ -94,7 +94,7 @@ describe("field-mapping registry — TASK 3 independent validation against the a
   it("has exactly one registry entry per independently-extracted column, with matching sourceLocation/expectedColumn/expectedPgType", () => {
     let semanticallyValid = 0;
     let incomplete = 0;
-    let differing: string[] = [];
+    const differing: string[] = [];
 
     for (const col of independentColumns) {
       const key = `${col.resource}.${col.name}`;
@@ -161,7 +161,7 @@ describe("field-mapping registry — TASK 3 independent validation against the a
     const phantom = [...registryKeys].filter((k) => !independentKeys.has(k)).length;
     const semanticallyValid = FIELD_MAPPING_REGISTRY.length - phantom;
 
-    // eslint-disable-next-line no-console
+     
     console.log(JSON.stringify({
       totalDefinitions: FIELD_MAPPING_REGISTRY.length,
       semanticallyValid,

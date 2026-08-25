@@ -13,6 +13,13 @@ import { upsertResource } from "./upsert-resource.ts";
 import { computeIdsToArchive, DEFAULT_MIN_OBSERVED_RATIO, evaluateReconciliationEligibility } from "./reconciliation.ts";
 import { recoverStaleRuns, type RecoveryDatabase } from "./sync-run-recovery.ts";
 import { decideSyncResume, type FailedSourceRun } from "./sync-resume-policy.ts";
+import {
+  RETRY_GOVERNANCE_METADATA_KEY,
+  isCircuitOpen,
+  readRetryGovernance,
+  recordAttempt,
+  type RetryGovernanceState,
+} from "./sync-retry-governance.ts";
 import type {
   JsonApiResource,
   MirrorResourceDefinition,
@@ -296,6 +303,51 @@ async function persistCheckpoint(
   }
 }
 
+/**
+ * PHASE 1A retry governance: fold this attempt's outcome into the chain's
+ * persisted governance state BEFORE the terminal status write, so the run
+ * row this invocation leaves behind — the next invocation's resume
+ * candidate — already carries the up-to-date backoff window. Best-effort by
+ * design: if the stamping UPDATE itself fails (e.g. a database outage),
+ * governance simply stays at its previously persisted value and the next
+ * attempt re-evaluates from that; it must never mask the original failure.
+ */
+async function persistAttemptGovernance(
+  context: SyncContext,
+  runId: string,
+  requestMetadata: Record<string, unknown>,
+  previousGovernance: RetryGovernanceState | null,
+  madeProgress: boolean,
+  status: "partial" | "failed",
+  now: Date,
+  baseDelayMs?: number,
+  maxDelayMs?: number,
+): Promise<void> {
+  try {
+    const nextGovernance = recordAttempt({
+      previous: previousGovernance,
+      madeProgress,
+      status,
+      now,
+      baseDelayMs,
+      maxDelayMs,
+    });
+    await persistCheckpoint(
+      context,
+      runId,
+      { ...requestMetadata, [RETRY_GOVERNANCE_METADATA_KEY]: nextGovernance },
+    );
+  } catch {
+    // Deliberately swallowed — see docstring.
+  }
+}
+
+/** Checkpoint page this attempt ended on (0 if none was persisted). */
+function finalCompletedPage(requestMetadata: Record<string, unknown>): number {
+  const resume = requestMetadata.resume as Record<string, unknown> | undefined;
+  return typeof resume?.last_completed_page === "number" ? resume.last_completed_page : 0;
+}
+
 async function recordError(
   context: SyncContext,
   runId: string,
@@ -535,14 +587,57 @@ export async function syncCollection(
       ? new Date(sourceChainStartedAt)
       : startedAt;
 
+  // PHASE 1A retry governance: a chain whose recent attempts made ZERO
+  // forward progress is refused this invocation entirely — before any run
+  // row is created, before a single Paraşüt request, before any database
+  // write — until its exponential-backoff window expires. This is the fix
+  // for the incident mechanism where a poisoned page re-failed identically
+  // on every cron tick (~288 identical retries/day) with no backoff and no
+  // exit. Evaluated against the resumable candidate for this exact
+  // (company, resource) REGARDLESS of whether this invocation will
+  // resume or restart: a chain blocked on page 1 has last_completed_page=0,
+  // which the resume contract rejects, so those loops manifest as repeated
+  // RESTARTS — the restart path is exactly as dangerous as the resume path
+  // and must be governed identically. See sync-retry-governance.ts.
+  const sourceGovernance = sourceRun
+    ? readRetryGovernance(sourceRun.requestMetadata)
+    : null;
+  const bypassGovernance = options.retryGovernance?.bypass === true;
+  if (!bypassGovernance && isCircuitOpen(sourceGovernance, startedAt)) {
+    return {
+      pages: 0,
+      observed: 0,
+      inserted: 0,
+      updated: 0,
+      unchanged: 0,
+      errors: 0,
+      runId: null,
+      resourceType: options.resourceType,
+      status: "circuit_open",
+      hasMore: false,
+      resumed: false,
+      pagesThisInvocation: 0,
+      totalPagesProcessed: 0,
+      circuitOpenUntil: sourceGovernance?.open_until ?? null,
+    };
+  }
+
   const createdRun = await createRun(context, options, chainStartedAt);
   const runId = createdRun.runId;
   let requestMetadata = createdRun.requestMetadata;
   if (resumeDecision.strategy === "resume") {
     // Seed this new run's own checkpoint from the source run's last
     // committed page so a crash between here and the first page persist
-    // still resumes correctly on the *next* attempt too.
+    // still resumes correctly on the *next* attempt too — and carry the
+    // chain's retry-governance ladder forward with it, exactly like
+    // chain_started_at, so backoff state survives every resume hop.
     requestMetadata = advanceCheckpointMetadata(requestMetadata, pagesBeforeThisInvocation);
+    if (sourceGovernance) {
+      requestMetadata = {
+        ...requestMetadata,
+        [RETRY_GOVERNANCE_METADATA_KEY]: sourceGovernance,
+      };
+    }
     await persistCheckpoint(context, runId, requestMetadata);
   }
 
@@ -636,6 +731,19 @@ export async function syncCollection(
     }
 
     if (hasMore) {
+      // Budget-bounded partial: stamp governance BEFORE the terminal status
+      // write so the resume candidate this run leaves behind already carries
+      // the ladder. Zero-progress partials open the backoff window; healthy
+      // budget-bound progress (finalPage advanced) never throttles.
+      await persistAttemptGovernance(
+        context,
+        runId,
+        requestMetadata,
+        sourceGovernance,
+        finalCompletedPage(requestMetadata) > pagesBeforeThisInvocation,
+        "partial",
+        context.now?.() ?? new Date(),
+      );
       await completeRun(context, runId, counters, "partial");
       const completedAt = context.now?.() ?? new Date();
       const resume = requestMetadata.resume as Record<string, unknown> | undefined;
@@ -659,6 +767,21 @@ export async function syncCollection(
     }
 
     const status = counters.errors > 0 ? "partial" : "completed";
+    if (status === "partial") {
+      // Ended within budget but with record errors (e.g. a poisoned page):
+      // same governance stamping as the hasMore path above. "completed" is
+      // deliberately unstamped — the chain is done and the happy path keeps
+      // its exact previous database write pattern.
+      await persistAttemptGovernance(
+        context,
+        runId,
+        requestMetadata,
+        sourceGovernance,
+        finalCompletedPage(requestMetadata) > pagesBeforeThisInvocation,
+        "partial",
+        context.now?.() ?? new Date(),
+      );
+    }
     await completeRun(context, runId, counters, status);
     const completedAt = context.now?.() ?? new Date();
     const resume = requestMetadata.resume as Record<string, unknown> | undefined;
@@ -708,6 +831,19 @@ export async function syncCollection(
     }
     counters.errors++;
     await recordError(context, runId, options.resourceType, error);
+    // Stamp governance on the failed path too (best-effort — see
+    // persistAttemptGovernance): a thrown attempt is by definition a
+    // zero-progress attempt of this chain unless the checkpoint had already
+    // advanced past where the chain started.
+    await persistAttemptGovernance(
+      context,
+      runId,
+      requestMetadata,
+      sourceGovernance,
+      finalCompletedPage(requestMetadata) > pagesBeforeThisInvocation,
+      "failed",
+      context.now?.() ?? new Date(),
+    );
     await completeRun(context, runId, counters, "failed");
     const completedAt = context.now?.() ?? new Date();
     const resume = requestMetadata.resume as Record<string, unknown> | undefined;

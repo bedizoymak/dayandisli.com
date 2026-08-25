@@ -217,6 +217,19 @@ export interface SyncResourceOptions {
    * and returns status "partial" with hasMore true instead of continuing.
    */
   maxPagesPerInvocation?: number;
+  /**
+   * Cross-invocation retry governance (Phase 1A remediation, see
+   * sync-retry-governance.ts): after repeated ZERO-progress attempts of the
+   * same resume chain, subsequent invocations return "circuit_open" without
+   * touching Paraşüt or the database until the backoff window expires.
+   * Enabled by default for resumed chains; bypass=true restores the old
+   * always-retry behavior (reserved for explicit operator-triggered resyncs).
+   */
+  retryGovernance?: {
+    bypass?: boolean;
+    baseDelayMs?: number;
+    maxDelayMs?: number;
+  };
 }
 
 /** Thrown by syncCollection when concurrencyLock is enabled and this run lost the single-runner election. */
@@ -235,7 +248,12 @@ export interface ReconciliationOutcome {
 }
 
 export interface SyncResult extends SyncCounters {
-  runId: string;
+  /**
+   * Identifier of the sync_runs row created for this invocation. Null ONLY
+   * for status "circuit_open", where the retry-governance backoff refused
+   * the attempt before any run row was created (zero side effects).
+   */
+  runId: string | null;
   resourceType: string;
   /**
    * "superseded" is distinct from "failed": it means enforceSingleRunner's
@@ -245,8 +263,14 @@ export interface SyncResult extends SyncCounters {
    * actually attempted work and could not complete. Keeping them separate
    * is what makes alerting on "failed" meaningful instead of firing
    * constantly on routine election losses.
+   *
+   * "circuit_open" (Phase 1A) means retry governance skipped this attempt
+   * entirely: an earlier attempt of this resume chain made zero forward
+   * progress and its exponential-backoff window has not expired yet. No
+   * Paraşüt request, no database write, no sync_runs row — the cheapest
+   * possible tick while a poisoned chain waits out its backoff.
    */
-  status: "completed" | "partial" | "failed" | "superseded";
+  status: "completed" | "partial" | "failed" | "superseded" | "circuit_open";
   /** Only present when `options.reconcile` was true for this run. */
   reconciliation?: ReconciliationOutcome;
   /** True when maxPagesPerInvocation stopped the run before the resource was fully traversed — the caller must invoke again to continue. Never true for "failed". */
@@ -257,6 +281,8 @@ export interface SyncResult extends SyncCounters {
   pagesThisInvocation: number;
   /** Pages fetched across this run and every prior invocation it resumed from, best-effort (0 if unknown). */
   totalPagesProcessed: number;
+  /** ISO backoff boundary for status "circuit_open"; null/absent otherwise. */
+  circuitOpenUntil?: string | null;
 }
 
 export interface PaginatedPage {

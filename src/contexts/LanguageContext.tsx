@@ -5,16 +5,19 @@ import deTranslations from '@/locales/de.json';
 
 export type Language = 'tr' | 'en' | 'de';
 
+/** Dictionary shape derived from the canonical Turkish source so consumers get string-typed leaves. */
+export type TranslationDictionary = typeof trTranslations;
+
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: any;
+  t: TranslationDictionary;
 }
 
-const translations = {
+const translations: Record<Language, TranslationDictionary> = {
   tr: trTranslations,
-  en: enTranslations,
-  de: deTranslations,
+  en: enTranslations as TranslationDictionary,
+  de: deTranslations as TranslationDictionary,
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

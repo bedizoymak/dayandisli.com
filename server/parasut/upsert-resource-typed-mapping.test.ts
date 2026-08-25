@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { upsertResource } from "./upsert-resource.ts";
-import type { JsonApiResource, MirrorDatabase } from "./types.ts";
+import type { JsonApiResource, MirrorDatabase, MirrorTable } from "./types.ts";
 
 // Sanitized synthetic fixtures only — no live business values.
 
@@ -136,7 +136,7 @@ describe("upsert-resource — Phase 2B typed mapping, gate ENABLED and IN SCOPE"
   });
 
   it("writes the full registry-mapped typed columns for each of the 5 newly-scoped resources (e_invoices, employees, sales_offers, shipment_documents, warehouses)", async () => {
-    const cases: Array<{ type: string; attributes: Record<string, unknown>; expect: Record<string, unknown> }> = [
+    const cases: Array<{ type: MirrorTable; attributes: Record<string, unknown>; expect: Record<string, unknown> }> = [
       { type: "e_invoices", attributes: { external_id: "ext-1", net_total: "50.0", currency: "TRL" }, expect: { external_id: "ext-1", net_total: 50, currency: "TRL" } },
       { type: "employees", attributes: { name: "Fixture Employee", trl_balance: "10.0" }, expect: { name: "Fixture Employee", trl_balance: 10 } },
       { type: "sales_offers", attributes: { net_total: "25.0", status: "draft" }, expect: { net_total: 25, status: "draft" } },

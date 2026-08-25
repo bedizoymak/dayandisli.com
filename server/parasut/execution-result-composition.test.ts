@@ -13,14 +13,15 @@ describe("composeExecutionResults", () => {
     expect(result.envelope).toEqual({
       status: "completed",
       mode: "default",
-      planned_count: 5,
-      completed_count: 5,
+      planned_count: 6,
+      completed_count: 6,
       completed_resources: [
+        "accounts",
         "contacts",
         "products",
         "sales_invoices",
         "purchase_bills",
-        "accounts",
+        "checks",
       ],
     });
     expect(result.reports.map((report) => report.resource)).toEqual(

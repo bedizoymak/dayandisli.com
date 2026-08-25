@@ -90,5 +90,3 @@ export function syncContactTransactionHistory(
     concurrencyLock: options.concurrencyLock,
   });
 }
-
-export const RECONCILIATION_TARGET_CONTACT_IDS = ["1011029161", "1010743830", "1011029140", "1068984956"] as const;

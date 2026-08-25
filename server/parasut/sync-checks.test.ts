@@ -302,12 +302,18 @@ describe("syncChecks", () => {
     expect(tables.checks.find((row) => row.parasut_id === "41")?.attributes).toMatchObject({ serial_number: "NEW-41" });
   });
 
-  it("does not enable deletion reconciliation (no reconciliation field on the result)", async () => {
+  it("enables deletion reconciliation (PARENT-DELETED-BUT-STILL-MIRRORED fix, 2026-08-25)", async () => {
     const { database } = createFakeDatabase();
     const client = fakeClient([page(1, [checkResource({ id: "6" })])]);
     const result = await syncChecks(buildContext(database, client));
 
-    expect(result.reconciliation).toBeUndefined();
+    // The three ghost cheques existed only because this resource previously
+    // ran WITHOUT reconciliation. With it enabled, every completed error-free
+    // full snapshot carries a reconciliation outcome (archivedCount 0 here —
+    // the single observed id is also the only active mirror row in this
+    // fixture).
+    expect(result.reconciliation).toBeDefined();
+    expect(result.reconciliation).toMatchObject({ archivedCount: 0 });
   });
 
   it("requests issued_by and given_to on every page — without it, Paraşüt's live checks response carries only an empty relationships stub (confirmed 2026-08-22: no `data` on either key), so no cheque could ever be auto-linked to a customer/supplier", async () => {

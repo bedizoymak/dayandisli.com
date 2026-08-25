@@ -22,6 +22,16 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
 
+/** Minimal reCAPTCHA v2 surface actually used by this component (global script provides it). */
+interface ReCaptchaV2 {
+  render: (
+    container: HTMLElement,
+    params: { sitekey: string; callback?: (token: string) => void; "expired-callback"?: () => void },
+  ) => number;
+  getResponse: (widgetId: number) => string;
+  reset: (widgetId?: number) => void;
+}
+
 export const ContactForm = () => {
   const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,9 +45,10 @@ export const ContactForm = () => {
   // 🔥 EXPLICIT RENDER + widgetId yakalama
   useEffect(() => {
     if (!isSupabaseConfigured) return;
+    // Minimal reCAPTCHA v2 surface actually used by this component.
 
     const interval = setInterval(() => {
-      const grecaptcha = (window as any).grecaptcha;
+      const grecaptcha = (window as { grecaptcha?: ReCaptchaV2 }).grecaptcha!;
 
       if (grecaptcha && recaptchaRef.current) {
         const id = grecaptcha.render(recaptchaRef.current, {
@@ -92,7 +103,7 @@ export const ContactForm = () => {
       }
 
       // 🔥 TOKEN DOĞRU INSTANCE'TAN ALINIYOR
-      const token = (window as any).grecaptcha.getResponse(widgetId);
+      const token = (window as { grecaptcha?: ReCaptchaV2 }).grecaptcha!.getResponse(widgetId);
 
       if (!token) {
         toast({
@@ -141,7 +152,7 @@ export const ContactForm = () => {
       });
 
       form.reset();
-      (window as any).grecaptcha.reset(widgetId);
+      (window as { grecaptcha?: ReCaptchaV2 }).grecaptcha!.reset(widgetId);
     } catch (err) {
       console.error("Contact form submission error:", err);
       toast({
@@ -295,3 +306,4 @@ export const ContactForm = () => {
     </Form>
   );
 };
+

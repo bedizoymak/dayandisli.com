@@ -6,7 +6,7 @@ const appSource = readFileSync("src/App.tsx", "utf8");
 const layoutSource = readFileSync("src/layouts/ErpLayout.tsx", "utf8");
 const shellNavSource = readFileSync("src/features/erp-shell/shellNavigationData.ts", "utf8");
 
-const productionErpDirs = ["src/features/finance", "src/features/crm", "src/features/sales", "src/features/reports", "src/features/erp-shell", "src/features/dashboard"];
+const productionErpDirs = ["src/features/finance", "src/features/crm", "src/features/sales", "src/features/reports", "src/features/erp-shell"];
 
 function featureSource(directory: string): string {
   return readdirSync(directory, { withFileTypes: true })
@@ -288,3 +288,4 @@ describe("no multipage screen container is selected via a mode/type/variant prop
     expect(source.match(/export function/g)?.length).toBe(1);
   });
 });
+

@@ -1,4 +1,4 @@
-import { getCurrentERPUser } from "./erpApi";
+import { getCurrentERPUser } from "./auth";
 import { ERPRole, ERPUser } from "./types";
 
 export { getCurrentERPUser };
@@ -252,3 +252,4 @@ export async function getCurrentERPUserSafe() {
   const result = await getCurrentERPUser();
   return result.data;
 }
+

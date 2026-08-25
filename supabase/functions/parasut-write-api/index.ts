@@ -30,6 +30,7 @@ import { ParasutContactsOnlySync, type MirrorContactLookup } from "../../../serv
 import { ParasutContactWriteHttpClient } from "../../../server/parasut/write-client.ts";
 import { TokenManager } from "../../../server/parasut/auth.ts";
 import { ParaşütClient } from "../../../server/parasut/client.ts";
+import { syncContactTransactionHistory } from "../../../server/parasut/sync-transaction-history.ts";
 import type { MirrorDatabase, SyncContext, SyncResult } from "../../../server/parasut/types.ts";
 import type { ProviderCapabilities } from "../../../server/erp/providers/accounting-provider.ts";
 
@@ -199,6 +200,33 @@ serve(async (req) => {
     if (!access.isAdmin) return json({ error: "Bu işlem için ERP yöneticisi yetkisi gereklidir." }, 403);
 
     const resourceParam = typeof body.resource === "string" ? body.resource : "";
+
+    // Generic per-contact authoritative statement refresh (replaces the
+    // removed 2025-era hardcoded four-contact backfill allowlist): ANY
+    // contact id may be refreshed by an authorized ERP admin — the contact
+    // identity is the caller-supplied opaque Paraşüt id, validated only by
+    // shape, never matched against any known list.
+    // Same canonical engine, single-runner lock, company-scoped context.
+    if (resourceParam === "transaction_history") {
+      const contactId = typeof body.contactId === "string" ? body.contactId.trim() : "";
+      if (!/^\d{1,20}$/.test(contactId)) return json({ error: "Geçerli bir contactId gereklidir." }, 400);
+      try {
+        const tokens = new TokenManager({
+          clientId: env("PARASUT_CLIENT_ID"),
+          clientSecret: env("PARASUT_CLIENT_SECRET"),
+          username: env("PARASUT_USERNAME"),
+          password: env("PARASUT_PASSWORD"),
+        });
+        const database = admin as unknown as MirrorDatabase;
+        const context: SyncContext = { companyId: activeCompanyId, parasutCompanyId, database, client: new ParaşütClient(tokens) };
+        const response = await handleResync(access.isAdmin, () => syncContactTransactionHistory(context, contactId, { concurrencyLock: true }));
+        return json(response);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Beklenmeyen hata";
+        return json({ error: message }, 500);
+      }
+    }
+
     const mapping = SYNCABLE_RESOURCES[resourceParam];
     if (!mapping) return json({ error: "Desteklenmeyen senkronizasyon kaynağı." }, 400);
 

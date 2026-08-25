@@ -106,6 +106,10 @@ function required(name) {
 }
 
 async function countRows(database, table, companyId, parasutCompanyId) {
+  // PHASE 13: the canonical mirror lives in schema `parasut` (the sync
+  // engine writes there via PARASUT_MIRROR_SCHEMA). The client below is
+  // created with db.schema = "parasut" so this reads the REAL mirror — the
+  // old gen-1 `public.parasut_*` names here were counting dead tables.
   const { count, error } = await database
     .from(table)
     .select("id", { count: "exact", head: true })
@@ -117,23 +121,23 @@ async function countRows(database, table, companyId, parasutCompanyId) {
 
 const resources = {
   contacts: {
-    table: "parasut_contacts",
+    table: "contacts",
     sync: syncContacts,
   },
   products: {
-    table: "parasut_products",
+    table: "products",
     sync: syncProducts,
   },
   sales_invoices: {
-    table: "parasut_sales_invoices",
+    table: "sales_invoices",
     sync: syncSalesInvoices,
   },
   purchase_bills: {
-    table: "parasut_purchase_bills",
+    table: "purchase_bills",
     sync: syncPurchaseBills,
   },
   accounts: {
-    table: "parasut_accounts",
+    table: "accounts",
     sync: syncAccounts,
   },
 };
@@ -168,6 +172,9 @@ async function run() {
 
       const database = createClient(status.API_URL, status.SERVICE_ROLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false },
+        // PHASE 13: count the canonical mirror (schema parasut), not the
+        // dead gen-1 public.parasut_* tables.
+        db: { schema: "parasut" },
       });
       const companyCode =
         process.env.PARASUT_DAYAN_COMPANY_CODE?.trim() || "DAYAN";

@@ -31,13 +31,13 @@ const SCAN_DIRS = ["server/parasut", "supabase/functions", "scripts"];
  * not a silent pass-through.
  */
 const KNOWN_UNBOUNDED_QUERIES: Record<string, string> = {
-  "server/parasut/sync-base.ts:249:sync_runs": "Bounded (fixed 2026-08-23): findLatestResumableRun now scopes by gt(created_at, 48h-ago) in addition to company/resource/status — a resume candidate older than that is never useful anyway.",
-  "server/parasut/sync-base.ts:250:sync_runs": "Same fix/reasoning as line 249 (partial-status branch of the same three-way query).",
-  "server/parasut/sync-base.ts:251:sync_runs": "Same fix/reasoning as line 249 (completed-status branch of the same three-way query).",
+  "server/parasut/sync-base.ts:256:sync_runs": "Bounded (fixed 2026-08-23): findLatestResumableRun now scopes by gt(created_at, 48h-ago) in addition to company/resource/status — a resume candidate older than that is never useful anyway. (Lines re-anchored 2026-08-25 by Phase 1A retry-governance additions above.)",
+  "server/parasut/sync-base.ts:257:sync_runs": "Same fix/reasoning as line 256 (partial-status branch of the same three-way query).",
+  "server/parasut/sync-base.ts:258:sync_runs": "Same fix/reasoning as line 256 (completed-status branch of the same three-way query).",
   "server/parasut/sync-run-recovery.ts:119:sync_runs": "Bounded: status='running' AND completed_at is null AND updated_at older than the 10-minute stale cutoff (recoverStaleRuns) — by definition only anomalous stuck runs; healthy state is 0 rows.",
-  "server/parasut/sync-statement-staleness.ts:58:contacts": "TRACKED, not yet fixed: 441 active contacts today (confirmed live 2026-08-23), no natural per-key scoping possible since this IS the outer loop variable in computeContactStaleness. Monitor as the business grows past ~1000 contacts.",
-  "server/parasut/sync-statement-staleness.ts:84:transaction_history_items": "Bounded (fixed 2026-08-23): scoped per-contact via .eq('contact_parasut_id', contact.parasut_id) inside the Promise.all(contacts.map(...)) loop — every query returns at most one contact's own row set, never company-wide.",
-  "server/parasut/sync-statement-staleness.ts:91:sync_runs": "Bounded (fixed 2026-08-23): scoped via .eq('request_metadata->>endpoint', historyEndpoint(...)) to one specific contact's sync history — same per-contact scoping as line 84 above.",
+  "server/parasut/sync-statement-staleness.ts:68:contacts": "TRACKED, not yet fixed: 441 active contacts today (confirmed live 2026-08-23), no natural per-key scoping possible since this IS the outer loop variable in computeContactStaleness. Monitor as the business grows past ~1000 contacts.",
+  "server/parasut/sync-statement-staleness.ts:94:transaction_history_items": "Bounded (fixed 2026-08-23): scoped per-contact via .eq('contact_parasut_id', contact.parasut_id) inside the Promise.all(contacts.map(...)) loop — every query returns at most one contact's own row set, never company-wide.",
+  "server/parasut/sync-statement-staleness.ts:101:sync_runs": "Bounded (fixed 2026-08-23): scoped via .eq('request_metadata->>endpoint', historyEndpoint(...)) to one specific contact's sync history — same per-contact scoping as line 94 above.",
   "supabase/functions/checks-api/index.ts:54:checks": "TRACKED: listMirrorChecks, 41 active checks company-wide today (confirmed live 2026-08-23) — same class, low near-term risk.",
   "supabase/functions/checks-api/index.ts:64:payment_instruments": "Bounded: listLocalInstruments, a company's own payment instruments (bank accounts/cards), inherently small by the nature of the resource.",
   "supabase/functions/checks-api/index.ts:116:contacts": "Bounded: listMirrorContacts explicitly paginates the caller-supplied parasutIds in chunks of 100 (for loop, offset += 100) before this .in() call — each individual query is bounded to at most 100 ids/rows.",
@@ -45,8 +45,8 @@ const KNOWN_UNBOUNDED_QUERIES: Record<string, string> = {
   "supabase/functions/commerce-checkout/index.ts:86:commerce_checkout_events": "Not a row-fetch risk: { count: 'exact', head: true } returns only a count, no rows, so PostgREST's response-row cap does not apply.",
   "supabase/functions/commerce-checkout/index.ts:133:products": "Bounded: .in('id', productIds) where productIds.length is rejected above 50 (payload.items.length > 50 check) before this query runs.",
   "supabase/functions/commerce-checkout/index.ts:257:shop_inventory_reservations": "Bounded: scoped to one order_id + status='reserved' — reservations for a single order, inherently small.",
-  "scripts/run-parasut-history-company-backfill.ts:66:contacts": "TRACKED, same 441-contact bound as sync-statement-staleness.ts:58 above (fetchActiveContactIds) — manual/on-demand tool, not part of the automatic cron path.",
-  "scripts/run-parasut-history-company-backfill.ts:90:sync_runs": "TRACKED, NOT YET FIXED: fetchLatestStatusByContact fetches ALL sync_runs for resource_type='transaction_history_items' company-wide, unscoped by contact — the exact same bug class just fixed in sync-statement-staleness.ts, present here too. Lower urgency because this script is manual/on-demand (the company-wide backfill CLI runner), not the automatic 1-minute cron, but should get the identical per-contact-scoping fix before its next use.",
+  "scripts/run-parasut-history-company-backfill.ts:65:contacts": "TRACKED, same 441-contact bound as sync-statement-staleness.ts:58 above (fetchActiveContactIds) — manual/on-demand tool, not part of the automatic cron path.",
+  "scripts/run-parasut-history-company-backfill.ts:89:sync_runs": "TRACKED, NOT YET FIXED: fetchLatestStatusByContact fetches ALL sync_runs for resource_type='transaction_history_items' company-wide, unscoped by contact — the exact same bug class just fixed in sync-statement-staleness.ts, present here too. Lower urgency because this script is manual/on-demand (the company-wide backfill CLI runner), not the automatic 1-minute cron, but should get the identical per-contact-scoping fix before its next use.",
 };
 
 function listSourceFiles(dir: string): string[] {

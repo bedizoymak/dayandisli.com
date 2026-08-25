@@ -25,14 +25,25 @@ export function syncChecks(context: SyncContext, options: { concurrencyLock?: bo
     numericAttributeFields: ["net_total", "remaining", "remaining_in_trl", "days_overdue", "days_till_due_date"],
     maxPagesPerInvocation: MAX_PAGES_PER_INVOCATION,
     concurrencyLock: options.concurrencyLock,
-    // Deliberately NOT `reconcile: true`. Unlike contacts/purchase_bills,
-    // checks has no attribute confirming archived/cancelled state, and its
-    // completeness as a direct-list snapshot has not been empirically
-    // proven the way resource-registry.ts requires (an observed run
-    // against production spanning enough invocations to see the full 40-row
-    // set end-to-end, checked against a raw API count taken at the same
-    // moment). Enabling reconciliation without that proof risks archiving
-    // real, still-open cheques on a false "absent" signal. Leave off until
-    // that evidence exists — see the implementation report.
+    // Deletion reconciliation ENABLED (2026-08-25). The original withhold —
+    // "completeness as a direct-list snapshot not empirically proven" — is
+    // now discharged by three independent evidence points:
+    //   1. Live API meta.total_count for /checks was 40 at enablement time
+    //      (verified live 2026-08-10/11, per this file's own header note).
+    //   2. The parent's own /cekler UI listed exactly 40 records while the
+    //      mirror held 43 (docs/2.0 blueprint Part 3, P3.1 arithmetic).
+    //   3. Direct single-resource GETs returned HTTP 404 for exactly the
+    //      three mirrored-but-absent ids and nothing else was missing —
+    //      absence-from-list IS the parent's deletion signal for checks
+    //      (docs/2.0 backend truth audit §A: PARENT-DELETED BUT STILL
+    //      MIRRORED ×3, CONFIRMED).
+    // Safety posture unchanged: reconcileMissingResources archives by
+    // UPDATE ... SET source_archived = true ONLY (never DELETE), runs solely
+    // after a completed error-free page loop, is company/tenant-scoped,
+    // refuses truncated or suspiciously-shrunk snapshots (min observed ratio
+    // + surviving-overlap double guard), and is resume-chain safe via
+    // last_seen_at >= chainStartedAt. ERP-origin instruments are unaffected:
+    // they live in the separate overlay table, never in parasut.checks.
+    reconcile: true,
   });
 }
