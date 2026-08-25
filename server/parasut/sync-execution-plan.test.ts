@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_RESOURCE_ORDER,
@@ -50,13 +52,14 @@ describe("createExecutionPlan", () => {
   it("creates the explicit default plan for empty arguments", () => {
     expect(createExecutionPlan([])).toEqual({
       mode: "default",
-      count: 5,
+      count: 6,
       resources: [
+        "accounts",
         "contacts",
         "products",
         "sales_invoices",
         "purchase_bills",
-        "accounts",
+        "checks",
       ],
     });
   });
@@ -87,3 +90,19 @@ describe("createExecutionPlan", () => {
     );
   });
 });
+
+describe("PHASE 10 divergence guard: one canonical resource order everywhere", () => {
+  it("the production cron loop's RESOURCE_ORDER equals DEFAULT_RESOURCE_ORDER", () => {
+    const fnSource = readFileSync(
+      join(__dirname, "..", "..", "supabase", "functions", "parasut-sync-run", "index.ts"),
+      "utf-8",
+    );
+    const match = fnSource.match(/const RESOURCE_ORDER[^=]*= \[([\s\S]*?)\];/);
+    expect(match, "RESOURCE_ORDER block not found in parasut-sync-run/index.ts").toBeTruthy();
+    const cronOrder = (match![1].match(/name: "(\w+)"/g) ?? []).map((entry) =>
+      entry.replace(/name: "|"/g, ""),
+    );
+    expect(cronOrder).toEqual([...DEFAULT_RESOURCE_ORDER]);
+  });
+});
+
