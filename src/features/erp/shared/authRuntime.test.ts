@@ -5,7 +5,6 @@ const runtimeFiles = [
   "src/pages/Login.tsx",
   "src/contexts/ERPAuthContext.tsx",
   "src/components/ProtectedRoute.tsx",
-  "src/features/erp/shared/erpApi.ts",
   "supabase/functions/payment-refund/index.ts",
 ];
 
@@ -22,8 +21,9 @@ describe("unified ERP user runtime authority", () => {
   });
 
   it("does not synthesize a viewer ERP profile", () => {
-    const api = readFileSync("src/features/erp/shared/erpApi.ts", "utf8");
+    const api = readFileSync("src/features/erp/shared/auth.ts", "utf8");
     expect(api).not.toMatch(/role:\s*"viewer"/);
     expect(api).toContain("resolveERPUserForAuthUser");
   });
 });
+

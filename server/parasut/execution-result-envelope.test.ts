@@ -13,14 +13,15 @@ describe("execution result envelope", () => {
     expect(envelope).toEqual({
       status: "completed",
       mode: "default",
-      planned_count: 5,
-      completed_count: 5,
+      planned_count: 6,
+      completed_count: 6,
       completed_resources: [
+        "accounts",
         "contacts",
         "products",
         "sales_invoices",
         "purchase_bills",
-        "accounts",
+        "checks",
       ],
     });
   });

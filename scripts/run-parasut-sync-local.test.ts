@@ -262,11 +262,12 @@ describe("local execution-plan orchestration", () => {
     });
 
     expect(order).toEqual([
+      "accounts",
       "contacts",
       "products",
       "sales_invoices",
       "purchase_bills",
-      "accounts",
+      "checks",
     ]);
     expect(result.reports.map((report) => report.resource)).toEqual(order);
   });
