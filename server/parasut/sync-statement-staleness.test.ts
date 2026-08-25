@@ -287,7 +287,7 @@ describe("refreshStaleStatements — invocation-level lease guard", () => {
     });
     const context: SyncContext = {
       companyId: "company-1", parasutCompanyId: "666034", database,
-      client: { async *getPaginated() { getPaginatedCalls++; } },
+      client: { getPaginated: () => { getPaginatedCalls++; return (async function* () {})(); } },
     };
     const summary = await refreshStaleStatements(context, { now: NOW });
     expect(summary.skippedOverlap).toBe(true);
@@ -310,7 +310,7 @@ describe("refreshStaleStatements — invocation-level lease guard", () => {
     });
     const context: SyncContext = {
       companyId: "company-1", parasutCompanyId: "666034", database,
-      client: { async *getPaginated() { getPaginatedCalls++; } },
+      client: { getPaginated: () => { getPaginatedCalls++; return (async function* () {})(); } },
     };
     const summary = await refreshStaleStatements(context, { now: NOW });
     expect(summary.skippedOverlap).toBe(true);
@@ -343,3 +343,4 @@ describe("refreshStaleStatements — invocation-level lease guard", () => {
     expect(summary.skippedOverlap).toBe(false);
   });
 });
+

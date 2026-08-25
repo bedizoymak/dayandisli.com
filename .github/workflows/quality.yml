@@ -27,8 +27,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
+      - name: Typecheck (frontend)
         run: npm run typecheck
+
+      # PHASE 2: the server/parasut financial sync engine is strict-checked.
+      # This was never invoked anywhere before the 2026-08 remediation — the
+      # baseline check was already failing (3 errors) when it was first wired in.
+      - name: Typecheck (server)
+        run: npm run typecheck:server
 
       - name: Test
         run: npm run test
@@ -36,6 +42,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Report lint debt
-        continue-on-error: true
-        run: npm run lint
+      # PHASE 2 ratchet: lint is BLOCKING. Zero errors are tolerated; warnings
+      # are capped at the documented baseline (20 as of 2026-08-25 — shadcn
+      # react-refresh notices + hook-deps warnings confined to unrouted legacy
+      # components). Any NEW warning or error fails CI. Reduce this number as
+      # debt is paid down; never raise it.
+      - name: Lint (ratcheted)
+        run: npx eslint . --max-warnings 20

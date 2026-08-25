@@ -118,8 +118,8 @@ describe("validateQuotationEmailRequest — body/subject hardening", () => {
     expect(validateQuotationEmailRequest(validBody({ subject: "x".repeat(500) })).ok).toBe(true); // truncated, not rejected
     expect(validateQuotationEmailRequest(validBody({ subject: 42 })).ok).toBe(false);
     expect(validateQuotationEmailRequest(validBody({ html: { evil: true } })).ok).toBe(false);
-    expect(validateQuotationEmailRequest(null)).ok === false;
-    expect(validateQuotationEmailRequest("string")).ok === false;
+    expect(validateQuotationEmailRequest(null).ok).toBe(false);
+    expect(validateQuotationEmailRequest("string").ok).toBe(false);
   });
 });
 

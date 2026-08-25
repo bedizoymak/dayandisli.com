@@ -90,7 +90,7 @@ const RESOURCE_ORDER: ResourceRunner[] = [
 ];
 
 function logSafe(message: string): void {
-  // eslint-disable-next-line no-console
+   
   console.log(message.replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]"));
 }
 

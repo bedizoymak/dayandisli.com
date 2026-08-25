@@ -1,4 +1,4 @@
-ï»¿import { useLocation, useParams, Link, useNavigate } from "react-router-dom";
+import { useLocation, useParams, Link, useNavigate } from "react-router-dom";
 import { CalculatorLayout } from "../components/CalculatorLayout";
 import { GearCombinationsTable } from "../components/GearCombinationsTable";
 import { getMachineById } from "../data/machines";
@@ -9,6 +9,10 @@ import {
 } from "../utils/gearCombinations";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, FileText } from "lucide-react";
+
+/** jspdf-autotable attaches its finalY bookkeeping onto the jsPDF instance. */
+type jsPDFWithAutoTable = import("jspdf").jsPDF & { lastAutoTable?: { finalY: number } };
+
 
 export default function HelicalGearReceipt() {
   const { machineId } = useParams<{ machineId: string }>();
@@ -21,11 +25,11 @@ export default function HelicalGearReceipt() {
     return (
       <CalculatorLayout>
         <div className="text-center py-12">
-          <p className="text-slate-400 mb-4">Hesaplama sonucu bulunamadÄ±.</p>
+          <p className="text-slate-400 mb-4">Hesaplama sonucu bulunamadý.</p>
           <Link to={`/calculator/machines/${machineId}/helical`}>
             <Button variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Hesaplamaya DÃ¶n
+              Hesaplamaya Dön
             </Button>
           </Link>
         </div>
@@ -46,23 +50,23 @@ export default function HelicalGearReceipt() {
 
     // Title
     doc.setFontSize(18);
-    doc.text("Helisel Disli Ãœretim ReÃ§etesi", 105, 20, { align: "center" });
+    doc.text("Helisel Disli Üretim Reçetesi", 105, 20, { align: "center" });
 
     doc.setFontSize(12);
     doc.text(`Makine: ${machine.name}`, 105, 30, { align: "center" });
 
     // Parameters table
     const paramData = [
-      ["ModÃ¼l (mn)", result.mn.toFixed(4)],
+      ["Modül (mn)", result.mn.toFixed(4)],
       ["Dis Sayisi (Z)", result.z.toString()],
-      ["Kavrama AÃ§isi (Î±)", `${result.alphaDeg.toFixed(2)}Â°`],
-      ["Helis AÃ§isi (Î²)", `${result.betaDeg.toFixed(2)}Â°`],
-      ["Helis YÃ¶nÃ¼", result.helixDirection],
-      ["Ã‡ap (Ã¸)", `${result.diameter.toFixed(2)} mm`],
+      ["Kavrama Açisi (?)", `${result.alphaDeg.toFixed(2)}°`],
+      ["Helis Açisi (ß)", `${result.betaDeg.toFixed(2)}°`],
+      ["Helis Yönü", result.helixDirection],
+      ["Çap (ø)", `${result.diameter.toFixed(2)} mm`],
       [`Wk (k=${result.kFloor})`, `${result.wkFloor.toFixed(4)} mm`],
       [`Wk (k=${result.kCeil})`, `${result.wkCeil.toFixed(4)} mm`],
       ["Taksimat Orani", result.taksimatRatio.toFixed(6)],
-      ["Helis Ã‡ark Orani", result.helicalGearRatio.toFixed(6)],
+      ["Helis Çark Orani", result.helicalGearRatio.toFixed(6)],
     ];
 
     autoTable(doc, {
@@ -75,10 +79,10 @@ export default function HelicalGearReceipt() {
     });
 
     // Taksimat combinations
-    let lastY = (doc as any).lastAutoTable.finalY || 100;
+    let lastY = (doc as jsPDFWithAutoTable).lastAutoTable!.finalY || 100;
 
     doc.setFontSize(14);
-    doc.text("Taksimat Ã‡ark Kombinasyonlari", 105, lastY + 15, {
+    doc.text("Taksimat Çark Kombinasyonlari", 105, lastY + 15, {
       align: "center",
     });
 
@@ -99,10 +103,10 @@ export default function HelicalGearReceipt() {
     });
 
     // Helical combinations
-    lastY = (doc as any).lastAutoTable.finalY || 150;
+    lastY = (doc as jsPDFWithAutoTable).lastAutoTable!.finalY || 150;
 
     doc.setFontSize(14);
-    doc.text("Helis Ã‡ark Kombinasyonlari", 105, lastY + 15, { align: "center" });
+    doc.text("Helis Çark Kombinasyonlari", 105, lastY + 15, { align: "center" });
 
     const helicalData = helicalCombinations.map((c) => [
       c.a.toString(),
@@ -139,13 +143,13 @@ export default function HelicalGearReceipt() {
           className="inline-flex items-center text-slate-400 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Hesaplamaya DÃ¶n
+          Hesaplamaya Dön
         </button>
 
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-white mb-2">
-              Helisel DiÅŸli Ãœretim ReÃ§etesi
+              Helisel Diþli Üretim Reçetesi
             </h1>
             <p className="text-slate-400">{machine.name}</p>
           </div>
@@ -154,7 +158,7 @@ export default function HelicalGearReceipt() {
             className="bg-purple-600 hover:bg-purple-700"
           >
             <Download className="w-4 h-4 mr-2" />
-            PDF Ä°ndir
+            PDF Ýndir
           </Button>
         </div>
 
@@ -166,27 +170,27 @@ export default function HelicalGearReceipt() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div>
-              <p className="text-xs text-slate-400">ModÃ¼l (mn)</p>
+              <p className="text-xs text-slate-400">Modül (mn)</p>
               <p className="text-white font-mono">{result.mn.toFixed(4)}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">DiÅŸ SayÄ±sÄ± (Z)</p>
+              <p className="text-xs text-slate-400">Diþ Sayýsý (Z)</p>
               <p className="text-white font-mono">{result.z}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">Kavrama AÃ§Ä±sÄ± (Î±)</p>
-              <p className="text-white font-mono">{result.alphaDeg.toFixed(2)}Â°</p>
+              <p className="text-xs text-slate-400">Kavrama Açýsý (?)</p>
+              <p className="text-white font-mono">{result.alphaDeg.toFixed(2)}°</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">Helis AÃ§Ä±sÄ± (Î²)</p>
-              <p className="text-white font-mono">{result.betaDeg.toFixed(2)}Â°</p>
+              <p className="text-xs text-slate-400">Helis Açýsý (ß)</p>
+              <p className="text-white font-mono">{result.betaDeg.toFixed(2)}°</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">Helis YÃ¶nÃ¼</p>
+              <p className="text-xs text-slate-400">Helis Yönü</p>
               <p className="text-white font-mono">{result.helixDirection}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">Ã‡ap (Ã¸)</p>
+              <p className="text-xs text-slate-400">Çap (ø)</p>
               <p className="text-white font-mono">{result.diameter.toFixed(2)} mm</p>
             </div>
             <div>
@@ -198,13 +202,13 @@ export default function HelicalGearReceipt() {
               <p className="text-white font-mono">{result.wkCeil.toFixed(4)} mm</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">Taksimat OranÄ±</p>
+              <p className="text-xs text-slate-400">Taksimat Oraný</p>
               <p className="text-white font-mono">
                 {result.taksimatRatio.toFixed(6)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">Helis Ã‡ark OranÄ±</p>
+              <p className="text-xs text-slate-400">Helis Çark Oraný</p>
               <p className="text-white font-mono">
                 {result.helicalGearRatio.toFixed(6)}
               </p>
@@ -216,14 +220,18 @@ export default function HelicalGearReceipt() {
         <div className="space-y-6">
           <GearCombinationsTable
             combinations={taksimatCombinations}
-            title="Taksimat Ã‡ark KombinasyonlarÄ±"
+            title="Taksimat Çark Kombinasyonlarý"
           />
           <GearCombinationsTable
             combinations={helicalCombinations}
-            title="Helis Ã‡ark KombinasyonlarÄ±"
+            title="Helis Çark Kombinasyonlarý"
           />
         </div>
       </div>
     </CalculatorLayout>
   );
 }
+
+
+
+

@@ -66,7 +66,7 @@ serve(async (req: Request) => {
   }
 });
 
-async function saveTokenToDatabase(companyId: string, data: any) {
+async function saveTokenToDatabase(companyId: string, data: Record<string, unknown>) {
   const url = requireEnv("SUPABASE_URL");
   const key = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -89,3 +89,4 @@ async function saveTokenToDatabase(companyId: string, data: any) {
     console.log("Token saved successfully!");
   }
 }
+

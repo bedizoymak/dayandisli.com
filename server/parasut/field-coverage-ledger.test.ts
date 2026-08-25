@@ -59,7 +59,7 @@ describe("field-coverage-ledger — TASK 4 mechanical proof for all 401 fields",
     for (const row of ledger) {
       for (const c of ALL_CASES) tally[row.cases[c]]++;
     }
-    // eslint-disable-next-line no-console
+     
     console.log(JSON.stringify({ totalFields: ledger.length, casesPerField: ALL_CASES.length, ...tally }));
     expect(tally.BLOCKED).toBe(0);
     expect(tally.TESTED + tally.NOT_APPLICABLE).toBe(ledger.length * ALL_CASES.length);

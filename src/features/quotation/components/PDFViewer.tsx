@@ -49,7 +49,8 @@ export function PDFViewer({
   disableScrollReset = false,
 }: PDFViewerProps) {
   const pagesRef = useRef<HTMLDivElement>(null);
-  const [pdfDoc, setPdfDoc] = useState<any>(null); // PDFDocumentProxy from pdfjs-dist
+  type PDFDocumentProxyLike = import("pdfjs-dist").PDFDocumentProxy;
+  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxyLike | null>(null); // PDFDocumentProxy from pdfjs-dist
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [baseScale, setBaseScale] = useState(1);
@@ -57,13 +58,13 @@ export function PDFViewer({
   const [error, setError] = useState<string | null>(null);
   const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
   const pageContainersRef = useRef<Map<number, HTMLDivElement>>(new Map());
-  const renderTasksRef = useRef<Map<number, any>>(new Map()); // RenderTask from pdfjs-dist
-  const pdfDocRef = useRef<any>(null); // PDFDocumentProxy from pdfjs-dist
+  const renderTasksRef = useRef<Map<number, import("pdfjs-dist").RenderTask>>(new Map()); // RenderTask from pdfjs-dist
+  const pdfDocRef = useRef<PDFDocumentProxyLike | null>(null); // PDFDocumentProxy from pdfjs-dist
   const lastBlobRef = useRef<Blob | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
   // Calculate base scale to fit viewport
-  const calculateBaseScale = useCallback(async (pdf: any) => {
+  const calculateBaseScale = useCallback(async (pdf: PDFDocumentProxyLike) => {
     if (!pagesRef.current) return 1;
 
     const container = pagesRef.current;
@@ -308,7 +309,7 @@ export function PDFViewer({
   }, [pdfDoc, calculateBaseScale]);
 
   // Track if we've rendered this PDF document already
-  const renderedPdfRef = useRef<any>(null);
+  const renderedPdfRef = useRef<PDFDocumentProxyLike | null>(null);
   const renderedScaleRef = useRef<number>(0);
 
   // Render all pages when PDF or baseScale changes
@@ -458,3 +459,4 @@ export function PDFViewer({
 }
 
 //test
+

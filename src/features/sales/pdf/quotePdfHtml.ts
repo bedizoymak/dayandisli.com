@@ -293,7 +293,7 @@ export function buildQuotePdfHtml(quote: QuoteRow, lines: QuoteLineRow[]): strin
   </footer>
   <p class="document-footer">${escapeHtml(issuer.legalName)} · ${escapeHtml(issuer.email)} · ${escapeHtml(issuer.address)} · <span class="page-number"></span></p>
 </main>
-<script>window.onload=()=>window.print();<\/script>
+<script>window.onload=()=>window.print();</script>
 </body></html>`;
 }
 

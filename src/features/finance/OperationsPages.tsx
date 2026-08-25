@@ -840,7 +840,7 @@ export function normalizeAddressForComparison(value: string) {
   return value
     .replace(/[İIı]/g, "i")
     .toLowerCase()
-    .replace(/[.,/\\\-]/g, " ")
+    .replace(/[.,/\\-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

@@ -1,7 +1,9 @@
 // Roboto Regular font base64 - supports Turkish characters (UTF-8)
 // This is a subset that includes Latin Extended characters for Turkish: ş, Ş, ğ, Ğ, ü, Ü, ö, Ö, ç, Ç, İ, ı
 
-export const initTurkishFont = (doc: any) => {
+type JsPdfLike = { setFont: (name: string, style?: string) => void; addFileToVFS: (name: string, data: string) => void; addFont: (postScriptName: string, family: string, style: string) => string }
+
+export const initTurkishFont = (doc: JsPdfLike) => {
   // We'll use a CDN-loaded approach for the font
   // For now, we'll use a workaround with proper character mapping
   
@@ -67,3 +69,4 @@ export const loadRobotoFont = async (): Promise<string> => {
     return '';
   }
 };
+

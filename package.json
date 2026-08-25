@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
     "preview": "vite preview",
     "supabase:crud-check": "node scripts/supabase-crud-health-check.mjs",
     "supabase:target-check": "node scripts/check-supabase-target-safety.mjs",

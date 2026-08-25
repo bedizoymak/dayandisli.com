@@ -357,8 +357,8 @@ const TeklifPage = ({ embedded = false }: TeklifPageProps) => {
     // Determine issue date: created_at → updated_at → new Date()
     const issueDate = quotation.created_at 
       ? new Date(quotation.created_at)
-      : (quotation as any).updated_at 
-      ? new Date((quotation as any).updated_at)
+      : (quotation as { updated_at?: string }).updated_at 
+      ? new Date((quotation as { updated_at?: string }).updated_at)
       : new Date();
 
     // Convert quotation to QuotationFormData format
@@ -413,8 +413,8 @@ const TeklifPage = ({ embedded = false }: TeklifPageProps) => {
       // Extract issue date: use created_at, fallback to updated_at, else current date
       const issueDate = quotation.created_at 
         ? new Date(quotation.created_at)
-        : (quotation as any).updated_at 
-        ? new Date((quotation as any).updated_at)
+        : (quotation as { updated_at?: string }).updated_at 
+        ? new Date((quotation as { updated_at?: string }).updated_at)
         : new Date();
 
       // Convert quotation to QuotationFormData format
@@ -638,4 +638,5 @@ const TeklifPage = ({ embedded = false }: TeklifPageProps) => {
 };
 
 export default TeklifPage;
+
 

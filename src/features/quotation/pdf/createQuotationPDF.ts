@@ -236,7 +236,7 @@ export const createQuotationPDF = (
 
   const ilgili = formData.ilgiliKisi ? formData.ilgiliKisi : "";
   const descX = marginX + 3;
-  let descY = y + 6;
+  const descY = y + 6;
 
   doc.setFont("Roboto", "bold");
   doc.setFontSize(9);
@@ -312,14 +312,14 @@ export const createQuotationPDF = (
     },
   });
 
-  const finalTableY = (doc as any).lastAutoTable.finalY;
+  const finalTableY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
 
   // ===================================================================
   // TOPLAM KUTUSU
   // ===================================================================
   const totalsCardWidth = 60;
   const totalsX = pageWidth - marginX - totalsCardWidth;
-  let totalsY = finalTableY + 6;
+  const totalsY = finalTableY + 6;
 
   doc.setDrawColor(229, 231, 235);
   doc.setFillColor(255, 255, 255);
@@ -468,3 +468,5 @@ export const createQuotationPDF = (
 
   return doc;
 };
+
+
